@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Fraunces, Manrope } from "next/font/google";
 import "./globals.css";
 import { AnnouncementBar } from "@/components/layout/announcement-bar";
@@ -47,6 +47,11 @@ export const metadata: Metadata = {
     description: "Premium handloom textiles from Tamil Nadu.",
   },
   robots: { index: true, follow: true },
+};
+
+export const viewport: Viewport = {
+  colorScheme: "light",
+  themeColor: "#FBF9F4",
 };
 
 // JSON-LD structured data for the business (Schema.org)
