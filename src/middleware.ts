@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { createServerClient } from "@supabase/ssr";
+import { createServerClient, type CookieOptions } from "@supabase/ssr";
 
 /**
  * Refreshes the Supabase auth session on every request and guards /admin.
@@ -15,7 +15,9 @@ export async function middleware(request: NextRequest) {
     {
       cookies: {
         getAll: () => request.cookies.getAll(),
-        setAll: (all) => {
+        setAll: (
+          all: { name: string; value: string; options?: CookieOptions }[]
+        ) => {
           all.forEach(({ name, value }) => request.cookies.set(name, value));
           response = NextResponse.next({ request });
           all.forEach(({ name, value, options }) =>
