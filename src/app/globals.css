@@ -1,0 +1,119 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --header-h: 76px;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    @apply bg-ivory text-ink font-sans antialiased;
+    font-feature-settings: "ss01", "cv05";
+  }
+
+  ::selection {
+    background: rgba(176, 141, 76, 0.22);
+    color: #2a2622;
+  }
+
+  /* Visible, on-brand keyboard focus — accessibility floor */
+  :focus-visible {
+    outline: 2px solid #b08d4c;
+    outline-offset: 3px;
+    border-radius: 4px;
+  }
+
+  h1, h2, h3, h4 {
+    @apply font-display;
+    letter-spacing: -0.01em;
+  }
+}
+
+@layer components {
+  /* ── Signature: the zari border (woven gold edge of a veshti) ── */
+  .zari-frame {
+    position: relative;
+  }
+  .zari-frame::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(
+      135deg,
+      rgba(176, 141, 76, 0.15),
+      rgba(176, 141, 76, 0.55) 45%,
+      rgba(201, 174, 120, 0.85) 50%,
+      rgba(176, 141, 76, 0.55) 55%,
+      rgba(176, 141, 76, 0.15)
+    );
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+
+  /* Thin double gold rule used to separate sections */
+  .zari-rule {
+    height: 3px;
+    background-image: theme("backgroundImage.gold-hairline");
+    position: relative;
+  }
+  .zari-rule::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 6px;
+    height: 1px;
+    background-image: theme("backgroundImage.gold-hairline");
+    opacity: 0.5;
+  }
+
+  .eyebrow {
+    @apply font-sans text-xs font-semibold uppercase tracking-eyebrow text-zari-deep;
+  }
+
+  /* Skeleton shimmer for smooth image / card loading */
+  .skeleton {
+    @apply relative overflow-hidden bg-cream;
+  }
+  .skeleton::after {
+    content: "";
+    @apply absolute inset-0;
+    transform: translateX(-100%);
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.65),
+      transparent
+    );
+    animation: shimmer 1.6s infinite;
+  }
+
+  .glass {
+    background: rgba(251, 249, 244, 0.72);
+    backdrop-filter: saturate(140%) blur(14px);
+    -webkit-backdrop-filter: saturate(140%) blur(14px);
+  }
+}
+
+/* Respect users who prefer reduced motion — hard accessibility requirement */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
