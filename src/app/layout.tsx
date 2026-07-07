@@ -12,6 +12,7 @@ import { WishlistProvider } from "@/components/providers/wishlist-provider";
 import { AIChatbot } from "@/components/layout/ai-chatbot";
 import { BUSINESS } from "@/lib/constants";
 import { ProfilePrompt } from "@/components/providers/profile-prompt";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 const fraunces = Fraunces({
   subsets: ["latin"],
@@ -99,6 +100,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </SmoothScroll>
         {/* Phase 2: pass eligible={user has 0 completed orders} */}
         <FirstOrderPopup />
+        <SpeedInsights />
       </body>
     </html>
   );
