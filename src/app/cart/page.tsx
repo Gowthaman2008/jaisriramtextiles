@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useCart } from "@/components/providers/cart-provider";
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
-import { Plus, Minus, Trash2, ShoppingBag, ArrowRight, Truck } from "lucide-react";
+import { Plus, Minus, Trash2, ShoppingBag, ArrowRight, Truck, ChevronLeft } from "lucide-react";
 import { formatINR } from "@/lib/utils";
 import { computeShipping } from "@/lib/constants";
 
@@ -16,6 +16,13 @@ export default function CartPage() {
     return (
       <div className="flex min-h-[60vh] items-center py-20 bg-ivory">
         <Container className="max-w-[560px] text-center">
+          {/* Back Button */}
+          <Link
+            href="/"
+            className="flex items-center gap-1.5 text-xs font-semibold text-taupe hover:text-ink mb-6 transition-colors inline-flex cursor-pointer"
+          >
+            <ChevronLeft size={16} /> Back to Home
+          </Link>
           <span className="inline-grid h-16 w-16 place-items-center rounded-full bg-cream text-taupe mx-auto border border-line">
             <ShoppingBag size={28} />
           </span>
@@ -43,6 +50,13 @@ export default function CartPage() {
   return (
     <div className="py-12 sm:py-16 bg-ivory min-h-[75vh]">
       <Container>
+        {/* Back Button */}
+        <Link
+          href="/"
+          className="flex items-center gap-1.5 text-xs font-semibold text-taupe hover:text-ink mb-6 transition-colors inline-flex cursor-pointer"
+        >
+          <ChevronLeft size={16} /> Back to Home
+        </Link>
         <h1 className="font-display text-3xl text-ink mb-8">Shopping Bag</h1>
 
         <div className="grid gap-10 lg:grid-cols-12 items-start">

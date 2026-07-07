@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { jsPDF } from "jspdf";
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
 import {
@@ -286,6 +287,29 @@ export default function AdminDashboardPage() {
 
   // Upload state
   const [uploadingImage, setUploadingImage] = useState(false);
+
+  // Refund state variables
+  const [selectedRefundOrder, setSelectedRefundOrder] = useState<any>(null);
+  const [refundPaymentStatus, setRefundPaymentStatus] = useState("refunded");
+  const [refundAmountRupees, setRefundAmountRupees] = useState("");
+  const [refundTransactionId, setRefundTransactionId] = useState("");
+  const [refundNoteText, setRefundNoteText] = useState("");
+  const [refundScreenshotUrl, setRefundScreenshotUrl] = useState("");
+  const [uploadingScreenshot, setUploadingScreenshot] = useState(false);
+
+  // User Inspector state variables
+  const [inspectEmail, setInspectEmail] = useState("");
+  const [inspectLoading, setInspectLoading] = useState(false);
+  const [inspectedUser, setInspectedUser] = useState<any>(null);
+  const [inspectError, setInspectError] = useState("");
+
+  // Wallet Adjust state variables
+  const [walletAdjustOpen, setWalletAdjustOpen] = useState(false);
+  const [walletAdjustAmount, setWalletAdjustAmount] = useState("");
+  const [walletAdjustType, setWalletAdjustType] = useState("add");
+  const [walletAdjustNote, setWalletAdjustNote] = useState("");
+  const [walletAdjustLoading, setWalletAdjustLoading] = useState(false);
+  const [walletAdjustError, setWalletAdjustError] = useState("");
 
   // Order update states
   const [orderStatusFilter, setOrderStatusFilter] = useState("all");
@@ -1049,141 +1073,176 @@ export default function AdminDashboardPage() {
   }
 
   // --- Invoice & Packing Slip Printer ---
-  function printInvoice(order: any) {
-    const printWindow = window.open("", "_blank");
-    if (!printWindow) return;
+  async function printInvoice(order: any) {
+    // Dynamic import to avoid SSR issues
+    const { jsPDF } = await import("jspdf");
+    
+    const doc = new jsPDF();
+    const orderNumber = order.order_number;
+    const name = order.shipping_address?.recipient || order.profiles?.full_name || order.profiles?.email || "Customer";
+    const items = order.order_items || [];
+    const shippingAddress = order.shipping_address || {};
+    const subtotalPaise = order.subtotal_paise;
+    const discountPaise = order.discount_paise;
+    const shippingPaise = order.shipping_paise;
+    const walletUsedPaise = order.wallet_used_paise;
+    const totalPaise = order.total_paise;
+    const cashbackEarnedPaise = order.cashback_earned_paise || 0;
 
-    const itemsRows = order.order_items.map((item: any) => `
-      <tr>
-        <td style="padding: 10px; border-bottom: 1px solid #EFE9DC;">${item.name}</td>
-        <td style="padding: 10px; border-bottom: 1px solid #EFE9DC; text-align: center;">${item.variant || "—"}</td>
-        <td style="padding: 10px; border-bottom: 1px solid #EFE9DC; text-align: right;">${formatRupees(item.unit_price_paise)}</td>
-        <td style="padding: 10px; border-bottom: 1px solid #EFE9DC; text-align: center;">${item.quantity}</td>
-        <td style="padding: 10px; border-bottom: 1px solid #EFE9DC; text-align: right; font-weight: bold;">${formatRupees(item.unit_price_paise * item.quantity)}</td>
-      </tr>
-    `).join("");
+    // Color Palette
+    const zariGold = [176, 141, 76]; // #B08D4C
+    const inkDark = [42, 38, 34]; // #2A2622
+    const taupeGray = [110, 101, 90]; // #6E655A
+    const lineLight = [229, 223, 210]; // #E5DFD2
 
-    printWindow.document.write(`
-      <html>
-        <head>
-          <title>Invoice - ${order.order_number}</title>
-          <style>
-            body { font-family: 'Segoe UI', Roboto, sans-serif; color: #2A2622; margin: 0; padding: 40px; line-height: 1.5; background-color: #ffffff; }
-            .header { display: flex; justify-content: space-between; border-bottom: 2px solid #B08D4C; padding-bottom: 20px; margin-bottom: 30px; }
-            .brand { font-family: Georgia, serif; font-size: 24px; font-weight: bold; color: #2A2622; letter-spacing: 1px; }
-            .brand-subtitle { font-size: 11px; color: #6E655A; text-transform: uppercase; letter-spacing: 2px; margin-top: 4px; }
-            .invoice-details { text-align: right; }
-            .invoice-details h2 { font-family: Georgia, serif; color: #B08D4C; margin: 0 0 10px 0; }
-            .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-bottom: 40px; }
-            .bill-box { padding: 15px; border: 1px solid #E5DFD2; border-radius: 8px; background-color: #FBF9F4; }
-            .bill-box h3 { margin-top: 0; color: #2A2622; border-bottom: 1px solid #E5DFD2; padding-bottom: 8px; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; }
-            table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
-            th { background-color: #2A2622; color: #FBF9F4; padding: 12px; text-align: left; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; }
-            .totals { width: 320px; margin-left: auto; border: 1px solid #E5DFD2; border-radius: 8px; padding: 15px; background-color: #FBF9F4; }
-            .totals-row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 14px; }
-            .totals-row.grand { font-size: 18px; font-weight: bold; color: #B08D4C; border-top: 1px solid #B08D4C; padding-top: 10px; margin-top: 6px; }
-            .footer-note { text-align: center; font-size: 12px; color: #9A9084; margin-top: 60px; border-top: 1px solid #E5DFD2; padding-top: 20px; }
-            @media print {
-              body { padding: 0; }
-              .no-print { display: none; }
-            }
-          </style>
-        </head>
-        <body>
-          <div class="header">
-            <div>
-              <div class="brand">JAI SRI RAM TEXTILES</div>
-              <div class="brand-subtitle">Premium Handloom Weavers</div>
-              <div style="font-size: 12px; color: #6E655A; margin-top: 8px;">
-                136/5, Kallangattuvalasu, Komarapalayam,<br/>
-                Namakkal, Tamil Nadu - 638183<br/>
-                Email: jaisriramtextiles@gmail.com
-              </div>
-            </div>
-            <div class="invoice-details">
-              <h2>INVOICE</h2>
-              <div>Order No: <strong>${order.order_number}</strong></div>
-              <div>Date: ${new Date(order.placed_at).toLocaleDateString("en-IN", { dateStyle: "long" })}</div>
-              <div>Payment Status: <span style="text-transform: uppercase; font-weight: bold; color: #4B7A52;">${order.payment_status}</span></div>
-            </div>
-          </div>
+    // 1. Header Banner
+    doc.setFillColor(inkDark[0], inkDark[1], inkDark[2]);
+    doc.rect(0, 0, 210, 40, "F");
 
-          <div class="grid">
-            <div class="bill-box">
-              <h3>Billed / Shipped To</h3>
-              <strong>${order.shipping_address.recipient}</strong><br/>
-              ${order.shipping_address.line1}<br/>
-              ${order.shipping_address.line2 ? order.shipping_address.line2 + "<br/>" : ""}
-              ${order.shipping_address.city}, ${order.shipping_address.district ? order.shipping_address.district + ", " : ""}${order.shipping_address.state} - <strong>${order.shipping_address.pincode}</strong><br/>
-              ${order.shipping_address.phone ? `Mobile: <strong>${order.shipping_address.phone}</strong>${order.shipping_address.alternate_phone ? " / " + order.shipping_address.alternate_phone : ""}<br/>` : ""}
-              Email: ${order.profiles?.email || "—"}
-            </div>
-            <div class="bill-box">
-              <h3>Payment & Order Details</h3>
-              Payment Method: <strong>Prepaid (Razorpay)</strong><br/>
-              Transaction ID: ${order.razorpay_payment_id || "PREPAID"}<br/>
-              Razorpay Order ID: ${order.razorpay_order_id || "—"}<br/>
-              Placed Time: ${new Date(order.placed_at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}<br/>
-              Support: <strong>jaisriramtextiles@gmail.com</strong>
-            </div>
-          </div>
+    // Title Text
+    doc.setTextColor(zariGold[0], zariGold[1], zariGold[2]);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(22);
+    doc.text("JAI SRI RAM TEXTILES", 20, 25);
 
-          <table>
-            <thead>
-              <tr>
-                <th style="width: 45%;">Product Details</th>
-                <th style="width: 15%; text-align: center;">Variant</th>
-                <th style="width: 15%; text-align: right;">Unit Price</th>
-                <th style="width: 10%; text-align: center;">Qty</th>
-                <th style="width: 15%; text-align: right;">Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${itemsRows}
-            </tbody>
-          </table>
+    // Subtitle
+    doc.setTextColor(255, 255, 255);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.text("PREMIUM WEAVERS  |  JAISRIRAMTEXTILES.IN", 20, 32);
 
-          <div class="totals">
-            <div class="totals-row">
-              <span>Subtotal:</span>
-              <span>${formatRupees(order.subtotal_paise)}</span>
-            </div>
-            ${order.discount_paise > 0 ? `
-            <div class="totals-row" style="color: #A24B3E;">
-              <span>Coupon Discount:</span>
-              <span>-${formatRupees(order.discount_paise)}</span>
-            </div>` : ""}
-            ${order.wallet_used_paise > 0 ? `
-            <div class="totals-row" style="color: #A24B3E;">
-              <span>Wallet Cash Redemptions:</span>
-              <span>-${formatRupees(order.wallet_used_paise)}</span>
-            </div>` : ""}
-            <div class="totals-row">
-              <span>Shipping Charge:</span>
-              <span>${order.shipping_paise === 0 ? "FREE" : formatRupees(order.shipping_paise)}</span>
-            </div>
-            <div class="totals-row grand">
-              <span>Total Paid:</span>
-              <span>${formatRupees(order.total_paise)}</span>
-            </div>
-          </div>
+    // Invoice label
+    doc.setTextColor(zariGold[0], zariGold[1], zariGold[2]);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(16);
+    doc.text("INVOICE", 155, 26);
 
-          <div class="footer-note">
-            Thank you for shopping with JAI SRI RAM TEXTILES!<br/>
-            This is a computer-generated invoice. No signature required.
-          </div>
+    // 2. Metadata Columns
+    doc.setTextColor(inkDark[0], inkDark[1], inkDark[2]);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.text("Order Information", 20, 52);
+    doc.text("Shipping To", 120, 52);
 
-          <script>
-            window.onload = function() {
-              window.print();
-              // Close print window shortly after print command is loaded
-              setTimeout(function(){ window.close(); }, 500);
-            }
-          </script>
-        </body>
-      </html>
-    `);
-    printWindow.document.close();
+    doc.setDrawColor(zariGold[0], zariGold[1], zariGold[2]);
+    doc.setLineWidth(0.5);
+    doc.line(20, 55, 90, 55);
+    doc.line(120, 55, 190, 55);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9.5);
+    doc.setTextColor(taupeGray[0], taupeGray[1], taupeGray[2]);
+
+    // Order Info text
+    doc.text(`Order Number: ${orderNumber}`, 20, 62);
+    doc.text(`Date: ${new Date(order.placed_at || order.created_at || new Date()).toLocaleDateString("en-IN", { dateStyle: "long" })}`, 20, 68);
+    doc.text(`Customer: ${name}`, 20, 74);
+
+    // Shipping Address text
+    doc.text(shippingAddress.recipient || "", 120, 62);
+    doc.text(shippingAddress.line1 || "", 120, 68);
+    if (shippingAddress.line2) {
+      doc.text(shippingAddress.line2, 120, 74);
+      doc.text(`${shippingAddress.city}, ${shippingAddress.state} - ${shippingAddress.pincode}`, 120, 80);
+      if (shippingAddress.phone) {
+        doc.text(`Phone: ${shippingAddress.phone}`, 120, 86);
+      }
+    } else {
+      doc.text(`${shippingAddress.city}, ${shippingAddress.state} - ${shippingAddress.pincode}`, 120, 74);
+      if (shippingAddress.phone) {
+        doc.text(`Phone: ${shippingAddress.phone}`, 120, 80);
+      }
+    }
+
+    // 3. Items Table Header
+    let y = 100;
+    doc.setFillColor(inkDark[0], inkDark[1], inkDark[2]);
+    doc.rect(20, y, 170, 8, "F");
+
+    doc.setTextColor(255, 255, 255);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.text("Item Details", 24, y + 5.5);
+    doc.text("Qty", 125, y + 5.5);
+    doc.text("Total Price", 165, y + 5.5);
+
+    // 4. Table Items List
+    y += 8;
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(inkDark[0], inkDark[1], inkDark[2]);
+
+    items.forEach((item: any) => {
+      // line border
+      doc.setDrawColor(lineLight[0], lineLight[1], lineLight[2]);
+      doc.setLineWidth(0.3);
+      doc.line(20, y + 8, 190, y + 8);
+
+      doc.text(`${item.name}${item.variant ? ` (${item.variant})` : ""}`, 24, y + 5);
+      doc.text(`${item.quantity}`, 127, y + 5);
+      doc.text(`INR ${(item.unit_price_paise * item.quantity / 100).toFixed(2)}`, 165, y + 5);
+
+      y += 8;
+    });
+
+    // 5. Totals Right Column
+    y += 10;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9.5);
+    doc.setTextColor(taupeGray[0], taupeGray[1], taupeGray[2]);
+
+    doc.text("Subtotal:", 125, y);
+    doc.text(`INR ${(subtotalPaise / 100).toFixed(2)}`, 165, y);
+    y += 6;
+
+    if (discountPaise > 0) {
+      doc.text("Discount:", 125, y);
+      doc.text(`-INR ${(discountPaise / 100).toFixed(2)}`, 165, y);
+      y += 6;
+    }
+
+    if (walletUsedPaise > 0) {
+      doc.text("Wallet Credits Used:", 125, y);
+      doc.text(`-INR ${(walletUsedPaise / 100).toFixed(2)}`, 165, y);
+      y += 6;
+    }
+
+    doc.text("Shipping:", 125, y);
+    doc.text(shippingPaise === 0 ? "FREE" : `INR ${(shippingPaise / 100).toFixed(2)}`, 165, y);
+    y += 8;
+
+    // Total Paid
+    doc.setDrawColor(zariGold[0], zariGold[1], zariGold[2]);
+    doc.setLineWidth(0.5);
+    doc.line(120, y - 5, 190, y - 5);
+
+    doc.setTextColor(zariGold[0], zariGold[1], zariGold[2]);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.text("Total Paid:", 125, y);
+    doc.text(`INR ${(totalPaise / 100).toFixed(2)}`, 165, y);
+
+    if (cashbackEarnedPaise > 0) {
+      y += 6;
+      doc.setTextColor(75, 122, 82); // Green
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9.5);
+      doc.text("Cashback Earned:", 125, y);
+      doc.text(`INR ${(cashbackEarnedPaise / 100).toFixed(2)}`, 165, y);
+    }
+
+    // 6. Footer Disclaimer
+    y = 265;
+    doc.setDrawColor(lineLight[0], lineLight[1], lineLight[2]);
+    doc.setLineWidth(0.5);
+    doc.line(20, y, 190, y);
+
+    doc.setFont("helvetica", "italic");
+    doc.setFontSize(8);
+    doc.setTextColor(taupeGray[0], taupeGray[1], taupeGray[2]);
+    doc.text("This is an electronically generated invoice document for your purchase.", 20, y + 5);
+    doc.text("Thank you for shopping with JAI SRI RAM TEXTILES!", 20, y + 9);
+
+    doc.save(`Invoice-${orderNumber}.pdf`);
   }
 
   function printPackingSlip(order: any) {
@@ -1565,7 +1624,9 @@ export default function AdminDashboardPage() {
                 <TabButton active={activeTab === "overview"} onClick={() => setActiveTab("overview")} icon={<LayoutDashboard className="w-4 h-4" />} label="Overview & KPI" />
                 <TabButton active={activeTab === "products"} onClick={() => setActiveTab("products")} icon={<ShoppingBag className="w-4 h-4" />} label="Product Catalog" badge={products.length} />
                 <TabButton active={activeTab === "orders"} onClick={() => setActiveTab("orders")} icon={<ShoppingCart className="w-4 h-4" />} label="Order Registry" badge={orders.length} />
+                <TabButton active={activeTab === "refunds"} onClick={() => setActiveTab("refunds")} icon={<RefreshCw className="w-4 h-4" />} label="Issue Refund" badge={orders.filter(o => (o.status === "returned" || o.status === "rejected") && o.payment_status !== "refunded").length} />
                 <TabButton active={activeTab === "users"} onClick={() => setActiveTab("users")} icon={<Users className="w-4 h-4" />} label="User Management" badge={users.length} />
+                <TabButton active={activeTab === "user-inspector"} onClick={() => setActiveTab("user-inspector")} icon={<Search className="w-4 h-4" />} label="User Inspector" />
                 <TabButton active={activeTab === "coupons"} onClick={() => setActiveTab("coupons")} icon={<Ticket className="w-4 h-4" />} label="Promo Codes" badge={coupons.length} />
                 <TabButton active={activeTab === "communications"} onClick={() => setActiveTab("communications")} icon={<Mail className="w-4 h-4" />} label="Communications" badge={supportMessages.length + bulkInquiries.length + newsletterSubs.length} />
                 <TabButton active={activeTab === "cms"} onClick={() => setActiveTab("cms")} icon={<Wrench className="w-4 h-4" />} label="Storefront CMS" />
@@ -2198,6 +2259,544 @@ export default function AdminDashboardPage() {
                       </div>
                     </div>
                   </>
+                )}
+              </div>
+            )}
+
+            {/* Refunds Management Module */}
+            {activeTab === "refunds" && (
+              <div className="space-y-6 animate-fade-up font-sans text-xs">
+                <div>
+                  <h2 className="font-display text-2xl text-ink">Refund Management</h2>
+                  <p className="text-xs text-taupe mt-1">Manage refunds for returned or rejected orders. Upload payment screenshots and transaction details.</p>
+                </div>
+
+                <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                  {/* Left list of returned/rejected orders */}
+                  <div className="xl:col-span-2 space-y-4">
+                    <div className="bg-white border border-line rounded-card shadow-soft p-4">
+                      <h3 className="font-semibold text-sm mb-3">Returned & Rejected Orders</h3>
+                      
+                      {orders.filter(o => o.status === "returned" || o.status === "rejected").length === 0 ? (
+                        <div className="py-8 text-center text-xs text-taupe">
+                          No returned or rejected orders found in the registry.
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          {orders
+                            .filter(o => o.status === "returned" || o.status === "rejected")
+                            .map((order) => {
+                              const isRefunded = order.payment_status === "refunded";
+                              return (
+                                <div 
+                                  key={order.id} 
+                                  className={`p-4 border rounded-lg transition-all ${
+                                    selectedRefundOrder?.id === order.id 
+                                      ? "border-zari bg-cream/10" 
+                                      : "border-line/60 bg-ivory/5 hover:border-line"
+                                  }`}
+                                >
+                                  <div className="flex justify-between items-start gap-4">
+                                    <div className="space-y-1">
+                                      <p className="font-mono text-xs font-bold text-ink">{order.order_number}</p>
+                                      <p className="text-[11px] text-taupe">
+                                        Placed: {new Date(order.placed_at).toLocaleDateString()} | Customer: {order.profiles?.full_name || order.profiles?.email || "Guest"}
+                                      </p>
+                                      <p className="text-xs font-semibold text-ink">
+                                        Amount: {formatRupees(order.total_paise)}
+                                      </p>
+                                      {order.rejection_reason && (
+                                        <p className="text-[11px] bg-danger/5 text-danger px-2 py-1 rounded inline-block">
+                                          Reason: {order.rejection_reason}
+                                        </p>
+                                      )}
+                                    </div>
+                                    <div className="flex flex-col items-end gap-2">
+                                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                                        order.status === "returned" ? "bg-warning/10 text-warning" : "bg-danger/10 text-danger"
+                                      }`}>
+                                        {order.status}
+                                      </span>
+                                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                                        isRefunded ? "bg-success/10 text-success" : "bg-muted text-taupe"
+                                      }`}>
+                                        {order.payment_status}
+                                      </span>
+                                      
+                                      <button
+                                        onClick={() => {
+                                          setSelectedRefundOrder(order);
+                                          setRefundPaymentStatus(order.payment_status);
+                                          setRefundAmountRupees(String(order.refund_amount_paise ? order.refund_amount_paise / 100 : order.total_paise / 100));
+                                          setRefundTransactionId(order.refund_transaction_id || "");
+                                          setRefundNoteText(order.refund_note || "");
+                                          setRefundScreenshotUrl(order.refund_screenshot_url || "");
+                                        }}
+                                        className="mt-2 text-xs text-zari hover:underline font-semibold flex items-center gap-1 cursor-pointer focus:outline-none"
+                                      >
+                                        {isRefunded ? <Edit2 className="w-3.5 h-3.5" /> : <RefreshCw className="w-3.5 h-3.5" />}
+                                        {isRefunded ? "Edit Refund Info" : "Process Refund"}
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Right refund form pane */}
+                  <div className="xl:col-span-1">
+                    {selectedRefundOrder ? (
+                      <div className="bg-white border border-line rounded-card shadow-soft p-4 space-y-4 sticky top-6">
+                        <div className="flex justify-between items-center pb-2 border-b border-line">
+                          <h3 className="font-semibold text-sm text-ink">
+                            Process Refund: {selectedRefundOrder.order_number}
+                          </h3>
+                          <button 
+                            onClick={() => setSelectedRefundOrder(null)} 
+                            className="text-taupe hover:text-ink text-xs cursor-pointer focus:outline-none"
+                          >
+                            Close
+                          </button>
+                        </div>
+
+                        <form 
+                          onSubmit={async (e) => {
+                            e.preventDefault();
+                            if (!selectedRefundOrder) return;
+                            
+                            const amtPaise = Math.round(Number(refundAmountRupees) * 100);
+                            if (isNaN(amtPaise) || amtPaise < 0) {
+                              alert("Please enter a valid refund amount.");
+                              return;
+                            }
+
+                            try {
+                              const res = await fetch("/api/admin/orders", {
+                                method: "PUT",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({
+                                  id: selectedRefundOrder.id,
+                                  payment_status: refundPaymentStatus,
+                                  refund_amount_paise: amtPaise,
+                                  refund_transaction_id: refundTransactionId.trim() || null,
+                                  refund_screenshot_url: refundScreenshotUrl.trim() || null,
+                                  refund_note: refundNoteText.trim() || null,
+                                  note: `Refund updated: status set to '${refundPaymentStatus}', amount: ${formatRupees(amtPaise)}`
+                                })
+                              });
+
+                              if (!res.ok) {
+                                const data = await res.json().catch(() => ({}));
+                                throw new Error(data.error || "Failed to update refund");
+                              }
+                              alert("Refund details saved successfully!");
+                              setSelectedRefundOrder(null);
+                              await loadAllData();
+                            } catch (err: any) {
+                              alert("Error updating refund: " + err.message);
+                            }
+                          }} 
+                          className="space-y-4 text-xs"
+                        >
+                          <div className="flex flex-col gap-1">
+                            <label className="font-semibold text-ink">Payment Status</label>
+                            <select 
+                              value={refundPaymentStatus} 
+                              onChange={(e) => setRefundPaymentStatus(e.target.value)}
+                              className="rounded border border-line bg-white px-3 py-2 outline-none cursor-pointer"
+                            >
+                              <option value="paid">Paid (Not Refunded)</option>
+                              <option value="refunded">Refunded (Processed)</option>
+                            </select>
+                          </div>
+
+                          <div className="flex flex-col gap-1">
+                            <label className="font-semibold text-ink">Refund Amount (₹)</label>
+                            <input 
+                              type="number" 
+                              required
+                              value={refundAmountRupees} 
+                              onChange={(e) => setRefundAmountRupees(e.target.value)}
+                              className="rounded border border-line bg-white px-3 py-2 outline-none"
+                              placeholder="e.g. 498"
+                            />
+                          </div>
+
+                          <div className="flex flex-col gap-1">
+                            <label className="font-semibold text-ink">Transaction ID / Reference</label>
+                            <input 
+                              type="text" 
+                              value={refundTransactionId} 
+                              onChange={(e) => setRefundTransactionId(e.target.value)}
+                              className="rounded border border-line bg-white px-3 py-2 outline-none"
+                              placeholder="e.g. TXN18283921"
+                            />
+                          </div>
+
+                          <div className="flex flex-col gap-1">
+                            <label className="font-semibold text-ink">Internal Notes</label>
+                            <textarea 
+                              value={refundNoteText} 
+                              onChange={(e) => setRefundNoteText(e.target.value)}
+                              rows={3}
+                              className="rounded border border-line bg-white px-3 py-2 outline-none resize-none"
+                              placeholder="Refund notes..."
+                            />
+                          </div>
+
+                          {/* Screenshot Proof Uploader (Cloudinary) */}
+                          <div className="border-t border-line/60 pt-3 flex flex-col gap-2">
+                            <label className="font-semibold text-ink">Refund Receipt / Screenshot</label>
+                            
+                            {refundScreenshotUrl ? (
+                              <div className="relative aspect-[4/3] border border-line rounded bg-cream overflow-hidden group">
+                                <Image src={refundScreenshotUrl} alt="Refund Screenshot" fill className="object-contain" />
+                                <button 
+                                  type="button" 
+                                  onClick={() => setRefundScreenshotUrl("")} 
+                                  className="absolute top-1.5 right-1.5 bg-danger text-white rounded-full p-1 shadow hover:bg-danger-hover cursor-pointer"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="flex flex-col gap-1.5">
+                                <label className={`cursor-pointer inline-flex items-center justify-center gap-2 px-3 py-2 border border-dashed border-line rounded bg-cream/10 text-[11px] font-medium hover:bg-cream transition-colors text-taupe ${uploadingScreenshot ? "opacity-50 pointer-events-none" : ""}`}>
+                                  <ImageIcon className="w-4 h-4 text-zari" />
+                                  {uploadingScreenshot ? "Uploading screenshot..." : "Upload Screenshot Proof"}
+                                  <input 
+                                    type="file" 
+                                    accept="image/*" 
+                                    onChange={async (e) => {
+                                      const file = e.target.files?.[0];
+                                      if (!file) return;
+
+                                      setUploadingScreenshot(true);
+                                      try {
+                                        const formData = new FormData();
+                                        formData.append("file", file);
+
+                                        const res = await fetch("/api/admin/products/upload-image", {
+                                          method: "POST",
+                                          body: formData
+                                        });
+
+                                        if (!res.ok) {
+                                          const errorData = await res.json().catch(() => ({}));
+                                          throw new Error(errorData.error || "Upload failed");
+                                        }
+
+                                        const data = await res.json();
+                                        setRefundScreenshotUrl(data.url);
+                                      } catch (err: any) {
+                                        alert("Screenshot upload failed: " + err.message);
+                                      } finally {
+                                        setUploadingScreenshot(false);
+                                      }
+                                    }} 
+                                    className="hidden" 
+                                  />
+                                </label>
+                              </div>
+                            )}
+                          </div>
+
+                          <Button 
+                            type="submit" 
+                            variant="gold" 
+                            size="md" 
+                            className="w-full mt-2"
+                            disabled={uploadingScreenshot}
+                          >
+                            Save Refund Details
+                          </Button>
+                        </form>
+                      </div>
+                    ) : (
+                      <div className="bg-cream/15 border border-dashed border-line rounded-card p-6 text-center text-xs text-taupe">
+                        Select an order from the list to process and issue its refund.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* User Inspector Module */}
+            {activeTab === "user-inspector" && (
+              <div className="space-y-6 animate-fade-up font-sans text-xs">
+                <div>
+                  <h2 className="font-display text-2xl text-ink font-bold">User Inspector</h2>
+                  <p className="text-xs text-taupe mt-1">Search a user by email to view their complete account profile, saved addresses, wallet/cashback balance, transactions, and order history.</p>
+                </div>
+
+                {/* Email Search Card */}
+                <div className="bg-white border border-line rounded-card shadow-soft p-5 max-w-xl">
+                  <form 
+                    onSubmit={async (e) => {
+                      e.preventDefault();
+                      setInspectError("");
+                      setInspectedUser(null);
+                      if (!inspectEmail.trim()) return;
+
+                      setInspectLoading(true);
+                      try {
+                        const res = await fetch(`/api/admin/users/inspect?email=${encodeURIComponent(inspectEmail.trim())}`);
+                        if (!res.ok) {
+                          const data = await res.json().catch(() => ({}));
+                          throw new Error(data.error || "User search failed");
+                        }
+                        const data = await res.json();
+                        setInspectedUser(data);
+                      } catch (err: any) {
+                        setInspectError(err.message);
+                      } finally {
+                        setInspectLoading(false);
+                      }
+                    }} 
+                    className="flex gap-3 items-end"
+                  >
+                    <div className="flex-1 flex flex-col gap-1.5">
+                      <label className="font-semibold text-ink">Search User Email</label>
+                      <input 
+                        type="email" 
+                        required
+                        placeholder="e.g. customer@example.com" 
+                        value={inspectEmail}
+                        onChange={(e) => setInspectEmail(e.target.value)}
+                        className="rounded border border-line bg-white px-3 py-2 text-sm text-ink outline-none focus:border-zari w-full"
+                      />
+                    </div>
+                    <Button 
+                      type="submit" 
+                      variant="gold" 
+                      size="md" 
+                      disabled={inspectLoading}
+                      className="cursor-pointer"
+                    >
+                      {inspectLoading ? "Searching..." : "Inspect User"}
+                    </Button>
+                  </form>
+                  {inspectError && (
+                    <div className="mt-3 p-3 bg-danger/5 border border-danger/25 text-danger rounded text-xs">
+                      {inspectError}
+                    </div>
+                  )}
+                </div>
+
+                {/* Inspected User Panel */}
+                {inspectedUser && (
+                  <div className="space-y-6 animate-fade-in">
+                    
+                    {/* User Summary Widget Strip */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {/* Name Card */}
+                      <div className="bg-white border border-line rounded-card p-4 flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-zari-tint/20 flex items-center justify-center text-zari font-bold text-lg uppercase">
+                          {inspectedUser.profile.full_name?.[0] || inspectedUser.profile.email?.[0] || "?"}
+                        </div>
+                        <div>
+                          <p className="font-semibold text-sm text-ink">{inspectedUser.profile.full_name || "Name not set"}</p>
+                          <p className="text-[10px] text-taupe">{inspectedUser.profile.email}</p>
+                        </div>
+                      </div>
+
+                      {/* Wallet Card */}
+                      <div className="bg-white border border-line rounded-card p-4 flex items-center justify-between">
+                        <div>
+                          <p className="text-[10px] text-taupe uppercase tracking-wider font-semibold">Wallet Cashback Balance</p>
+                          <div className="flex items-baseline gap-2 mt-0.5">
+                            <p className="font-display text-lg text-success font-bold">
+                              {formatRupees(inspectedUser.wallet.balance_paise)}
+                            </p>
+                            <button
+                              onClick={() => {
+                                setWalletAdjustOpen(true);
+                                setWalletAdjustAmount("");
+                                setWalletAdjustNote("");
+                                setWalletAdjustError("");
+                              }}
+                              className="text-[10px] text-zari hover:underline font-bold uppercase tracking-wider cursor-pointer"
+                            >
+                              Adjust
+                            </button>
+                          </div>
+                        </div>
+                        <div className="px-2.5 py-1 bg-success/10 text-success rounded-full text-[10px] font-bold uppercase tracking-wider">
+                          Active
+                        </div>
+                      </div>
+
+                      {/* Info Summary Card */}
+                      <div className="bg-white border border-line rounded-card p-4 space-y-1">
+                        <p className="text-[10px] text-taupe"><strong>Member Since:</strong> {new Date(inspectedUser.profile.created_at).toLocaleDateString()}</p>
+                        <p className="text-[10px] text-taupe"><strong>Phone Number:</strong> {inspectedUser.profile.phone || "None"}</p>
+                        <p className="text-[10px] text-taupe"><strong>Auth Method:</strong> <span className="capitalize">{inspectedUser.profile.provider}</span></p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 items-start">
+                      
+                      {/* Left: Saved Addresses (1/3) */}
+                      <div className="xl:col-span-1 space-y-4">
+                        <div className="bg-white border border-line rounded-card p-4 shadow-soft">
+                          <h3 className="font-semibold text-sm text-ink pb-2 border-b border-line mb-3">
+                            Saved Addresses ({inspectedUser.addresses.length})
+                          </h3>
+                          {inspectedUser.addresses.length === 0 ? (
+                            <p className="text-taupe py-4 text-center">No saved addresses found.</p>
+                          ) : (
+                            <div className="space-y-3">
+                              {inspectedUser.addresses.map((addr: any) => (
+                                <div key={addr.id} className="p-3 border border-line/60 bg-ivory/5 rounded-md text-xs relative">
+                                  {addr.is_default && (
+                                    <span className="absolute top-2 right-2 px-1.5 py-0.5 bg-zari/10 text-zari text-[9px] font-bold rounded uppercase">
+                                      Default
+                                    </span>
+                                  )}
+                                  <p className="font-bold text-ink">{addr.recipient}</p>
+                                  <p className="text-taupe mt-1">{addr.line1}</p>
+                                  {addr.line2 && <p className="text-taupe">{addr.line2}</p>}
+                                  <p className="text-taupe">{addr.city}, {addr.state} - <strong>{addr.pincode}</strong></p>
+                                  {addr.phone && <p className="text-taupe mt-1.5">📞 {addr.phone}</p>}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Local Cart Disclaimer */}
+                        <div className="bg-cream/15 border border-dashed border-line rounded-card p-4">
+                          <h3 className="font-semibold text-sm text-ink pb-2 mb-2">Shopping Cart</h3>
+                          <p className="text-taupe leading-relaxed">
+                            Shopping Cart data is stored locally in the customer's browser (<code className="font-mono text-[10px] bg-line/45 px-1 py-0.5 rounded">localStorage</code>) to enable high performance and offline shopping capability. It is not transmitted to the central database server until an order is placed.
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Right: Orders and Transaction Ledger (2/3) */}
+                      <div className="xl:col-span-2 space-y-6">
+                        
+                        {/* Order History */}
+                        <div className="bg-white border border-line rounded-card p-4 shadow-soft">
+                          <h3 className="font-semibold text-sm text-ink pb-2 border-b border-line mb-3">
+                            Order Registry ({inspectedUser.orders.length})
+                          </h3>
+                          {inspectedUser.orders.length === 0 ? (
+                            <p className="text-taupe py-4 text-center">No orders placed by this user yet.</p>
+                          ) : (
+                            <div className="space-y-4">
+                              {inspectedUser.orders.map((order: any) => (
+                                <div key={order.id} className="border border-line rounded-lg p-4 bg-ivory/5 space-y-3">
+                                  <div className="flex justify-between items-start gap-4 pb-2 border-b border-line/40">
+                                    <div>
+                                      <p className="font-mono font-bold text-ink text-sm">{order.order_number}</p>
+                                      <p className="text-[10px] text-taupe mt-0.5">Placed: {new Date(order.placed_at).toLocaleString()}</p>
+                                    </div>
+                                    <div className="flex gap-2">
+                                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                                        order.status === "delivered" ? "bg-success/10 text-success" : 
+                                        order.status === "rejected" ? "bg-danger/10 text-danger" : "bg-warning/10 text-warning"
+                                      }`}>
+                                        {order.status}
+                                      </span>
+                                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                                        order.payment_status === "paid" ? "bg-success/10 text-success" : 
+                                        order.payment_status === "refunded" ? "bg-info/10 text-info" : "bg-muted text-taupe"
+                                      }`}>
+                                        {order.payment_status}
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  {/* Itemized list */}
+                                  <table className="w-full text-xs border-collapse">
+                                    <thead>
+                                      <tr className="border-b border-line text-taupe text-[10px]">
+                                        <th className="py-1 text-left">Item Name</th>
+                                        <th className="py-1 text-center">Qty</th>
+                                        <th className="py-1 text-right">Total Price</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {order.order_items?.map((item: any) => (
+                                        <tr key={item.id} className="border-b border-line/30 text-ink">
+                                          <td className="py-1.5">{item.name} {item.variant && <span className="text-[10px] text-taupe">({item.variant})</span>}</td>
+                                          <td className="py-1.5 text-center">{item.quantity}</td>
+                                          <td className="py-1.5 text-right">{formatRupees(item.unit_price_paise * item.quantity)}</td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+
+                                  {/* Order Totals Summary */}
+                                  <div className="flex flex-wrap justify-between items-center text-[11px] pt-1 text-taupe gap-3">
+                                    <p>Subtotal: <strong>{formatRupees(order.subtotal_paise)}</strong></p>
+                                    {order.discount_paise > 0 && <p>Discount: <strong className="text-danger">-{formatRupees(order.discount_paise)}</strong></p>}
+                                    {order.wallet_used_paise > 0 && <p>Wallet Deducted: <strong className="text-danger">-{formatRupees(order.wallet_used_paise)}</strong></p>}
+                                    <p>Total Paid: <strong className="text-ink text-xs">{formatRupees(order.total_paise)}</strong></p>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Cashback transaction history ledger */}
+                        <div className="bg-white border border-line rounded-card p-4 shadow-soft">
+                          <h3 className="font-semibold text-sm text-ink pb-2 border-b border-line mb-3">
+                            Wallet Cashback Transactions ({inspectedUser.walletTransactions.length})
+                          </h3>
+                          {inspectedUser.walletTransactions.length === 0 ? (
+                            <p className="text-taupe py-4 text-center">No transaction records found for this user.</p>
+                          ) : (
+                            <div className="overflow-x-auto">
+                              <table className="w-full text-xs">
+                                <thead>
+                                  <tr className="border-b border-line text-taupe text-[10px] uppercase">
+                                    <th className="py-1.5 text-left">Date</th>
+                                    <th className="py-1.5 text-left">Type</th>
+                                    <th className="py-1.5 text-right">Amount</th>
+                                    <th className="py-1.5 text-left pl-4">Note / Order</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {inspectedUser.walletTransactions.map((txn: any) => {
+                                    const isCredit = txn.amount_paise > 0;
+                                    return (
+                                      <tr key={txn.id} className="border-b border-line/40 hover:bg-cream/10">
+                                        <td className="py-2 text-taupe">{new Date(txn.created_at).toLocaleDateString()}</td>
+                                        <td className="py-2">
+                                          <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${
+                                            txn.type === "cashback_credit" ? "bg-success/10 text-success" : 
+                                            txn.type === "redeem" ? "bg-danger/10 text-danger" : "bg-warning/10 text-warning"
+                                          }`}>
+                                            {txn.type.replace("_", " ")}
+                                          </span>
+                                        </td>
+                                        <td className={`py-2 text-right font-bold ${isCredit ? "text-success" : "text-danger"}`}>
+                                          {isCredit ? "+" : ""}{formatRupees(txn.amount_paise)}
+                                        </td>
+                                        <td className="py-2 pl-4 text-taupe">
+                                          {txn.note || "Adjustment"} {txn.orders?.order_number && <span className="font-mono font-bold text-ink">({txn.orders.order_number})</span>}
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+                          )}
+                        </div>
+
+                      </div>
+
+                    </div>
+                  </div>
                 )}
               </div>
             )}
@@ -3225,6 +3824,152 @@ $$ language plpgsql;`}
               >
                 Download PDF
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Wallet Balance Adjust Modal */}
+      {walletAdjustOpen && (
+        <div className="fixed inset-0 bg-ink/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white border border-line rounded-card max-w-md w-full p-6 space-y-4 shadow-xl animate-fade-in text-xs font-sans">
+            <div className="flex justify-between items-center pb-2 border-b border-line">
+              <h3 className="font-display font-bold text-sm text-ink uppercase tracking-wider">Adjust User Wallet Balance</h3>
+              <button 
+                onClick={() => setWalletAdjustOpen(false)}
+                className="text-taupe hover:text-ink font-bold text-base cursor-pointer"
+              >
+                &times;
+              </button>
+            </div>
+
+            {walletAdjustError && (
+              <div className="p-3 bg-danger/5 border border-danger/25 text-danger rounded text-xs">
+                {walletAdjustError}
+              </div>
+            )}
+
+            <div className="space-y-3">
+              <p className="text-[11px] text-taupe">
+                User: <strong>{inspectedUser.profile.full_name || inspectedUser.profile.email}</strong> ({inspectedUser.profile.email})
+              </p>
+              <p className="text-[11px] text-taupe">
+                Current Balance: <strong className="text-success">{formatRupees(inspectedUser.wallet.balance_paise)}</strong>
+              </p>
+
+              {/* Adjustment Type Selector */}
+              <div className="flex flex-col gap-1.5">
+                <label className="font-semibold text-ink">Adjustment Type</label>
+                <div className="flex gap-4">
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <input 
+                      type="radio" 
+                      name="adjustType" 
+                      value="add" 
+                      checked={walletAdjustType === "add"}
+                      onChange={() => setWalletAdjustType("add")}
+                    />
+                    Add Money (+)
+                  </label>
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <input 
+                      type="radio" 
+                      name="adjustType" 
+                      value="deduct" 
+                      checked={walletAdjustType === "deduct"}
+                      onChange={() => setWalletAdjustType("deduct")}
+                    />
+                    Deduct Money (-)
+                  </label>
+                </div>
+              </div>
+
+              {/* Amount Input */}
+              <div className="flex flex-col gap-1.5">
+                <label className="font-semibold text-ink">Amount (in Rupees)</label>
+                <input 
+                  type="number" 
+                  step="0.01"
+                  min="0.01"
+                  required
+                  placeholder="e.g. 150.00"
+                  value={walletAdjustAmount}
+                  onChange={(e) => setWalletAdjustAmount(e.target.value)}
+                  className="rounded border border-line bg-white px-3 py-2 text-sm outline-none w-full"
+                />
+              </div>
+
+              {/* Note Input */}
+              <div className="flex flex-col gap-1.5">
+                <label className="font-semibold text-ink">Adjustment Note / Reason</label>
+                <input 
+                  type="text" 
+                  required
+                  placeholder="e.g. Correction / Refund / Gift"
+                  value={walletAdjustNote}
+                  onChange={(e) => setWalletAdjustNote(e.target.value)}
+                  className="rounded border border-line bg-white px-3 py-2 text-sm outline-none w-full"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-2 border-t border-line">
+              <Button 
+                variant="outline" 
+                size="md" 
+                onClick={() => setWalletAdjustOpen(false)}
+                className="cursor-pointer"
+              >
+                Cancel
+              </Button>
+              <Button 
+                variant="gold" 
+                size="md"
+                disabled={walletAdjustLoading}
+                className="cursor-pointer"
+                onClick={async () => {
+                  if (!walletAdjustAmount || isNaN(parseFloat(walletAdjustAmount)) || parseFloat(walletAdjustAmount) <= 0) {
+                    setWalletAdjustError("Please enter a valid amount greater than 0");
+                    return;
+                  }
+                  if (!walletAdjustNote.trim()) {
+                    setWalletAdjustError("Please provide an adjustment reason/note");
+                    return;
+                  }
+
+                  setWalletAdjustLoading(true);
+                  setWalletAdjustError("");
+                  try {
+                    const res = await fetch("/api/admin/users/wallet-adjust", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        userId: inspectedUser.profile.id,
+                        amountRupees: parseFloat(walletAdjustAmount),
+                        actionType: walletAdjustType,
+                        note: walletAdjustNote.trim(),
+                      }),
+                    });
+
+                    const data = await res.json();
+                    if (!res.ok) throw new Error(data.error || "Failed to adjust balance");
+
+                    // Success! Reload inspected user data!
+                    const inspectRes = await fetch(`/api/admin/users/inspect?email=${encodeURIComponent(inspectedUser.profile.email)}`);
+                    if (inspectRes.ok) {
+                      const nextUserData = await inspectRes.json();
+                      setInspectedUser(nextUserData);
+                    }
+                    setWalletAdjustOpen(false);
+                  } catch (err: any) {
+                    setWalletAdjustError(err.message);
+                  } finally {
+                    setWalletAdjustLoading(false);
+                  }
+                }}
+              >
+                {walletAdjustLoading ? "Saving..." : "Confirm Adjustment"}
+              </Button>
             </div>
           </div>
         </div>

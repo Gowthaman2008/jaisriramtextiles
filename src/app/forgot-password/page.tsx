@@ -17,15 +17,26 @@ export default function ForgotPasswordPage() {
     setLoading(true);
     setError("");
 
-    const supabase = createClient();
-    const { error: authError } = await supabase.auth.resetPasswordForEmail(email);
+    try {
+      const res = await fetch("/api/auth/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
 
-    setLoading(false);
-    if (authError) {
-      setError(authError.message);
-      return;
+      if (!res.ok) {
+        const errorData = await res.json();
+        setError(errorData.error || "Failed to trigger password reset. Please try again.");
+        setLoading(false);
+        return;
+      }
+
+      setSent(true);
+    } catch (err: any) {
+      setError("An error occurred. Please try again.");
+    } finally {
+      setLoading(false);
     }
-    setSent(true);
   }
 
   if (sent) {
@@ -35,10 +46,10 @@ export default function ForgotPasswordPage() {
           <div className="zari-frame rounded-card bg-ivory p-8 shadow-soft text-center">
             <h1 className="font-display text-2xl text-ink">Check your email</h1>
             <p className="mt-2 text-sm text-taupe">
-              We&apos;ve sent a 6-digit code to <strong className="text-ink">{email}</strong>. Enter it on the next screen along with your new password.
+              We&apos;ve sent a password reset link to <strong className="text-ink">{email}</strong>. Click the link in the email to choose a new password.
             </p>
-            <Button href={`/reset-password?email=${encodeURIComponent(email)}`} variant="gold" size="lg" className="mt-6 w-full">
-              Enter code
+            <Button href="/sign-in" variant="gold" size="lg" className="mt-6 w-full">
+              Back to sign in
             </Button>
           </div>
         </Container>

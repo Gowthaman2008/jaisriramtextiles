@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/admin";
-import { sendEmail, orderDeliveredEmailHtml } from "@/lib/email";
+import { sendEmail, orderDeliveredEmailHtml, refundProcessedEmailHtml, orderRejectedEmailHtml } from "@/lib/email";
 
 async function checkAdminAuth() {
   try {
@@ -68,6 +68,11 @@ export async function PUT(request: Request) {
       shipping_address,
       rejection_reason,
       note,
+      payment_status,
+      refund_amount_paise,
+      refund_transaction_id,
+      refund_screenshot_url,
+      refund_note,
     } = await request.json();
 
     if (!id) {
@@ -83,7 +88,7 @@ export async function PUT(request: Request) {
     // Load original order to compare status (and enough detail to email on delivery)
     const { data: originalOrder } = await supabase
       .from("orders")
-      .select("status, order_number, total_paise, profiles(email, full_name), order_items(name, variant, unit_price_paise, quantity)")
+      .select("status, payment_status, order_number, total_paise, profiles(email, full_name), order_items(name, variant, unit_price_paise, quantity)")
       .eq("id", id)
       .single();
 
@@ -94,6 +99,14 @@ export async function PUT(request: Request) {
     if (courier_tracking_url !== undefined) updateFields.courier_tracking_url = courier_tracking_url || null;
     if (shipping_address) updateFields.shipping_address = shipping_address;
     if (rejection_reason !== undefined) updateFields.rejection_reason = rejection_reason?.trim() || null;
+    if (payment_status !== undefined) updateFields.payment_status = payment_status;
+    if (refund_amount_paise !== undefined) updateFields.refund_amount_paise = refund_amount_paise;
+    if (refund_transaction_id !== undefined) updateFields.refund_transaction_id = refund_transaction_id || null;
+    if (refund_screenshot_url !== undefined) updateFields.refund_screenshot_url = refund_screenshot_url || null;
+    if (refund_note !== undefined) updateFields.refund_note = refund_note || null;
+    if (payment_status === "refunded") {
+      updateFields.refunded_at = new Date().toISOString();
+    }
 
     // 2. Perform update
     const { error: updateError } = await supabase
@@ -128,6 +141,57 @@ export async function PUT(request: Request) {
             }),
           }).catch((err) => console.error("Delivery email failed:", err));
         }
+      }
+
+      // Send rejection confirmation email on status transition to rejected
+      if (status === "rejected") {
+        const profile = originalOrder.profiles as any;
+        if (profile?.email) {
+          await sendEmail({
+            to: profile.email,
+            subject: `Order Rejected — ${originalOrder.order_number} | JAI SRI RAM TEXTILES`,
+            html: orderRejectedEmailHtml({
+              orderNumber: originalOrder.order_number,
+              name: profile.full_name,
+              items: originalOrder.order_items || [],
+              totalPaise: originalOrder.total_paise,
+              rejectionReason: rejection_reason?.trim() || null,
+            }),
+          }).catch((err) => console.error("Rejection email failed:", err));
+        }
+      }
+    }
+
+    // 5. Send refund confirmation email if payment_status transitions to refunded
+    const isNewRefund = payment_status === "refunded" && originalOrder && originalOrder.payment_status !== "refunded";
+    if (isNewRefund && originalOrder) {
+      const { error: eventError } = await supabase
+        .from("order_events")
+        .insert({
+          order_id: id,
+          status: originalOrder.status,
+          note: `Refund processed: payment_status set to 'refunded'. Amount: ₹${((refund_amount_paise || originalOrder.total_paise) / 100).toFixed(0)}. Trans ID: ${refund_transaction_id || "N/A"}`
+        });
+      if (eventError) {
+        console.error("Log refund event failed:", eventError);
+      }
+
+      const profile = originalOrder.profiles as any;
+      if (profile?.email) {
+        await sendEmail({
+          to: profile.email,
+          subject: `Refund Processed — ${originalOrder.order_number} | JAI SRI RAM TEXTILES`,
+          html: refundProcessedEmailHtml({
+            orderNumber: originalOrder.order_number,
+            name: profile.full_name,
+            items: originalOrder.order_items || [],
+            totalPaidPaise: originalOrder.total_paise,
+            refundAmountPaise: refund_amount_paise || originalOrder.total_paise,
+            transactionId: refund_transaction_id,
+            note: refund_note,
+            screenshotUrl: refund_screenshot_url,
+          }),
+        }).catch((err) => console.error("Refund email failed:", err));
       }
     }
 

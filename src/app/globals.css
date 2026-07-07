@@ -107,6 +107,15 @@
     backdrop-filter: saturate(140%) blur(14px);
     -webkit-backdrop-filter: saturate(140%) blur(14px);
   }
+
+  /* Horizontally scrollable chip/tab rows on mobile, scrollbar hidden cross-browser */
+  .scrollbar-none {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 /* Respect users who prefer reduced motion — hard accessibility requirement */

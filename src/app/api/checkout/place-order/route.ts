@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/admin";
-import { sendEmail, orderConfirmationEmailHtml } from "@/lib/email";
+import { sendEmail, orderConfirmationEmailHtml, generateInvoicePdfBase64 } from "@/lib/email";
 
 export async function POST(request: Request) {
   try {
@@ -289,6 +289,25 @@ export async function POST(request: Request) {
     // doesn't freeze the function before the send completes. Failure here shouldn't
     // fail the checkout, since the order is already placed.
     if (user.email) {
+      // Generate PDF Invoice
+      let pdfBase64 = "";
+      try {
+        pdfBase64 = generateInvoicePdfBase64({
+          orderNumber,
+          name: user.user_metadata?.full_name || user.user_metadata?.name,
+          items: validatedItems,
+          shippingAddress,
+          subtotalPaise,
+          discountPaise,
+          shippingPaise,
+          walletUsedPaise,
+          totalPaise,
+          cashbackEarnedPaise: totalCashbackEarned,
+        });
+      } catch (pdfErr) {
+        console.error("PDF generation failed:", pdfErr);
+      }
+
       await sendEmail({
         to: user.email,
         subject: `Order Confirmed — ${orderNumber} | JAI SRI RAM TEXTILES`,
@@ -304,6 +323,14 @@ export async function POST(request: Request) {
           totalPaise,
           cashbackEarnedPaise: totalCashbackEarned,
         }),
+        ...(pdfBase64 ? {
+          attachments: [
+            {
+              filename: `invoice_${orderNumber}.pdf`,
+              content: pdfBase64,
+            }
+          ]
+        } : {})
       }).catch((err) => console.error("Order confirmation email failed:", err));
     }
 

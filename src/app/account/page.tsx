@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
 import { ProductCard } from "@/components/home/product-card";
 import { formatINR } from "@/lib/utils";
+import { jsPDF } from "jspdf";
 import {
   User,
   ShoppingBag,
@@ -312,125 +313,174 @@ export default function AccountPage() {
     }
   }
 
-  // Print Invoice Popup (same style as admin)
+  // Download Invoice PDF directly
   function handlePrintInvoice(order: any) {
-    const printWindow = window.open("", "_blank");
-    if (!printWindow) return;
+    const doc = new jsPDF();
+    const orderNumber = order.order_number;
+    const name = order.shipping_address?.recipient || order.profiles?.full_name || order.profiles?.email || "Customer";
+    const items = order.order_items || [];
+    const shippingAddress = order.shipping_address || {};
+    const subtotalPaise = order.subtotal_paise;
+    const discountPaise = order.discount_paise;
+    const shippingPaise = order.shipping_paise;
+    const walletUsedPaise = order.wallet_used_paise;
+    const totalPaise = order.total_paise;
+    const cashbackEarnedPaise = order.cashback_earned_paise || 0;
 
-    const itemsRows = order.order_items.map((item: any) => `
-      <tr>
-        <td style="padding: 10px; border-bottom: 1px solid #EFE9DC;">${item.name}</td>
-        <td style="padding: 10px; border-bottom: 1px solid #EFE9DC; text-align: center;">${item.variant || "—"}</td>
-        <td style="padding: 10px; border-bottom: 1px solid #EFE9DC; text-align: right;">Rs. ${item.unit_price_paise / 100}</td>
-        <td style="padding: 10px; border-bottom: 1px solid #EFE9DC; text-align: center;">${item.quantity}</td>
-        <td style="padding: 10px; border-bottom: 1px solid #EFE9DC; text-align: right; font-weight: bold;">Rs. ${(item.unit_price_paise * item.quantity) / 100}</td>
-      </tr>
-    `).join("");
+    // Color Palette
+    const zariGold = [176, 141, 76]; // #B08D4C
+    const inkDark = [42, 38, 34]; // #2A2622
+    const taupeGray = [110, 101, 90]; // #6E655A
+    const lineLight = [229, 223, 210]; // #E5DFD2
 
-    printWindow.document.write(`
-      <html>
-        <head>
-          <title>Invoice - ${order.order_number}</title>
-          <style>
-            body { font-family: 'Segoe UI', Roboto, sans-serif; color: #2A2622; margin: 0; padding: 40px; line-height: 1.5; background-color: #ffffff; }
-            .header { display: flex; justify-content: space-between; border-bottom: 2px solid #B08D4C; padding-bottom: 20px; margin-bottom: 30px; }
-            .brand { font-family: Georgia, serif; font-size: 24px; font-weight: bold; color: #2A2622; letter-spacing: 1px; }
-            .brand-subtitle { font-size: 11px; color: #6E655A; text-transform: uppercase; letter-spacing: 2px; margin-top: 4px; }
-            .invoice-details { text-align: right; }
-            .invoice-details h2 { font-family: Georgia, serif; color: #B08D4C; margin: 0 0 10px 0; }
-            .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-bottom: 40px; }
-            .bill-box { padding: 15px; border: 1px solid #E5DFD2; border-radius: 8px; background-color: #FBF9F4; }
-            .bill-box h3 { margin-top: 0; color: #2A2622; border-bottom: 1px solid #E5DFD2; padding-bottom: 8px; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; }
-            table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
-            th { background-color: #2A2622; color: #FBF9F4; padding: 12px; text-align: left; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; }
-            .totals { width: 320px; margin-left: auto; border: 1px solid #E5DFD2; border-radius: 8px; padding: 15px; background-color: #FBF9F4; }
-            .totals-row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 14px; }
-            .totals-row.grand { font-size: 18px; font-weight: bold; color: #B08D4C; border-top: 1px solid #B08D4C; padding-top: 10px; margin-top: 6px; }
-            .footer-note { text-align: center; font-size: 12px; color: #9A9084; margin-top: 60px; border-top: 1px solid #E5DFD2; padding-top: 20px; }
-            @media print { body { padding: 0; } }
-          </style>
-        </head>
-        <body>
-          <div class="header">
-            <div>
-              <div class="brand">JAI SRI RAM TEXTILES</div>
-              <div class="brand-subtitle">Premium Handloom Weavers</div>
-              <div style="font-size: 12px; color: #6E655A; margin-top: 8px;">
-                136/5, Kallangattuvalasu, Komarapalayam,<br/>
-                Namakkal, Tamil Nadu - 638183
-              </div>
-            </div>
-            <div class="invoice-details">
-              <h2>INVOICE</h2>
-              <div>Order No: <strong>${order.order_number}</strong></div>
-              <div>Date: ${new Date(order.placed_at).toLocaleDateString("en-IN", { dateStyle: "long" })}</div>
-            </div>
-          </div>
-          <div class="grid">
-            <div class="bill-box">
-              <h3>Billed / Shipped To</h3>
-              <strong>${order.shipping_address.recipient}</strong><br/>
-              ${order.shipping_address.line1}<br/>
-              ${order.shipping_address.line2 ? order.shipping_address.line2 + "<br/>" : ""}
-              ${order.shipping_address.city}, ${order.shipping_address.district ? order.shipping_address.district + ", " : ""}${order.shipping_address.state} - <strong>${order.shipping_address.pincode}</strong><br/>
-              ${order.shipping_address.phone ? `Mobile: <strong>${order.shipping_address.phone}</strong>${order.shipping_address.alternate_phone ? " / " + order.shipping_address.alternate_phone : ""}<br/>` : ""}
-            </div>
-            <div class="bill-box">
-              <h3>Payment & Order Details</h3>
-              Payment Method: <strong>Prepaid (Razorpay)</strong><br/>
-              Transaction ID: ${order.razorpay_payment_id || "PREPAID"}<br/>
-              Razorpay Order ID: ${order.razorpay_order_id || "—"}<br/>
-              Placed Time: ${new Date(order.placed_at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}<br/>
-              Support: <strong>jaisriramtextiles@gmail.com</strong>
-            </div>
-          </div>
-          <table>
-            <thead>
-              <tr>
-                <th style="width: 45%;">Product Details</th>
-                <th style="width: 15%; text-align: center;">Variant</th>
-                <th style="width: 15%; text-align: right;">Unit Price</th>
-                <th style="width: 10%; text-align: center;">Qty</th>
-                <th style="width: 15%; text-align: right;">Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${itemsRows}
-            </tbody>
-          </table>
-          <div class="totals">
-            <div class="totals-row">
-              <span>Subtotal:</span>
-              <span>Rs. ${order.subtotal_paise / 100}</span>
-            </div>
-            ${order.discount_paise > 0 ? `<div class="totals-row" style="color: #A24B3E;">
-              <span>Discount:</span>
-              <span>-Rs. ${order.discount_paise / 100}</span>
-            </div>` : ""}
-            ${order.wallet_used_paise > 0 ? `<div class="totals-row" style="color: #A24B3E;">
-              <span>Wallet Debit:</span>
-              <span>-Rs. ${order.wallet_used_paise / 100}</span>
-            </div>` : ""}
-            <div class="totals-row">
-              <span>Shipping Charge:</span>
-              <span>${order.shipping_paise === 0 ? "FREE" : `Rs. ${order.shipping_paise / 100}`}</span>
-            </div>
-            <div class="totals-row grand">
-              <span>Total Paid:</span>
-              <span>Rs. ${order.total_paise / 100}</span>
-            </div>
-          </div>
-          <div class="footer-note">
-            Thank you for shopping with JAI SRI RAM TEXTILES!<br/>
-            Computer-generated receipt.
-          </div>
-          <script>
-            window.onload = function() { window.print(); setTimeout(function(){ window.close(); }, 500); }
-          </script>
-        </body>
-      </html>
-    `);
-    printWindow.document.close();
+    // 1. Header Banner
+    doc.setFillColor(inkDark[0], inkDark[1], inkDark[2]);
+    doc.rect(0, 0, 210, 40, "F");
+
+    // Title Text
+    doc.setTextColor(zariGold[0], zariGold[1], zariGold[2]);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(22);
+    doc.text("JAI SRI RAM TEXTILES", 20, 25);
+
+    // Subtitle
+    doc.setTextColor(255, 255, 255);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.text("PREMIUM WEAVERS  |  JAISRIRAMTEXTILES.IN", 20, 32);
+
+    // Invoice label
+    doc.setTextColor(zariGold[0], zariGold[1], zariGold[2]);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(16);
+    doc.text("INVOICE", 155, 26);
+
+    // 2. Metadata Columns
+    doc.setTextColor(inkDark[0], inkDark[1], inkDark[2]);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.text("Order Information", 20, 52);
+    doc.text("Shipping To", 120, 52);
+
+    doc.setDrawColor(zariGold[0], zariGold[1], zariGold[2]);
+    doc.setLineWidth(0.5);
+    doc.line(20, 55, 90, 55);
+    doc.line(120, 55, 190, 55);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9.5);
+    doc.setTextColor(taupeGray[0], taupeGray[1], taupeGray[2]);
+
+    // Order Info text
+    doc.text(`Order Number: ${orderNumber}`, 20, 62);
+    doc.text(`Date: ${new Date(order.placed_at || order.created_at || new Date()).toLocaleDateString("en-IN", { dateStyle: "long" })}`, 20, 68);
+    doc.text(`Customer: ${name}`, 20, 74);
+
+    // Shipping Address text
+    doc.text(shippingAddress.recipient || "", 120, 62);
+    doc.text(shippingAddress.line1 || "", 120, 68);
+    if (shippingAddress.line2) {
+      doc.text(shippingAddress.line2, 120, 74);
+      doc.text(`${shippingAddress.city}, ${shippingAddress.state} - ${shippingAddress.pincode}`, 120, 80);
+      if (shippingAddress.phone) {
+        doc.text(`Phone: ${shippingAddress.phone}`, 120, 86);
+      }
+    } else {
+      doc.text(`${shippingAddress.city}, ${shippingAddress.state} - ${shippingAddress.pincode}`, 120, 74);
+      if (shippingAddress.phone) {
+        doc.text(`Phone: ${shippingAddress.phone}`, 120, 80);
+      }
+    }
+
+    // 3. Items Table Header
+    let y = 100;
+    doc.setFillColor(inkDark[0], inkDark[1], inkDark[2]);
+    doc.rect(20, y, 170, 8, "F");
+
+    doc.setTextColor(255, 255, 255);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.text("Item Details", 24, y + 5.5);
+    doc.text("Qty", 125, y + 5.5);
+    doc.text("Total Price", 165, y + 5.5);
+
+    // 4. Table Items List
+    y += 8;
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(inkDark[0], inkDark[1], inkDark[2]);
+
+    items.forEach((item: any) => {
+      // line border
+      doc.setDrawColor(lineLight[0], lineLight[1], lineLight[2]);
+      doc.setLineWidth(0.3);
+      doc.line(20, y + 8, 190, y + 8);
+
+      doc.text(`${item.name}${item.variant ? ` (${item.variant})` : ""}`, 24, y + 5);
+      doc.text(`${item.quantity}`, 127, y + 5);
+      doc.text(`INR ${(item.unit_price_paise * item.quantity / 100).toFixed(2)}`, 165, y + 5);
+
+      y += 8;
+    });
+
+    // 5. Totals Right Column
+    y += 10;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9.5);
+    doc.setTextColor(taupeGray[0], taupeGray[1], taupeGray[2]);
+
+    doc.text("Subtotal:", 125, y);
+    doc.text(`INR ${(subtotalPaise / 100).toFixed(2)}`, 165, y);
+    y += 6;
+
+    if (discountPaise > 0) {
+      doc.text("Discount:", 125, y);
+      doc.text(`-INR ${(discountPaise / 100).toFixed(2)}`, 165, y);
+      y += 6;
+    }
+
+    if (walletUsedPaise > 0) {
+      doc.text("Wallet Credits Used:", 125, y);
+      doc.text(`-INR ${(walletUsedPaise / 100).toFixed(2)}`, 165, y);
+      y += 6;
+    }
+
+    doc.text("Shipping:", 125, y);
+    doc.text(shippingPaise === 0 ? "FREE" : `INR ${(shippingPaise / 100).toFixed(2)}`, 165, y);
+    y += 8;
+
+    // Total Paid
+    doc.setDrawColor(zariGold[0], zariGold[1], zariGold[2]);
+    doc.setLineWidth(0.5);
+    doc.line(120, y - 5, 190, y - 5);
+
+    doc.setTextColor(zariGold[0], zariGold[1], zariGold[2]);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.text("Total Paid:", 125, y);
+    doc.text(`INR ${(totalPaise / 100).toFixed(2)}`, 165, y);
+
+    if (cashbackEarnedPaise > 0) {
+      y += 6;
+      doc.setTextColor(75, 122, 82); // Green
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9.5);
+      doc.text("Cashback Earned:", 125, y);
+      doc.text(`INR ${(cashbackEarnedPaise / 100).toFixed(2)}`, 165, y);
+    }
+
+    // 6. Footer Disclaimer
+    y = 265;
+    doc.setDrawColor(lineLight[0], lineLight[1], lineLight[2]);
+    doc.setLineWidth(0.5);
+    doc.line(20, y, 190, y);
+
+    doc.setFont("helvetica", "italic");
+    doc.setFontSize(8);
+    doc.setTextColor(taupeGray[0], taupeGray[1], taupeGray[2]);
+    doc.text("This is an electronically generated invoice document for your purchase.", 20, y + 5);
+    doc.text("Thank you for shopping with JAI SRI RAM TEXTILES!", 20, y + 9);
+
+    doc.save(`Invoice-${orderNumber}.pdf`);
   }
 
   async function handleSignOut() {
@@ -469,11 +519,18 @@ export default function AccountPage() {
           </div>
         )}
 
-        {/* Navigation Breadcrumb back to overview */}
-        {activeTab !== "overview" && (
+        {/* Navigation Breadcrumb */}
+        {activeTab === "overview" ? (
+          <Link
+            href="/"
+            className="flex items-center gap-1.5 text-xs font-semibold text-taupe hover:text-ink mb-6 transition-colors inline-flex cursor-pointer"
+          >
+            <ChevronLeft size={16} /> Back to Home
+          </Link>
+        ) : (
           <button
             onClick={() => setActiveTab("overview")}
-            className="flex items-center gap-1.5 text-xs font-semibold text-taupe hover:text-ink mb-6 transition-colors"
+            className="flex items-center gap-1.5 text-xs font-semibold text-taupe hover:text-ink mb-6 transition-colors cursor-pointer"
           >
             <ChevronLeft size={16} /> Back to Dashboard
           </button>
@@ -660,11 +717,55 @@ export default function AccountPage() {
                           </div>
                         ))}
 
-                        {/* Rejection Reason Display */}
-                        {o.status === "rejected" && o.rejection_reason && (
-                          <div className="mt-6 p-4 bg-danger/5 border border-danger/30 rounded-md text-xs space-y-1.5">
-                            <p className="font-bold text-danger uppercase text-[9px] tracking-wider">Order Rejected</p>
-                            <p className="text-ink">{o.rejection_reason}</p>
+                        {/* Rejection / Return Reason Display */}
+                        {(o.status === "rejected" || o.status === "returned") && o.payment_status !== "refunded" && (
+                          <div className="mt-6 p-4 bg-danger/5 border border-danger/30 rounded-md text-xs space-y-2.5">
+                            <div className="space-y-1">
+                              <p className="font-bold text-danger uppercase text-[9px] tracking-wider">
+                                {o.status === "rejected" ? "Order Rejected" : "Order Returned"}
+                              </p>
+                              {o.rejection_reason && <p className="text-ink">{o.rejection_reason}</p>}
+                            </div>
+                            <div className="border-t border-danger/20 pt-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-ink">
+                              <p className="text-taupe leading-relaxed">
+                                Refund will be issued within 24hrs or else contact customer service.
+                              </p>
+                              <a
+                                href={`https://wa.me/918608386872?text=${encodeURIComponent(
+                                  `Hi, my order ${o.order_number} has been ${o.status === "rejected" ? "rejected" : "returned"}. Details:\n` +
+                                  (o.order_items || []).map((item: any) => `- ${item.name} (Qty: ${item.quantity})`).join("\n") +
+                                  `\nTotal Paid: ${formatINR(o.total_paise, true)}.\nI want to inquire about my refund status.`
+                                )}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-[#25D366] hover:bg-[#128C7E] text-white font-medium rounded text-[11px] transition-colors whitespace-nowrap self-start sm:self-auto shadow-sm cursor-pointer"
+                              >
+                                <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
+                                  <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.517 2.266 2.27 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.5-5.739-1.453L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.825 1.451 5.436 0 9.86-4.413 9.863-9.83.001-2.624-1.013-5.092-2.859-6.937C16.643 1.98 14.184.962 11.56.962 6.119.962 1.694 5.375 1.691 10.793c-.001 1.782.469 3.52 1.358 5.071l-.951 3.474 3.559-.933zM18.23 15.25c-.34-.17-2.01-.99-2.32-1.1-.31-.11-.54-.17-.77.17-.23.34-.89 1.1-.1.17-.23.11-.46.06-.92-.17-1.8-1.6-2.5-2.22-.62-.55-1.03-1.22-1.14-1.42-.11-.2-.01-.31.09-.41.09-.09.2-.23.3-.34.1-.11.14-.19.21-.31.07-.12.03-.23-.02-.34-.05-.12-.46-1.11-.63-1.52-.17-.4-.36-.34-.5-.34-.13 0-.28 0-.43 0-.15 0-.4.06-.61.28-.21.22-.8.78-.8 1.9 0 1.12.82 2.2 1.05 2.5.23.3 1.62 2.48 3.93 3.48.55.24.98.38 1.32.49.56.18 1.07.15 1.47.09.45-.07 1.39-.57 1.59-1.12.2-.55.2-1.02.14-1.12-.06-.1-.23-.2-.57-.37z"/>
+                                </svg>
+                                Chat now
+                              </a>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Refund Details Display */}
+                        {o.payment_status === "refunded" && o.refund_amount_paise && (
+                          <div className="mt-6 p-4 bg-success/5 border border-success/30 rounded-md text-xs space-y-2">
+                            <p className="font-bold text-success uppercase text-[9px] tracking-wider">Refund Processed</p>
+                            <div className="text-ink space-y-1.5">
+                              <p>Amount Refunded: <strong>{formatINR(o.refund_amount_paise, true)}</strong></p>
+                              {o.refund_transaction_id && <p>Transaction ID: <strong className="font-mono">{o.refund_transaction_id}</strong></p>}
+                              {o.refunded_at && <p>Refund Date: <strong>{new Date(o.refunded_at).toLocaleDateString()}</strong></p>}
+                              {o.refund_note && <p>Note: <em>{o.refund_note}</em></p>}
+                              {o.refund_screenshot_url && (
+                                <p className="mt-1">
+                                  <a href={o.refund_screenshot_url} target="_blank" rel="noopener noreferrer" className="text-zari hover:underline font-bold inline-flex items-center gap-1 cursor-pointer">
+                                    View Refund Proof ↗
+                                  </a>
+                                </p>
+                              )}
+                            </div>
                           </div>
                         )}
 

@@ -161,7 +161,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
       {/* Premium Toast Popup Notification */}
       {toast.show && (
-        <div className="fixed bottom-6 right-6 z-50 animate-fade-in max-w-sm w-full bg-white border border-zari rounded-card shadow-lift p-4 flex items-center gap-3">
+        <div className="fixed bottom-24 left-4 right-4 z-50 animate-fade-in sm:left-auto sm:right-6 sm:max-w-sm w-auto bg-white border border-zari rounded-card shadow-lift p-4 flex items-center gap-3">
           {toast.productImage ? (
             <div className="relative h-12 w-12 rounded bg-cream overflow-hidden border border-line flex-shrink-0">
               <img

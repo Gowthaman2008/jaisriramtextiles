@@ -11,6 +11,34 @@ type Message = {
   content: string;
 };
 
+/** Short, light two-tone notification chime — synthesized so no audio asset is needed. */
+function playReplyChime() {
+  try {
+    const Ctx = window.AudioContext || (window as any).webkitAudioContext;
+    if (!Ctx) return;
+    const ctx = new Ctx();
+    const now = ctx.currentTime;
+
+    [880, 1174.7].forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = freq;
+      const start = now + i * 0.09;
+      gain.gain.setValueAtTime(0, start);
+      gain.gain.linearRampToValueAtTime(0.12, start + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.18);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(start);
+      osc.stop(start + 0.2);
+    });
+
+    setTimeout(() => ctx.close(), 500);
+  } catch {
+    // Audio isn't critical — fail silently (e.g. autoplay-blocked browsers).
+  }
+}
+
 export function AIChatbot() {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
@@ -112,6 +140,17 @@ export function AIChatbot() {
     await sendMessage(text);
   }
 
+  function handleChatNow() {
+    const profile = userContext?.profile;
+    const lines = ["Hi, I need help with my JAI SRI RAM TEXTILES account."];
+    if (profile?.full_name) lines.push(`Name: ${profile.full_name}`);
+    if (profile?.email) lines.push(`Email: ${profile.email}`);
+    if (profile?.phone) lines.push(`Phone: ${profile.phone}`);
+
+    const url = `https://wa.me/918072719603?text=${encodeURIComponent(lines.join("\n"))}`;
+    window.open(url, "_blank", "noopener,noreferrer");
+  }
+
   async function sendMessage(text: string) {
     setMessages((prev) => [...prev, { role: "user", content: text }]);
     setLoading(true);
@@ -135,6 +174,7 @@ export function AIChatbot() {
       if (!res.ok) throw new Error(data.error || "Failed to complete message response");
 
       setMessages((prev) => [...prev, { role: "assistant", content: data.response }]);
+      playReplyChime();
     } catch (err: any) {
       setMessages((prev) => [
         ...prev,
@@ -143,6 +183,7 @@ export function AIChatbot() {
           content: "I apologize, I am experiencing a temporary connection issue. Please verify your connection or try again shortly.",
         },
       ]);
+      playReplyChime();
     } finally {
       setLoading(false);
     }
@@ -157,7 +198,7 @@ export function AIChatbot() {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.85, y: 35 }}
             transition={{ type: "spring", duration: 0.5, bounce: 0.2 }}
-            className="mb-4 w-[340px] sm:w-[380px] h-[520px] bg-ivory/95 border border-zari rounded-card overflow-hidden flex flex-col shadow-lift backdrop-blur-md"
+            className="mb-4 w-[calc(100vw-3rem)] max-w-[340px] sm:max-w-[380px] h-[min(520px,75dvh)] bg-ivory/95 border border-zari rounded-card overflow-hidden flex flex-col shadow-lift backdrop-blur-md"
           >
             {/* Header */}
             <div className="bg-ink text-ivory p-4 flex justify-between items-center border-b border-zari-deep">
@@ -186,36 +227,44 @@ export function AIChatbot() {
             {/* Messages Area */}
             <div
               ref={scrollRef}
-              className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-none"
+              className="flex-1 flex flex-col overflow-y-auto overscroll-contain p-4 space-y-4 scrollbar-none"
             >
               {messages.map((m, idx) => {
                 const isAI = m.role === "assistant";
+                const mentionsChatNow = isAI && /chat now/i.test(m.content);
                 return (
-                  <div
-                    key={idx}
-                    className={cn(
-                      "flex gap-2.5 max-w-[85%]",
-                      isAI ? "self-start" : "self-end ml-auto flex-row-reverse"
-                    )}
-                  >
-                    <span
-                      className={cn(
-                        "grid h-7 w-7 shrink-0 place-items-center rounded-full border border-line text-[10px]",
-                        isAI ? "bg-cream text-zari-deep" : "bg-ink text-ivory"
-                      )}
-                    >
-                      {isAI ? <Bot size={14} /> : <User size={14} />}
-                    </span>
-                    <div
-                      className={cn(
-                        "rounded-2xl p-3 text-xs leading-relaxed shadow-soft border",
-                        isAI
-                          ? "bg-cream/45 text-ink border-line rounded-tl-none font-medium"
-                          : "bg-ink text-ivory border-ink rounded-tr-none font-medium"
-                      )}
-                    >
-                      <div className="space-y-1">{parseMarkdown(m.content)}</div>
+                  <div key={idx} className={cn("flex flex-col gap-1.5 max-w-[85%]", isAI ? "self-start" : "self-end")}>
+                    <div className={cn("flex gap-2.5", isAI ? "" : "flex-row-reverse")}>
+                      <span
+                        className={cn(
+                          "grid h-7 w-7 shrink-0 place-items-center rounded-full border border-line text-[10px]",
+                          isAI ? "bg-cream text-zari-deep" : "bg-ink text-ivory"
+                        )}
+                      >
+                        {isAI ? <Bot size={14} /> : <User size={14} />}
+                      </span>
+                      <div
+                        className={cn(
+                          "rounded-2xl p-3 text-xs leading-relaxed shadow-soft border",
+                          isAI
+                            ? "bg-cream/45 text-ink border-line rounded-tl-none font-medium"
+                            : "bg-ink text-ivory border-ink rounded-tr-none font-medium"
+                        )}
+                      >
+                        <div className="space-y-1">{parseMarkdown(m.content)}</div>
+                      </div>
                     </div>
+
+                    {/* Chat Now button — shown whenever the bot's reply mentions it */}
+                    {mentionsChatNow && (
+                      <button
+                        type="button"
+                        onClick={handleChatNow}
+                        className="ml-9 flex items-center gap-1.5 px-3 py-1.5 bg-ink border border-ink rounded-full text-[11px] font-bold text-ivory hover:bg-zari-deep transition cursor-pointer w-fit"
+                      >
+                        💬 Chat Now
+                      </button>
+                    )}
                   </div>
                 );
               })}
@@ -278,6 +327,13 @@ export function AIChatbot() {
                 className="px-3 py-1.5 bg-white border border-line rounded-full text-[11px] font-medium text-ink hover:border-zari hover:bg-zari-tint transition cursor-pointer"
               >
                 🏭 Craftsmanship
+              </button>
+              <button
+                type="button"
+                onClick={handleChatNow}
+                className="px-3 py-1.5 bg-ink border border-ink rounded-full text-[11px] font-bold text-ivory hover:bg-zari-deep transition cursor-pointer shrink-0"
+              >
+                💬 Chat Now
               </button>
             </div>
 

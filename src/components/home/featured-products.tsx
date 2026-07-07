@@ -32,13 +32,13 @@ export function FeaturedProducts() {
             eyebrow="Handpicked for you"
             title="Our finest, front and centre"
           />
-          <div className="flex flex-wrap gap-1 rounded-pill border border-line bg-ivory p-1">
+          <div className="scrollbar-none flex w-full gap-1 overflow-x-auto rounded-pill border border-line bg-ivory p-1 md:w-auto">
             {tabs.map((t) => (
               <button
                 key={t.key}
                 onClick={() => setTab(t.key)}
                 className={cn(
-                  "relative rounded-pill px-4 py-2 text-sm font-medium transition-colors",
+                  "relative shrink-0 rounded-pill px-4 py-2 text-sm font-medium transition-colors",
                   tab === t.key ? "text-ivory" : "text-taupe hover:text-ink"
                 )}
               >

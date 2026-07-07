@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useCart } from "@/components/providers/cart-provider";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
 import { formatINR } from "@/lib/utils";
 import { computeShipping } from "@/lib/constants";
-import { ShieldCheck, MapPin, Tag, Wallet, AlertTriangle, RefreshCw, CreditCard } from "lucide-react";
+import { ShieldCheck, MapPin, Tag, Wallet, AlertTriangle, RefreshCw, CreditCard, ChevronLeft } from "lucide-react";
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -33,6 +34,19 @@ export default function CheckoutPage() {
   // Saved addresses
   const [savedAddresses, setSavedAddresses] = useState<any[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState<string>("custom");
+
+  // Edit Address Modal States
+  const [editingAddress, setEditingAddress] = useState<any>(null);
+  const [editRecipient, setEditRecipient] = useState("");
+  const [editLine1, setEditLine1] = useState("");
+  const [editLine2, setEditLine2] = useState("");
+  const [editCity, setEditCity] = useState("");
+  const [editState, setEditState] = useState("");
+  const [editDistrict, setEditDistrict] = useState("");
+  const [editPincode, setEditPincode] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [editAlternatePhone, setEditAlternatePhone] = useState("");
+  const [savingEdit, setSavingEdit] = useState(false);
 
   // Wallet states
   const [walletBalance, setWalletBalance] = useState(0);
@@ -142,6 +156,78 @@ export default function CheckoutPage() {
     } else {
       const match = savedAddresses.find((a) => a.id === id);
       if (match) applySavedAddress(match);
+    }
+  }
+
+  function startEditAddress(addr: any) {
+    setEditingAddress(addr);
+    setEditRecipient(addr.recipient || "");
+    setEditLine1(addr.line1 || "");
+    setEditLine2(addr.line2 || "");
+    setEditCity(addr.city || "");
+    setEditState(addr.state || "");
+    setEditDistrict(addr.district || "");
+    setEditPincode(addr.pincode || "");
+    setEditPhone(addr.phone || "");
+    setEditAlternatePhone(addr.alternate_phone || "");
+  }
+
+  async function handleSaveEditedAddress(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editingAddress) return;
+    setSavingEdit(true);
+    try {
+      const { error } = await supabase
+        .from("addresses")
+        .update({
+          recipient: editRecipient.trim(),
+          line1: editLine1.trim(),
+          line2: editLine2.trim() || null,
+          city: editCity.trim(),
+          state: editState.trim(),
+          district: editDistrict.trim(),
+          pincode: editPincode.trim(),
+          phone: editPhone.trim(),
+          alternate_phone: editAlternatePhone.trim() || null,
+        })
+        .eq("id", editingAddress.id);
+
+      if (error) throw error;
+
+      // Update local state list
+      setSavedAddresses(prev => prev.map(a => a.id === editingAddress.id ? {
+        ...a,
+        recipient: editRecipient.trim(),
+        line1: editLine1.trim(),
+        line2: editLine2.trim() || null,
+        city: editCity.trim(),
+        state: editState.trim(),
+        district: editDistrict.trim(),
+        pincode: editPincode.trim(),
+        phone: editPhone.trim(),
+        alternate_phone: editAlternatePhone.trim() || null,
+      } : a));
+
+      // If this address is currently selected, re-apply it to update checkout fields
+      if (selectedAddressId === editingAddress.id) {
+        applySavedAddress({
+          recipient: editRecipient.trim(),
+          line1: editLine1.trim(),
+          line2: editLine2.trim() || null,
+          city: editCity.trim(),
+          state: editState.trim(),
+          district: editDistrict.trim(),
+          pincode: editPincode.trim(),
+          phone: editPhone.trim(),
+          alternate_phone: editAlternatePhone.trim() || null,
+        });
+      }
+
+      setEditingAddress(null);
+    } catch (err: any) {
+      alert("Error updating address: " + err.message);
+    } finally {
+      setSavingEdit(false);
     }
   }
 
@@ -378,6 +464,13 @@ export default function CheckoutPage() {
   return (
     <div className="py-12 sm:py-16 bg-ivory min-h-[85vh]">
       <Container className="max-w-[1000px]">
+        {/* Back Button */}
+        <Link
+          href="/cart"
+          className="flex items-center gap-1.5 text-xs font-semibold text-taupe hover:text-ink mb-6 transition-colors inline-flex cursor-pointer"
+        >
+          <ChevronLeft size={16} /> Back to Bag
+        </Link>
         <h1 className="font-display text-3xl text-ink mb-8">Secure Checkout</h1>
 
         {checkoutError && (
@@ -400,27 +493,39 @@ export default function CheckoutPage() {
                   {savedAddresses.map((addr) => (
                     <label
                       key={addr.id}
-                      className={`border rounded-md p-3.5 flex gap-3 items-start cursor-pointer transition-all duration-200 ${
+                      className={`border rounded-md p-3.5 flex gap-3 items-start cursor-pointer transition-all duration-200 justify-between ${
                         selectedAddressId === addr.id
                           ? "border-zari bg-zari-tint/20"
                           : "border-line bg-cream/10 hover:bg-cream/30"
                       }`}
                     >
-                      <input
-                        type="radio"
-                        name="delivery_address"
-                        checked={selectedAddressId === addr.id}
-                        onChange={() => handleAddressSelection(addr.id)}
-                        className="mt-1 accent-zari"
-                      />
-                      <div className="text-xs text-taupe space-y-0.5">
-                        <strong className="text-sm font-bold text-ink">{addr.recipient}</strong>
-                        <p>{addr.line1}</p>
-                        {addr.line2 && <p>{addr.line2}</p>}
-                        <p>
-                          {addr.city}, {addr.state} - <strong>{addr.pincode}</strong>
-                        </p>
+                      <div className="flex gap-3 items-start flex-1">
+                        <input
+                          type="radio"
+                          name="delivery_address"
+                          checked={selectedAddressId === addr.id}
+                          onChange={() => handleAddressSelection(addr.id)}
+                          className="mt-1 accent-zari"
+                        />
+                        <div className="text-xs text-taupe space-y-0.5">
+                          <strong className="text-sm font-bold text-ink">{addr.recipient}</strong>
+                          <p>{addr.line1}</p>
+                          {addr.line2 && <p>{addr.line2}</p>}
+                          <p>
+                            {addr.city}, {addr.state} - <strong>{addr.pincode}</strong>
+                          </p>
+                        </div>
                       </div>
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          startEditAddress(addr);
+                        }}
+                        className="text-xs text-zari hover:underline font-semibold focus:outline-none cursor-pointer self-center"
+                      >
+                        Edit
+                      </button>
                     </label>
                   ))}
                   <label
@@ -488,7 +593,7 @@ export default function CheckoutPage() {
                   />
                 </div>
 
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                   <div className="flex flex-col gap-1">
                     <label className="text-xs font-semibold text-taupe uppercase">City *</label>
                     <input
@@ -527,7 +632,7 @@ export default function CheckoutPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                   <div className="flex flex-col gap-1">
                     <label className="text-xs font-semibold text-taupe uppercase">Pincode *</label>
                     <input
@@ -732,6 +837,148 @@ export default function CheckoutPage() {
           </div>
         </div>
       </Container>
+
+      {/* Edit Address Modal Overlay */}
+      {editingAddress && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-ink/50 backdrop-blur-sm p-4">
+          <div className="w-full max-w-md bg-white border border-line rounded-card shadow-soft overflow-hidden font-sans">
+            <div className="border-b border-line p-4 bg-cream/5 flex justify-between items-center">
+              <h3 className="font-display font-semibold text-base text-ink flex items-center gap-2">
+                <MapPin className="w-4 h-4 text-zari" /> Edit Delivery Address
+              </h3>
+              <button 
+                onClick={() => setEditingAddress(null)} 
+                className="text-taupe hover:text-ink text-xs focus:outline-none cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEditedAddress} className="p-4 space-y-3.5 text-xs">
+              <div className="flex flex-col gap-1">
+                <label className="font-semibold text-taupe uppercase">Recipient Name *</label>
+                <input 
+                  type="text" 
+                  required 
+                  value={editRecipient} 
+                  onChange={(e) => setEditRecipient(e.target.value)}
+                  className="rounded border border-line bg-white px-3 py-2 text-sm text-ink outline-none focus:border-zari"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label className="font-semibold text-taupe uppercase">Street Address *</label>
+                <input 
+                  type="text" 
+                  required 
+                  value={editLine1} 
+                  onChange={(e) => setEditLine1(e.target.value)}
+                  className="rounded border border-line bg-white px-3 py-2 text-sm text-ink outline-none focus:border-zari"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label className="font-semibold text-taupe uppercase">Area / Landmark</label>
+                <input 
+                  type="text" 
+                  value={editLine2} 
+                  onChange={(e) => setEditLine2(e.target.value)}
+                  className="rounded border border-line bg-white px-3 py-2 text-sm text-ink outline-none focus:border-zari"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col gap-1">
+                  <label className="font-semibold text-taupe uppercase">City *</label>
+                  <input 
+                    type="text" 
+                    required 
+                    value={editCity} 
+                    onChange={(e) => setEditCity(e.target.value)}
+                    className="rounded border border-line bg-white px-3 py-2 text-sm text-ink outline-none focus:border-zari"
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="font-semibold text-taupe uppercase">District *</label>
+                  <input 
+                    type="text" 
+                    required 
+                    value={editDistrict} 
+                    onChange={(e) => setEditDistrict(e.target.value)}
+                    className="rounded border border-line bg-white px-3 py-2 text-sm text-ink outline-none focus:border-zari"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col gap-1">
+                  <label className="font-semibold text-taupe uppercase">State *</label>
+                  <input 
+                    type="text" 
+                    required 
+                    value={editState} 
+                    onChange={(e) => setEditState(e.target.value)}
+                    className="rounded border border-line bg-white px-3 py-2 text-sm text-ink outline-none focus:border-zari"
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="font-semibold text-taupe uppercase">Pincode *</label>
+                  <input 
+                    type="text" 
+                    required 
+                    value={editPincode} 
+                    onChange={(e) => setEditPincode(e.target.value)}
+                    className="rounded border border-line bg-white px-3 py-2 text-sm text-ink outline-none focus:border-zari"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col gap-1">
+                  <label className="font-semibold text-taupe uppercase">Mobile Number *</label>
+                  <input 
+                    type="tel" 
+                    required 
+                    value={editPhone} 
+                    onChange={(e) => setEditPhone(e.target.value)}
+                    className="rounded border border-line bg-white px-3 py-2 text-sm text-ink outline-none focus:border-zari"
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="font-semibold text-taupe uppercase">Alternate Mobile</label>
+                  <input 
+                    type="tel" 
+                    value={editAlternatePhone} 
+                    onChange={(e) => setEditAlternatePhone(e.target.value)}
+                    className="rounded border border-line bg-white px-3 py-2 text-sm text-ink outline-none focus:border-zari"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-3 border-t border-line mt-4">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setEditingAddress(null)}
+                  className="flex-1 cursor-pointer justify-center"
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  type="submit" 
+                  variant="gold" 
+                  size="sm" 
+                  disabled={savingEdit}
+                  className="flex-1 cursor-pointer justify-center"
+                >
+                  {savingEdit ? "Saving..." : "Save Address"}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

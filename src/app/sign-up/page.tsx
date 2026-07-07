@@ -5,10 +5,12 @@ import Link from "next/link";
 import { Container } from "@/components/ui/container";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
+import { Eye, EyeOff } from "lucide-react";
 
 export default function SignUpPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [error, setError] = useState("");
@@ -20,11 +22,50 @@ export default function SignUpPage() {
     setLoading(true);
     setError("");
 
+    const cleanPhone = phone.trim().replace(/\D/g, "");
+    if (cleanPhone.length !== 10) {
+      setError("Please enter a valid 10-digit mobile number.");
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const checkRes = await fetch("/api/auth/check-exists", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim(), phone: cleanPhone }),
+      });
+
+      if (!checkRes.ok) {
+        const errorData = await checkRes.json();
+        setError(errorData.error || "An error occurred checking registration details.");
+        setLoading(false);
+        return;
+      }
+
+      const checkData = await checkRes.json();
+      if (checkData.exists) {
+        if (checkData.field === "email") {
+          setError("An account with this email already exists.");
+        } else if (checkData.field === "phone") {
+          setError("An account with this mobile number already exists.");
+        } else {
+          setError("An account with these details already exists.");
+        }
+        setLoading(false);
+        return;
+      }
+    } catch (err: any) {
+      setError("Failed to check if account details exist. Please try again.");
+      setLoading(false);
+      return;
+    }
+
     const supabase = createClient();
     const { error: authError } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { full_name: name, phone: phone.trim() } },
+      options: { data: { full_name: name, phone: cleanPhone } },
     });
 
     if (authError) {
@@ -115,16 +156,26 @@ export default function SignUpPage() {
               <label htmlFor="password" className="text-sm font-medium text-ink">
                 Password
               </label>
-              <input
-                id="password"
-                type="password"
-                required
-                minLength={8}
-                autoComplete="new-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="h-11 rounded-pill border border-line bg-ivory px-4 text-sm text-ink outline-none focus-visible:border-zari"
-              />
+              <div className="relative flex w-full">
+                <input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  required
+                  minLength={8}
+                  autoComplete="new-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="h-11 w-full rounded-pill border border-line bg-ivory pl-4 pr-12 text-sm text-ink outline-none focus-visible:border-zari"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-taupe hover:text-ink focus:outline-none"
+                  title={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
             </div>
 
             {error && <p className="text-sm text-danger">{error}</p>}

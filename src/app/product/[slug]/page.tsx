@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Image from "next/image";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Container } from "@/components/ui/container";
 import { StarRating } from "@/components/ui/star-rating";
@@ -8,6 +9,7 @@ import { formatINR } from "@/lib/utils";
 import { getProductBySlug } from "@/lib/supabase/queries";
 import { products as mockProducts } from "@/data/mock";
 import { ProductActions } from "@/components/product/product-actions";
+import { ChevronLeft } from "lucide-react";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -42,6 +44,13 @@ export default async function ProductPage({ params }: Props) {
   return (
     <div className="py-10 sm:py-14">
       <Container>
+        {/* Back Button */}
+        <Link
+          href="/shop"
+          className="flex items-center gap-1.5 text-xs font-semibold text-taupe hover:text-ink mb-6 transition-colors inline-flex cursor-pointer"
+        >
+          <ChevronLeft size={16} /> Back to Shop
+        </Link>
         <div className="grid gap-10 lg:grid-cols-2 lg:gap-16">
           {/* Gallery */}
           <div className="zari-frame aspect-square overflow-hidden rounded-card bg-cream">

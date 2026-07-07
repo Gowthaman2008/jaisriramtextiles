@@ -9,6 +9,7 @@ import { StarRating } from "@/components/ui/star-rating";
 import { formatINR, cn } from "@/lib/utils";
 import type { Product } from "@/lib/types";
 import { useWishlist } from "@/components/providers/wishlist-provider";
+import { useCart } from "@/components/providers/cart-provider";
 
 const badgeStyles: Record<string, string> = {
   new: "bg-ink text-ivory",
@@ -20,12 +21,20 @@ const badgeStyles: Record<string, string> = {
 export function ProductCard({ product, index = 0 }: { product: Product; index?: number }) {
   const [loaded, setLoaded] = useState(false);
   const { toggleWishlist, isWished } = useWishlist();
+  const { addToCart } = useCart();
   const wished = isWished(product.id);
 
   const discount =
     product.compareAtPaise && product.compareAtPaise > product.pricePaise
       ? Math.round((1 - product.pricePaise / product.compareAtPaise) * 100)
       : 0;
+
+  const handleQuickAdd = () => {
+    const variant = product.variants && product.variants.length > 0
+      ? (product.variants.find(v => v.stock > 0) || product.variants[0])
+      : null;
+    addToCart(product, 1, variant);
+  };
 
   return (
     <motion.article
@@ -71,7 +80,14 @@ export function ProductCard({ product, index = 0 }: { product: Product; index?: 
 
           {/* Quick add — slides up on hover */}
           <div className="absolute inset-x-3 bottom-3 translate-y-4 opacity-0 transition-all duration-300 ease-silk group-hover:translate-y-0 group-hover:opacity-100">
-            <button className="flex w-full items-center justify-center gap-2 rounded-pill bg-ink/90 py-2.5 text-sm font-semibold text-ivory backdrop-blur transition hover:bg-ink">
+            <button 
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleQuickAdd();
+              }}
+              className="flex w-full items-center justify-center gap-2 rounded-pill bg-ink/90 py-2.5 text-sm font-semibold text-ivory backdrop-blur transition hover:bg-ink cursor-pointer"
+            >
               <ShoppingBag size={15} /> Quick add
             </button>
           </div>
