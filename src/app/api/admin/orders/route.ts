@@ -218,12 +218,52 @@ export async function DELETE(request: Request) {
     }
 
     const supabase = createServiceClient();
+
+    // Cascade: remove any wallet transactions tied to this order (e.g. cashback credited
+    // on delivery, or a redemption used to pay for it) and keep the stored wallet balance
+    // consistent, rather than leaving orphaned ledger rows or a stale total.
+    const { data: linkedTxns, error: txnFetchError } = await supabase
+      .from("wallet_transactions")
+      .select("id, user_id, amount_paise")
+      .eq("order_id", id);
+
+    if (txnFetchError) throw txnFetchError;
+
+    if (linkedTxns && linkedTxns.length > 0) {
+      const byUser = new Map<string, number>();
+      for (const t of linkedTxns) {
+        byUser.set(t.user_id, (byUser.get(t.user_id) || 0) + t.amount_paise);
+      }
+
+      const { error: txnDeleteError } = await supabase
+        .from("wallet_transactions")
+        .delete()
+        .eq("order_id", id);
+      if (txnDeleteError) throw txnDeleteError;
+
+      for (const [userId, totalToReverse] of byUser.entries()) {
+        const { data: wallet } = await supabase
+          .from("wallets")
+          .select("balance_paise")
+          .eq("user_id", userId)
+          .maybeSingle();
+
+        if (wallet) {
+          const nextBalance = Math.max(0, wallet.balance_paise - totalToReverse);
+          await supabase
+            .from("wallets")
+            .update({ balance_paise: nextBalance, updated_at: new Date().toISOString() })
+            .eq("user_id", userId);
+        }
+      }
+    }
+
     const { error } = await supabase.from("orders").delete().eq("id", id);
 
     if (error) {
       if (error.code === "23503") {
         return NextResponse.json(
-          { error: "Cannot delete: this order has a linked wallet transaction or review. Remove those first." },
+          { error: "Cannot delete: this order still has a customer review linked to it. Remove the review first." },
           { status: 409 }
         );
       }
