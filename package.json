@@ -16,6 +16,7 @@
     "react-dom": "^19.0.0",
     "@supabase/supabase-js": "^2.48.1",
     "@supabase/ssr": "^0.5.2",
+    "@vercel/analytics": "^1.4.1",
     "framer-motion": "^11.18.0",
     "gsap": "^3.12.7",
     "lenis": "^1.1.20",
