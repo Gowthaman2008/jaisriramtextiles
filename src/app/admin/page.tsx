@@ -1622,15 +1622,15 @@ export default function AdminDashboardPage() {
               <p className="hidden lg:block text-xs font-semibold text-taupe uppercase tracking-wider mb-3 px-3">Store Administration</p>
               <nav className="flex lg:flex-col overflow-x-auto lg:overflow-x-visible gap-1 pb-1 lg:pb-0 lg:space-y-1 w-full whitespace-nowrap scrollbar-none">
                 <TabButton active={activeTab === "overview"} onClick={() => setActiveTab("overview")} icon={<LayoutDashboard className="w-4 h-4" />} label="Overview & KPI" />
-                <TabButton active={activeTab === "products"} onClick={() => setActiveTab("products")} icon={<ShoppingBag className="w-4 h-4" />} label="Product Catalog" badge={products.length} />
                 <TabButton active={activeTab === "orders"} onClick={() => setActiveTab("orders")} icon={<ShoppingCart className="w-4 h-4" />} label="Order Registry" badge={orders.length} />
+                <TabButton active={activeTab === "products"} onClick={() => setActiveTab("products")} icon={<ShoppingBag className="w-4 h-4" />} label="Product Catalog" badge={products.length} />
+                <TabButton active={activeTab === "cms"} onClick={() => setActiveTab("cms")} icon={<Wrench className="w-4 h-4" />} label="Storefront CMS" />
                 <TabButton active={activeTab === "refunds"} onClick={() => setActiveTab("refunds")} icon={<RefreshCw className="w-4 h-4" />} label="Issue Refund" badge={orders.filter(o => (o.status === "returned" || o.status === "rejected") && o.payment_status !== "refunded").length} />
+                <TabButton active={activeTab === "coupons"} onClick={() => setActiveTab("coupons")} icon={<Ticket className="w-4 h-4" />} label="Promo Codes" badge={coupons.length} />
                 <TabButton active={activeTab === "users"} onClick={() => setActiveTab("users")} icon={<Users className="w-4 h-4" />} label="User Management" badge={users.length} />
                 <TabButton active={activeTab === "user-inspector"} onClick={() => setActiveTab("user-inspector")} icon={<Search className="w-4 h-4" />} label="User Inspector" />
-                <TabButton active={activeTab === "coupons"} onClick={() => setActiveTab("coupons")} icon={<Ticket className="w-4 h-4" />} label="Promo Codes" badge={coupons.length} />
-                <TabButton active={activeTab === "communications"} onClick={() => setActiveTab("communications")} icon={<Mail className="w-4 h-4" />} label="Communications" badge={supportMessages.length + bulkInquiries.length + newsletterSubs.length} />
-                <TabButton active={activeTab === "cms"} onClick={() => setActiveTab("cms")} icon={<Wrench className="w-4 h-4" />} label="Storefront CMS" />
                 <TabButton active={activeTab === "visitor-history"} onClick={() => setActiveTab("visitor-history")} icon={<Activity className="w-4 h-4" />} label="Visitor Sessions" badge={analytics?.sessionHistory?.length} />
+                <TabButton active={activeTab === "communications"} onClick={() => setActiveTab("communications")} icon={<Mail className="w-4 h-4" />} label="Communications" badge={supportMessages.length + bulkInquiries.length + newsletterSubs.length} />
                 <TabButton active={activeTab === "storage"} onClick={() => setActiveTab("storage")} icon={<Database className="w-4 h-4" />} label="System & Storage" />
               </nav>
             </div>
@@ -2636,6 +2636,58 @@ export default function AdminDashboardPage() {
                         <p className="text-[10px] text-taupe"><strong>Member Since:</strong> {new Date(inspectedUser.profile.created_at).toLocaleDateString()}</p>
                         <p className="text-[10px] text-taupe"><strong>Phone Number:</strong> {inspectedUser.profile.phone || "None"}</p>
                         <p className="text-[10px] text-taupe"><strong>Auth Method:</strong> <span className="capitalize">{inspectedUser.profile.provider}</span></p>
+                      </div>
+                    </div>
+
+                    {/* Website Usage */}
+                    <div className="bg-white border border-line rounded-card p-4 shadow-soft">
+                      <h3 className="font-semibold text-sm text-ink pb-2 border-b border-line mb-3">Website Usage</h3>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                        <div>
+                          <p className="text-[10px] text-taupe uppercase tracking-wider font-semibold">Visits (Sessions)</p>
+                          <p className="font-display text-lg text-ink font-bold mt-0.5">{inspectedUser.usage.totalSessions}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-taupe uppercase tracking-wider font-semibold">Time Spent</p>
+                          <p className="font-display text-lg text-ink font-bold mt-0.5">{formatDuration(inspectedUser.usage.totalSecondsSpent)}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-taupe uppercase tracking-wider font-semibold">Pages Viewed</p>
+                          <p className="font-display text-lg text-ink font-bold mt-0.5">{inspectedUser.usage.totalPageViews}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-taupe uppercase tracking-wider font-semibold">Last Visit</p>
+                          <p className="font-display text-lg text-ink font-bold mt-0.5">
+                            {inspectedUser.usage.lastVisitAt ? new Date(inspectedUser.usage.lastVisitAt).toLocaleDateString() : "—"}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Lifetime Stats */}
+                    <div className="bg-white border border-line rounded-card p-4 shadow-soft">
+                      <h3 className="font-semibold text-sm text-ink pb-2 border-b border-line mb-3">Lifetime Stats</h3>
+                      <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+                        <div>
+                          <p className="text-[10px] text-taupe uppercase tracking-wider font-semibold">Lifetime Orders</p>
+                          <p className="font-display text-lg text-ink font-bold mt-0.5">{inspectedUser.lifetime.orders}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-taupe uppercase tracking-wider font-semibold">Lifetime Spent</p>
+                          <p className="font-display text-lg text-ink font-bold mt-0.5">{formatRupees(inspectedUser.lifetime.spentPaise)}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-taupe uppercase tracking-wider font-semibold">Cashback Earned</p>
+                          <p className="font-display text-lg text-success font-bold mt-0.5">{formatRupees(inspectedUser.lifetime.cashbackEarnedPaise)}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-taupe uppercase tracking-wider font-semibold">Lifetime Returns</p>
+                          <p className="font-display text-lg text-zari-deep font-bold mt-0.5">{inspectedUser.lifetime.returns}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-taupe uppercase tracking-wider font-semibold">Lifetime Rejected</p>
+                          <p className="font-display text-lg text-danger font-bold mt-0.5">{inspectedUser.lifetime.rejected}</p>
+                        </div>
                       </div>
                     </div>
 
@@ -4049,4 +4101,13 @@ function formatBytes(b: number) {
   if (b < 1024 * 1024) return `${(b / 1024).toFixed(1)} KB`;
   if (b < 1024 * 1024 * 1024) return `${(b / (1024 * 1024)).toFixed(1)} MB`;
   return `${(b / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+}
+
+function formatDuration(totalSeconds: number) {
+  if (!totalSeconds) return "0m";
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.round((totalSeconds % 3600) / 60);
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  if (minutes > 0) return `${minutes}m`;
+  return `${Math.round(totalSeconds)}s`;
 }

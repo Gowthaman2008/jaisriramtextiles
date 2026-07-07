@@ -88,12 +88,54 @@ export async function GET(request: Request) {
 
     if (ordersError) throw ordersError;
 
+    // 6. Fetch browsing sessions for website usage stats
+    const { data: sessions, error: sessionsError } = await supabase
+      .from("sessions")
+      .select("started_at, last_seen_at, page_views, device, browser")
+      .eq("user_id", profile.id)
+      .order("started_at", { ascending: false });
+
+    if (sessionsError) throw sessionsError;
+
+    const sessionList = sessions || [];
+    const totalSessions = sessionList.length;
+    const totalPageViews = sessionList.reduce((sum, s) => sum + (s.page_views || 0), 0);
+    const totalSecondsSpent = sessionList.reduce((sum, s) => {
+      const start = new Date(s.started_at).getTime();
+      const end = new Date(s.last_seen_at).getTime();
+      return sum + Math.max(0, (end - start) / 1000);
+    }, 0);
+    const lastVisitAt = sessionList[0]?.last_seen_at || null;
+
+    // 7. Compute lifetime stats
+    const ordersList = orders || [];
+    const lifetimeOrders = ordersList.length;
+    const lifetimeReturns = ordersList.filter((o) => o.status === "returned").length;
+    const lifetimeRejected = ordersList.filter((o) => o.status === "rejected").length;
+    const lifetimeSpentPaise = ordersList.reduce((sum, o) => sum + (o.total_paise || 0), 0);
+    const lifetimeCashbackEarnedPaise = (walletTransactions || [])
+      .filter((t) => t.type === "cashback_credit")
+      .reduce((sum, t) => sum + t.amount_paise, 0);
+
     return NextResponse.json({
       profile,
       wallet: wallet || { balance_paise: 0 },
       walletTransactions: walletTransactions || [],
       addresses: addresses || [],
-      orders: orders || [],
+      orders: ordersList,
+      usage: {
+        totalSessions,
+        totalPageViews,
+        totalSecondsSpent,
+        lastVisitAt,
+      },
+      lifetime: {
+        orders: lifetimeOrders,
+        returns: lifetimeReturns,
+        rejected: lifetimeRejected,
+        spentPaise: lifetimeSpentPaise,
+        cashbackEarnedPaise: lifetimeCashbackEarnedPaise,
+      },
     });
   } catch (error: any) {
     console.error("Inspect user error:", error);
