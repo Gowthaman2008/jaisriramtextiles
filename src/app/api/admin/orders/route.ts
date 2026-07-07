@@ -37,9 +37,10 @@ export async function GET() {
       .from("orders")
       .select(`
         *,
-        profiles (full_name, email),
+        profiles (full_name, email, phone),
         order_items (*),
-        order_events (*)
+        order_events (*),
+        coupons (code, type, value)
       `)
       .order("placed_at", { ascending: false });
 

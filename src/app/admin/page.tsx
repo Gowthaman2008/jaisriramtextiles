@@ -255,6 +255,10 @@ export default function AdminDashboardPage() {
   const [orderPendingDelete, setOrderPendingDelete] = useState<any>(null);
   const [deleteConfirmInput, setDeleteConfirmInput] = useState("");
   const [deletingOrder, setDeletingOrder] = useState(false);
+
+  // Emergency order-detail PDF lookup modal state
+  const [emergencyLookupOpen, setEmergencyLookupOpen] = useState(false);
+  const [emergencyLookupQuery, setEmergencyLookupQuery] = useState("");
   
   // Product Edit/Add State
   const [editingProduct, setEditingProduct] = useState<any>(null); // null means adding a new product, or closed
@@ -368,33 +372,60 @@ export default function AdminDashboardPage() {
 
   async function loadAllData() {
     setRefreshing(true);
-    try {
-      // 1. Fetch Analytics data
-      const analyticsRes = await fetch("/api/admin/analytics");
-      if (!analyticsRes.ok) throw new Error("Failed to load analytics");
-      const analyticsData = await analyticsRes.json();
-      setAnalytics(analyticsData);
 
-      // 2. Fetch Products
-      const productsRes = await fetch("/api/admin/products");
+    // Fire every request in parallel instead of one-after-another — a dashboard
+    // pulling ~10 independent resources was previously taking the *sum* of all
+    // their latencies instead of just the slowest one. Each result is still
+    // awaited and processed individually below, so one endpoint failing can't
+    // silently block the others from updating their own state.
+    const analyticsPromise = fetch("/api/admin/analytics");
+    const productsPromise = fetch("/api/admin/products");
+    const ordersPromise = fetch("/api/admin/orders");
+    const cmsPromise = fetch("/api/admin/cms");
+    const usersPromise = supabase.from("profiles").select("*").order("created_at", { ascending: false });
+    const categoriesPromise = supabase.from("categories").select("*").order("sort_order", { ascending: true });
+    const supportPromise = supabase.from("support_messages").select("*").order("created_at", { ascending: false });
+    const bulkPromise = supabase.from("bulk_inquiries").select("*").order("created_at", { ascending: false });
+    const subsPromise = supabase.from("newsletter_subscriptions").select("*").order("created_at", { ascending: false });
+    const couponsPromise = fetch("/api/admin/coupons");
+
+    let hadError = false;
+
+    try {
+      const analyticsRes = await analyticsPromise;
+      if (!analyticsRes.ok) throw new Error("Failed to load analytics");
+      setAnalytics(await analyticsRes.json());
+    } catch (err) {
+      hadError = true;
+      console.error("Load analytics failed:", err);
+    }
+
+    try {
+      const productsRes = await productsPromise;
       if (!productsRes.ok) throw new Error("Failed to load products");
       const productsData = await productsRes.json();
       setProducts(productsData && productsData.length > 0 ? productsData : DEFAULT_PRODUCTS);
+    } catch (err) {
+      hadError = true;
+      console.error("Load products failed:", err);
+    }
 
-      // 3. Fetch Orders
-      const ordersRes = await fetch("/api/admin/orders");
+    try {
+      const ordersRes = await ordersPromise;
       if (!ordersRes.ok) throw new Error("Failed to load orders");
-      const ordersData = await ordersRes.json();
-      setOrders(ordersData);
+      setOrders(await ordersRes.json());
+    } catch (err) {
+      hadError = true;
+      console.error("Load orders failed:", err);
+    }
 
-      // 4. Fetch CMS (carousel + banners)
-      const cmsRes = await fetch("/api/admin/cms");
+    try {
+      const cmsRes = await cmsPromise;
       if (!cmsRes.ok) throw new Error("Failed to load CMS data");
       const cmsData = await cmsRes.json();
       setCmsSlides(cmsData.slides && cmsData.slides.length > 0 ? cmsData.slides : DEFAULT_SLIDES);
       setCmsBanners(cmsData.banners || []);
 
-      // Extract announcements from banners data
       const annBanner = (cmsData.banners || []).find((b: any) => b.placement === "announcement");
       if (annBanner) {
         setAnnouncementBannerId(annBanner.id);
@@ -403,58 +434,65 @@ export default function AdminDashboardPage() {
         setAnnouncementBannerId(null);
         setAnnouncementList(DEFAULT_ANNOUNCEMENTS);
       }
+    } catch (err) {
+      hadError = true;
+      console.error("Load CMS data failed:", err);
+    }
 
-      // 5. Fetch Users directly via Supabase client (authorized for staff/admin)
-      const { data: profilesList, error: profilesError } = await supabase
-        .from("profiles")
-        .select("*")
-        .order("created_at", { ascending: false });
-      
+    try {
+      const { data: profilesList, error: profilesError } = await usersPromise;
       if (profilesError) throw profilesError;
       setUsers(profilesList || []);
+    } catch (err) {
+      hadError = true;
+      console.error("Load users failed:", err);
+    }
 
-      // 6. Fetch Categories directly via Supabase
-      const { data: categoriesList, error: catError } = await supabase
-        .from("categories")
-        .select("*")
-        .order("sort_order", { ascending: true });
+    try {
+      const { data: categoriesList, error: catError } = await categoriesPromise;
       if (catError) throw catError;
       setCategories(categoriesList || []);
-
-      // 7. Fetch Support Messages
-      const { data: supportList } = await supabase
-        .from("support_messages")
-        .select("*")
-        .order("created_at", { ascending: false });
-      setSupportMessages(supportList || []);
-
-      // 8. Fetch Bulk Inquiries
-      const { data: bulkList } = await supabase
-        .from("bulk_inquiries")
-        .select("*")
-        .order("created_at", { ascending: false });
-      setBulkInquiries(bulkList || []);
-
-      // 9. Fetch Newsletter Subscriptions
-      const { data: subsList } = await supabase
-        .from("newsletter_subscriptions")
-        .select("*")
-        .order("created_at", { ascending: false });
-      setNewsletterSubs(subsList || []);
-
-      // 10. Fetch Coupons
-      const couponsRes = await fetch("/api/admin/coupons");
-      if (!couponsRes.ok) throw new Error("Failed to load promo codes");
-      const couponsData = await couponsRes.json();
-      setCoupons(couponsData || []);
-
-      setError("");
-    } catch (err: any) {
-      setError(err.message || "Failed to load dashboard data");
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
+    } catch (err) {
+      hadError = true;
+      console.error("Load categories failed:", err);
     }
+
+    try {
+      const { data: supportList } = await supportPromise;
+      setSupportMessages(supportList || []);
+    } catch (err) {
+      hadError = true;
+      console.error("Load support messages failed:", err);
+    }
+
+    try {
+      const { data: bulkList } = await bulkPromise;
+      setBulkInquiries(bulkList || []);
+    } catch (err) {
+      hadError = true;
+      console.error("Load bulk inquiries failed:", err);
+    }
+
+    try {
+      const { data: subsList } = await subsPromise;
+      setNewsletterSubs(subsList || []);
+    } catch (err) {
+      hadError = true;
+      console.error("Load newsletter subscriptions failed:", err);
+    }
+
+    try {
+      const couponsRes = await couponsPromise;
+      if (!couponsRes.ok) throw new Error("Failed to load promo codes");
+      setCoupons((await couponsRes.json()) || []);
+    } catch (err) {
+      hadError = true;
+      console.error("Load coupons failed:", err);
+    }
+
+    setError(hadError ? "Some dashboard data failed to load — check the browser console for details." : "");
+    setLoading(false);
+    setRefreshing(false);
   }
 
   // --- CMS Handling ---
@@ -1276,17 +1314,19 @@ export default function AdminDashboardPage() {
   }
 
   // --- Emergency single-page order lookup (by Order Number or Order ID) ---
-  function handleEmergencyOrderLookup() {
-    const query = prompt("Enter Order Number (e.g. JSRT-2026-785305) or Order ID to download a full detail sheet:");
-    if (!query) return;
-    const trimmed = query.trim().toLowerCase();
+  function confirmEmergencyOrderLookup() {
+    const trimmed = emergencyLookupQuery.trim().toLowerCase();
+    if (!trimmed) return;
     const order = orders.find((o: any) =>
       o.order_number?.toLowerCase() === trimmed || o.id?.toLowerCase() === trimmed
     );
     if (!order) {
-      alert(`No order found matching "${query}". Check the Order Number and try again.`);
+      alert(`No order found matching "${emergencyLookupQuery}". Check the Order Number and try again.`);
       return;
     }
+    setEmergencyLookupOpen(false);
+    // Called synchronously within this click handler (no native prompt() in between)
+    // so window.open() below still counts as a direct user gesture and isn't popup-blocked.
     printOrderEmergencySheet(order);
   }
 
@@ -1307,6 +1347,7 @@ export default function AdminDashboardPage() {
         <td style="padding: 6px; border-bottom: 1px solid #EFE9DC; text-align: right;">${formatRupees(item.unit_price_paise)}</td>
         <td style="padding: 6px; border-bottom: 1px solid #EFE9DC; text-align: center;">${item.quantity}</td>
         <td style="padding: 6px; border-bottom: 1px solid #EFE9DC; text-align: right;">${formatRupees(item.unit_price_paise * item.quantity)}</td>
+        <td style="padding: 6px; border-bottom: 1px solid #EFE9DC; text-align: right;">${formatRupees(item.cashback_paise || 0)}</td>
       </tr>
     `).join("");
 
@@ -1377,6 +1418,7 @@ export default function AdminDashboardPage() {
               <h3>Customer</h3>
               <p>Name: <strong>${order.profiles?.full_name || "Guest Checkout"}</strong></p>
               <p>Email: ${order.profiles?.email || "—"}</p>
+              <p>Phone: ${order.profiles?.phone || "—"}</p>
               <p>User ID: <span style="font-family: monospace; font-size: 10px;">${order.user_id}</span></p>
               <p>Razorpay Order ID: ${order.razorpay_order_id || "—"}</p>
               <p>Razorpay Payment ID: ${order.razorpay_payment_id || "—"}</p>
@@ -1394,11 +1436,12 @@ export default function AdminDashboardPage() {
           <table>
             <thead>
               <tr>
-                <th style="width: 40%;">Product</th>
-                <th style="width: 15%; text-align: center;">Variant</th>
+                <th style="width: 32%;">Product</th>
+                <th style="width: 13%; text-align: center;">Variant</th>
                 <th style="width: 15%; text-align: right;">Unit Price</th>
                 <th style="width: 10%; text-align: center;">Qty</th>
-                <th style="width: 20%; text-align: right;">Total</th>
+                <th style="width: 15%; text-align: right;">Total</th>
+                <th style="width: 15%; text-align: right;">Cashback</th>
               </tr>
             </thead>
             <tbody>${itemsRows}</tbody>
@@ -1406,6 +1449,7 @@ export default function AdminDashboardPage() {
 
           <div class="totals">
             <div class="totals-row"><span>Subtotal:</span><span>${formatRupees(order.subtotal_paise)}</span></div>
+            ${order.coupon_id ? `<div class="totals-row"><span>Coupon Applied:</span><span>${order.coupons?.code || order.coupon_id}</span></div>` : ""}
             ${order.discount_paise > 0 ? `<div class="totals-row"><span>Coupon Discount:</span><span>-${formatRupees(order.discount_paise)}</span></div>` : ""}
             ${order.wallet_used_paise > 0 ? `<div class="totals-row"><span>Wallet Used:</span><span>-${formatRupees(order.wallet_used_paise)}</span></div>` : ""}
             <div class="totals-row"><span>Shipping:</span><span>${order.shipping_paise === 0 ? "FREE" : formatRupees(order.shipping_paise)}</span></div>
@@ -2067,7 +2111,7 @@ export default function AdminDashboardPage() {
                   <>
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                       <p className="text-xs text-taupe">Look up any single order by its Order Number or Order ID and download a full one-page detail sheet — handy for emergency/offline reference.</p>
-                      <Button size="sm" variant="outline" onClick={handleEmergencyOrderLookup} className="flex-shrink-0">
+                      <Button size="sm" variant="outline" onClick={() => { setEmergencyLookupQuery(""); setEmergencyLookupOpen(true); }} className="flex-shrink-0">
                         <Download className="w-4 h-4" /> Download Order Detail (PDF)
                       </Button>
                     </div>
@@ -3136,6 +3180,50 @@ $$ language plpgsql;`}
                 className="px-4 py-2 text-xs font-semibold text-white bg-danger rounded disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
               >
                 {deletingOrder ? "Deleting…" : "Delete Order"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {emergencyLookupOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-ink/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-card border border-line shadow-lift w-full max-w-md p-6 space-y-4">
+            <div>
+              <h3 className="font-display text-lg text-ink">Download order detail sheet</h3>
+              <p className="text-xs text-taupe mt-1">
+                Enter the Order Number (e.g. JSRT-2026-785305) or Order ID to generate a full one-page PDF reference for that order.
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-bold text-taupe">Order Number or Order ID</label>
+              <input
+                type="text"
+                autoFocus
+                value={emergencyLookupQuery}
+                onChange={(e) => setEmergencyLookupQuery(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") confirmEmergencyOrderLookup(); }}
+                placeholder="JSRT-2026-785305"
+                className="rounded border border-line bg-white px-3 py-2 text-sm outline-none focus:border-zari"
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setEmergencyLookupOpen(false)}
+                className="px-4 py-2 text-xs font-semibold text-taupe hover:text-ink border border-line rounded bg-white cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={!emergencyLookupQuery.trim()}
+                onClick={confirmEmergencyOrderLookup}
+                className="px-4 py-2 text-xs font-semibold text-white bg-zari rounded disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+              >
+                Download PDF
               </button>
             </div>
           </div>

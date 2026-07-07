@@ -89,12 +89,16 @@ export default function AccountPage() {
         setUser(authUser);
         setAddrRecipient(authUser.user_metadata?.full_name || authUser.user_metadata?.name || "");
 
-        // Fetch user profile details and check for admin/staff authorization role
-        const { data: profile, error: profileErr } = await supabase
-          .from("profiles")
-          .select("role, full_name, phone")
-          .eq("id", authUser.id)
-          .single();
+        // Profile lookup and account data (orders/wallet/addresses) don't depend on
+        // each other — run them in parallel rather than one after another.
+        const [{ data: profile, error: profileErr }] = await Promise.all([
+          supabase
+            .from("profiles")
+            .select("role, full_name, phone")
+            .eq("id", authUser.id)
+            .single(),
+          fetchAccountData(authUser.id),
+        ]);
 
         if (profileErr) {
           console.error("DEBUG profiles query error:", profileErr);
@@ -107,8 +111,6 @@ export default function AccountPage() {
 
         const isUserAdmin = profile && ["admin", "staff"].includes(profile.role);
         setIsAdmin(!!isUserAdmin);
-
-        await fetchAccountData(authUser.id);
       } catch (err) {
         console.error("Account init failed:", err);
       } finally {
@@ -121,22 +123,29 @@ export default function AccountPage() {
   async function fetchAccountData(userId: string) {
     setRefreshing(true);
     try {
-      // 1. Fetch Orders & items
-      const { data: ordersData } = await supabase
-        .from("orders")
-        .select("*, order_items(*)")
-        .eq("user_id", userId)
-        .order("placed_at", { ascending: false });
-      setOrders(ordersData || []);
+      // Run independent queries in parallel instead of one-after-another —
+      // cuts three sequential round-trips down to the time of the slowest single one.
+      const [ordersRes, walletRes, addrRes] = await Promise.all([
+        supabase
+          .from("orders")
+          .select("*, order_items(*)")
+          .eq("user_id", userId)
+          .order("placed_at", { ascending: false }),
+        supabase
+          .from("wallet_transactions")
+          .select("*")
+          .eq("user_id", userId)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("addresses")
+          .select("*")
+          .eq("user_id", userId)
+          .order("is_default", { ascending: false }),
+      ]);
 
-      // 2. Fetch Wallet Transactions & Compute balance dynamically
-      const { data: txns } = await supabase
-        .from("wallet_transactions")
-        .select("*")
-        .eq("user_id", userId)
-        .order("created_at", { ascending: false });
-      
-      const history = txns || [];
+      setOrders(ordersRes.data || []);
+
+      const history = walletRes.data || [];
       setWalletHistory(history);
 
       let activeBal = 0;
@@ -153,13 +162,7 @@ export default function AccountPage() {
       });
       setWalletBalance(Math.max(0, activeBal));
 
-      // 4. Fetch Addresses
-      const { data: addrs } = await supabase
-        .from("addresses")
-        .select("*")
-        .eq("user_id", userId)
-        .order("is_default", { ascending: false });
-      setAddresses(addrs || []);
+      setAddresses(addrRes.data || []);
     } catch (err) {
       console.error("Fetch account data failed:", err);
     } finally {
