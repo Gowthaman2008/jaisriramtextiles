@@ -103,9 +103,14 @@ function SignInPageContent() {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="password" className="text-sm font-medium text-ink">
-                Password
-              </label>
+              <div className="flex items-center justify-between">
+                <label htmlFor="password" className="text-sm font-medium text-ink">
+                  Password
+                </label>
+                <Link href="/forgot-password" className="text-xs font-medium text-zari-deep hover:underline">
+                  Forgot password?
+                </Link>
+              </div>
               <input
                 id="password"
                 type="password"

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/admin";
+import { sendEmail, orderDeliveredEmailHtml } from "@/lib/email";
 
 async function checkAdminAuth() {
   try {
@@ -64,6 +65,7 @@ export async function PUT(request: Request) {
       tracking_id,
       courier_tracking_url,
       shipping_address,
+      rejection_reason,
       note,
     } = await request.json();
 
@@ -71,12 +73,16 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: "Order ID is required" }, { status: 400 });
     }
 
+    if (status === "rejected" && !rejection_reason?.trim()) {
+      return NextResponse.json({ error: "A rejection reason is required" }, { status: 400 });
+    }
+
     const supabase = createServiceClient();
 
-    // Load original order to compare status
+    // Load original order to compare status (and enough detail to email on delivery)
     const { data: originalOrder } = await supabase
       .from("orders")
-      .select("status")
+      .select("status, order_number, total_paise, profiles(email, full_name), order_items(name, variant, unit_price_paise, quantity)")
       .eq("id", id)
       .single();
 
@@ -86,6 +92,7 @@ export async function PUT(request: Request) {
     if (tracking_id !== undefined) updateFields.tracking_id = tracking_id || null;
     if (courier_tracking_url !== undefined) updateFields.courier_tracking_url = courier_tracking_url || null;
     if (shipping_address) updateFields.shipping_address = shipping_address;
+    if (rejection_reason !== undefined) updateFields.rejection_reason = rejection_reason?.trim() || null;
 
     // 2. Perform update
     const { error: updateError } = await supabase
@@ -102,13 +109,65 @@ export async function PUT(request: Request) {
         .insert({
           order_id: id,
           status: status,
-          note: note || `Order status updated to '${status}' by admin/staff`,
+          note: status === "rejected" ? rejection_reason.trim() : (note || `Order status updated to '${status}' by admin/staff`),
         });
+
+      // 4. Send delivery confirmation email on the pending -> delivered transition
+      if (status === "delivered") {
+        const profile = originalOrder.profiles as any;
+        if (profile?.email) {
+          await sendEmail({
+            to: profile.email,
+            subject: `Order Delivered — ${originalOrder.order_number} | JAI SRI RAM TEXTILES`,
+            html: orderDeliveredEmailHtml({
+              orderNumber: originalOrder.order_number,
+              name: profile.full_name,
+              items: originalOrder.order_items || [],
+              totalPaise: originalOrder.total_paise,
+            }),
+          }).catch((err) => console.error("Delivery email failed:", err));
+        }
+      }
     }
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
     console.error("Update order error:", error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
+// DELETE: permanently remove an order
+export async function DELETE(request: Request) {
+  const auth = await checkAdminAuth();
+  if (!auth) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get("id");
+
+    if (!id) {
+      return NextResponse.json({ error: "Order ID is required" }, { status: 400 });
+    }
+
+    const supabase = createServiceClient();
+    const { error } = await supabase.from("orders").delete().eq("id", id);
+
+    if (error) {
+      if (error.code === "23503") {
+        return NextResponse.json(
+          { error: "Cannot delete: this order has a linked wallet transaction or review. Remove those first." },
+          { status: 409 }
+        );
+      }
+      throw error;
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    console.error("Delete order error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

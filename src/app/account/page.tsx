@@ -90,11 +90,15 @@ export default function AccountPage() {
         setAddrRecipient(authUser.user_metadata?.full_name || authUser.user_metadata?.name || "");
 
         // Fetch user profile details and check for admin/staff authorization role
-        const { data: profile } = await supabase
+        const { data: profile, error: profileErr } = await supabase
           .from("profiles")
           .select("role, full_name, phone")
           .eq("id", authUser.id)
           .single();
+
+        if (profileErr) {
+          console.error("DEBUG profiles query error:", profileErr);
+        }
 
         if (profile) {
           setProfileName(profile.full_name || authUser.user_metadata?.full_name || authUser.user_metadata?.name || "");
@@ -518,7 +522,22 @@ export default function AccountPage() {
                 </span>
               </button>
 
-              {/* Card 2: Cashback Wallet */}
+              {/* Card 2: Account Details */}
+              <button
+                onClick={() => setActiveTab("profile")}
+                className="zari-frame flex flex-col text-left rounded-card bg-white p-6 shadow-soft hover:shadow-lift transition-all duration-300 border border-line group"
+              >
+                <span className="grid h-10 w-10 place-items-center rounded-full bg-cream text-taupe group-hover:bg-zari-tint group-hover:text-zari-deep transition-colors border border-line mb-4">
+                  <User size={18} />
+                </span>
+                <p className="font-bold text-ink text-base">Account Details</p>
+                <p className="text-xs text-taupe mt-1 flex-1">Update your personal contact details, mobile number, and full name.</p>
+                <span className="text-[10px] font-bold text-zari-deep mt-4 group-hover:translate-x-1 transition-transform">
+                  Edit profile &rarr;
+                </span>
+              </button>
+
+              {/* Card 3: Cashback Wallet */}
               <button
                 onClick={() => setActiveTab("wallet")}
                 className="zari-frame flex flex-col text-left rounded-card bg-white p-6 shadow-soft hover:shadow-lift transition-all duration-300 border border-line group"
@@ -533,7 +552,7 @@ export default function AccountPage() {
                 </span>
               </button>
 
-              {/* Card 3: Wishlist */}
+              {/* Card 4: Wishlist */}
               <button
                 onClick={() => setActiveTab("wishlist")}
                 className="zari-frame flex flex-col text-left rounded-card bg-white p-6 shadow-soft hover:shadow-lift transition-all duration-300 border border-line group"
@@ -548,7 +567,7 @@ export default function AccountPage() {
                 </span>
               </button>
 
-              {/* Card 4: Addresses */}
+              {/* Card 5: Addresses */}
               <button
                 onClick={() => setActiveTab("addresses")}
                 className="zari-frame flex flex-col text-left rounded-card bg-white p-6 shadow-soft hover:shadow-lift transition-all duration-300 border border-line group"
@@ -563,7 +582,7 @@ export default function AccountPage() {
                 </span>
               </button>
 
-              {/* Card 5: Contact Support */}
+              {/* Card 6: Contact Support */}
               <button
                 onClick={() => setActiveTab("contact")}
                 className="zari-frame flex flex-col text-left rounded-card bg-white p-6 shadow-soft hover:shadow-lift transition-all duration-300 border border-line group"
@@ -575,21 +594,6 @@ export default function AccountPage() {
                 <p className="text-xs text-taupe mt-1 flex-1">Submit inquiries directly to our weaving support desk.</p>
                 <span className="text-[10px] font-bold text-zari-deep mt-4 group-hover:translate-x-1 transition-transform">
                   Send message &rarr;
-                </span>
-              </button>
-
-              {/* Card 6: Account Details */}
-              <button
-                onClick={() => setActiveTab("profile")}
-                className="zari-frame flex flex-col text-left rounded-card bg-white p-6 shadow-soft hover:shadow-lift transition-all duration-300 border border-line group"
-              >
-                <span className="grid h-10 w-10 place-items-center rounded-full bg-cream text-taupe group-hover:bg-zari-tint group-hover:text-zari-deep transition-colors border border-line mb-4">
-                  <User size={18} />
-                </span>
-                <p className="font-bold text-ink text-base">Account Details</p>
-                <p className="text-xs text-taupe mt-1 flex-1">Update your personal contact details, mobile number, and full name.</p>
-                <span className="text-[10px] font-bold text-zari-deep mt-4 group-hover:translate-x-1 transition-transform">
-                  Edit profile &rarr;
                 </span>
               </button>
             </div>
@@ -621,7 +625,8 @@ export default function AccountPage() {
                       </div>
                       <div className="flex items-center gap-4">
                         <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold uppercase ${
-                          o.status === "delivered" ? "bg-success/15 text-success" : 
+                          o.status === "delivered" ? "bg-success/15 text-success" :
+                          o.status === "rejected" ? "bg-danger/15 text-danger" :
                           o.status === "pending" ? "bg-amber-100 text-amber-800" : "bg-blue-50 text-blue-800"
                         }`}>
                           {o.status}
@@ -651,6 +656,14 @@ export default function AccountPage() {
                             <span className="font-semibold text-ink">{formatINR(item.unit_price_paise * item.quantity, true)}</span>
                           </div>
                         ))}
+
+                        {/* Rejection Reason Display */}
+                        {o.status === "rejected" && o.rejection_reason && (
+                          <div className="mt-6 p-4 bg-danger/5 border border-danger/30 rounded-md text-xs space-y-1.5">
+                            <p className="font-bold text-danger uppercase text-[9px] tracking-wider">Order Rejected</p>
+                            <p className="text-ink">{o.rejection_reason}</p>
+                          </div>
+                        )}
 
                         {/* Tracking Details Display */}
                         {(o.tracking_id || o.courier_tracking_url) ? (

@@ -72,18 +72,6 @@ export function ProfilePrompt() {
 
       if (updateErr) throw updateErr;
 
-      // 2. Log to public/users.csv spreadsheet
-      await fetch("/api/auth/signup-log", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: user.email,
-          name: name.trim(),
-          phone: phone.trim(),
-          provider: "google",
-        }),
-      }).catch(err => console.error("CSV Logging error:", err));
-
       setShow(false);
     } catch (err: any) {
       console.error("Failed to save profile details:", err);

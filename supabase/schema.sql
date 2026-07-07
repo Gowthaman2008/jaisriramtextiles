@@ -8,7 +8,7 @@ create extension if not exists "pgcrypto";
 
 -- ---------- Enums ----------
 create type user_role        as enum ('customer', 'staff', 'admin');
-create type order_status     as enum ('pending', 'confirmed', 'packed', 'shipped', 'out_for_delivery', 'delivered', 'returned');
+create type order_status     as enum ('pending', 'confirmed', 'packed', 'shipped', 'out_for_delivery', 'delivered', 'returned', 'rejected');
 create type payment_status   as enum ('created', 'paid', 'failed', 'refunded');
 create type coupon_type      as enum ('percent', 'flat');
 create type wallet_txn_type  as enum ('cashback_credit', 'redeem', 'expiry', 'admin_adjust');
@@ -164,6 +164,7 @@ create table orders (
 
   placed_at           timestamptz not null default now(),
   delivered_at        timestamptz,
+  rejection_reason    text,                        -- shown to the customer when status = 'rejected'
   -- Users cannot cancel orders (business rule): no cancel status/path exposed.
   constraint wallet_within_cap check (wallet_used_paise <= (subtotal_paise / 5))
 );

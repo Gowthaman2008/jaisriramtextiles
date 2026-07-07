@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/admin";
-import fs from "fs";
-import path from "path";
 
 async function checkAdminAuth() {
   try {
@@ -59,21 +57,13 @@ export async function GET() {
 
     const csvContent = headers + rows + "\n";
 
-    // 3. Write/Sync to the local file public/users.csv
-    const publicDir = path.join(process.cwd(), "public");
-    const filePath = path.join(publicDir, "users.csv");
-
-    if (!fs.existsSync(publicDir)) {
-      fs.mkdirSync(publicDir, { recursive: true });
-    }
-    fs.writeFileSync(filePath, csvContent, "utf8");
-
-    // 4. Return as downloadable file attachment
+    // Return as downloadable file attachment (generated fresh each request —
+    // serverless functions have a read-only filesystem, so this can't be cached to disk).
     return new Response(csvContent, {
       status: 200,
       headers: {
         "Content-Type": "text/csv; charset=utf-8",
-        "Content-Disposition": "attachment; filename=users.csv",
+        "Content-Disposition": 'attachment; filename="users.csv"; filename*=UTF-8\'\'users.csv',
         "Cache-Control": "no-store, no-cache, must-revalidate",
       },
     });

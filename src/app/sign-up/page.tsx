@@ -33,13 +33,6 @@ export default function SignUpPage() {
       return;
     }
 
-    // Log the user signup to local spreadsheet users.csv
-    await fetch("/api/auth/signup-log", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, name, phone: phone.trim(), provider: "email" }),
-    }).catch((err) => console.error("CSV Logging error:", err));
-
     setDone(true);
     setLoading(false);
   }

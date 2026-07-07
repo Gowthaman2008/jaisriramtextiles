@@ -250,6 +250,11 @@ export default function AdminDashboardPage() {
   // Selection states for Modals/Inspectors
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [selectedSession, setSelectedSession] = useState<any>(null);
+
+  // Delete-order confirmation modal state
+  const [orderPendingDelete, setOrderPendingDelete] = useState<any>(null);
+  const [deleteConfirmInput, setDeleteConfirmInput] = useState("");
+  const [deletingOrder, setDeletingOrder] = useState(false);
   
   // Product Edit/Add State
   const [editingProduct, setEditingProduct] = useState<any>(null); // null means adding a new product, or closed
@@ -285,6 +290,7 @@ export default function AdminDashboardPage() {
   const [orderTrackingId, setOrderTrackingId] = useState("");
   const [orderTrackingUrl, setOrderTrackingUrl] = useState("");
   const [orderNote, setOrderNote] = useState("");
+  const [orderRejectionReason, setOrderRejectionReason] = useState("");
   const [orderAddress, setOrderAddress] = useState<any>({});
   const [supportMessages, setSupportMessages] = useState<any[]>([]);
   const [bulkInquiries, setBulkInquiries] = useState<any[]>([]);
@@ -763,11 +769,17 @@ export default function AdminDashboardPage() {
     setOrderTrackingUrl(order.courier_tracking_url || "");
     setOrderAddress({ ...order.shipping_address });
     setOrderNote("");
+    setOrderRejectionReason(order.rejection_reason || "");
   }
 
   async function handleUpdateOrder(e: React.FormEvent) {
     e.preventDefault();
     if (!selectedOrder) return;
+
+    if (orderStatus === "rejected" && !orderRejectionReason.trim()) {
+      alert("Please enter a reason for rejecting this order.");
+      return;
+    }
 
     try {
       const res = await fetch("/api/admin/orders", {
@@ -779,11 +791,15 @@ export default function AdminDashboardPage() {
           tracking_id: orderTrackingId,
           courier_tracking_url: orderTrackingUrl,
           shipping_address: orderAddress,
+          rejection_reason: orderStatus === "rejected" ? orderRejectionReason.trim() : null,
           note: orderNote.trim() || undefined
         })
       });
 
-      if (!res.ok) throw new Error("Failed to update order");
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to update order");
+      }
       alert("Order updated successfully!");
       setSelectedOrder(null);
       await loadAllData();
@@ -794,6 +810,12 @@ export default function AdminDashboardPage() {
 
   // --- Users management ---
   async function updateUserRole(userId: string, role: string) {
+    const previousUsers = users;
+    // Update immediately so the dropdown reflects the change without depending
+    // on the full loadAllData() chain (which can throw early on an unrelated
+    // section and never reach the users refetch).
+    setUsers(prev => prev.map(u => (u.id === userId ? { ...u, role } : u)));
+
     try {
       const res = await fetch("/api/admin/users/export", {
         method: "PUT",
@@ -801,16 +823,96 @@ export default function AdminDashboardPage() {
         body: JSON.stringify({ userId, role })
       });
       if (!res.ok) throw new Error("Failed to update user role");
-      alert("User role updated successfully!");
-      await loadAllData();
     } catch (err: any) {
+      setUsers(previousUsers);
       alert("Error: " + err.message);
     }
   }
 
   // Sync / Export excel sheet
-  async function handleExportUsers() {
-    window.open("/api/admin/users/export", "_blank");
+  function handleExportUsers() {
+    const a = document.createElement("a");
+    a.href = "/api/admin/users/export";
+    a.download = "users.csv";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }
+
+  // Print / Save-as-PDF of all users
+  function printUsersPDF() {
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+
+    const rows = users.map((u: any) => `
+      <tr>
+        <td style="padding: 10px; border-bottom: 1px solid #EFE9DC;">${u.full_name || "—"}</td>
+        <td style="padding: 10px; border-bottom: 1px solid #EFE9DC;">${u.email}</td>
+        <td style="padding: 10px; border-bottom: 1px solid #EFE9DC;">${u.phone || "—"}</td>
+        <td style="padding: 10px; border-bottom: 1px solid #EFE9DC; text-transform: capitalize;">${u.role}</td>
+        <td style="padding: 10px; border-bottom: 1px solid #EFE9DC; text-transform: capitalize;">${u.provider}</td>
+        <td style="padding: 10px; border-bottom: 1px solid #EFE9DC;">${new Date(u.created_at).toLocaleDateString("en-IN", { dateStyle: "medium" })}</td>
+      </tr>
+    `).join("");
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>User Directory - JAI SRI RAM TEXTILES</title>
+          <style>
+            body { font-family: 'Segoe UI', Roboto, sans-serif; color: #2A2622; margin: 0; padding: 40px; line-height: 1.5; background-color: #ffffff; }
+            .header { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 2px solid #B08D4C; padding-bottom: 20px; margin-bottom: 30px; }
+            .brand { font-family: Georgia, serif; font-size: 24px; font-weight: bold; color: #2A2622; letter-spacing: 1px; }
+            .brand-subtitle { font-size: 11px; color: #6E655A; text-transform: uppercase; letter-spacing: 2px; margin-top: 4px; }
+            .meta { font-size: 12px; color: #6E655A; text-align: right; }
+            table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+            th { background-color: #2A2622; color: #FBF9F4; padding: 12px 10px; text-align: left; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+            .footer-note { text-align: center; font-size: 12px; color: #9A9084; margin-top: 40px; border-top: 1px solid #E5DFD2; padding-top: 20px; }
+            @media print { body { padding: 0; } }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div>
+              <div class="brand">JAI SRI RAM TEXTILES</div>
+              <div class="brand-subtitle">User Directory</div>
+            </div>
+            <div class="meta">
+              Generated: ${new Date().toLocaleString("en-IN", { dateStyle: "long", timeStyle: "short" })}<br/>
+              Total Users: <strong>${users.length}</strong>
+            </div>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Phone</th>
+                <th>Role</th>
+                <th>Sign-up Provider</th>
+                <th>Joined Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rows}
+            </tbody>
+          </table>
+
+          <div class="footer-note">
+            Confidential — for internal administrative use only.
+          </div>
+
+          <script>
+            window.onload = function() {
+              window.print();
+              setTimeout(function(){ window.close(); }, 500);
+            }
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
   }
 
   // --- Coupons / Promo Codes Management ---
@@ -868,6 +970,30 @@ export default function AdminDashboardPage() {
       await loadAllData();
     } catch (err: any) {
       alert("Error: " + err.message);
+    }
+  }
+
+  function promptDeleteOrder(order: any) {
+    setOrderPendingDelete(order);
+    setDeleteConfirmInput("");
+  }
+
+  async function handleDeleteOrder(id: string) {
+    setDeletingOrder(true);
+    try {
+      const res = await fetch(`/api/admin/orders?id=${id}`, {
+        method: "DELETE"
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Failed to delete order");
+      if (selectedOrder?.id === id) setSelectedOrder(null);
+      setOrderPendingDelete(null);
+      setDeleteConfirmInput("");
+      await loadAllData();
+    } catch (err: any) {
+      alert("Error: " + err.message);
+    } finally {
+      setDeletingOrder(false);
     }
   }
 
@@ -1149,6 +1275,172 @@ export default function AdminDashboardPage() {
     printWindow.document.close();
   }
 
+  // --- Emergency single-page order lookup (by Order Number or Order ID) ---
+  function handleEmergencyOrderLookup() {
+    const query = prompt("Enter Order Number (e.g. JSRT-2026-785305) or Order ID to download a full detail sheet:");
+    if (!query) return;
+    const trimmed = query.trim().toLowerCase();
+    const order = orders.find((o: any) =>
+      o.order_number?.toLowerCase() === trimmed || o.id?.toLowerCase() === trimmed
+    );
+    if (!order) {
+      alert(`No order found matching "${query}". Check the Order Number and try again.`);
+      return;
+    }
+    printOrderEmergencySheet(order);
+  }
+
+  function printOrderEmergencySheet(order: any) {
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+
+    const addr = order.shipping_address || {};
+    const items = order.order_items || [];
+    const events = [...(order.order_events || [])].sort(
+      (a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    );
+
+    const itemsRows = items.map((item: any) => `
+      <tr>
+        <td style="padding: 6px; border-bottom: 1px solid #EFE9DC;">${item.name}</td>
+        <td style="padding: 6px; border-bottom: 1px solid #EFE9DC; text-align: center;">${item.variant || "—"}</td>
+        <td style="padding: 6px; border-bottom: 1px solid #EFE9DC; text-align: right;">${formatRupees(item.unit_price_paise)}</td>
+        <td style="padding: 6px; border-bottom: 1px solid #EFE9DC; text-align: center;">${item.quantity}</td>
+        <td style="padding: 6px; border-bottom: 1px solid #EFE9DC; text-align: right;">${formatRupees(item.unit_price_paise * item.quantity)}</td>
+      </tr>
+    `).join("");
+
+    const eventsRows = events.length > 0 ? events.map((ev: any) => `
+      <tr>
+        <td style="padding: 5px; border-bottom: 1px solid #EFE9DC; text-transform: capitalize;">${ev.status}</td>
+        <td style="padding: 5px; border-bottom: 1px solid #EFE9DC;">${ev.note || "—"}</td>
+        <td style="padding: 5px; border-bottom: 1px solid #EFE9DC;">${new Date(ev.created_at).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}</td>
+      </tr>
+    `).join("") : `<tr><td colspan="3" style="padding: 5px; color: #9A9084;">No status history logged.</td></tr>`;
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Emergency Order Sheet - ${order.order_number}</title>
+          <style>
+            body { font-family: 'Segoe UI', Roboto, sans-serif; color: #2A2622; margin: 0; padding: 28px; line-height: 1.4; font-size: 12px; background-color: #ffffff; }
+            .header { display: flex; justify-content: space-between; border-bottom: 2px solid #B08D4C; padding-bottom: 14px; margin-bottom: 18px; }
+            .brand { font-family: Georgia, serif; font-size: 20px; font-weight: bold; }
+            .brand-subtitle { font-size: 10px; color: #6E655A; text-transform: uppercase; letter-spacing: 2px; margin-top: 2px; }
+            .flag { text-align: right; }
+            .flag h2 { font-family: Georgia, serif; color: #B08D4C; margin: 0 0 4px 0; font-size: 16px; }
+            .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 16px; }
+            .box { padding: 10px 12px; border: 1px solid #E5DFD2; border-radius: 6px; background-color: #FBF9F4; }
+            .box h3 { margin: 0 0 6px 0; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid #E5DFD2; padding-bottom: 5px; }
+            .box p { margin: 3px 0; }
+            table { width: 100%; border-collapse: collapse; margin-bottom: 14px; }
+            th { background-color: #2A2622; color: #FBF9F4; padding: 6px; text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+            .rejected-box { padding: 10px 12px; border: 1px solid #A24B3E; background-color: #A24B3E10; border-radius: 6px; margin-bottom: 16px; }
+            .rejected-box h3 { color: #A24B3E; margin: 0 0 4px 0; font-size: 11px; text-transform: uppercase; }
+            .totals { width: 260px; margin-left: auto; border: 1px solid #E5DFD2; border-radius: 6px; padding: 10px 12px; background-color: #FBF9F4; }
+            .totals-row { display: flex; justify-content: space-between; padding: 3px 0; }
+            .totals-row.grand { font-weight: bold; color: #B08D4C; border-top: 1px solid #B08D4C; padding-top: 6px; margin-top: 4px; font-size: 14px; }
+            .footer-note { text-align: center; font-size: 10px; color: #9A9084; margin-top: 20px; border-top: 1px solid #E5DFD2; padding-top: 10px; }
+            @media print { body { padding: 0; } }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div>
+              <div class="brand">JAI SRI RAM TEXTILES</div>
+              <div class="brand-subtitle">Emergency Order Reference Sheet</div>
+            </div>
+            <div class="flag">
+              <h2>Order: ${order.order_number}</h2>
+              <div>Order ID: <span style="font-family: monospace;">${order.id}</span></div>
+              <div>Generated: ${new Date().toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}</div>
+            </div>
+          </div>
+
+          ${order.status === "rejected" && order.rejection_reason ? `
+          <div class="rejected-box">
+            <h3>⚠ Order Rejected</h3>
+            <p>${order.rejection_reason}</p>
+          </div>` : ""}
+
+          <div class="grid2">
+            <div class="box">
+              <h3>Order Status</h3>
+              <p>Status: <strong style="text-transform: uppercase;">${order.status}</strong></p>
+              <p>Payment Status: <strong style="text-transform: uppercase;">${order.payment_status}</strong></p>
+              <p>Placed: ${new Date(order.placed_at).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}</p>
+              <p>Delivered: ${order.delivered_at ? new Date(order.delivered_at).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" }) : "—"}</p>
+              <p>Tracking ID: ${order.tracking_id || "—"}</p>
+              <p>Courier URL: ${order.courier_tracking_url || "—"}</p>
+            </div>
+            <div class="box">
+              <h3>Customer</h3>
+              <p>Name: <strong>${order.profiles?.full_name || "Guest Checkout"}</strong></p>
+              <p>Email: ${order.profiles?.email || "—"}</p>
+              <p>User ID: <span style="font-family: monospace; font-size: 10px;">${order.user_id}</span></p>
+              <p>Razorpay Order ID: ${order.razorpay_order_id || "—"}</p>
+              <p>Razorpay Payment ID: ${order.razorpay_payment_id || "—"}</p>
+            </div>
+          </div>
+
+          <div class="box" style="margin-bottom: 16px;">
+            <h3>Shipping Address</h3>
+            <p><strong>${addr.recipient || "—"}</strong></p>
+            <p>${addr.line1 || ""} ${addr.line2 || ""}</p>
+            <p>${addr.city || ""}${addr.district ? ", " + addr.district : ""}, ${addr.state || ""} - ${addr.pincode || ""}</p>
+            <p>Phone: ${addr.phone || "—"}${addr.alternate_phone ? " / " + addr.alternate_phone : ""}</p>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 40%;">Product</th>
+                <th style="width: 15%; text-align: center;">Variant</th>
+                <th style="width: 15%; text-align: right;">Unit Price</th>
+                <th style="width: 10%; text-align: center;">Qty</th>
+                <th style="width: 20%; text-align: right;">Total</th>
+              </tr>
+            </thead>
+            <tbody>${itemsRows}</tbody>
+          </table>
+
+          <div class="totals">
+            <div class="totals-row"><span>Subtotal:</span><span>${formatRupees(order.subtotal_paise)}</span></div>
+            ${order.discount_paise > 0 ? `<div class="totals-row"><span>Coupon Discount:</span><span>-${formatRupees(order.discount_paise)}</span></div>` : ""}
+            ${order.wallet_used_paise > 0 ? `<div class="totals-row"><span>Wallet Used:</span><span>-${formatRupees(order.wallet_used_paise)}</span></div>` : ""}
+            <div class="totals-row"><span>Shipping:</span><span>${order.shipping_paise === 0 ? "FREE" : formatRupees(order.shipping_paise)}</span></div>
+            ${order.tax_paise > 0 ? `<div class="totals-row"><span>Tax:</span><span>${formatRupees(order.tax_paise)}</span></div>` : ""}
+            <div class="totals-row grand"><span>Total Paid:</span><span>${formatRupees(order.total_paise)}</span></div>
+            <div class="totals-row"><span>Cashback Earned:</span><span>${formatRupees(order.cashback_earned_paise)}</span></div>
+          </div>
+
+          <table style="margin-top: 16px;">
+            <thead>
+              <tr>
+                <th style="width: 20%;">Status</th>
+                <th style="width: 55%;">Note</th>
+                <th style="width: 25%;">Timestamp</th>
+              </tr>
+            </thead>
+            <tbody>${eventsRows}</tbody>
+          </table>
+
+          <div class="footer-note">
+            Confidential — internal admin use only. Generated for emergency/offline reference.
+          </div>
+
+          <script>
+            window.onload = function() {
+              window.print();
+              setTimeout(function(){ window.close(); }, 500);
+            }
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  }
+
   // --- Filtering computations ---
   const filteredProducts = products.filter(p => {
     if (!productSearch) return true;
@@ -1164,6 +1456,7 @@ export default function AdminDashboardPage() {
       if (orderStatusFilter === "shipped" && !["shipped", "out_for_delivery"].includes(o.status)) return false;
       if (orderStatusFilter === "delivered" && o.status !== "delivered") return false;
       if (orderStatusFilter === "returned" && o.status !== "returned") return false;
+      if (orderStatusFilter === "rejected" && o.status !== "rejected") return false;
     }
 
     // 2. Filter by search text
@@ -1278,7 +1571,8 @@ export default function AdminDashboardPage() {
                               <td className="py-3 text-right font-medium">{formatRupees(o.total_paise)}</td>
                               <td className="py-3 text-center">
                                 <span className={`inline-block px-2 py-0.5 text-xs rounded-full font-medium ${
-                                  o.status === "delivered" ? "bg-success/15 text-success" : 
+                                  o.status === "delivered" ? "bg-success/15 text-success" :
+                                  o.status === "rejected" ? "bg-danger/15 text-danger" :
                                   o.status === "pending" ? "bg-amber-100 text-amber-800" : "bg-blue-50 text-blue-800"
                                 }`}>
                                   {o.status}
@@ -1630,8 +1924,23 @@ export default function AdminDashboardPage() {
                             <option value="out_for_delivery">Out For Delivery</option>
                             <option value="delivered">Delivered</option>
                             <option value="returned">Returned</option>
+                            <option value="rejected">Rejected</option>
                           </select>
                         </div>
+
+                        {orderStatus === "rejected" && (
+                          <div className="flex flex-col gap-1.5">
+                            <label className="text-xs font-bold text-danger">Reason for Rejection (shown to customer)</label>
+                            <textarea
+                              required
+                              placeholder="e.g. Out of stock, unable to verify address, payment issue..."
+                              value={orderRejectionReason}
+                              onChange={(e) => setOrderRejectionReason(e.target.value)}
+                              rows={3}
+                              className="rounded border border-danger/40 bg-danger/5 px-3 py-1.5 text-xs outline-none focus:border-danger"
+                            />
+                          </div>
+                        )}
 
                         <div className="flex flex-col gap-1.5">
                           <label className="text-xs font-bold text-taupe">Courier Tracking ID</label>
@@ -1756,6 +2065,13 @@ export default function AdminDashboardPage() {
                   </div>
                 ) : (
                   <>
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                      <p className="text-xs text-taupe">Look up any single order by its Order Number or Order ID and download a full one-page detail sheet — handy for emergency/offline reference.</p>
+                      <Button size="sm" variant="outline" onClick={handleEmergencyOrderLookup} className="flex-shrink-0">
+                        <Download className="w-4 h-4" /> Download Order Detail (PDF)
+                      </Button>
+                    </div>
+
                     <div className="relative w-full">
                       <Search className="absolute left-3 top-3 w-4 h-4 text-muted" />
                       <input
@@ -1775,6 +2091,7 @@ export default function AdminDashboardPage() {
                       <StatusFilterButton active={orderStatusFilter === "shipped"} onClick={() => setOrderStatusFilter("shipped")} label="Shipped" count={orders.filter(o => ["shipped", "out_for_delivery"].includes(o.status)).length} />
                       <StatusFilterButton active={orderStatusFilter === "delivered"} onClick={() => setOrderStatusFilter("delivered")} label="Delivered" count={orders.filter(o => o.status === "delivered").length} />
                       <StatusFilterButton active={orderStatusFilter === "returned"} onClick={() => setOrderStatusFilter("returned")} label="Returned" count={orders.filter(o => o.status === "returned").length} />
+                      <StatusFilterButton active={orderStatusFilter === "rejected"} onClick={() => setOrderStatusFilter("rejected")} label="Rejected" count={orders.filter(o => o.status === "rejected").length} />
                     </div>
 
                     {/* Orders Registry Table */}
@@ -1802,7 +2119,8 @@ export default function AdminDashboardPage() {
                                 </td>
                                 <td className="p-4 text-center">
                                   <span className={`inline-block px-2.5 py-0.5 text-xs rounded-full font-medium uppercase ${
-                                    o.status === "delivered" ? "bg-success/15 text-success" : 
+                                    o.status === "delivered" ? "bg-success/15 text-success" :
+                                    o.status === "rejected" ? "bg-danger/15 text-danger" :
                                     o.status === "pending" ? "bg-amber-100 text-amber-800" : "bg-blue-50 text-blue-800"
                                   }`}>
                                     {o.status}
@@ -1820,9 +2138,14 @@ export default function AdminDashboardPage() {
                                   {new Date(o.placed_at).toLocaleDateString("en-IN", { dateStyle: "medium" })}
                                 </td>
                                 <td className="p-4 text-center">
-                                  <button onClick={() => inspectOrder(o)} className="p-1 border border-line rounded bg-cream hover:bg-beige text-ink cursor-pointer" title="Inspect / Manage Order">
-                                    <Eye className="w-4 h-4" />
-                                  </button>
+                                  <div className="flex items-center justify-center gap-1.5">
+                                    <button onClick={() => inspectOrder(o)} className="p-1 border border-line rounded bg-cream hover:bg-beige text-ink cursor-pointer" title="Inspect / Manage Order">
+                                      <Eye className="w-4 h-4" />
+                                    </button>
+                                    <button onClick={() => promptDeleteOrder(o)} className="p-1 border border-line rounded bg-white hover:bg-danger/10 text-danger cursor-pointer" title="Delete Order">
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
+                                  </div>
                                 </td>
                               </tr>
                             ))}
@@ -1849,14 +2172,19 @@ export default function AdminDashboardPage() {
                       className="w-full rounded-pill border border-line bg-white pl-9 pr-4 py-2 text-sm text-ink outline-none focus:border-zari"
                     />
                   </div>
-                  <Button size="sm" variant="gold" onClick={handleExportUsers} className="flex-shrink-0">
-                    <Download className="w-4 h-4" /> Download Users Excel (CSV)
-                  </Button>
+                  <div className="flex flex-wrap gap-2 flex-shrink-0">
+                    <Button size="sm" variant="gold" onClick={handleExportUsers}>
+                      <Download className="w-4 h-4" /> Download Users Excel (CSV)
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={printUsersPDF}>
+                      <Printer className="w-4 h-4" /> Download Users PDF
+                    </Button>
+                  </div>
                 </div>
 
                 <div className="bg-white border border-line rounded-card overflow-hidden shadow-soft">
                   <div className="p-4 border-b border-line bg-cream/25">
-                    <p className="text-xs text-taupe font-semibold">New user signups automatically append to the local Excel-compatible sheet <span className="font-mono text-ink">public/users.csv</span>. Clicking "Download Users Excel" will synchronize the spreadsheet with the live database profiles and serve the download.</p>
+                    <p className="text-xs text-taupe font-semibold">"Download Users Excel" generates a fresh CSV export; "Download Users PDF" opens a print-ready summary you can save as a PDF, directly from the live database profiles.</p>
                   </div>
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm text-left">
@@ -2762,6 +3090,57 @@ $$ language plpgsql;`}
           </div>
         </div>
       </Container>
+
+      {orderPendingDelete && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-ink/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-card border border-line shadow-lift w-full max-w-md p-6 space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="p-2 rounded-full bg-danger/10 text-danger shrink-0">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-display text-lg text-ink">Delete order permanently?</h3>
+                <p className="text-xs text-taupe mt-1">
+                  This will permanently remove order <strong className="text-ink">{orderPendingDelete.order_number}</strong> from
+                  the database — it will disappear from this admin panel and from the customer&apos;s own order history. This cannot be undone.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-bold text-taupe">
+                Type <span className="text-danger">delete order</span> to confirm
+              </label>
+              <input
+                type="text"
+                autoFocus
+                value={deleteConfirmInput}
+                onChange={(e) => setDeleteConfirmInput(e.target.value)}
+                placeholder="delete order"
+                className="rounded border border-line bg-white px-3 py-2 text-sm outline-none focus:border-danger"
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => { setOrderPendingDelete(null); setDeleteConfirmInput(""); }}
+                className="px-4 py-2 text-xs font-semibold text-taupe hover:text-ink border border-line rounded bg-white cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={deleteConfirmInput.trim().toLowerCase() !== "delete order" || deletingOrder}
+                onClick={() => handleDeleteOrder(orderPendingDelete.id)}
+                className="px-4 py-2 text-xs font-semibold text-white bg-danger rounded disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+              >
+                {deletingOrder ? "Deleting…" : "Delete Order"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
