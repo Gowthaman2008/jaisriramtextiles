@@ -199,7 +199,7 @@ export default function CheckoutPage() {
           .eq("user_id", user.id);
 
         if (pastOrders && pastOrders > 0) {
-          setCouponError("Coupon is eligible for your first order only");
+          setCouponError("This code is only applicable for new users");
           setAppliedCoupon(null);
           return;
         }

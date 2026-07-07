@@ -69,6 +69,12 @@ export default function AccountPage() {
   const [supportStatus, setSupportStatus] = useState("");
   const [supportIsSubmitting, setSupportIsSubmitting] = useState(false);
 
+  // Profile Edit States
+  const [profileName, setProfileName] = useState("");
+  const [profilePhone, setProfilePhone] = useState("");
+  const [profileSubmitting, setProfileSubmitting] = useState(false);
+  const [profileError, setProfileError] = useState("");
+
   // Sync state loader
   const [refreshing, setRefreshing] = useState(false);
 
@@ -83,12 +89,17 @@ export default function AccountPage() {
         setUser(authUser);
         setAddrRecipient(authUser.user_metadata?.full_name || authUser.user_metadata?.name || "");
 
-        // Fetch user profile and check for admin/staff authorization role
+        // Fetch user profile details and check for admin/staff authorization role
         const { data: profile } = await supabase
           .from("profiles")
-          .select("role")
+          .select("role, full_name, phone")
           .eq("id", authUser.id)
           .single();
+
+        if (profile) {
+          setProfileName(profile.full_name || authUser.user_metadata?.full_name || authUser.user_metadata?.name || "");
+          setProfilePhone(profile.phone || authUser.user_metadata?.phone || "");
+        }
 
         const isUserAdmin = profile && ["admin", "staff"].includes(profile.role);
         setIsAdmin(!!isUserAdmin);
@@ -243,6 +254,54 @@ export default function AccountPage() {
       setSupportStatus(err.message || "Failed to submit message");
     } finally {
       setSupportIsSubmitting(false);
+    }
+  }
+
+  async function handleUpdateProfile(e: React.FormEvent) {
+    e.preventDefault();
+    if (!profileName.trim()) {
+      setProfileError("Full Name is required");
+      return;
+    }
+    setProfileSubmitting(true);
+    setProfileError("");
+    try {
+      // 1. Update profiles table
+      const { error: profileErr } = await supabase
+        .from("profiles")
+        .update({
+          full_name: profileName.trim(),
+          phone: profilePhone.trim() || null
+        })
+        .eq("id", user.id);
+
+      if (profileErr) throw profileErr;
+
+      // 2. Update auth user metadata
+      const { error: authErr } = await supabase.auth.updateUser({
+        data: {
+          full_name: profileName.trim(),
+          phone: profilePhone.trim() || null
+        }
+      });
+
+      if (authErr) throw authErr;
+
+      // 3. Update local state
+      setUser((prev: any) => ({
+        ...prev,
+        user_metadata: {
+          ...prev?.user_metadata,
+          full_name: profileName.trim(),
+          phone: profilePhone.trim() || null
+        }
+      }));
+
+      alert("Personal details updated successfully!");
+    } catch (err: any) {
+      setProfileError(err.message || "Failed to update profile details");
+    } finally {
+      setProfileSubmitting(false);
     }
   }
 
@@ -516,6 +575,21 @@ export default function AccountPage() {
                 <p className="text-xs text-taupe mt-1 flex-1">Submit inquiries directly to our weaving support desk.</p>
                 <span className="text-[10px] font-bold text-zari-deep mt-4 group-hover:translate-x-1 transition-transform">
                   Send message &rarr;
+                </span>
+              </button>
+
+              {/* Card 6: Account Details */}
+              <button
+                onClick={() => setActiveTab("profile")}
+                className="zari-frame flex flex-col text-left rounded-card bg-white p-6 shadow-soft hover:shadow-lift transition-all duration-300 border border-line group"
+              >
+                <span className="grid h-10 w-10 place-items-center rounded-full bg-cream text-taupe group-hover:bg-zari-tint group-hover:text-zari-deep transition-colors border border-line mb-4">
+                  <User size={18} />
+                </span>
+                <p className="font-bold text-ink text-base">Account Details</p>
+                <p className="text-xs text-taupe mt-1 flex-1">Update your personal contact details, mobile number, and full name.</p>
+                <span className="text-[10px] font-bold text-zari-deep mt-4 group-hover:translate-x-1 transition-transform">
+                  Edit profile &rarr;
                 </span>
               </button>
             </div>
@@ -1073,6 +1147,61 @@ export default function AccountPage() {
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 6: EDIT ACCOUNT DETAILS */}
+        {activeTab === "profile" && (
+          <div className="space-y-6 animate-fade-up">
+            <h2 className="font-display text-xl text-ink">Account & Personal Details</h2>
+            
+            <div className="bg-white border border-line rounded-card p-6 shadow-soft max-w-xl">
+              <form onSubmit={handleUpdateProfile} className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-bold text-taupe uppercase">Full Name *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Enter your full name"
+                      value={profileName}
+                      onChange={(e) => setProfileName(e.target.value)}
+                      className="rounded border border-line bg-ivory px-3 py-1.5 text-xs outline-none focus:border-zari font-sans"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-bold text-taupe uppercase">Mobile Number *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. +919876543210"
+                      value={profilePhone}
+                      onChange={(e) => setProfilePhone(e.target.value)}
+                      className="rounded border border-line bg-ivory px-3 py-1.5 text-xs outline-none focus:border-zari font-mono"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold text-taupe uppercase">Email Address (Read-Only)</label>
+                  <input
+                    type="email"
+                    disabled
+                    value={user?.email || ""}
+                    className="rounded border border-line bg-cream/35 px-3 py-1.5 text-xs text-taupe outline-none font-mono"
+                  />
+                  <p className="text-[10px] text-taupe font-sans">Sign-in credentials and order receipts are tied to this email address.</p>
+                </div>
+
+                {profileError && <p className="text-xs text-danger font-semibold font-sans">{profileError}</p>}
+                
+                <div className="pt-2 flex justify-end">
+                  <Button type="submit" variant="gold" size="sm" disabled={profileSubmitting}>
+                    {profileSubmitting ? "Saving changes..." : "Save Account Details"}
+                  </Button>
+                </div>
+              </form>
             </div>
           </div>
         )}

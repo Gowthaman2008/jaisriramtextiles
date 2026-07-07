@@ -210,11 +210,11 @@ export function AIChatbot() {
                       className={cn(
                         "rounded-2xl p-3 text-xs leading-relaxed shadow-soft border",
                         isAI
-                          ? "bg-cream/45 text-ink border-line rounded-tl-none"
-                          : "bg-ink text-ivory border-ink rounded-tr-none"
+                          ? "bg-cream/45 text-ink border-line rounded-tl-none font-medium"
+                          : "bg-ink text-ivory border-ink rounded-tr-none font-medium"
                       )}
                     >
-                      <p className="whitespace-pre-line font-medium">{m.content}</p>
+                      <div className="space-y-1">{parseMarkdown(m.content)}</div>
                     </div>
                   </div>
                 );
@@ -314,4 +314,58 @@ export function AIChatbot() {
       </button>
     </div>
   );
+}
+
+// Markdown parser helpers
+function parseMarkdown(text: string) {
+  const lines = text.split("\n");
+  return lines.map((line, lineIdx) => {
+    const trimmed = line.trim();
+    
+    // Check for bullet list
+    const isBullet = trimmed.startsWith("- ") || trimmed.startsWith("* ");
+    if (isBullet) {
+      const content = trimmed.substring(2);
+      return (
+        <li key={lineIdx} className="list-disc ml-4 my-1">
+          {renderInlineMarkdown(content)}
+        </li>
+      );
+    }
+
+    // Check for numbered list
+    const isNumbered = /^\d+\.\s/.test(trimmed);
+    if (isNumbered) {
+      const match = trimmed.match(/^(\d+)\.\s(.*)/);
+      if (match) {
+        const content = match[2];
+        return (
+          <li key={lineIdx} className="list-decimal ml-4 my-1">
+            {renderInlineMarkdown(content)}
+          </li>
+        );
+      }
+    }
+
+    // Regular paragraph
+    return (
+      <p key={lineIdx} className="mb-1 last:mb-0">
+        {renderInlineMarkdown(line)}
+      </p>
+    );
+  });
+}
+
+function renderInlineMarkdown(text: string) {
+  const parts = text.split(/(\*\*.*?\*\*)/g);
+  return parts.map((part, idx) => {
+    if (part.startsWith("**") && part.endsWith("**")) {
+      return (
+        <strong key={idx} className="font-bold">
+          {part.slice(2, -2)}
+        </strong>
+      );
+    }
+    return part;
+  });
 }

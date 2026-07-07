@@ -29,13 +29,14 @@ export function Navbar() {
   }, []);
 
   return (
-    <header
-      className={cn(
-        "sticky top-0 z-50 transition-all duration-500 ease-silk",
-        scrolled ? "glass border-b border-line/70 shadow-soft" : "bg-transparent"
-      )}
-    >
-      <Container>
+    <>
+      <header
+        className={cn(
+          "sticky top-0 z-50 transition-all duration-500 ease-silk",
+          scrolled ? "glass border-b border-line/70 shadow-soft" : "bg-transparent"
+        )}
+      >
+        <Container>
         <div className="flex h-[76px] items-center justify-between gap-6">
           {/* Logo — wordmark with woven-gold underline */}
           <Link href="/" className="group shrink-0" aria-label="JAI SRI RAM TEXTILES home">
@@ -77,9 +78,10 @@ export function Navbar() {
           </div>
         </div>
       </Container>
+    </header>
 
-      {/* Mobile drawer */}
-      <AnimatePresence>
+    {/* Mobile drawer */}
+    <AnimatePresence>
         {mobileOpen && (
           <motion.div
             className="fixed inset-0 z-[60] lg:hidden"
@@ -217,7 +219,7 @@ export function Navbar() {
           </motion.div>
         )}
       </AnimatePresence>
-    </header>
+    </>
   );
 }
 

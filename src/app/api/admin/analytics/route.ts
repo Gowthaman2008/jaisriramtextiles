@@ -61,28 +61,45 @@ export async function GET() {
     try {
       if (process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET) {
         const usage = await cloudinary.api.usage();
+        
+        const storageLimit = usage.storage?.limit || 0;
+        const storageUsed = usage.storage?.usage || 0;
+        const storagePercent = usage.storage?.used_percent || (storageLimit > 0 ? Math.round((storageUsed / storageLimit) * 100) : 0);
+
+        const bandwidthLimit = usage.bandwidth?.limit || 0;
+        const bandwidthUsed = usage.bandwidth?.usage || 0;
+        const bandwidthPercent = usage.bandwidth?.used_percent || (bandwidthLimit > 0 ? Math.round((bandwidthUsed / bandwidthLimit) * 100) : 0);
+
         cloudinaryStats = {
           plan: usage.plan,
           lastUpdated: usage.last_updated,
           storage: {
-            used: usage.storage?.usage || 0,
-            limit: usage.storage?.limit || 0,
-            percent: usage.storage?.used_percent || 0,
+            used: storageUsed,
+            limit: storageLimit,
+            percent: storagePercent,
           },
           bandwidth: {
-            used: usage.bandwidth?.usage || 0,
-            limit: usage.bandwidth?.limit || 0,
-            percent: usage.bandwidth?.used_percent || 0,
+            used: bandwidthUsed,
+            limit: bandwidthLimit,
+            percent: bandwidthPercent,
           },
-          objects: {
-            used: usage.objects?.usage || 0,
-            limit: usage.objects?.limit || 0,
-            percent: usage.objects?.used_percent || 0,
-          },
+          credits: usage.credits ? {
+            used: usage.credits.usage || 0,
+            limit: usage.credits.limit || 0,
+            percent: usage.credits.used_percent || 0,
+          } : null,
+        };
+      } else {
+        console.warn("Cloudinary API Key or Secret is missing from environment variables");
+        cloudinaryStats = {
+          error: "Cloudinary API Key or Secret is missing from environment variables (.env.local)",
         };
       }
-    } catch (cError) {
-      console.warn("Could not retrieve Cloudinary usage statistics:", cError);
+    } catch (cError: any) {
+      console.error("Could not retrieve Cloudinary usage statistics:", cError);
+      cloudinaryStats = {
+        error: cError.message || "Failed to contact Cloudinary API server",
+      };
     }
 
     // 3. Fetch visitor session history with profiles and page views (last 100 sessions)

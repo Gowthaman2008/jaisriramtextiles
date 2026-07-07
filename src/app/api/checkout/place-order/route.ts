@@ -130,7 +130,7 @@ export async function POST(request: Request) {
 
         if (orderCountErr) throw orderCountErr;
         if (pastOrders && pastOrders > 0) {
-          return NextResponse.json({ error: "Coupon is eligible for your first order only" }, { status: 400 });
+          return NextResponse.json({ error: "This code is only applicable for new users" }, { status: 400 });
         }
       }
 

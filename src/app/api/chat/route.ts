@@ -17,6 +17,8 @@ Your tone must be polite, premium, helpful, and extremely detailed.
 - Be extremely detailed and descriptive. Provide thorough, step-by-step assistance.
 - If user data is provided in the context below, utilize it to answer personal questions (tracking, wallet, address) with exact details, order numbers, amounts, dates, and names.`;
 
+import { createClient } from "@/lib/supabase/server";
+
 export async function POST(request: Request) {
   try {
     const { messages, userContext } = await request.json();
@@ -30,8 +32,37 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Groq API key not configured on backend" }, { status: 500 });
     }
 
+    // Query active products, categories, and promo coupons from the database to give the chatbot website context
+    const supabase = await createClient();
+    
+    const [
+      { data: dbProducts },
+      { data: dbCategories },
+      { data: dbCoupons }
+    ] = await Promise.all([
+      supabase.from("products").select("name, slug, price_paise, compare_at_paise, stock, description").eq("is_active", true),
+      supabase.from("categories").select("name, slug, tagline").eq("is_active", true),
+      supabase.from("coupons").select("code, type, value, min_order_paise").eq("is_active", true)
+    ]);
+
+    const productsList = dbProducts?.map(p => `- ${p.name} (Price: ₹${p.price_paise / 100}${p.compare_at_paise ? `, Original Price: ₹${p.compare_at_paise / 100}` : ""}, Stock: ${p.stock} units): ${p.description || "No description"}`).join("\n") || "None available";
+    const categoriesList = dbCategories?.map(c => `- ${c.name} (Slug: ${c.slug}): ${c.tagline || "No description"}`).join("\n") || "None";
+    const couponsList = dbCoupons?.map(cp => `- ${cp.code}: ${cp.type === "percent" ? `${cp.value}%` : `₹${cp.value / 100}`} off (Min order: ₹${cp.min_order_paise / 100})`).join("\n") || "None";
+
     // Compile dynamic user context to present to the LLM
     let dynamicPrompt = BASE_SYSTEM_PROMPT;
+    
+    dynamicPrompt += `\n\n### Current Website Catalog & Database Context:
+- **Active Categories**:
+${categoriesList}
+
+- **Active Products on Sale**:
+${productsList}
+
+- **Active Promo Coupon Codes**:
+${couponsList}
+`;
+
     if (userContext) {
       const { profile, orders, addresses, walletBalance } = userContext;
       

@@ -279,6 +279,8 @@ export default function AdminDashboardPage() {
   const [uploadingImage, setUploadingImage] = useState(false);
 
   // Order update states
+  const [orderStatusFilter, setOrderStatusFilter] = useState("all");
+  const [commSubTab, setCommSubTab] = useState("support");
   const [orderStatus, setOrderStatus] = useState("");
   const [orderTrackingId, setOrderTrackingId] = useState("");
   const [orderTrackingUrl, setOrderTrackingUrl] = useState("");
@@ -313,6 +315,7 @@ export default function AdminDashboardPage() {
   const [slideImageUrl, setSlideImageUrl] = useState("");
   const [slideSortOrder, setSlideSortOrder] = useState(0);
   const [slideIsActive, setSlideIsActive] = useState(true);
+  const [uploadingSlideImage, setUploadingSlideImage] = useState(false);
 
   // CMS Announcement messages state
   const [announcementMsg, setAnnouncementMsg] = useState("");
@@ -567,6 +570,34 @@ export default function AdminDashboardPage() {
     setSlideImageUrl("");
     setSlideSortOrder(0);
     setSlideIsActive(true);
+  }
+
+  async function handleSlideImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingSlideImage(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch("/api/admin/products/upload-image", {
+        method: "POST",
+        body: formData
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || "Upload failed");
+      }
+
+      const data = await res.json();
+      setSlideImageUrl(data.url);
+    } catch (err: any) {
+      alert("Image upload failed: " + err.message);
+    } finally {
+      setUploadingSlideImage(false);
+    }
   }
 
   // --- Product Editing/Adding ---
@@ -1126,6 +1157,16 @@ export default function AdminDashboardPage() {
   });
 
   const filteredOrders = orders.filter(o => {
+    // 1. Filter by status selection
+    if (orderStatusFilter !== "all") {
+      if (orderStatusFilter === "pending" && o.status !== "pending") return false;
+      if (orderStatusFilter === "confirmed" && !["confirmed", "packed"].includes(o.status)) return false;
+      if (orderStatusFilter === "shipped" && !["shipped", "out_for_delivery"].includes(o.status)) return false;
+      if (orderStatusFilter === "delivered" && o.status !== "delivered") return false;
+      if (orderStatusFilter === "returned" && o.status !== "returned") return false;
+    }
+
+    // 2. Filter by search text
     if (!orderSearch) return true;
     const term = orderSearch.toLowerCase();
     return o.order_number.toLowerCase().includes(term) || (o.profiles?.full_name || "").toLowerCase().includes(term) || (o.profiles?.email || "").toLowerCase().includes(term) || o.status.toLowerCase().includes(term);
@@ -1181,17 +1222,15 @@ export default function AdminDashboardPage() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           {/* Module Navigation Tabs */}
           <div className="lg:col-span-3 space-y-2">
-            <div className="bg-white border border-line rounded-card p-4 shadow-soft">
-              <p className="text-xs font-semibold text-taupe uppercase tracking-wider mb-3 px-3">Store Administration</p>
-              <nav className="space-y-1">
+            <div className="bg-white border border-line rounded-card p-3 sm:p-4 shadow-soft">
+              <p className="hidden lg:block text-xs font-semibold text-taupe uppercase tracking-wider mb-3 px-3">Store Administration</p>
+              <nav className="flex lg:flex-col overflow-x-auto lg:overflow-x-visible gap-1 pb-1 lg:pb-0 lg:space-y-1 w-full whitespace-nowrap scrollbar-none">
                 <TabButton active={activeTab === "overview"} onClick={() => setActiveTab("overview")} icon={<LayoutDashboard className="w-4 h-4" />} label="Overview & KPI" />
                 <TabButton active={activeTab === "products"} onClick={() => setActiveTab("products")} icon={<ShoppingBag className="w-4 h-4" />} label="Product Catalog" badge={products.length} />
                 <TabButton active={activeTab === "orders"} onClick={() => setActiveTab("orders")} icon={<ShoppingCart className="w-4 h-4" />} label="Order Registry" badge={orders.length} />
                 <TabButton active={activeTab === "users"} onClick={() => setActiveTab("users")} icon={<Users className="w-4 h-4" />} label="User Management" badge={users.length} />
                 <TabButton active={activeTab === "coupons"} onClick={() => setActiveTab("coupons")} icon={<Ticket className="w-4 h-4" />} label="Promo Codes" badge={coupons.length} />
-                <TabButton active={activeTab === "support"} onClick={() => setActiveTab("support")} icon={<Mail className="w-4 h-4" />} label="Support Mail" badge={supportMessages.length} />
-                <TabButton active={activeTab === "bulk-inquiries"} onClick={() => setActiveTab("bulk-inquiries")} icon={<Briefcase className="w-4 h-4" />} label="Bulk Enquiries" badge={bulkInquiries.length} />
-                <TabButton active={activeTab === "newsletter"} onClick={() => setActiveTab("newsletter")} icon={<Bell className="w-4 h-4" />} label="Newsletter Subs" badge={newsletterSubs.length} />
+                <TabButton active={activeTab === "communications"} onClick={() => setActiveTab("communications")} icon={<Mail className="w-4 h-4" />} label="Communications" badge={supportMessages.length + bulkInquiries.length + newsletterSubs.length} />
                 <TabButton active={activeTab === "cms"} onClick={() => setActiveTab("cms")} icon={<Wrench className="w-4 h-4" />} label="Storefront CMS" />
                 <TabButton active={activeTab === "visitor-history"} onClick={() => setActiveTab("visitor-history")} icon={<Activity className="w-4 h-4" />} label="Visitor Sessions" badge={analytics?.sessionHistory?.length} />
                 <TabButton active={activeTab === "storage"} onClick={() => setActiveTab("storage")} icon={<Database className="w-4 h-4" />} label="System & Storage" />
@@ -1558,20 +1597,20 @@ export default function AdminDashboardPage() {
                 {selectedOrder ? (
                   /* Dedicated Full-Screen Order Details & Editing Section */
                   <div className="bg-white border-2 border-zari rounded-card p-6 shadow-lift space-y-6">
-                    <div className="flex justify-between items-center border-b border-line pb-3">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-line pb-3">
                       <div>
-                        <h3 className="font-display text-xl text-ink">Manage Order: {selectedOrder.order_number}</h3>
+                        <h3 className="font-display text-lg sm:text-xl text-ink">Manage Order: {selectedOrder.order_number}</h3>
                         <p className="text-xs text-taupe mt-0.5">Placed on: {new Date(selectedOrder.placed_at).toLocaleString("en-IN")}</p>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <button onClick={() => printInvoice({ ...selectedOrder, shipping_address: orderAddress, tracking_id: orderTrackingId, courier_tracking_url: orderTrackingUrl })} className="p-2 border border-line rounded bg-cream hover:bg-beige text-ink flex items-center gap-1.5 text-xs font-semibold cursor-pointer" title="Print Invoice">
+                      <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                        <button onClick={() => printInvoice({ ...selectedOrder, shipping_address: orderAddress, tracking_id: orderTrackingId, courier_tracking_url: orderTrackingUrl })} className="flex-1 sm:flex-none p-2 border border-line rounded bg-cream hover:bg-beige text-ink flex items-center justify-center gap-1.5 text-xs font-semibold cursor-pointer" title="Print Invoice">
                           <Printer className="w-4 h-4" /> Invoice
                         </button>
-                        <button onClick={() => printPackingSlip({ ...selectedOrder, shipping_address: orderAddress, tracking_id: orderTrackingId, courier_tracking_url: orderTrackingUrl })} className="p-2 border border-line rounded bg-cream hover:bg-beige text-ink flex items-center gap-1.5 text-xs font-semibold cursor-pointer" title="Print Packing Slip">
+                        <button onClick={() => printPackingSlip({ ...selectedOrder, shipping_address: orderAddress, tracking_id: orderTrackingId, courier_tracking_url: orderTrackingUrl })} className="flex-1 sm:flex-none p-2 border border-line rounded bg-cream hover:bg-beige text-ink flex items-center justify-center gap-1.5 text-xs font-semibold cursor-pointer" title="Print Packing Slip">
                           <Printer className="w-4 h-4" /> Packing Slip
                         </button>
-                        <button onClick={() => setSelectedOrder(null)} className="flex items-center gap-1 text-xs font-semibold text-taupe hover:text-ink px-2.5 py-2 border border-line rounded bg-white transition-colors cursor-pointer">
-                          <ChevronLeft className="w-4.5 h-4.5" /> Back to Registry
+                        <button onClick={() => setSelectedOrder(null)} className="flex-1 sm:flex-none flex items-center justify-center gap-1 text-xs font-semibold text-taupe hover:text-ink px-2.5 py-2 border border-line rounded bg-white transition-colors cursor-pointer">
+                          <ChevronLeft className="w-4 h-4" /> Back
                         </button>
                       </div>
                     </div>
@@ -1728,6 +1767,16 @@ export default function AdminDashboardPage() {
                       />
                     </div>
 
+                    {/* Order Status Filters */}
+                    <div className="flex flex-wrap gap-2 py-1">
+                      <StatusFilterButton active={orderStatusFilter === "all"} onClick={() => setOrderStatusFilter("all")} label="All Orders" count={orders.length} />
+                      <StatusFilterButton active={orderStatusFilter === "pending"} onClick={() => setOrderStatusFilter("pending")} label="Pending" count={orders.filter(o => o.status === "pending").length} />
+                      <StatusFilterButton active={orderStatusFilter === "confirmed"} onClick={() => setOrderStatusFilter("confirmed")} label="Confirmed / Packed" count={orders.filter(o => ["confirmed", "packed"].includes(o.status)).length} />
+                      <StatusFilterButton active={orderStatusFilter === "shipped"} onClick={() => setOrderStatusFilter("shipped")} label="Shipped" count={orders.filter(o => ["shipped", "out_for_delivery"].includes(o.status)).length} />
+                      <StatusFilterButton active={orderStatusFilter === "delivered"} onClick={() => setOrderStatusFilter("delivered")} label="Delivered" count={orders.filter(o => o.status === "delivered").length} />
+                      <StatusFilterButton active={orderStatusFilter === "returned"} onClick={() => setOrderStatusFilter("returned")} label="Returned" count={orders.filter(o => o.status === "returned").length} />
+                    </div>
+
                     {/* Orders Registry Table */}
                     <div className="bg-white border border-line rounded-card overflow-hidden shadow-soft">
                       <div className="overflow-x-auto">
@@ -1835,11 +1884,15 @@ export default function AdminDashboardPage() {
                               </span>
                             </td>
                             <td className="p-4 text-center">
-                              <select value={u.role} onChange={(e) => updateUserRole(u.id, e.target.value)} className="rounded border border-line bg-white px-2 py-1 text-xs outline-none font-semibold">
-                                <option value="customer">customer</option>
-                                <option value="staff">staff</option>
-                                <option value="admin">admin</option>
-                              </select>
+                              {currentUser?.role === "admin" ? (
+                                <select value={u.role} onChange={(e) => updateUserRole(u.id, e.target.value)} className="rounded border border-line bg-white px-2 py-1 text-xs outline-none font-semibold cursor-pointer">
+                                  <option value="customer">customer</option>
+                                  <option value="staff">staff</option>
+                                  <option value="admin">admin</option>
+                                </select>
+                              ) : (
+                                <span className="font-semibold text-taupe text-xs capitalize">{u.role}</span>
+                              )}
                             </td>
                             <td className="p-4 text-center text-taupe text-xs">
                               {new Date(u.created_at).toLocaleDateString("en-IN", { dateStyle: "long" })}
@@ -2114,7 +2167,20 @@ export default function AdminDashboardPage() {
                         </div>
                         <div className="flex flex-col gap-1">
                           <label className="text-xs font-bold text-taupe">Image URL * (Cloudinary/Public URL)</label>
-                          <input type="text" required placeholder="https://res.cloudinary.com/..." value={slideImageUrl} onChange={(e) => setSlideImageUrl(e.target.value)} className="rounded border border-line bg-white px-3 py-1.5 text-xs outline-none" />
+                          <div className="flex gap-2">
+                            <input type="text" required placeholder="https://res.cloudinary.com/..." value={slideImageUrl} onChange={(e) => setSlideImageUrl(e.target.value)} className="flex-1 rounded border border-line bg-white px-3 py-1.5 text-xs outline-none min-w-0" />
+                            <label className="relative shrink-0 flex items-center justify-center px-3 py-1.5 bg-cream hover:bg-beige text-ink border border-line rounded text-xs font-bold cursor-pointer transition-colors">
+                              <span>{uploadingSlideImage ? "Uploading..." : "Upload"}</span>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                onChange={handleSlideImageUpload}
+                                className="hidden"
+                                disabled={uploadingSlideImage}
+                              />
+                            </label>
+                          </div>
+                          {uploadingSlideImage && <p className="text-[10px] text-zari font-semibold animate-pulse mt-0.5">Uploading to Cloudinary...</p>}
                         </div>
                       </div>
 
@@ -2346,31 +2412,84 @@ export default function AdminDashboardPage() {
                     </h3>
                     
                     {analytics?.cloudinaryStats ? (
-                      <div className="space-y-4 text-sm">
-                        <p className="text-xs text-taupe">Plan tier: <strong className="text-ink uppercase">{analytics.cloudinaryStats.plan}</strong> (Last checked: {new Date(analytics.cloudinaryStats.lastUpdated).toLocaleTimeString()})</p>
-                        
-                        <div className="space-y-2">
-                          <div className="flex justify-between text-xs font-semibold">
-                            <span>Storage used ({Math.round(analytics.cloudinaryStats.storage.used / (1024 * 1024 * 1024) * 100) / 100} GB)</span>
-                            <span>{analytics.cloudinaryStats.storage.percent}%</span>
-                          </div>
-                          <div className="w-full bg-cream h-2 rounded-full overflow-hidden">
-                            <div className="bg-zari h-full" style={{ width: `${analytics.cloudinaryStats.storage.percent}%` }} />
-                          </div>
-                          <p className="text-[10px] text-taupe text-right">Limit: {Math.round(analytics.cloudinaryStats.storage.limit / (1024 * 1024 * 1024) * 100) / 100} GB</p>
+                      analytics.cloudinaryStats.error ? (
+                        <div className="p-4 bg-danger/5 border border-danger/10 text-danger rounded text-xs space-y-1">
+                          <p className="font-bold">⚠️ Connection Issue:</p>
+                          <p className="font-mono leading-relaxed">{analytics.cloudinaryStats.error}</p>
+                          <p className="text-[10px] text-taupe pt-1">Verify that your Cloudinary credentials in <span className="font-mono text-ink">.env.local</span> are correct and that the dev server has been restarted.</p>
                         </div>
+                      ) : (
+                        <div className="space-y-4 text-sm">
+                          <p className="text-xs text-taupe">
+                            Plan tier: <strong className="text-ink uppercase">{analytics.cloudinaryStats.plan}</strong> 
+                            {analytics.cloudinaryStats.lastUpdated && ` (Last updated: ${new Date(analytics.cloudinaryStats.lastUpdated).toLocaleDateString()})`}
+                          </p>
+                          
+                          {/* Credit Quota Progress Bar (Newer Plans) */}
+                          {analytics.cloudinaryStats.credits && (
+                            <div className="space-y-2 bg-cream/35 p-3 rounded border border-line/60">
+                              <div className="flex justify-between text-xs font-semibold">
+                                <span>Monthly Credits Used ({analytics.cloudinaryStats.credits.used} / {analytics.cloudinaryStats.credits.limit})</span>
+                                <span>{analytics.cloudinaryStats.credits.percent}%</span>
+                              </div>
+                              <div className="w-full bg-cream h-2 rounded-full overflow-hidden">
+                                <div className="bg-zari h-full" style={{ width: `${analytics.cloudinaryStats.credits.percent}%` }} />
+                              </div>
+                              <p className="text-[10px] text-taupe">Cloudinary allocates quota using credits (1 credit = 1 GB storage or 1 GB bandwidth).</p>
+                            </div>
+                          )}
 
-                        <div className="space-y-2">
-                          <div className="flex justify-between text-xs font-semibold">
-                            <span>Bandwidth consumed ({Math.round(analytics.cloudinaryStats.bandwidth.used / (1024 * 1024 * 1024) * 100) / 100} GB)</span>
-                            <span>{analytics.cloudinaryStats.bandwidth.percent}%</span>
+                          {/* Storage metric */}
+                          <div className="space-y-1">
+                            <div className="flex justify-between text-xs font-semibold">
+                              <span>Storage Used ({(() => {
+                                const b = analytics.cloudinaryStats.storage.used;
+                                if (!b) return "0 MB";
+                                if (b < 1024 * 1024) return `${(b / 1024).toFixed(1)} KB`;
+                                if (b < 1024 * 1024 * 1024) return `${(b / (1024 * 1024)).toFixed(1)} MB`;
+                                return `${(b / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+                              })()})</span>
+                              {analytics.cloudinaryStats.storage.limit > 0 && <span>{analytics.cloudinaryStats.storage.percent}%</span>}
+                            </div>
+                            {analytics.cloudinaryStats.storage.limit > 0 && (
+                              <>
+                                <div className="w-full bg-cream h-1.5 rounded-full overflow-hidden">
+                                  <div className="bg-zari h-full" style={{ width: `${analytics.cloudinaryStats.storage.percent}%` }} />
+                                </div>
+                                <p className="text-[10px] text-taupe text-right">Limit: {((l) => {
+                                  if (l < 1024 * 1024 * 1024) return `${(l / (1024 * 1024)).toFixed(1)} MB`;
+                                  return `${(l / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+                                })(analytics.cloudinaryStats.storage.limit)}</p>
+                              </>
+                            )}
                           </div>
-                          <div className="w-full bg-cream h-2 rounded-full overflow-hidden">
-                            <div className="bg-zari h-full" style={{ width: `${analytics.cloudinaryStats.bandwidth.percent}%` }} />
+
+                          {/* Bandwidth metric */}
+                          <div className="space-y-1">
+                            <div className="flex justify-between text-xs font-semibold">
+                              <span>Bandwidth Consumed ({(() => {
+                                const b = analytics.cloudinaryStats.bandwidth.used;
+                                if (!b) return "0 MB";
+                                if (b < 1024 * 1024) return `${(b / 1024).toFixed(1)} KB`;
+                                if (b < 1024 * 1024 * 1024) return `${(b / (1024 * 1024)).toFixed(1)} MB`;
+                                return `${(b / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+                              })()})</span>
+                              {analytics.cloudinaryStats.bandwidth.limit > 0 && <span>{analytics.cloudinaryStats.bandwidth.percent}%</span>}
+                            </div>
+                            {analytics.cloudinaryStats.bandwidth.limit > 0 && (
+                              <>
+                                <div className="w-full bg-cream h-1.5 rounded-full overflow-hidden">
+                                  <div className="bg-zari h-full" style={{ width: `${analytics.cloudinaryStats.bandwidth.percent}%` }} />
+                                </div>
+                                <p className="text-[10px] text-taupe text-right">Limit: {((l) => {
+                                  if (l < 1024 * 1024 * 1024) return `${(l / (1024 * 1024)).toFixed(1)} MB`;
+                                  return `${(l / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+                                })(analytics.cloudinaryStats.bandwidth.limit)}</p>
+                              </>
+                            )}
                           </div>
-                          <p className="text-[10px] text-taupe text-right">Limit: {Math.round(analytics.cloudinaryStats.bandwidth.limit / (1024 * 1024 * 1024) * 100) / 100} GB</p>
                         </div>
-                      </div>
+                      )
                     ) : (
                       <div className="py-8 text-center text-xs text-taupe italic">
                         Cloudinary API credentials missing or quota endpoint failed. Image uploading utilizes direct browser payloads.
@@ -2381,137 +2500,170 @@ export default function AdminDashboardPage() {
               </div>
             )}
 
-            {/* Support Messages tab */}
-            {activeTab === "support" && (
+            {/* Combined Communications tab */}
+            {activeTab === "communications" && (
               <div className="space-y-6 animate-fade-up">
                 <div className="flex justify-between items-center border-b border-line pb-3">
-                  <h3 className="font-display text-lg">Support & Contact Messages</h3>
-                  <span className="text-xs text-taupe font-medium">{supportMessages.length} messages received</span>
+                  <h3 className="font-display text-lg">Communications Desk</h3>
+                  <span className="text-xs text-taupe font-medium">Manage support mail, wholesale inquiries, and newsletters</span>
                 </div>
 
-                <div className="bg-white border border-line rounded-card overflow-hidden shadow-soft">
-                  {supportMessages.length === 0 ? (
-                    <div className="p-12 text-center text-sm text-taupe italic">
-                      No support inquiries received yet.
-                    </div>
-                  ) : (
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-xs sm:text-sm text-left">
-                        <thead>
-                          <tr className="bg-cream border-b border-line text-taupe font-medium">
-                            <th className="p-3">Sender</th>
-                            <th className="p-3">Subject</th>
-                            <th className="p-3">Message</th>
-                            <th className="p-3 text-center">Date</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {supportMessages.map((msg) => (
-                            <tr key={msg.id} className="border-b border-line hover:bg-ivory/50">
-                              <td className="p-3">
-                                <p className="font-semibold text-ink">{msg.name}</p>
-                                <p className="text-[10px] text-taupe mt-0.5">{msg.email}</p>
-                              </td>
-                              <td className="p-3 font-medium text-ink">{msg.subject}</td>
-                              <td className="p-3 text-taupe whitespace-pre-wrap">{msg.message}</td>
-                              <td className="p-3 text-center text-[10px] text-taupe whitespace-nowrap">
-                                {new Date(msg.created_at).toLocaleString("en-IN", { dateStyle: "short", timeStyle: "short" })}
-                              </td>
+                {/* Sub-tabs pills */}
+                <div className="flex flex-wrap gap-2 py-1">
+                  <button
+                    type="button"
+                    onClick={() => setCommSubTab("support")}
+                    className={`flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-all duration-200 cursor-pointer ${
+                      commSubTab === "support"
+                        ? "bg-ink text-ivory border-ink shadow-sm"
+                        : "bg-white text-taupe border-line hover:border-zari hover:text-ink"
+                    }`}
+                  >
+                    <span>Support Mail</span>
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${commSubTab === "support" ? "bg-zari text-ink" : "bg-cream text-taupe"}`}>
+                      {supportMessages.length}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCommSubTab("bulk")}
+                    className={`flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-all duration-200 cursor-pointer ${
+                      commSubTab === "bulk"
+                        ? "bg-ink text-ivory border-ink shadow-sm"
+                        : "bg-white text-taupe border-line hover:border-zari hover:text-ink"
+                    }`}
+                  >
+                    <span>Bulk Enquiries</span>
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${commSubTab === "bulk" ? "bg-zari text-ink" : "bg-cream text-taupe"}`}>
+                      {bulkInquiries.length}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCommSubTab("newsletter")}
+                    className={`flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-all duration-200 cursor-pointer ${
+                      commSubTab === "newsletter"
+                        ? "bg-ink text-ivory border-ink shadow-sm"
+                        : "bg-white text-taupe border-line hover:border-zari hover:text-ink"
+                    }`}
+                  >
+                    <span>Newsletter Subs</span>
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${commSubTab === "newsletter" ? "bg-zari text-ink" : "bg-cream text-taupe"}`}>
+                      {newsletterSubs.length}
+                    </span>
+                  </button>
+                </div>
+
+                {/* Sub-tab Content Area */}
+                {commSubTab === "support" && (
+                  <div className="bg-white border border-line rounded-card overflow-hidden shadow-soft animate-fade-in">
+                    {supportMessages.length === 0 ? (
+                      <div className="p-12 text-center text-sm text-taupe italic">
+                        No support inquiries received yet.
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-xs sm:text-sm text-left">
+                          <thead>
+                            <tr className="bg-cream border-b border-line text-taupe font-medium">
+                              <th className="p-3">Sender</th>
+                              <th className="p-3">Subject</th>
+                              <th className="p-3">Message</th>
+                              <th className="p-3 text-center">Date</th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
+                          </thead>
+                          <tbody>
+                            {supportMessages.map((msg) => (
+                              <tr key={msg.id} className="border-b border-line hover:bg-ivory/50">
+                                <td className="p-3">
+                                  <p className="font-semibold text-ink">{msg.name}</p>
+                                  <p className="text-[10px] text-taupe mt-0.5">{msg.email}</p>
+                                </td>
+                                <td className="p-3 font-medium text-ink">{msg.subject}</td>
+                                <td className="p-3 text-taupe whitespace-pre-wrap">{msg.message}</td>
+                                <td className="p-3 text-center text-[10px] text-taupe whitespace-nowrap">
+                                  {new Date(msg.created_at).toLocaleString("en-IN", { dateStyle: "short", timeStyle: "short" })}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                )}
 
-            {/* Bulk Inquiries tab */}
-            {activeTab === "bulk-inquiries" && (
-              <div className="space-y-6 animate-fade-up">
-                <div className="flex justify-between items-center border-b border-line pb-3">
-                  <h3 className="font-display text-lg">Bulk Order Inquiries</h3>
-                  <span className="text-xs text-taupe font-medium">{bulkInquiries.length} inquiries received</span>
-                </div>
-
-                <div className="bg-white border border-line rounded-card overflow-hidden shadow-soft">
-                  {bulkInquiries.length === 0 ? (
-                    <div className="p-12 text-center text-sm text-taupe italic">
-                      No bulk order enquiries received yet.
-                    </div>
-                  ) : (
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-xs sm:text-sm text-left">
-                        <thead>
-                          <tr className="bg-cream border-b border-line text-taupe font-medium">
-                            <th className="p-3">Sender / Org</th>
-                            <th className="p-3">Category</th>
-                            <th className="p-3 text-center">Quantity</th>
-                            <th className="p-3">Message</th>
-                            <th className="p-3 text-center">Date</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {bulkInquiries.map((inq) => (
-                            <tr key={inq.id} className="border-b border-line hover:bg-ivory/50">
-                              <td className="p-3">
-                                <p className="font-semibold text-ink">{inq.name}</p>
-                                <p className="text-[10px] text-taupe mt-0.5">{inq.email}</p>
-                                {inq.organisation && <p className="text-[10px] text-zari-deep font-semibold mt-0.5">{inq.organisation}</p>}
-                              </td>
-                              <td className="p-3 text-ink font-semibold">{inq.category || "—"}</td>
-                              <td className="p-3 text-center font-mono font-medium">{inq.quantity || "—"}</td>
-                              <td className="p-3 text-taupe whitespace-pre-wrap">{inq.message || "—"}</td>
-                              <td className="p-3 text-center text-[10px] text-taupe whitespace-nowrap">
-                                {new Date(inq.created_at).toLocaleString("en-IN", { dateStyle: "short", timeStyle: "short" })}
-                              </td>
+                {commSubTab === "bulk" && (
+                  <div className="bg-white border border-line rounded-card overflow-hidden shadow-soft animate-fade-in">
+                    {bulkInquiries.length === 0 ? (
+                      <div className="p-12 text-center text-sm text-taupe italic">
+                        No bulk order enquiries received yet.
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-xs sm:text-sm text-left">
+                          <thead>
+                            <tr className="bg-cream border-b border-line text-taupe font-medium">
+                              <th className="p-3">Sender / Org</th>
+                              <th className="p-3">Category</th>
+                              <th className="p-3 text-center">Quantity</th>
+                              <th className="p-3">Message</th>
+                              <th className="p-3 text-center">Date</th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
+                          </thead>
+                          <tbody>
+                            {bulkInquiries.map((inq) => (
+                              <tr key={inq.id} className="border-b border-line hover:bg-ivory/50">
+                                <td className="p-3">
+                                  <p className="font-semibold text-ink">{inq.name}</p>
+                                  <p className="text-[10px] text-taupe mt-0.5">{inq.email}</p>
+                                  {inq.organisation && <p className="text-[10px] text-zari-deep font-semibold mt-0.5">{inq.organisation}</p>}
+                                </td>
+                                <td className="p-3 text-ink font-semibold">{inq.category || "—"}</td>
+                                <td className="p-3 text-center font-mono font-medium">{inq.quantity || "—"}</td>
+                                <td className="p-3 text-taupe whitespace-pre-wrap">{inq.message || "—"}</td>
+                                <td className="p-3 text-center text-[10px] text-taupe whitespace-nowrap">
+                                  {new Date(inq.created_at).toLocaleString("en-IN", { dateStyle: "short", timeStyle: "short" })}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                )}
 
-            {/* Newsletter Subscriptions tab */}
-            {activeTab === "newsletter" && (
-              <div className="space-y-6 animate-fade-up">
-                <div className="flex justify-between items-center border-b border-line pb-3">
-                  <h3 className="font-display text-lg">Newsletter Subscriptions</h3>
-                  <span className="text-xs text-taupe font-medium">{newsletterSubs.length} subscribers</span>
-                </div>
-
-                <div className="bg-white border border-line rounded-card overflow-hidden shadow-soft max-w-lg">
-                  {newsletterSubs.length === 0 ? (
-                    <div className="p-12 text-center text-sm text-taupe italic">
-                      No newsletter subscribers yet.
-                    </div>
-                  ) : (
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-xs sm:text-sm text-left">
-                        <thead>
-                          <tr className="bg-cream border-b border-line text-taupe font-medium">
-                            <th className="p-3">Subscribed Email Address</th>
-                            <th className="p-3 text-center">Subscribed Date</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {newsletterSubs.map((sub) => (
-                            <tr key={sub.id} className="border-b border-line hover:bg-ivory/50">
-                              <td className="p-3 font-semibold text-ink font-mono">{sub.email}</td>
-                              <td className="p-3 text-center text-[10px] text-taupe">
-                                {new Date(sub.created_at).toLocaleString("en-IN", { dateStyle: "long" })}
-                              </td>
+                {commSubTab === "newsletter" && (
+                  <div className="bg-white border border-line rounded-card overflow-hidden shadow-soft max-w-lg animate-fade-in">
+                    {newsletterSubs.length === 0 ? (
+                      <div className="p-12 text-center text-sm text-taupe italic">
+                        No newsletter subscribers yet.
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-xs sm:text-sm text-left">
+                          <thead>
+                            <tr className="bg-cream border-b border-line text-taupe font-medium">
+                              <th className="p-3">Subscribed Email Address</th>
+                              <th className="p-3 text-center">Subscribed Date</th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
+                          </thead>
+                          <tbody>
+                            {newsletterSubs.map((sub) => (
+                              <tr key={sub.id} className="border-b border-line hover:bg-ivory/50">
+                                <td className="p-3 font-semibold text-ink font-mono">{sub.email}</td>
+                                <td className="p-3 text-center text-[10px] text-taupe">
+                                  {new Date(sub.created_at).toLocaleString("en-IN", { dateStyle: "long" })}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -2526,7 +2678,7 @@ function TabButton({ active, onClick, icon, label, badge }: { active: boolean; o
   return (
     <button
       onClick={onClick}
-      className={`w-full flex items-center justify-between px-3 py-2.5 rounded-md text-sm font-medium transition-all duration-200 ${
+      className={`flex shrink-0 items-center justify-between gap-3 px-3 py-2 lg:py-2.5 rounded-md text-sm font-medium transition-all duration-200 w-auto lg:w-full ${
         active ? "bg-ink text-ivory shadow-soft" : "text-taupe hover:bg-cream hover:text-ink"
       }`}
     >
@@ -2562,5 +2714,26 @@ function RowDetail({ label, count }: { label: string; count: any }) {
       <span className="font-semibold text-taupe">{label}</span>
       <span className="font-mono font-bold text-ink bg-cream px-2 py-0.5 rounded">{count !== undefined ? count : 0} rows</span>
     </div>
+  );
+}
+
+function StatusFilterButton({ active, onClick, label, count }: { active: boolean; onClick: () => void; label: string; count: number }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all duration-200 cursor-pointer ${
+        active
+          ? "bg-ink text-ivory border-ink shadow-sm"
+          : "bg-white text-taupe border-line hover:border-zari hover:text-ink"
+      }`}
+    >
+      <span>{label}</span>
+      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+        active ? "bg-zari text-ink animate-fade-in" : "bg-cream text-taupe"
+      }`}>
+        {count}
+      </span>
+    </button>
   );
 }

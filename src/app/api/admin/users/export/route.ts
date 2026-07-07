@@ -83,14 +83,25 @@ export async function GET() {
   }
 }
 
-// PUT: Change user roles
+// PUT: Change user roles (ADMIN only)
 export async function PUT(request: Request) {
-  const auth = await checkAdminAuth();
-  if (!auth) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
   try {
+    const supabaseClient = await createClient();
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { data: profile } = await supabaseClient
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .single();
+
+    if (!profile || profile.role !== "admin") {
+      return NextResponse.json({ error: "Only administrators are allowed to modify user roles" }, { status: 403 });
+    }
+
     const { userId, role } = await request.json();
     if (!userId || !role) {
       return NextResponse.json({ error: "User ID and Role are required" }, { status: 400 });

@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import { Container } from "@/components/ui/container";
 import { Button } from "@/components/ui/button";
+import { createClient } from "@/lib/supabase/client";
+import { ImageIcon, RefreshCw } from "lucide-react";
 
 interface UploadedImage {
   url: string;
@@ -11,37 +13,44 @@ interface UploadedImage {
 }
 
 export default function AdminUploadPage() {
-  const [authenticated, setAuthenticated] = useState(false);
-  const [password, setPassword] = useState("");
-  const [authError, setAuthError] = useState("");
-  const [authenticating, setAuthenticating] = useState(false);
-
+  const supabase = createClient();
+  const [loading, setLoading] = useState(true);
+  const [authorized, setAuthorized] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
   const [images, setImages] = useState<UploadedImage[]>([]);
 
-  async function handleLogin(e: React.FormEvent) {
-    e.preventDefault();
-    setAuthenticating(true);
-    setAuthError("");
-    try {
-      const res = await fetch("/api/admin/upload-auth", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || "Incorrect password");
+  useEffect(() => {
+    async function checkAuth() {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          window.location.href = `/sign-in?redirect=${encodeURIComponent("/admin/upload")}`;
+          return;
+        }
+
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", user.id)
+          .single();
+
+        if (!profile || !["admin", "staff"].includes(profile.role)) {
+          window.location.href = "/";
+          return;
+        }
+
+        setAuthorized(true);
+      } catch (err) {
+        console.error("Auth check failed:", err);
+        window.location.href = "/";
+      } finally {
+        setLoading(false);
       }
-      setAuthenticated(true);
-    } catch (err) {
-      setAuthError(err instanceof Error ? err.message : "Login failed");
-    } finally {
-      setAuthenticating(false);
     }
-  }
+    checkAuth();
+  }, []);
 
   async function handleUpload(e: React.FormEvent) {
     e.preventDefault();
@@ -54,7 +63,6 @@ export default function AdminUploadPage() {
       const res = await fetch("/api/admin/upload", { method: "POST", body: formData });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        if (res.status === 401) setAuthenticated(false);
         throw new Error(data.error || "Upload failed");
       }
       const data = await res.json();
@@ -67,60 +75,52 @@ export default function AdminUploadPage() {
     }
   }
 
-  if (!authenticated) {
+  if (loading) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-ivory">
-        <Container className="max-w-sm">
-          <h1 className="mb-6 font-display text-2xl text-ink">Admin access</h1>
-          <form onSubmit={handleLogin} className="space-y-4">
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Password"
-              autoFocus
-              className="w-full rounded-md border border-line bg-white px-3 py-2 text-ink outline-none focus-visible:border-zari"
-            />
-            {authError && <p className="text-sm text-danger">{authError}</p>}
-            <Button type="submit" size="md" className="w-full" disabled={authenticating}>
-              {authenticating ? "Checking…" : "Enter"}
-            </Button>
-          </form>
-        </Container>
+      <main className="min-h-screen bg-ivory flex flex-col items-center justify-center py-20">
+        <RefreshCw className="animate-spin text-zari w-12 h-12 mb-4" />
+        <p className="text-sm font-medium text-taupe font-sans">Verifying administration access...</p>
       </main>
     );
+  }
+
+  if (!authorized) {
+    return null;
   }
 
   return (
     <main className="min-h-screen bg-ivory py-16">
       <Container className="max-w-2xl">
-        <h1 className="mb-8 font-display text-2xl text-ink">Upload product image</h1>
+        <div className="mb-8">
+          <h1 className="font-display text-2xl text-ink">Upload product image</h1>
+          <p className="text-xs text-taupe mt-1 font-sans">Upload assets directly to your Cloudinary storage folder.</p>
+        </div>
 
-        <form onSubmit={handleUpload} className="mb-8 flex flex-wrap items-center gap-3">
+        <form onSubmit={handleUpload} className="mb-8 flex flex-wrap items-center gap-3 bg-white p-6 border border-line rounded-card shadow-soft">
           <input
             type="file"
             accept="image/*"
             onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-            className="text-sm text-taupe"
+            className="text-sm text-taupe font-sans"
           />
-          <Button type="submit" size="sm" disabled={!file || uploading}>
-            {uploading ? "Uploading…" : "Upload"}
+          <Button type="submit" size="sm" variant="gold" disabled={!file || uploading}>
+            {uploading ? "Uploading…" : "Upload to Cloudinary"}
           </Button>
         </form>
 
-        {uploadError && <p className="mb-6 text-sm text-danger">{uploadError}</p>}
+        {uploadError && <p className="mb-6 text-sm text-danger font-semibold font-sans">{uploadError}</p>}
 
         <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3">
           {images.map((img) => (
             <li key={img.publicId} className="space-y-2">
-              <div className="relative aspect-square overflow-hidden rounded-card border border-line">
+              <div className="relative aspect-square overflow-hidden rounded-card border border-line bg-cream/15">
                 <Image src={img.url} alt="Uploaded product image" fill className="object-cover" unoptimized />
               </div>
               <input
                 readOnly
                 value={img.url}
                 onFocus={(e) => e.currentTarget.select()}
-                className="w-full truncate rounded border border-line bg-white px-2 py-1 text-xs text-taupe"
+                className="w-full truncate rounded border border-line bg-white px-2 py-1 text-xs text-taupe font-mono"
               />
             </li>
           ))}
