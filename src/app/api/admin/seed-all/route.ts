@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/admin";
+import { placeholderImage } from "@/lib/cloudinary-image";
 
 export async function GET() {
   const supabase = createServiceClient();
@@ -31,7 +32,7 @@ export async function GET() {
         is_on_sale: true,
         is_active: true,
         category_slug: "white-dhoti",
-        image_url: "https://res.cloudinary.com/knpwtpigyevvluehowfq/image/upload/f_auto,q_auto,w_900/jai-sri-ram-textiles/placeholders/white-dhoti",
+        image_url: placeholderImage("white-dhoti", 900),
       },
       {
         name: "Zari-Border Colour Dhoti",
@@ -43,7 +44,7 @@ export async function GET() {
         is_on_sale: true,
         is_active: true,
         category_slug: "colour-dhoti",
-        image_url: "https://res.cloudinary.com/knpwtpigyevvluehowfq/image/upload/f_auto,q_auto,w_900/jai-sri-ram-textiles/placeholders/colour-dhoti",
+        image_url: placeholderImage("colour-dhoti", 900),
       },
       {
         name: "Handloom Bath Towel",
@@ -55,7 +56,7 @@ export async function GET() {
         is_on_sale: false,
         is_active: true,
         category_slug: "towels",
-        image_url: "https://res.cloudinary.com/knpwtpigyevvluehowfq/image/upload/f_auto,q_auto,w_900/jai-sri-ram-textiles/placeholders/towels",
+        image_url: placeholderImage("towels", 900),
       },
       {
         name: "Cotton Everyday Scarf",
@@ -67,7 +68,7 @@ export async function GET() {
         is_on_sale: true,
         is_active: true,
         category_slug: "scarfs",
-        image_url: "https://res.cloudinary.com/knpwtpigyevvluehowfq/image/upload/f_auto,q_auto,w_900/jai-sri-ram-textiles/placeholders/scarfs",
+        image_url: placeholderImage("scarfs", 900),
       },
       {
         name: "Reusable Jute Tote",
@@ -79,7 +80,7 @@ export async function GET() {
         is_on_sale: false,
         is_active: true,
         category_slug: "jute-bags",
-        image_url: "https://res.cloudinary.com/knpwtpigyevvluehowfq/image/upload/f_auto,q_auto,w_900/jai-sri-ram-textiles/placeholders/jute-bags",
+        image_url: placeholderImage("jute-bags", 900),
       },
       {
         name: "Premium Gold-Border Veshti",
@@ -91,7 +92,7 @@ export async function GET() {
         is_on_sale: true,
         is_active: true,
         category_slug: "white-dhoti",
-        image_url: "https://res.cloudinary.com/knpwtpigyevvluehowfq/image/upload/f_auto,q_auto,w_900/jai-sri-ram-textiles/placeholders/gold-border-veshti",
+        image_url: placeholderImage("gold-border-veshti", 900),
       },
     ];
 
@@ -147,7 +148,7 @@ export async function GET() {
         subtitle: "JAI SRI RAM TEXTILES crafts dhotis, towels, scarfs and jute bags on traditional looms in Komarapalayam, Tamil Nadu.",
         cta_label: "Our story",
         cta_href: "/about",
-        image_url: "https://res.cloudinary.com/knpwtpigyevvluehowfq/image/upload/f_auto,q_auto,w_2000/jai-sri-ram-textiles/placeholders/white-dhoti",
+        image_url: placeholderImage("white-dhoti", 2000),
         sort_order: 1,
         is_active: true
       },
@@ -157,7 +158,7 @@ export async function GET() {
         subtitle: "Combed cotton, true zari borders and rigorous quality checks on every metre we make.",
         cta_label: "See our craft",
         cta_href: "/manufacturing",
-        image_url: "https://res.cloudinary.com/knpwtpigyevvluehowfq/image/upload/f_auto,q_auto,w_2000/jai-sri-ram-textiles/placeholders/gold-border-veshti",
+        image_url: placeholderImage("gold-border-veshti", 2000),
         sort_order: 2,
         is_active: true
       },
@@ -167,7 +168,7 @@ export async function GET() {
         subtitle: "Selected dhotis and towels now on sale — while stocks last.",
         cta_label: "Shop the offers",
         cta_href: "/shop/sale",
-        image_url: "https://res.cloudinary.com/knpwtpigyevvluehowfq/image/upload/f_auto,q_auto,w_2000/jai-sri-ram-textiles/placeholders/colour-dhoti",
+        image_url: placeholderImage("colour-dhoti", 2000),
         sort_order: 3,
         is_active: true
       },
@@ -177,7 +178,7 @@ export async function GET() {
         subtitle: "The latest additions to our collection, ready to ship across India.",
         cta_label: "Browse new arrivals",
         cta_href: "/shop?sort=newest",
-        image_url: "https://res.cloudinary.com/knpwtpigyevvluehowfq/image/upload/f_auto,q_auto,w_2000/jai-sri-ram-textiles/placeholders/scarfs",
+        image_url: placeholderImage("scarfs", 2000),
         sort_order: 4,
         is_active: true
       },
@@ -187,7 +188,7 @@ export async function GET() {
         subtitle: "The pieces our customers return for, again and again.",
         cta_label: "Shop best sellers",
         cta_href: "/shop?sort=popularity",
-        image_url: "https://res.cloudinary.com/knpwtpigyevvluehowfq/image/upload/f_auto,q_auto,w_2000/jai-sri-ram-textiles/placeholders/towels",
+        image_url: placeholderImage("towels", 2000),
         sort_order: 5,
         is_active: true
       },
@@ -197,7 +198,7 @@ export async function GET() {
         subtitle: "Traditional whites and rich colour dhotis for temple days and festivities.",
         cta_label: "Explore collections",
         cta_href: "/shop/colour-dhoti",
-        image_url: "https://res.cloudinary.com/knpwtpigyevvluehowfq/image/upload/f_auto,q_auto,w_2000/jai-sri-ram-textiles/placeholders/white-dhoti",
+        image_url: placeholderImage("white-dhoti", 2000),
         sort_order: 6,
         is_active: true
       },
@@ -207,7 +208,7 @@ export async function GET() {
         subtitle: "Custom manufacturing and wholesale pricing for institutions and businesses.",
         cta_label: "Enquire about bulk orders",
         cta_href: "/bulk-orders",
-        image_url: "https://res.cloudinary.com/knpwtpigyevvluehowfq/image/upload/f_auto,q_auto,w_2000/jai-sri-ram-textiles/placeholders/jute-bags",
+        image_url: placeholderImage("jute-bags", 2000),
         sort_order: 7,
         is_active: true
       },
@@ -217,7 +218,7 @@ export async function GET() {
         subtitle: "New here? Your welcome discount is waiting at checkout.",
         cta_label: "Start shopping",
         cta_href: "/shop",
-        image_url: "https://res.cloudinary.com/knpwtpigyevvluehowfq/image/upload/f_auto,q_auto,w_2000/jai-sri-ram-textiles/placeholders/gold-border-veshti",
+        image_url: placeholderImage("gold-border-veshti", 2000),
         sort_order: 8,
         is_active: true
       }
