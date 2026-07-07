@@ -382,3 +382,37 @@ create index idx_orders_status on orders(status);
 create index idx_reviews_product on reviews(product_id, status);
 create index idx_wallet_txn_user on wallet_transactions(user_id);
 create index idx_sessions_visitor on sessions(visitor_id);
+
+-- ============================================================================
+-- STORAGE STATS RPC HELPER
+-- ============================================================================
+create or replace function get_supabase_storage_stats()
+returns json security definer as $$
+declare
+  db_size bigint;
+  storage_size bigint;
+begin
+  -- Database size in bytes
+  db_size := pg_database_size(current_database());
+  
+  -- Storage objects size in bytes
+  begin
+    select coalesce(sum(size), 0)
+    into storage_size
+    from storage.objects;
+  exception when others then
+    begin
+      select coalesce(sum((metadata->>'size')::bigint), 0)
+      into storage_size
+      from storage.objects;
+    exception when others then
+      storage_size := 0;
+    end;
+  end;
+
+  return json_build_object(
+    'db_size_bytes', db_size,
+    'storage_size_bytes', storage_size
+  );
+end;
+$$ language plpgsql;

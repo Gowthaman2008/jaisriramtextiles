@@ -2388,7 +2388,7 @@ export default function AdminDashboardPage() {
             {/* Storage and Database Analytics tab */}
             {activeTab === "storage" && (
               <div className="space-y-6 animate-fade-up">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                   {/* Database row counts card */}
                   <div className="bg-white border border-line rounded-card p-6 shadow-soft space-y-4">
                     <h3 className="font-display text-lg border-b border-line pb-2 flex items-center gap-2">
@@ -2402,6 +2402,99 @@ export default function AdminDashboardPage() {
                       <RowDetail label="sessions (Visitor sessions)" count={analytics?.dbStats?.sessions} />
                       <RowDetail label="page_views (Individual views)" count={analytics?.dbStats?.pageViews} />
                     </div>
+                  </div>
+
+                  {/* Supabase Storage details card */}
+                  <div className="bg-white border border-line rounded-card p-6 shadow-soft space-y-4">
+                    <h3 className="font-display text-lg border-b border-line pb-2 flex items-center gap-2">
+                      <Database className="w-5 h-5 text-zari" />
+                      Supabase Storage & DB
+                    </h3>
+
+                    {analytics?.supabaseStorageStats ? (
+                      analytics.supabaseStorageStats.error ? (
+                        <div className="p-4 bg-amber-50 border border-amber-200 text-amber-950 rounded text-xs space-y-2 font-sans">
+                          <p className="font-bold">⚠️ RPC Setup Required:</p>
+                          <p className="leading-relaxed">To view real-time Supabase Database and Buckets usage sizes, run the setup SQL script in your Supabase SQL Editor.</p>
+                          <details className="mt-2 bg-white border border-amber-200 rounded p-2">
+                            <summary className="cursor-pointer font-semibold text-[10px] text-amber-900">Show SQL Script</summary>
+                            <pre className="mt-1 text-[9px] font-mono whitespace-pre-wrap select-all bg-cream/35 p-1 rounded leading-normal max-h-36 overflow-y-auto">
+{`CREATE OR REPLACE FUNCTION get_supabase_storage_stats()
+RETURNS json security definer as $$
+declare
+  db_size bigint;
+  storage_size bigint;
+begin
+  db_size := pg_database_size(current_database());
+  begin
+    select coalesce(sum(size), 0) into storage_size from storage.objects;
+  exception when others then
+    begin
+      select coalesce(sum((metadata->>'size')::bigint), 0) into storage_size from storage.objects;
+    exception when others then
+      storage_size := 0;
+    end;
+  end;
+  return json_build_object('db_size_bytes', db_size, 'storage_size_bytes', storage_size);
+end;
+$$ language plpgsql;`}
+                            </pre>
+                          </details>
+                        </div>
+                      ) : (
+                        <div className="space-y-4 text-sm font-sans">
+                          <p className="text-xs text-taupe">
+                            Plan tier: <strong className="text-ink uppercase font-semibold">Supabase Free Tier</strong>
+                          </p>
+
+                          {/* Database Storage metric (500 MB Limit) */}
+                          <div className="space-y-1">
+                            <div className="flex justify-between text-xs font-semibold">
+                              <span>Database Storage ({formatBytes(analytics.supabaseStorageStats.db_size_bytes)})</span>
+                              <span>{(() => {
+                                const used = analytics.supabaseStorageStats.db_size_bytes || 0;
+                                const limit = 500 * 1024 * 1024; // 500 MB
+                                return `${Math.min(100, Math.round((used / limit) * 100))}%`;
+                              })()}</span>
+                            </div>
+                            <div className="w-full bg-cream h-1.5 rounded-full overflow-hidden">
+                              <div
+                                className="bg-zari h-full"
+                                style={{
+                                  width: `${Math.min(100, Math.round(((analytics.supabaseStorageStats.db_size_bytes || 0) / (500 * 1024 * 1024)) * 100))}%`
+                                }}
+                              />
+                            </div>
+                            <p className="text-[10px] text-taupe text-right">Limit: 500 MB</p>
+                          </div>
+
+                          {/* File Buckets Storage metric (1 GB Limit) */}
+                          <div className="space-y-1">
+                            <div className="flex justify-between text-xs font-semibold">
+                              <span>File Buckets Storage ({formatBytes(analytics.supabaseStorageStats.storage_size_bytes)})</span>
+                              <span>{(() => {
+                                const used = analytics.supabaseStorageStats.storage_size_bytes || 0;
+                                const limit = 1024 * 1024 * 1024; // 1 GB
+                                return `${Math.min(100, Math.round((used / limit) * 100))}%`;
+                              })()}</span>
+                            </div>
+                            <div className="w-full bg-cream h-1.5 rounded-full overflow-hidden">
+                              <div
+                                className="bg-zari h-full"
+                                style={{
+                                  width: `${Math.min(100, Math.round(((analytics.supabaseStorageStats.storage_size_bytes || 0) / (1024 * 1024 * 1024)) * 100))}%`
+                                }}
+                              />
+                            </div>
+                            <p className="text-[10px] text-taupe text-right">Limit: 1 GB</p>
+                          </div>
+                        </div>
+                      )
+                    ) : (
+                      <div className="py-8 text-center text-xs text-taupe italic font-sans">
+                        Querying Supabase metrics...
+                      </div>
+                    )}
                   </div>
 
                   {/* Cloudinary usage stats card */}
@@ -2736,4 +2829,12 @@ function StatusFilterButton({ active, onClick, label, count }: { active: boolean
       </span>
     </button>
   );
+}
+
+function formatBytes(b: number) {
+  if (!b) return "0.0 MB";
+  if (b < 1024) return `${b} B`;
+  if (b < 1024 * 1024) return `${(b / 1024).toFixed(1)} KB`;
+  if (b < 1024 * 1024 * 1024) return `${(b / (1024 * 1024)).toFixed(1)} MB`;
+  return `${(b / (1024 * 1024 * 1024)).toFixed(2)} GB`;
 }

@@ -56,7 +56,20 @@ export async function GET() {
       pageViews: countPageViews || 0,
     };
 
-    // 2. Fetch Cloudinary usage details (handle missing config gracefully)
+    // 2. Fetch Supabase storage and database size metrics
+    let supabaseStorageStats: any = null;
+    try {
+      const { data, error: rpcError } = await supabase.rpc("get_supabase_storage_stats");
+      if (rpcError) throw rpcError;
+      supabaseStorageStats = data;
+    } catch (sError: any) {
+      console.warn("Could not retrieve Supabase storage statistics:", sError.message || sError);
+      supabaseStorageStats = {
+        error: "RPC function 'get_supabase_storage_stats' not found in database. Run the setup SQL script to enable storage metrics."
+      };
+    }
+
+    // 3. Fetch Cloudinary usage details (handle missing config gracefully)
     let cloudinaryStats: any = null;
     try {
       if (process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET) {
@@ -145,6 +158,7 @@ export async function GET() {
     return NextResponse.json({
       dbStats,
       cloudinaryStats,
+      supabaseStorageStats,
       sessionHistory: sessionHistory || [],
       metrics,
     });
