@@ -23,6 +23,7 @@ create table profiles (
   full_name     text,
   email         text not null,
   avatar_url    text,
+  phone         text,
   role          user_role not null default 'customer',
   provider      auth_provider not null default 'email',
   created_at    timestamptz not null default now()
@@ -32,13 +33,14 @@ create table profiles (
 create or replace function handle_new_user()
 returns trigger language plpgsql security definer set search_path = public as $$
 begin
-  insert into public.profiles (id, email, full_name, avatar_url, provider)
+  insert into public.profiles (id, email, full_name, avatar_url, provider, phone)
   values (
     new.id,
     new.email,
     new.raw_user_meta_data->>'full_name',
     new.raw_user_meta_data->>'avatar_url',
-    coalesce((new.raw_app_meta_data->>'provider')::auth_provider, 'email')
+    coalesce((new.raw_app_meta_data->>'provider')::auth_provider, 'email'),
+    new.raw_user_meta_data->>'phone'
   );
   return new;
 end $$;
@@ -55,8 +57,11 @@ create table addresses (
   line1        text not null,
   line2        text,
   city         text not null,
+  district     text,
   state        text not null,
   pincode      text not null,
+  phone        text,
+  alternate_phone text,
   is_default   boolean not null default false,
   created_at   timestamptz not null default now()
 );
@@ -210,7 +215,7 @@ begin
      and new.cashback_earned_paise > 0 then
     insert into wallet_transactions (user_id, type, amount_paise, order_id, note, expires_at)
     values (new.user_id, 'cashback_credit', new.cashback_earned_paise, new.id,
-            'Cashback for order ' || new.order_number, now() + interval '180 days');
+            'Cashback for order ' || new.order_number, now() + interval '15 days');
 
     insert into wallets (user_id, balance_paise)
     values (new.user_id, new.cashback_earned_paise)
@@ -297,6 +302,28 @@ create table bulk_inquiries (
   message      text,
   status       text not null default 'new',
   created_at   timestamptz not null default now()
+);
+
+-- ============================================================================
+-- SUPPORT & CONTACT MESSAGES
+-- ============================================================================
+create table support_messages (
+  id          uuid primary key default gen_random_uuid(),
+  name        text not null,
+  email       text not null,
+  subject     text not null,
+  message     text not null,
+  status      text not null default 'new',
+  created_at  timestamptz not null default now()
+);
+
+-- ============================================================================
+-- NEWSLETTER SUBSCRIPTIONS
+-- ============================================================================
+create table newsletter_subscriptions (
+  id          uuid primary key default gen_random_uuid(),
+  email       text unique not null,
+  created_at  timestamptz not null default now()
 );
 
 -- ============================================================================

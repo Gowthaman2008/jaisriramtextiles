@@ -3,6 +3,7 @@ import { Container } from "@/components/ui/container";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { ProductCard } from "@/components/home/product-card";
 import { getAllProducts } from "@/lib/supabase/queries";
+import { products as mockProducts } from "@/data/mock";
 
 export const metadata: Metadata = {
   title: "Shop All",
@@ -10,7 +11,8 @@ export const metadata: Metadata = {
 };
 
 export default async function ShopPage() {
-  const products = await getAllProducts();
+  const dbProducts = await getAllProducts();
+  const products = dbProducts.length > 0 ? dbProducts : mockProducts;
 
   return (
     <div className="py-14 sm:py-20">

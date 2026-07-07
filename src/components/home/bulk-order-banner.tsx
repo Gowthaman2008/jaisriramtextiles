@@ -2,6 +2,7 @@ import Image from "next/image";
 import { Container } from "@/components/ui/container";
 import { Reveal } from "@/components/ui/reveal";
 import { Button } from "@/components/ui/button";
+import { placeholderImage } from "@/lib/cloudinary-image";
 import { Building2, Hotel, Landmark, Sparkles } from "lucide-react";
 
 const chips = [
@@ -18,7 +19,7 @@ export function BulkOrderBanner() {
         <Reveal className="grid overflow-hidden rounded-card border border-line bg-ivory shadow-soft lg:grid-cols-2">
           <div className="relative min-h-[300px]">
             <Image
-              src="https://images.unsplash.com/photo-1556740738-b6a63e27c4df?auto=format&fit=crop&w=1200&q=80"
+              src={placeholderImage("bulk-manufacturing", 1200)}
               alt="Bulk textile manufacturing"
               fill
               sizes="(max-width:1024px) 100vw, 50vw"

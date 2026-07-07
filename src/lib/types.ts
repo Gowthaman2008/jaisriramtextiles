@@ -14,7 +14,15 @@ export type Product = {
   colors?: string[];
   sizes?: string[];
   inStock: boolean;
+  stock: number;
   badges?: ("new" | "bestseller" | "trending" | "sale")[];
+  variants?: {
+    id: string;
+    size: string | null;
+    color: string | null;
+    sku: string | null;
+    stock: number;
+  }[];
 };
 
 export type Category = {

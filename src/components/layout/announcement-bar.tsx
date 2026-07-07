@@ -2,19 +2,49 @@
 
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { createClient } from "@/lib/supabase/client";
 
-const messages = [
+const defaultMessages = [
   "Free shipping on orders above ₹699",
   "Earn cashback on every order — credited after delivery",
   "Bulk & wholesale enquiries welcome",
 ];
 
 export function AnnouncementBar() {
+  const [messages, setMessages] = useState<string[]>(defaultMessages);
   const [i, setI] = useState(0);
+
   useEffect(() => {
+    async function loadBanner() {
+      try {
+        const supabase = createClient();
+        const { data, error } = await supabase
+          .from("banners")
+          .select("content")
+          .eq("placement", "announcement")
+          .eq("is_active", true)
+          .maybeSingle();
+
+        if (data && data.content && Array.isArray((data.content as any).messages)) {
+          const list = (data.content as any).messages.filter((msg: any) => typeof msg === "string" && msg.trim() !== "");
+          if (list.length > 0) {
+            setMessages(list);
+          }
+        }
+      } catch (err) {
+        console.error("Error loading banners", err);
+      }
+    }
+    loadBanner();
+  }, []);
+
+  useEffect(() => {
+    if (messages.length === 0) return;
     const t = setInterval(() => setI((v) => (v + 1) % messages.length), 4000);
     return () => clearInterval(t);
-  }, []);
+  }, [messages.length]);
+
+  if (messages.length === 0) return null;
 
   return (
     <div className="bg-ink text-ivory">

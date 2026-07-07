@@ -1,0 +1,2566 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import Image from "next/image";
+import Link from "next/link";
+import { createClient } from "@/lib/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Container } from "@/components/ui/container";
+import {
+  LayoutDashboard,
+  ShoppingBag,
+  ShoppingCart,
+  Users,
+  Database,
+  Activity,
+  Wrench,
+  Plus,
+  Trash2,
+  Edit2,
+  RefreshCw,
+  Download,
+  Search,
+  Eye,
+  CheckCircle,
+  Truck,
+  Printer,
+  ChevronRight,
+  ChevronLeft,
+  TrendingUp,
+  UserCheck,
+  AlertTriangle,
+  FolderOpen,
+  Image as ImageIcon,
+  DollarSign,
+  Mail,
+  Briefcase,
+  Bell,
+  Ticket
+} from "lucide-react";
+
+// Helper for formatting money
+function formatRupees(paise: number) {
+  return new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: 0
+  }).format(paise / 100);
+}
+
+const DEFAULT_ANNOUNCEMENTS = [
+  "Free shipping on orders above ₹699",
+  "Earn cashback on every order — credited after delivery",
+  "Bulk & wholesale enquiries welcome"
+];
+
+const DEFAULT_SLIDES = [
+  {
+    id: "default-1",
+    eyebrow: "Since a generation of weavers",
+    title: "The art of the woven thread",
+    subtitle: "JAI SRI RAM TEXTILES crafts dhotis, towels, scarfs and jute bags on traditional looms in Komarapalayam, Tamil Nadu.",
+    cta_label: "Our story",
+    cta_href: "/about",
+    image_url: "https://res.cloudinary.com/knpwtpigyevvluehowfq/image/upload/f_auto,q_auto,w_2000/jai-sri-ram-textiles/placeholders/white-dhoti",
+    sort_order: 1,
+    is_active: true
+  },
+  {
+    id: "default-2",
+    eyebrow: "Premium manufacturing",
+    title: "Woven with precision, finished by hand",
+    subtitle: "Combed cotton, true zari borders and rigorous quality checks on every metre we make.",
+    cta_label: "See our craft",
+    cta_href: "/manufacturing",
+    image_url: "https://res.cloudinary.com/knpwtpigyevvluehowfq/image/upload/f_auto,q_auto,w_2000/jai-sri-ram-textiles/placeholders/gold-border-veshti",
+    sort_order: 2,
+    is_active: true
+  },
+  {
+    id: "default-3",
+    eyebrow: "Limited-time offers",
+    title: "Festive savings on our finest",
+    subtitle: "Selected dhotis and towels now on sale — while stocks last.",
+    cta_label: "Shop the offers",
+    cta_href: "/shop/sale",
+    image_url: "https://res.cloudinary.com/knpwtpigyevvluehowfq/image/upload/f_auto,q_auto,w_2000/jai-sri-ram-textiles/placeholders/colour-dhoti",
+    sort_order: 3,
+    is_active: true
+  },
+  {
+    id: "default-4",
+    eyebrow: "New arrivals",
+    title: "Fresh off the loom",
+    subtitle: "The latest additions to our collection, ready to ship across India.",
+    cta_label: "Browse new arrivals",
+    cta_href: "/shop?sort=newest",
+    image_url: "https://res.cloudinary.com/knpwtpigyevvluehowfq/image/upload/f_auto,q_auto,w_2000/jai-sri-ram-textiles/placeholders/scarfs",
+    sort_order: 4,
+    is_active: true
+  },
+  {
+    id: "default-5",
+    eyebrow: "Best sellers",
+    title: "Loved across Tamil Nadu",
+    subtitle: "The pieces our customers return for, again and again.",
+    cta_label: "Shop best sellers",
+    cta_href: "/shop?sort=popularity",
+    image_url: "https://res.cloudinary.com/knpwtpigyevvluehowfq/image/upload/f_auto,q_auto,w_2000/jai-sri-ram-textiles/placeholders/towels",
+    sort_order: 5,
+    is_active: true
+  },
+  {
+    id: "default-6",
+    eyebrow: "Festival collections",
+    title: "Dressed for every celebration",
+    subtitle: "Traditional whites and rich colour dhotis for temple days and festivities.",
+    cta_label: "Explore collections",
+    cta_href: "/shop/colour-dhoti",
+    image_url: "https://res.cloudinary.com/knpwtpigyevvluehowfq/image/upload/f_auto,q_auto,w_2000/jai-sri-ram-textiles/placeholders/white-dhoti",
+    sort_order: 6,
+    is_active: true
+  },
+  {
+    id: "default-7",
+    eyebrow: "Bulk & wholesale",
+    title: "Supplying temples, hotels & retailers",
+    subtitle: "Custom manufacturing and wholesale pricing for institutions and businesses.",
+    cta_label: "Enquire about bulk orders",
+    cta_href: "/bulk-orders",
+    image_url: "https://res.cloudinary.com/knpwtpigyevvluehowfq/image/upload/f_auto,q_auto,w_2000/jai-sri-ram-textiles/placeholders/jute-bags",
+    sort_order: 7,
+    is_active: true
+  },
+  {
+    id: "default-8",
+    eyebrow: "A gift for you",
+    title: "10% off your first order",
+    subtitle: "New here? Your welcome discount is waiting at checkout.",
+    cta_label: "Start shopping",
+    cta_href: "/shop",
+    image_url: "https://res.cloudinary.com/knpwtpigyevvluehowfq/image/upload/f_auto,q_auto,w_2000/jai-sri-ram-textiles/placeholders/gold-border-veshti",
+    sort_order: 8,
+    is_active: true
+  }
+];
+
+const DEFAULT_PRODUCTS = [
+  {
+    id: "default-p1",
+    name: "Classic White Veshti — 2 Metre",
+    slug: "classic-white-veshti-2m",
+    price_paise: 74900,
+    compare_at_paise: 99900,
+    cashback_paise: 3000,
+    stock: 50,
+    is_on_sale: true,
+    is_active: true,
+    categories: { name: "White Dhoti" },
+    product_images: [{ url: "https://res.cloudinary.com/knpwtpigyevvluehowfq/image/upload/f_auto,q_auto,w_900/jai-sri-ram-textiles/placeholders/white-dhoti" }],
+    product_variants: []
+  },
+  {
+    id: "default-p2",
+    name: "Zari-Border Colour Dhoti",
+    slug: "zari-border-colour-dhoti",
+    price_paise: 129900,
+    compare_at_paise: null,
+    cashback_paise: 6000,
+    stock: 35,
+    is_on_sale: true,
+    is_active: true,
+    categories: { name: "Colour Dhoti" },
+    product_images: [{ url: "https://res.cloudinary.com/knpwtpigyevvluehowfq/image/upload/f_auto,q_auto,w_900/jai-sri-ram-textiles/placeholders/colour-dhoti" }],
+    product_variants: []
+  },
+  {
+    id: "default-p3",
+    name: "Handloom Bath Towel",
+    slug: "handloom-bath-towel",
+    price_paise: 49900,
+    compare_at_paise: 64900,
+    cashback_paise: 2000,
+    stock: 120,
+    is_on_sale: false,
+    is_active: true,
+    categories: { name: "Towels" },
+    product_images: [{ url: "https://res.cloudinary.com/knpwtpigyevvluehowfq/image/upload/f_auto,q_auto,w_900/jai-sri-ram-textiles/placeholders/towels" }],
+    product_variants: []
+  },
+  {
+    id: "default-p4",
+    name: "Cotton Everyday Scarf",
+    slug: "cotton-everyday-scarf",
+    price_paise: 39900,
+    compare_at_paise: 54900,
+    cashback_paise: 1500,
+    stock: 80,
+    is_on_sale: true,
+    is_active: true,
+    categories: { name: "Scarfs" },
+    product_images: [{ url: "https://res.cloudinary.com/knpwtpigyevvluehowfq/image/upload/f_auto,q_auto,w_900/jai-sri-ram-textiles/placeholders/scarfs" }],
+    product_variants: []
+  },
+  {
+    id: "default-p5",
+    name: "Reusable Jute Tote",
+    slug: "reusable-jute-tote",
+    price_paise: 29900,
+    compare_at_paise: null,
+    cashback_paise: 1000,
+    stock: 150,
+    is_on_sale: false,
+    is_active: true,
+    categories: { name: "Jute Bags" },
+    product_images: [{ url: "https://res.cloudinary.com/knpwtpigyevvluehowfq/image/upload/f_auto,q_auto,w_900/jai-sri-ram-textiles/placeholders/jute-bags" }],
+    product_variants: []
+  },
+  {
+    id: "default-p6",
+    name: "Premium Gold-Border Veshti",
+    slug: "premium-gold-border-veshti",
+    price_paise: 159900,
+    compare_at_paise: 199900,
+    cashback_paise: 8000,
+    stock: 25,
+    is_on_sale: true,
+    is_active: true,
+    categories: { name: "White Dhoti" },
+    product_images: [{ url: "https://res.cloudinary.com/knpwtpigyevvluehowfq/image/upload/f_auto,q_auto,w_900/jai-sri-ram-textiles/placeholders/gold-border-veshti" }],
+    product_variants: []
+  }
+];
+
+export default function AdminDashboardPage() {
+  const [activeTab, setActiveTab] = useState("overview");
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState("");
+
+  // Current logged in admin details
+  const [currentUser, setCurrentUser] = useState<any>(null);
+
+  // States for database collections
+  const [analytics, setAnalytics] = useState<any>(null);
+  const [products, setProducts] = useState<any[]>([]);
+  const [orders, setOrders] = useState<any[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
+
+  // Selection states for Modals/Inspectors
+  const [selectedOrder, setSelectedOrder] = useState<any>(null);
+  const [selectedSession, setSelectedSession] = useState<any>(null);
+  
+  // Product Edit/Add State
+  const [editingProduct, setEditingProduct] = useState<any>(null); // null means adding a new product, or closed
+  const [showProductForm, setShowProductForm] = useState(false);
+  
+  // Product form fields
+  const [prodName, setProdName] = useState("");
+  const [prodSlug, setProdSlug] = useState("");
+  const [prodDesc, setProdDesc] = useState("");
+  const [prodCatId, setProdCatId] = useState("");
+  const [prodPrice, setProdPrice] = useState(0); // in Rupees
+  const [prodCompare, setProdCompare] = useState(0); // in Rupees
+  const [prodCashback, setProdCashback] = useState(0); // in Rupees
+  const [prodStock, setProdStock] = useState(0);
+  const [prodIsActive, setProdIsActive] = useState(true);
+  const [prodIsSale, setProdIsSale] = useState(false);
+  const [prodImages, setProdImages] = useState<string[]>([]);
+  const [prodVariants, setProdVariants] = useState<any[]>([]); // {size, color, sku, stock}
+
+  // Variant helper states
+  const [newVarSize, setNewVarSize] = useState("");
+  const [newVarColor, setNewVarColor] = useState("");
+  const [newVarSku, setNewVarSku] = useState("");
+  const [newVarStock, setNewVarStock] = useState(0);
+
+  // Upload state
+  const [uploadingImage, setUploadingImage] = useState(false);
+
+  // Order update states
+  const [orderStatus, setOrderStatus] = useState("");
+  const [orderTrackingId, setOrderTrackingId] = useState("");
+  const [orderTrackingUrl, setOrderTrackingUrl] = useState("");
+  const [orderNote, setOrderNote] = useState("");
+  const [orderAddress, setOrderAddress] = useState<any>({});
+  const [supportMessages, setSupportMessages] = useState<any[]>([]);
+  const [bulkInquiries, setBulkInquiries] = useState<any[]>([]);
+  const [newsletterSubs, setNewsletterSubs] = useState<any[]>([]);
+  const [coupons, setCoupons] = useState<any[]>([]);
+  const [newCouponCode, setNewCouponCode] = useState("");
+  const [newCouponType, setNewCouponType] = useState<"percent" | "flat">("percent");
+  const [newCouponValue, setNewCouponValue] = useState(0);
+  const [newCouponMinOrder, setNewCouponMinOrder] = useState(0);
+  const [newCouponMaxDiscount, setNewCouponMaxDiscount] = useState(0);
+  const [newCouponFirstOrder, setNewCouponFirstOrder] = useState(false);
+  const [newCouponLimit, setNewCouponLimit] = useState(0);
+  const [newCouponExpiry, setNewCouponExpiry] = useState("");
+  const [showCouponForm, setShowCouponForm] = useState(false);
+
+  // CMS configuration states
+  const [cmsSlides, setCmsSlides] = useState<any[]>([]);
+  const [cmsBanners, setCmsBanners] = useState<any[]>([]);
+  
+  // CMS Slider Form
+  const [showSlideForm, setShowSlideForm] = useState(false);
+  const [editingSlide, setEditingSlide] = useState<any>(null);
+  const [slideEyebrow, setSlideEyebrow] = useState("");
+  const [slideTitle, setSlideTitle] = useState("");
+  const [slideSubtitle, setSlideSubtitle] = useState("");
+  const [slideCtaLabel, setSlideCtaLabel] = useState("");
+  const [slideCtaHref, setSlideCtaHref] = useState("");
+  const [slideImageUrl, setSlideImageUrl] = useState("");
+  const [slideSortOrder, setSlideSortOrder] = useState(0);
+  const [slideIsActive, setSlideIsActive] = useState(true);
+
+  // CMS Announcement messages state
+  const [announcementMsg, setAnnouncementMsg] = useState("");
+  const [announcementList, setAnnouncementList] = useState<string[]>([]);
+  const [announcementBannerId, setAnnouncementBannerId] = useState<string | null>(null);
+
+  // General Search states
+  const [productSearch, setProductSearch] = useState("");
+  const [orderSearch, setOrderSearch] = useState("");
+  const [userSearch, setUserSearch] = useState("");
+
+  const supabase = createClient();
+
+  useEffect(() => {
+    async function initAdmin() {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          window.location.href = "/sign-in?next=/admin";
+          return;
+        }
+        
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", user.id)
+          .single();
+
+        if (!profile || !["admin", "staff"].includes(profile.role)) {
+          window.location.href = "/";
+          return;
+        }
+
+        setCurrentUser(profile);
+        await loadAllData();
+      } catch (err: any) {
+        console.error("Admin init error:", err);
+        setError(err.message || "Failed to initialize admin dashboard");
+        setLoading(false);
+      }
+    }
+    initAdmin();
+  }, []);
+
+  async function loadAllData() {
+    setRefreshing(true);
+    try {
+      // 1. Fetch Analytics data
+      const analyticsRes = await fetch("/api/admin/analytics");
+      if (!analyticsRes.ok) throw new Error("Failed to load analytics");
+      const analyticsData = await analyticsRes.json();
+      setAnalytics(analyticsData);
+
+      // 2. Fetch Products
+      const productsRes = await fetch("/api/admin/products");
+      if (!productsRes.ok) throw new Error("Failed to load products");
+      const productsData = await productsRes.json();
+      setProducts(productsData && productsData.length > 0 ? productsData : DEFAULT_PRODUCTS);
+
+      // 3. Fetch Orders
+      const ordersRes = await fetch("/api/admin/orders");
+      if (!ordersRes.ok) throw new Error("Failed to load orders");
+      const ordersData = await ordersRes.json();
+      setOrders(ordersData);
+
+      // 4. Fetch CMS (carousel + banners)
+      const cmsRes = await fetch("/api/admin/cms");
+      if (!cmsRes.ok) throw new Error("Failed to load CMS data");
+      const cmsData = await cmsRes.json();
+      setCmsSlides(cmsData.slides && cmsData.slides.length > 0 ? cmsData.slides : DEFAULT_SLIDES);
+      setCmsBanners(cmsData.banners || []);
+
+      // Extract announcements from banners data
+      const annBanner = (cmsData.banners || []).find((b: any) => b.placement === "announcement");
+      if (annBanner) {
+        setAnnouncementBannerId(annBanner.id);
+        setAnnouncementList(annBanner.content?.messages || []);
+      } else {
+        setAnnouncementBannerId(null);
+        setAnnouncementList(DEFAULT_ANNOUNCEMENTS);
+      }
+
+      // 5. Fetch Users directly via Supabase client (authorized for staff/admin)
+      const { data: profilesList, error: profilesError } = await supabase
+        .from("profiles")
+        .select("*")
+        .order("created_at", { ascending: false });
+      
+      if (profilesError) throw profilesError;
+      setUsers(profilesList || []);
+
+      // 6. Fetch Categories directly via Supabase
+      const { data: categoriesList, error: catError } = await supabase
+        .from("categories")
+        .select("*")
+        .order("sort_order", { ascending: true });
+      if (catError) throw catError;
+      setCategories(categoriesList || []);
+
+      // 7. Fetch Support Messages
+      const { data: supportList } = await supabase
+        .from("support_messages")
+        .select("*")
+        .order("created_at", { ascending: false });
+      setSupportMessages(supportList || []);
+
+      // 8. Fetch Bulk Inquiries
+      const { data: bulkList } = await supabase
+        .from("bulk_inquiries")
+        .select("*")
+        .order("created_at", { ascending: false });
+      setBulkInquiries(bulkList || []);
+
+      // 9. Fetch Newsletter Subscriptions
+      const { data: subsList } = await supabase
+        .from("newsletter_subscriptions")
+        .select("*")
+        .order("created_at", { ascending: false });
+      setNewsletterSubs(subsList || []);
+
+      // 10. Fetch Coupons
+      const couponsRes = await fetch("/api/admin/coupons");
+      if (!couponsRes.ok) throw new Error("Failed to load promo codes");
+      const couponsData = await couponsRes.json();
+      setCoupons(couponsData || []);
+
+      setError("");
+    } catch (err: any) {
+      setError(err.message || "Failed to load dashboard data");
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }
+
+  // --- CMS Handling ---
+  async function handleSaveAnnouncement() {
+    try {
+      const payload: any = {
+        type: "banner",
+        id: announcementBannerId,
+        placement: "announcement",
+        content: { messages: announcementList },
+        is_active: true
+      };
+
+      const res = await fetch("/api/admin/cms", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) throw new Error("Failed to save announcement bar");
+      alert("Announcement Bar updated successfully!");
+      await loadAllData();
+    } catch (err: any) {
+      alert("Error: " + err.message);
+    }
+  }
+
+  function addAnnouncementMsg() {
+    if (!announcementMsg.trim()) return;
+    setAnnouncementList([...announcementList, announcementMsg.trim()]);
+    setAnnouncementMsg("");
+  }
+
+  function removeAnnouncementMsg(index: number) {
+    setAnnouncementList(announcementList.filter((_, idx) => idx !== index));
+  }
+
+  async function handleSaveSlide(e: React.FormEvent) {
+    e.preventDefault();
+    if (!slideTitle || !slideImageUrl) {
+      alert("Title and Image URL are required");
+      return;
+    }
+
+    try {
+      const payload: any = {
+        type: "slide",
+        eyebrow: slideEyebrow,
+        title: slideTitle,
+        subtitle: slideSubtitle,
+        cta_label: slideCtaLabel || "Shop Now",
+        cta_href: slideCtaHref || "/shop",
+        image_url: slideImageUrl,
+        sort_order: Number(slideSortOrder),
+        is_active: slideIsActive
+      };
+
+      if (editingSlide && !editingSlide.id.startsWith("default-")) {
+        payload.id = editingSlide.id;
+      }
+
+      const res = await fetch("/api/admin/cms", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) throw new Error("Failed to save Hero slide");
+      
+      setShowSlideForm(false);
+      setEditingSlide(null);
+      resetSlideFormFields();
+      alert("Hero slide saved successfully!");
+      await loadAllData();
+    } catch (err: any) {
+      alert("Error: " + err.message);
+    }
+  }
+
+  async function handleDeleteSlide(id: string) {
+    if (id.startsWith("default-")) {
+      alert("Default templates cannot be deleted from the database. Save your edits to create custom database slides that override these defaults.");
+      return;
+    }
+    if (!confirm("Are you sure you want to delete this slide?")) return;
+    try {
+      const res = await fetch("/api/admin/cms", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "slide", action: "delete", id })
+      });
+      if (!res.ok) throw new Error("Failed to delete Hero slide");
+      alert("Hero slide deleted successfully!");
+      await loadAllData();
+    } catch (err: any) {
+      alert("Error: " + err.message);
+    }
+  }
+
+  function startEditSlide(slide: any) {
+    setEditingSlide(slide);
+    setSlideEyebrow(slide.eyebrow || "");
+    setSlideTitle(slide.title);
+    setSlideSubtitle(slide.subtitle || "");
+    setSlideCtaLabel(slide.cta_label || "");
+    setSlideCtaHref(slide.cta_href || "");
+    setSlideImageUrl(slide.image_url || "");
+    setSlideSortOrder(slide.sort_order || 0);
+    setSlideIsActive(slide.is_active);
+    setShowSlideForm(true);
+  }
+
+  function resetSlideFormFields() {
+    setSlideEyebrow("");
+    setSlideTitle("");
+    setSlideSubtitle("");
+    setSlideCtaLabel("");
+    setSlideCtaHref("");
+    setSlideImageUrl("");
+    setSlideSortOrder(0);
+    setSlideIsActive(true);
+  }
+
+  // --- Product Editing/Adding ---
+  function openAddProduct() {
+    setEditingProduct(null);
+    setProdName("");
+    setProdSlug("");
+    setProdDesc("");
+    setProdCatId(categories[0]?.id || "");
+    setProdPrice(0);
+    setProdCompare(0);
+    setProdCashback(0);
+    setProdStock(0);
+    setProdIsActive(true);
+    setProdIsSale(false);
+    setProdImages([]);
+    setProdVariants([]);
+    setShowProductForm(true);
+  }
+
+  function openEditProduct(p: any) {
+    setEditingProduct(p);
+    setProdName(p.name);
+    setProdSlug(p.slug);
+    setProdDesc(p.description || "");
+    setProdCatId(p.category_id || "");
+    setProdPrice(p.price_paise / 100);
+    setProdCompare(p.compare_at_paise ? p.compare_at_paise / 100 : 0);
+    setProdCashback(p.cashback_paise / 100);
+    setProdStock(p.stock);
+    setProdIsActive(p.is_active);
+    setProdIsSale(p.is_on_sale);
+    setProdImages((p.product_images || []).map((img: any) => img.url));
+    setProdVariants(p.product_variants || []);
+    setShowProductForm(true);
+  }
+
+  async function handleProductImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingImage(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch("/api/admin/products/upload-image", {
+        method: "POST",
+        body: formData
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || "Upload failed");
+      }
+
+      const data = await res.json();
+      setProdImages([...prodImages, data.url]);
+    } catch (err: any) {
+      alert("Image upload failed: " + err.message);
+    } finally {
+      setUploadingImage(false);
+    }
+  }
+
+  function addProductVariant() {
+    if (!newVarSize.trim() && !newVarColor.trim()) {
+      alert("Please specify at least a size or color for the variant");
+      return;
+    }
+    const sku = newVarSku.trim() || `VAR-${prodSlug.toUpperCase() || "SKU"}-${newVarSize || "X"}-${newVarColor || "Y"}-${Date.now().toString().slice(-4)}`;
+    setProdVariants([
+      ...prodVariants,
+      {
+        size: newVarSize.trim() || null,
+        color: newVarColor.trim() || null,
+        sku,
+        stock: newVarStock
+      }
+    ]);
+    setNewVarSize("");
+    setNewVarColor("");
+    setNewVarSku("");
+    setNewVarStock(0);
+  }
+
+  function removeProductVariant(index: number) {
+    setProdVariants(prodVariants.filter((_, idx) => idx !== index));
+  }
+
+  function removeProductImage(index: number) {
+    setProdImages(prodImages.filter((_, idx) => idx !== index));
+  }
+
+  async function handleSaveProduct(e: React.FormEvent) {
+    e.preventDefault();
+    if (!prodName.trim() || !prodSlug.trim()) {
+      alert("Product Name and Slug are required");
+      return;
+    }
+
+    try {
+      const payload = {
+        id: editingProduct && !editingProduct.id.startsWith("default-p") ? editingProduct.id : undefined,
+        name: prodName.trim(),
+        slug: prodSlug.trim(),
+        description: prodDesc.trim(),
+        category_id: prodCatId,
+        price_paise: Math.round(prodPrice * 100),
+        compare_at_paise: prodCompare > 0 ? Math.round(prodCompare * 100) : null,
+        cashback_paise: Math.round(prodCashback * 100),
+        stock: Number(prodStock),
+        is_active: prodIsActive,
+        is_on_sale: prodIsSale,
+        images: prodImages,
+        variants: prodVariants
+      };
+
+      const method = editingProduct && !editingProduct.id.startsWith("default-p") ? "PUT" : "POST";
+      const res = await fetch("/api/admin/products", {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to save product");
+      }
+
+      alert("Product saved successfully!");
+      setShowProductForm(false);
+      setEditingProduct(null);
+      await loadAllData();
+    } catch (err: any) {
+      alert("Error saving product: " + err.message);
+    }
+  }
+
+  async function toggleProductActive(product: any) {
+    if (product.id.startsWith("default-p")) {
+      alert("Default product templates cannot be toggled. Save the product to customize it first.");
+      return;
+    }
+    try {
+      const res = await fetch("/api/admin/products", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: product.id, name: product.name, slug: product.slug, is_active: !product.is_active })
+      });
+      if (!res.ok) throw new Error("Failed to toggle product status");
+      await loadAllData();
+    } catch (err: any) {
+      alert("Error: " + err.message);
+    }
+  }
+
+  // --- Order Details / Edit ---
+  function inspectOrder(order: any) {
+    setSelectedOrder(order);
+    setOrderStatus(order.status);
+    setOrderTrackingId(order.tracking_id || "");
+    setOrderTrackingUrl(order.courier_tracking_url || "");
+    setOrderAddress({ ...order.shipping_address });
+    setOrderNote("");
+  }
+
+  async function handleUpdateOrder(e: React.FormEvent) {
+    e.preventDefault();
+    if (!selectedOrder) return;
+
+    try {
+      const res = await fetch("/api/admin/orders", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: selectedOrder.id,
+          status: orderStatus,
+          tracking_id: orderTrackingId,
+          courier_tracking_url: orderTrackingUrl,
+          shipping_address: orderAddress,
+          note: orderNote.trim() || undefined
+        })
+      });
+
+      if (!res.ok) throw new Error("Failed to update order");
+      alert("Order updated successfully!");
+      setSelectedOrder(null);
+      await loadAllData();
+    } catch (err: any) {
+      alert("Error updating order: " + err.message);
+    }
+  }
+
+  // --- Users management ---
+  async function updateUserRole(userId: string, role: string) {
+    try {
+      const res = await fetch("/api/admin/users/export", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, role })
+      });
+      if (!res.ok) throw new Error("Failed to update user role");
+      alert("User role updated successfully!");
+      await loadAllData();
+    } catch (err: any) {
+      alert("Error: " + err.message);
+    }
+  }
+
+  // Sync / Export excel sheet
+  async function handleExportUsers() {
+    window.open("/api/admin/users/export", "_blank");
+  }
+
+  // --- Coupons / Promo Codes Management ---
+  async function handleSaveCoupon(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newCouponCode.trim() || newCouponValue <= 0) {
+      alert("Promo Code and Value are required");
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/admin/coupons", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          code: newCouponCode.trim(),
+          type: newCouponType,
+          value: newCouponType === "percent" ? newCouponValue : Math.round(newCouponValue * 100),
+          min_order_paise: Math.round(newCouponMinOrder * 100),
+          max_discount_paise: newCouponType === "percent" && newCouponMaxDiscount > 0 ? Math.round(newCouponMaxDiscount * 100) : null,
+          first_order_only: newCouponFirstOrder,
+          usage_limit: newCouponLimit > 0 ? newCouponLimit : null,
+          expires_at: newCouponExpiry || null
+        })
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || "Failed to create promo code");
+      }
+
+      alert("Promo Code created successfully!");
+      setNewCouponCode("");
+      setNewCouponValue(0);
+      setNewCouponMinOrder(0);
+      setNewCouponMaxDiscount(0);
+      setNewCouponFirstOrder(false);
+      setNewCouponLimit(0);
+      setNewCouponExpiry("");
+      setShowCouponForm(false);
+      await loadAllData();
+    } catch (err: any) {
+      alert("Error: " + err.message);
+    }
+  }
+
+  async function handleToggleCoupon(id: string, active: boolean) {
+    try {
+      const res = await fetch("/api/admin/coupons", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, is_active: active })
+      });
+      if (!res.ok) throw new Error("Failed to toggle promo code status");
+      await loadAllData();
+    } catch (err: any) {
+      alert("Error: " + err.message);
+    }
+  }
+
+  async function handleDeleteCoupon(id: string) {
+    if (!confirm("Are you sure you want to delete this promo code?")) return;
+    try {
+      const res = await fetch(`/api/admin/coupons?id=${id}`, {
+        method: "DELETE"
+      });
+      if (!res.ok) throw new Error("Failed to delete promo code");
+      await loadAllData();
+    } catch (err: any) {
+      alert("Error: " + err.message);
+    }
+  }
+
+  // --- Invoice & Packing Slip Printer ---
+  function printInvoice(order: any) {
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+
+    const itemsRows = order.order_items.map((item: any) => `
+      <tr>
+        <td style="padding: 10px; border-bottom: 1px solid #EFE9DC;">${item.name}</td>
+        <td style="padding: 10px; border-bottom: 1px solid #EFE9DC; text-align: center;">${item.variant || "—"}</td>
+        <td style="padding: 10px; border-bottom: 1px solid #EFE9DC; text-align: right;">${formatRupees(item.unit_price_paise)}</td>
+        <td style="padding: 10px; border-bottom: 1px solid #EFE9DC; text-align: center;">${item.quantity}</td>
+        <td style="padding: 10px; border-bottom: 1px solid #EFE9DC; text-align: right; font-weight: bold;">${formatRupees(item.unit_price_paise * item.quantity)}</td>
+      </tr>
+    `).join("");
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Invoice - ${order.order_number}</title>
+          <style>
+            body { font-family: 'Segoe UI', Roboto, sans-serif; color: #2A2622; margin: 0; padding: 40px; line-height: 1.5; background-color: #ffffff; }
+            .header { display: flex; justify-content: space-between; border-bottom: 2px solid #B08D4C; padding-bottom: 20px; margin-bottom: 30px; }
+            .brand { font-family: Georgia, serif; font-size: 24px; font-weight: bold; color: #2A2622; letter-spacing: 1px; }
+            .brand-subtitle { font-size: 11px; color: #6E655A; text-transform: uppercase; letter-spacing: 2px; margin-top: 4px; }
+            .invoice-details { text-align: right; }
+            .invoice-details h2 { font-family: Georgia, serif; color: #B08D4C; margin: 0 0 10px 0; }
+            .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-bottom: 40px; }
+            .bill-box { padding: 15px; border: 1px solid #E5DFD2; border-radius: 8px; background-color: #FBF9F4; }
+            .bill-box h3 { margin-top: 0; color: #2A2622; border-bottom: 1px solid #E5DFD2; padding-bottom: 8px; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; }
+            table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
+            th { background-color: #2A2622; color: #FBF9F4; padding: 12px; text-align: left; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; }
+            .totals { width: 320px; margin-left: auto; border: 1px solid #E5DFD2; border-radius: 8px; padding: 15px; background-color: #FBF9F4; }
+            .totals-row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 14px; }
+            .totals-row.grand { font-size: 18px; font-weight: bold; color: #B08D4C; border-top: 1px solid #B08D4C; padding-top: 10px; margin-top: 6px; }
+            .footer-note { text-align: center; font-size: 12px; color: #9A9084; margin-top: 60px; border-top: 1px solid #E5DFD2; padding-top: 20px; }
+            @media print {
+              body { padding: 0; }
+              .no-print { display: none; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div>
+              <div class="brand">JAI SRI RAM TEXTILES</div>
+              <div class="brand-subtitle">Premium Handloom Weavers</div>
+              <div style="font-size: 12px; color: #6E655A; margin-top: 8px;">
+                136/5, Kallangattuvalasu, Komarapalayam,<br/>
+                Namakkal, Tamil Nadu - 638183<br/>
+                Email: jaisriramtextiles@gmail.com
+              </div>
+            </div>
+            <div class="invoice-details">
+              <h2>INVOICE</h2>
+              <div>Order No: <strong>${order.order_number}</strong></div>
+              <div>Date: ${new Date(order.placed_at).toLocaleDateString("en-IN", { dateStyle: "long" })}</div>
+              <div>Payment Status: <span style="text-transform: uppercase; font-weight: bold; color: #4B7A52;">${order.payment_status}</span></div>
+            </div>
+          </div>
+
+          <div class="grid">
+            <div class="bill-box">
+              <h3>Billed / Shipped To</h3>
+              <strong>${order.shipping_address.recipient}</strong><br/>
+              ${order.shipping_address.line1}<br/>
+              ${order.shipping_address.line2 ? order.shipping_address.line2 + "<br/>" : ""}
+              ${order.shipping_address.city}, ${order.shipping_address.district ? order.shipping_address.district + ", " : ""}${order.shipping_address.state} - <strong>${order.shipping_address.pincode}</strong><br/>
+              ${order.shipping_address.phone ? `Mobile: <strong>${order.shipping_address.phone}</strong>${order.shipping_address.alternate_phone ? " / " + order.shipping_address.alternate_phone : ""}<br/>` : ""}
+              Email: ${order.profiles?.email || "—"}
+            </div>
+            <div class="bill-box">
+              <h3>Payment & Order Details</h3>
+              Payment Method: <strong>Prepaid (Razorpay)</strong><br/>
+              Transaction ID: ${order.razorpay_payment_id || "PREPAID"}<br/>
+              Razorpay Order ID: ${order.razorpay_order_id || "—"}<br/>
+              Placed Time: ${new Date(order.placed_at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}<br/>
+              Support: <strong>jaisriramtextiles@gmail.com</strong>
+            </div>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 45%;">Product Details</th>
+                <th style="width: 15%; text-align: center;">Variant</th>
+                <th style="width: 15%; text-align: right;">Unit Price</th>
+                <th style="width: 10%; text-align: center;">Qty</th>
+                <th style="width: 15%; text-align: right;">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${itemsRows}
+            </tbody>
+          </table>
+
+          <div class="totals">
+            <div class="totals-row">
+              <span>Subtotal:</span>
+              <span>${formatRupees(order.subtotal_paise)}</span>
+            </div>
+            ${order.discount_paise > 0 ? `
+            <div class="totals-row" style="color: #A24B3E;">
+              <span>Coupon Discount:</span>
+              <span>-${formatRupees(order.discount_paise)}</span>
+            </div>` : ""}
+            ${order.wallet_used_paise > 0 ? `
+            <div class="totals-row" style="color: #A24B3E;">
+              <span>Wallet Cash Redemptions:</span>
+              <span>-${formatRupees(order.wallet_used_paise)}</span>
+            </div>` : ""}
+            <div class="totals-row">
+              <span>Shipping Charge:</span>
+              <span>${order.shipping_paise === 0 ? "FREE" : formatRupees(order.shipping_paise)}</span>
+            </div>
+            <div class="totals-row grand">
+              <span>Total Paid:</span>
+              <span>${formatRupees(order.total_paise)}</span>
+            </div>
+          </div>
+
+          <div class="footer-note">
+            Thank you for shopping with JAI SRI RAM TEXTILES!<br/>
+            This is a computer-generated invoice. No signature required.
+          </div>
+
+          <script>
+            window.onload = function() {
+              window.print();
+              // Close print window shortly after print command is loaded
+              setTimeout(function(){ window.close(); }, 500);
+            }
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  }
+
+  function printPackingSlip(order: any) {
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+
+    const itemsSummary = order.order_items.map((item: any) => `
+      <div style="padding: 6px 0; border-bottom: 1px dashed #E5DFD2; font-size: 14px;">
+        <strong>${item.quantity} x</strong> ${item.name} ${item.variant ? `(${item.variant})` : ""}
+      </div>
+    `).join("");
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Packing Sticker - ${order.order_number}</title>
+          <style>
+            body { font-family: 'Segoe UI', Roboto, sans-serif; color: #2A2622; margin: 0; padding: 20px; }
+            .box {
+              border: 3px dashed #B08D4C;
+              border-radius: 12px;
+              padding: 25px;
+              max-width: 550px;
+              margin: 0 auto;
+              background-color: #FBF9F4;
+            }
+            .header {
+              text-align: center;
+              border-bottom: 2px solid #2A2622;
+              padding-bottom: 12px;
+              margin-bottom: 20px;
+            }
+            .title { font-family: Georgia, serif; font-size: 20px; font-weight: bold; letter-spacing: 1px; }
+            .order-bar {
+              display: flex;
+              justify-content: space-between;
+              background-color: #2A2622;
+              color: #FBF9F4;
+              padding: 8px 15px;
+              font-weight: bold;
+              font-size: 15px;
+              border-radius: 4px;
+              margin-bottom: 20px;
+            }
+            .address-section { margin-bottom: 25px; }
+            .address-label {
+              font-size: 11px;
+              color: #6E655A;
+              text-transform: uppercase;
+              letter-spacing: 2px;
+              font-weight: bold;
+              margin-bottom: 6px;
+            }
+            .address-content {
+              font-size: 18px;
+              line-height: 1.5;
+              padding-left: 10px;
+              border-left: 3px solid #B08D4C;
+            }
+            .items-summary {
+              background-color: #F5F1E8;
+              border: 1px solid #E5DFD2;
+              border-radius: 6px;
+              padding: 15px;
+              margin-bottom: 20px;
+            }
+            .sender {
+              display: flex;
+              justify-content: space-between;
+              font-size: 11px;
+              color: #6E655A;
+              border-top: 1px solid #E5DFD2;
+              padding-top: 10px;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="box">
+            <div class="header">
+              <div class="title">JAI SRI RAM TEXTILES</div>
+              <div style="font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; color: #6E655A; margin-top: 4px;">PACKING SLIP & BOX LABEL</div>
+            </div>
+
+            <div class="order-bar">
+              <span>ORDER: ${order.order_number}</span>
+              <span>ITEMS: ${order.order_items.reduce((sum: number, it: any) => sum + it.quantity, 0)}</span>
+            </div>
+
+            <div class="address-section">
+              <div class="address-label">DELIVER TO (SHIPPING ADDRESS)</div>
+              <div class="address-content">
+                <strong>${order.shipping_address.recipient}</strong><br/>
+                ${order.shipping_address.line1}<br/>
+                ${order.shipping_address.line2 ? order.shipping_address.line2 + "<br/>" : ""}
+                ${order.shipping_address.city}, ${order.shipping_address.district ? order.shipping_address.district + ", " : ""}${order.shipping_address.state} - <span style="font-size: 22px; font-weight: bold; text-decoration: underline; background-color: #EFEFEF; padding: 0 4px;">${order.shipping_address.pincode}</span><br/>
+                ${order.shipping_address.phone ? `<span style="font-size: 18px; font-weight: bold; display: inline-block; margin-top: 5px;">Mobile: ${order.shipping_address.phone}${order.shipping_address.alternate_phone ? " / " + order.shipping_address.alternate_phone : ""}</span><br/>` : ""}
+              </div>
+            </div>
+
+            <div class="items-summary">
+              <div class="address-label" style="margin-bottom: 10px;">Package Checklist</div>
+              ${itemsSummary}
+            </div>
+
+            <div class="sender">
+              <div>
+                <strong>SENDER DETAILS:</strong><br/>
+                JAI SRI RAM TEXTILES<br/>
+                Komarapalayam, Tamil Nadu - 638183
+              </div>
+              <div style="text-align: right;">
+                Razorpay ID: ${order.razorpay_payment_id || "PREPAID"}<br/>
+                Carrier Code: ${order.tracking_id || "STD-SURFACE"}
+              </div>
+            </div>
+          </div>
+
+          <script>
+            window.onload = function() {
+              window.print();
+              setTimeout(function(){ window.close(); }, 500);
+            }
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  }
+
+  // --- Filtering computations ---
+  const filteredProducts = products.filter(p => {
+    if (!productSearch) return true;
+    const term = productSearch.toLowerCase();
+    return p.name.toLowerCase().includes(term) || p.slug.toLowerCase().includes(term) || (p.categories?.name || "").toLowerCase().includes(term);
+  });
+
+  const filteredOrders = orders.filter(o => {
+    if (!orderSearch) return true;
+    const term = orderSearch.toLowerCase();
+    return o.order_number.toLowerCase().includes(term) || (o.profiles?.full_name || "").toLowerCase().includes(term) || (o.profiles?.email || "").toLowerCase().includes(term) || o.status.toLowerCase().includes(term);
+  });
+
+  const filteredUsers = users.filter(u => {
+    if (!userSearch) return true;
+    const term = userSearch.toLowerCase();
+    return (u.full_name || "").toLowerCase().includes(term) || u.email.toLowerCase().includes(term) || u.role.toLowerCase().includes(term) || (u.phone || "").toLowerCase().includes(term);
+  });
+
+
+  // Render loading state
+  if (loading) {
+    return (
+      <main className="min-h-screen bg-ivory flex flex-col items-center justify-center py-20">
+        <RefreshCw className="animate-spin text-zari w-12 h-12 mb-4" />
+        <p className="font-display text-xl text-ink">Loading Admin Panel...</p>
+        <p className="text-sm text-taupe mt-1">Authenticating and retrieving database records</p>
+      </main>
+    );
+  }
+
+  return (
+    <main className="min-h-screen bg-ivory font-sans text-ink">
+      {/* Top Banner details */}
+      <div className="bg-ink text-ivory py-4 border-b border-zari-deep">
+        <Container className="flex flex-col sm:flex-row justify-between items-center gap-4">
+          <div>
+            <h1 className="font-display text-2xl tracking-wide">Admin Portal</h1>
+            <p className="text-xs text-muted mt-0.5">Welcome, <span className="text-zari-soft font-semibold">{currentUser?.full_name || currentUser?.email}</span> ({currentUser?.role})</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <Button size="sm" variant="outline" className="border-muted text-ivory hover:text-ink hover:bg-ivory" onClick={loadAllData} disabled={refreshing}>
+              <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
+              Sync Live Data
+            </Button>
+            <Button size="sm" variant="gold" href="/">
+              Exit Admin Area
+            </Button>
+          </div>
+        </Container>
+      </div>
+
+      <Container className="py-8">
+        {error && (
+          <div className="mb-6 p-4 bg-danger/10 border border-danger/20 text-danger rounded-card flex items-center gap-3">
+            <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+            <p className="text-sm font-medium">{error}</p>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          {/* Module Navigation Tabs */}
+          <div className="lg:col-span-3 space-y-2">
+            <div className="bg-white border border-line rounded-card p-4 shadow-soft">
+              <p className="text-xs font-semibold text-taupe uppercase tracking-wider mb-3 px-3">Store Administration</p>
+              <nav className="space-y-1">
+                <TabButton active={activeTab === "overview"} onClick={() => setActiveTab("overview")} icon={<LayoutDashboard className="w-4 h-4" />} label="Overview & KPI" />
+                <TabButton active={activeTab === "products"} onClick={() => setActiveTab("products")} icon={<ShoppingBag className="w-4 h-4" />} label="Product Catalog" badge={products.length} />
+                <TabButton active={activeTab === "orders"} onClick={() => setActiveTab("orders")} icon={<ShoppingCart className="w-4 h-4" />} label="Order Registry" badge={orders.length} />
+                <TabButton active={activeTab === "users"} onClick={() => setActiveTab("users")} icon={<Users className="w-4 h-4" />} label="User Management" badge={users.length} />
+                <TabButton active={activeTab === "coupons"} onClick={() => setActiveTab("coupons")} icon={<Ticket className="w-4 h-4" />} label="Promo Codes" badge={coupons.length} />
+                <TabButton active={activeTab === "support"} onClick={() => setActiveTab("support")} icon={<Mail className="w-4 h-4" />} label="Support Mail" badge={supportMessages.length} />
+                <TabButton active={activeTab === "bulk-inquiries"} onClick={() => setActiveTab("bulk-inquiries")} icon={<Briefcase className="w-4 h-4" />} label="Bulk Enquiries" badge={bulkInquiries.length} />
+                <TabButton active={activeTab === "newsletter"} onClick={() => setActiveTab("newsletter")} icon={<Bell className="w-4 h-4" />} label="Newsletter Subs" badge={newsletterSubs.length} />
+                <TabButton active={activeTab === "cms"} onClick={() => setActiveTab("cms")} icon={<Wrench className="w-4 h-4" />} label="Storefront CMS" />
+                <TabButton active={activeTab === "visitor-history"} onClick={() => setActiveTab("visitor-history")} icon={<Activity className="w-4 h-4" />} label="Visitor Sessions" badge={analytics?.sessionHistory?.length} />
+                <TabButton active={activeTab === "storage"} onClick={() => setActiveTab("storage")} icon={<Database className="w-4 h-4" />} label="System & Storage" />
+              </nav>
+            </div>
+          </div>
+
+          {/* Module Display Content */}
+          <div className="lg:col-span-9">
+            
+            {/* Overview / Dashboard Tab */}
+            {activeTab === "overview" && (
+              <div className="space-y-8 animate-fade-up">
+                {/* Stats Widget Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                  <StatCard icon={<DollarSign className="text-success" />} label="Gross Paid Revenues" value={formatRupees(analytics?.metrics?.totalSalesPaise || 0)} subtitle="Cleared Razorpay transactions" />
+                  <StatCard icon={<ShoppingCart className="text-zari" />} label="Delivered Orders" value={analytics?.metrics?.completedOrdersCount || 0} subtitle={`Avg ticket: ${formatRupees(analytics?.metrics?.avgOrderValPaise || 0)}`} />
+                  <StatCard icon={<Users className="text-ink" />} label="Active Sessions" value={analytics?.dbStats?.sessions || 0} subtitle={`Total page views: ${analytics?.dbStats?.pageViews || 0}`} />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Recent Orders Overview */}
+                  <div className="bg-white border border-line rounded-card p-6 shadow-soft">
+                    <div className="flex justify-between items-center mb-4">
+                      <h3 className="font-display text-lg">Recent Orders</h3>
+                      <button onClick={() => setActiveTab("orders")} className="text-xs font-semibold text-zari hover:underline flex items-center">
+                        All orders <ChevronRight className="w-3 h-3 ml-0.5" />
+                      </button>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm text-left">
+                        <thead>
+                          <tr className="border-b border-line text-taupe font-medium">
+                            <th className="py-2">Order #</th>
+                            <th className="py-2">Customer</th>
+                            <th className="py-2 text-right">Amount</th>
+                            <th className="py-2 text-center">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {orders.slice(0, 5).map((o: any) => (
+                            <tr key={o.id} className="border-b border-line hover:bg-ivory/50">
+                              <td className="py-3 font-semibold text-ink">{o.order_number}</td>
+                              <td className="py-3 text-taupe">{o.profiles?.full_name || "Guest"}</td>
+                              <td className="py-3 text-right font-medium">{formatRupees(o.total_paise)}</td>
+                              <td className="py-3 text-center">
+                                <span className={`inline-block px-2 py-0.5 text-xs rounded-full font-medium ${
+                                  o.status === "delivered" ? "bg-success/15 text-success" : 
+                                  o.status === "pending" ? "bg-amber-100 text-amber-800" : "bg-blue-50 text-blue-800"
+                                }`}>
+                                  {o.status}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  {/* Hot Products Overview */}
+                  <div className="bg-white border border-line rounded-card p-6 shadow-soft">
+                    <div className="flex justify-between items-center mb-4">
+                      <h3 className="font-display text-lg">Inventory Levels</h3>
+                      <button onClick={() => setActiveTab("products")} className="text-xs font-semibold text-zari hover:underline flex items-center">
+                        Manage stock <ChevronRight className="w-3 h-3 ml-0.5" />
+                      </button>
+                    </div>
+                    <div className="space-y-4">
+                      {products.slice(0, 5).map((p: any) => (
+                        <div key={p.id} className="flex justify-between items-center">
+                          <div className="flex items-center gap-3">
+                            <div className="relative w-8 h-8 rounded border overflow-hidden flex-shrink-0 bg-cream">
+                              {p.product_images?.[0] ? (
+                                <Image src={p.product_images[0].url} alt="" fill className="object-cover" />
+                              ) : (
+                                <ShoppingCart className="w-4 h-4 m-2 text-muted" />
+                              )}
+                            </div>
+                            <div>
+                              <p className="text-sm font-semibold truncate max-w-[160px]">{p.name}</p>
+                              <p className="text-xs text-taupe">{p.categories?.name || "Uncategorized"}</p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <span className={`text-xs font-bold px-2 py-0.5 rounded ${
+                              p.stock === 0 ? "bg-danger/10 text-danger" : 
+                              p.stock < 5 ? "bg-amber-100 text-amber-800" : "bg-success/10 text-success"
+                            }`}>
+                              {p.stock} in stock
+                            </span>
+                            <p className="text-xs text-taupe mt-0.5">{formatRupees(p.price_paise)}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Products catalog management tab */}
+            {activeTab === "products" && (
+              <div className="space-y-6 animate-fade-up">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                  <div className="relative flex-1 w-full">
+                    <Search className="absolute left-3 top-3 w-4 h-4 text-muted" />
+                    <input
+                      type="text"
+                      placeholder="Search products by title, slug, or category..."
+                      value={productSearch}
+                      onChange={(e) => setProductSearch(e.target.value)}
+                      className="w-full rounded-pill border border-line bg-white pl-9 pr-4 py-2 text-sm text-ink outline-none focus:border-zari"
+                    />
+                  </div>
+                  <Button size="sm" variant="gold" onClick={openAddProduct} className="flex-shrink-0">
+                    <Plus className="w-4 h-4" /> Add Product
+                  </Button>
+                </div>
+
+                {/* Product Creation / Update Form Component overlay */}
+                {showProductForm && (
+                  <div className="bg-white border-2 border-zari rounded-card p-6 shadow-lift relative">
+                    <h3 className="font-display text-xl border-b border-line pb-3 mb-5">
+                      {editingProduct ? `Edit Product: ${editingProduct.name}` : "Create New Product"}
+                    </h3>
+                    <form onSubmit={handleSaveProduct} className="space-y-6">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="flex flex-col gap-1.5">
+                          <label className="text-sm font-semibold">Product Name *</label>
+                          <input type="text" required value={prodName} onChange={(e) => {
+                            setProdName(e.target.value);
+                            if (!editingProduct) {
+                              setProdSlug(e.target.value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""));
+                            }
+                          }} className="rounded-md border border-line bg-ivory px-3 py-2 text-sm text-ink outline-none focus:border-zari" />
+                        </div>
+                        <div className="flex flex-col gap-1.5">
+                          <label className="text-sm font-semibold">URL Slug *</label>
+                          <input type="text" required value={prodSlug} onChange={(e) => setProdSlug(e.target.value.replace(/[^a-zA-Z0-9-]/g, ""))} className="rounded-md border border-line bg-ivory px-3 py-2 text-sm text-ink outline-none focus:border-zari" />
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-sm font-semibold">Description</label>
+                        <textarea value={prodDesc} onChange={(e) => setProdDesc(e.target.value)} rows={3} className="rounded-md border border-line bg-ivory px-3 py-2 text-sm text-ink outline-none focus:border-zari" />
+                      </div>
+
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div className="flex flex-col gap-1.5">
+                          <label className="text-sm font-semibold">Category</label>
+                          <select value={prodCatId} onChange={(e) => setProdCatId(e.target.value)} className="rounded-md border border-line bg-ivory px-3 py-2 text-sm text-ink outline-none focus:border-zari h-[38px]">
+                            {categories.map((c: any) => (
+                              <option key={c.id} value={c.id}>{c.name}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="flex flex-col gap-1.5">
+                          <label className="text-sm font-semibold">Price (₹) *</label>
+                          <input type="number" required min="0" step="1" value={prodPrice} onChange={(e) => setProdPrice(Number(e.target.value))} className="rounded-md border border-line bg-ivory px-3 py-2 text-sm text-ink outline-none focus:border-zari" />
+                        </div>
+                        <div className="flex flex-col gap-1.5">
+                          <label className="text-sm font-semibold">Compare At (₹)</label>
+                          <input type="number" min="0" step="1" value={prodCompare} onChange={(e) => setProdCompare(Number(e.target.value))} className="rounded-md border border-line bg-ivory px-3 py-2 text-sm text-ink outline-none focus:border-zari" />
+                        </div>
+                        <div className="flex flex-col gap-1.5">
+                          <label className="text-sm font-semibold">Cashback (₹)</label>
+                          <input type="number" min="0" step="1" value={prodCashback} onChange={(e) => setProdCashback(Number(e.target.value))} className="rounded-md border border-line bg-ivory px-3 py-2 text-sm text-ink outline-none focus:border-zari" />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-6 items-center border-t border-line pt-4">
+                        <div className="flex flex-col gap-1.5">
+                          <label className="text-sm font-semibold">Stock Level *</label>
+                          <input type="number" required min="0" value={prodStock} onChange={(e) => setProdStock(Number(e.target.value))} className="rounded-md border border-line bg-ivory px-3 py-2 text-sm text-ink outline-none focus:border-zari" />
+                        </div>
+                        <div className="flex items-center gap-2 mt-4">
+                          <input type="checkbox" id="isActive" checked={prodIsActive} onChange={(e) => setProdIsActive(e.target.checked)} className="w-4 h-4 accent-zari" />
+                          <label htmlFor="isActive" className="text-sm font-semibold cursor-pointer">Visible in Store (Active)</label>
+                        </div>
+                        <div className="flex items-center gap-2 mt-4">
+                          <input type="checkbox" id="isSale" checked={prodIsSale} onChange={(e) => setProdIsSale(e.target.checked)} className="w-4 h-4 accent-zari" />
+                          <label htmlFor="isSale" className="text-sm font-semibold cursor-pointer">Show "Live On Sale" badge</label>
+                        </div>
+                      </div>
+
+                      {/* Product Images uploads (Cloudinary integrated) */}
+                      <div className="border-t border-line pt-4 space-y-4">
+                        <h4 className="font-semibold text-sm">Product Images (Cloudinary)</h4>
+                        
+                        <div className="flex items-center gap-4">
+                          <label className={`cursor-pointer inline-flex items-center gap-2 px-4 py-2 border border-line rounded-md text-sm font-medium hover:bg-cream transition-colors ${uploadingImage ? "opacity-50 pointer-events-none" : ""}`}>
+                            <ImageIcon className="w-4 h-4 text-zari" />
+                            {uploadingImage ? "Uploading to Cloudinary..." : "Upload New Image"}
+                            <input type="file" accept="image/*" onChange={handleProductImageUpload} className="hidden" />
+                          </label>
+                        </div>
+
+                        {prodImages.length > 0 ? (
+                          <div className="grid grid-cols-3 sm:grid-cols-6 gap-4">
+                            {prodImages.map((url, index) => (
+                              <div key={index} className="relative aspect-square border border-line rounded-md overflow-hidden bg-cream group">
+                                <Image src={url} alt="Product" fill className="object-cover" />
+                                <button type="button" onClick={() => removeProductImage(index)} className="absolute top-1 right-1 bg-danger text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <Trash2 className="w-3 h-3" />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-xs text-taupe italic">No images uploaded yet. The first image will be the primary storefront listing image.</p>
+                        )}
+                      </div>
+
+                      {/* Product Sizing & Coloring Variants Management */}
+                      <div className="border-t border-line pt-4 space-y-4">
+                        <h4 className="font-semibold text-sm">Product Variants (Size / Color)</h4>
+                        
+                        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 items-end bg-cream/50 p-4 rounded-md border border-line">
+                          <div className="flex flex-col gap-1">
+                            <label className="text-xs font-semibold text-taupe">Size (e.g. M, L, 2 Metre)</label>
+                            <input type="text" placeholder="e.g. 2m" value={newVarSize} onChange={(e) => setNewVarSize(e.target.value)} className="rounded border border-line bg-white px-2 py-1 text-xs outline-none" />
+                          </div>
+                          <div className="flex flex-col gap-1">
+                            <label className="text-xs font-semibold text-taupe">Color (e.g. White, Red)</label>
+                            <input type="text" placeholder="e.g. Gold Border" value={newVarColor} onChange={(e) => setNewVarColor(e.target.value)} className="rounded border border-line bg-white px-2 py-1 text-xs outline-none" />
+                          </div>
+                          <div className="flex flex-col gap-1">
+                            <label className="text-xs font-semibold text-taupe">SKU Code (Auto if empty)</label>
+                            <input type="text" placeholder="Custom SKU" value={newVarSku} onChange={(e) => setNewVarSku(e.target.value)} className="rounded border border-line bg-white px-2 py-1 text-xs outline-none" />
+                          </div>
+                          <div className="flex flex-col gap-1">
+                            <label className="text-xs font-semibold text-taupe">Variant Stock</label>
+                            <input type="number" min="0" value={newVarStock} onChange={(e) => setNewVarStock(Number(e.target.value))} className="rounded border border-line bg-white px-2 py-1 text-xs outline-none h-[26px]" />
+                          </div>
+                          <button type="button" onClick={addProductVariant} className="bg-ink text-ivory px-3 py-1.5 rounded text-xs font-bold hover:bg-zari transition-colors h-[26px] flex items-center justify-center">
+                            <Plus className="w-3.5 h-3.5 mr-1" /> Add Variant
+                          </button>
+                        </div>
+
+                        {prodVariants.length > 0 ? (
+                          <div className="border border-line rounded-md overflow-hidden bg-white text-xs">
+                            <table className="w-full text-left">
+                              <thead>
+                                <tr className="bg-cream border-b border-line text-taupe font-medium">
+                                  <th className="p-2">Variant details (Size / Color)</th>
+                                  <th className="p-2">SKU Code</th>
+                                  <th className="p-2 text-center">Stock</th>
+                                  <th className="p-2 text-center w-12">Action</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {prodVariants.map((v, index) => (
+                                  <tr key={index} className="border-b border-line hover:bg-ivory/35">
+                                    <td className="p-2 font-medium">
+                                      {v.size && <span className="bg-zari/15 text-zari-deep px-1.5 py-0.5 rounded mr-1.5">{v.size}</span>}
+                                      {v.color && <span className="bg-ink/10 text-ink px-1.5 py-0.5 rounded">{v.color}</span>}
+                                    </td>
+                                    <td className="p-2 font-mono text-taupe">{v.sku}</td>
+                                    <td className="p-2 text-center font-bold">{v.stock} units</td>
+                                    <td className="p-2 text-center">
+                                      <button type="button" onClick={() => removeProductVariant(index)} className="text-danger hover:text-danger/80">
+                                        <Trash2 className="w-4 h-4" />
+                                      </button>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        ) : (
+                          <p className="text-xs text-taupe italic">No specific size/color variants defined. The global product stock will be sold.</p>
+                        )}
+                      </div>
+
+                      <div className="flex justify-end gap-3 border-t border-line pt-4">
+                        <Button type="button" variant="outline" size="sm" onClick={() => setShowProductForm(false)}>
+                          Cancel
+                        </Button>
+                        <Button type="submit" variant="gold" size="sm">
+                          Save Product Details
+                        </Button>
+                      </div>
+                    </form>
+                  </div>
+                )}
+
+                {products.some((p: any) => p.id.startsWith("default-p")) && (
+                  <div className="mb-4 p-4 bg-amber-50 border border-amber-200 text-amber-950 rounded-card text-xs leading-relaxed">
+                    ⚠️ <strong>Showing default product templates</strong>. The database catalog is currently empty. Click the edit icon (pencil) next to any product template and save it to write that product as a custom entry in your database.
+                  </div>
+                )}
+
+                {/* Catalog Table */}
+                <div className="bg-white border border-line rounded-card overflow-hidden shadow-soft">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm text-left">
+                      <thead>
+                        <tr className="bg-cream border-b border-line text-taupe font-medium">
+                          <th className="p-4">Product details</th>
+                          <th className="p-4">Category</th>
+                          <th className="p-4 text-right">Price</th>
+                          <th className="p-4 text-center">Stock</th>
+                          <th className="p-4 text-center">Status</th>
+                          <th className="p-4 text-center w-24">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredProducts.map((p: any) => (
+                          <tr key={p.id} className="border-b border-line hover:bg-ivory/50">
+                            <td className="p-4">
+                              <div className="flex items-center gap-3">
+                                <div className="relative w-12 h-12 rounded border overflow-hidden flex-shrink-0 bg-cream">
+                                  {p.product_images?.[0] ? (
+                                    <Image src={p.product_images[0].url} alt="" fill className="object-cover" />
+                                  ) : (
+                                    <ShoppingCart className="w-6 h-6 m-3 text-muted" />
+                                  )}
+                                </div>
+                                <div>
+                                  <p className="font-semibold text-ink leading-tight">{p.name}</p>
+                                  <p className="text-xs text-taupe font-mono mt-0.5">slug: {p.slug}</p>
+                                  {p.is_on_sale && <span className="inline-block bg-danger/10 text-danger text-[10px] font-bold px-1.5 py-0.2 rounded mt-1 uppercase">Sale</span>}
+                                </div>
+                              </div>
+                            </td>
+                            <td className="p-4 text-taupe">
+                              {p.categories?.name || <span className="italic text-muted">Uncategorized</span>}
+                            </td>
+                            <td className="p-4 text-right font-medium">
+                              <div>{formatRupees(p.price_paise)}</div>
+                              {p.compare_at_paise && <div className="text-xs text-muted line-through mt-0.5">{formatRupees(p.compare_at_paise)}</div>}
+                            </td>
+                            <td className="p-4 text-center font-semibold">
+                              <div className={`${p.stock === 0 ? "text-danger" : p.stock < 5 ? "text-amber-800" : "text-ink"}`}>{p.stock} units</div>
+                              <span className="text-[10px] text-taupe font-normal">{p.product_variants?.length || 0} variants</span>
+                            </td>
+                            <td className="p-4 text-center">
+                              <button onClick={() => toggleProductActive(p)} className={`inline-block px-2.5 py-0.5 text-xs rounded-full font-medium cursor-pointer transition-colors ${
+                                p.is_active ? "bg-success/10 text-success hover:bg-danger/10 hover:text-danger" : "bg-danger/10 text-danger hover:bg-success/10 hover:text-success"
+                              }`}>
+                                {p.is_active ? "Active" : "Disabled"}
+                              </button>
+                            </td>
+                            <td className="p-4 text-center">
+                              <div className="flex justify-center gap-2">
+                                <button onClick={() => openEditProduct(p)} className="p-1 border border-line rounded bg-cream hover:bg-beige text-ink hover:text-zari-deep" title="Edit Product">
+                                  <Edit2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Orders registry list tab */}
+            {activeTab === "orders" && (
+              <div className="space-y-6 animate-fade-up">
+                {selectedOrder ? (
+                  /* Dedicated Full-Screen Order Details & Editing Section */
+                  <div className="bg-white border-2 border-zari rounded-card p-6 shadow-lift space-y-6">
+                    <div className="flex justify-between items-center border-b border-line pb-3">
+                      <div>
+                        <h3 className="font-display text-xl text-ink">Manage Order: {selectedOrder.order_number}</h3>
+                        <p className="text-xs text-taupe mt-0.5">Placed on: {new Date(selectedOrder.placed_at).toLocaleString("en-IN")}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => printInvoice({ ...selectedOrder, shipping_address: orderAddress, tracking_id: orderTrackingId, courier_tracking_url: orderTrackingUrl })} className="p-2 border border-line rounded bg-cream hover:bg-beige text-ink flex items-center gap-1.5 text-xs font-semibold cursor-pointer" title="Print Invoice">
+                          <Printer className="w-4 h-4" /> Invoice
+                        </button>
+                        <button onClick={() => printPackingSlip({ ...selectedOrder, shipping_address: orderAddress, tracking_id: orderTrackingId, courier_tracking_url: orderTrackingUrl })} className="p-2 border border-line rounded bg-cream hover:bg-beige text-ink flex items-center gap-1.5 text-xs font-semibold cursor-pointer" title="Print Packing Slip">
+                          <Printer className="w-4 h-4" /> Packing Slip
+                        </button>
+                        <button onClick={() => setSelectedOrder(null)} className="flex items-center gap-1 text-xs font-semibold text-taupe hover:text-ink px-2.5 py-2 border border-line rounded bg-white transition-colors cursor-pointer">
+                          <ChevronLeft className="w-4.5 h-4.5" /> Back to Registry
+                        </button>
+                      </div>
+                    </div>
+
+                    <form onSubmit={handleUpdateOrder} className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      {/* Left: order status update */}
+                      <div className="space-y-4 bg-cream/35 p-4 rounded-md border border-line">
+                        <h4 className="font-semibold text-sm text-zari-deep border-b border-line pb-2">Logistics Control</h4>
+                        
+                        <div className="flex flex-col gap-1.5">
+                          <label className="text-xs font-bold text-taupe">Order Status</label>
+                          <select value={orderStatus} onChange={(e) => setOrderStatus(e.target.value)} className="rounded border border-line bg-white px-3 py-1.5 text-sm outline-none">
+                            <option value="pending">Pending</option>
+                            <option value="confirmed">Confirmed</option>
+                            <option value="packed">Packed</option>
+                            <option value="shipped">Shipped</option>
+                            <option value="out_for_delivery">Out For Delivery</option>
+                            <option value="delivered">Delivered</option>
+                            <option value="returned">Returned</option>
+                          </select>
+                        </div>
+
+                        <div className="flex flex-col gap-1.5">
+                          <label className="text-xs font-bold text-taupe">Courier Tracking ID</label>
+                          <input type="text" placeholder="Tracking ID" value={orderTrackingId} onChange={(e) => setOrderTrackingId(e.target.value)} className="rounded border border-line bg-white px-3 py-1.5 text-sm outline-none" />
+                        </div>
+
+                        <div className="flex flex-col gap-1.5">
+                          <label className="text-xs font-bold text-taupe">Tracking URL</label>
+                          <input type="url" placeholder="https://..." value={orderTrackingUrl} onChange={(e) => setOrderTrackingUrl(e.target.value)} className="rounded border border-line bg-white px-3 py-1.5 text-sm outline-none" />
+                        </div>
+
+                        <div className="flex flex-col gap-1.5">
+                          <label className="text-xs font-bold text-taupe">Internal Audit Note</label>
+                          <textarea placeholder="Reason for change..." value={orderNote} onChange={(e) => setOrderNote(e.target.value)} rows={2} className="rounded border border-line bg-white px-3 py-1.5 text-xs outline-none" />
+                        </div>
+
+                        <Button type="submit" variant="gold" size="sm" className="w-full">
+                          Save Order Settings
+                        </Button>
+                      </div>
+
+                      {/* Middle: shipping address edit */}
+                      <div className="space-y-4 bg-cream/35 p-4 rounded-md border border-line">
+                        <h4 className="font-semibold text-sm text-zari-deep border-b border-line pb-2">Edit Shipping Address</h4>
+                        
+                        <div className="flex flex-col gap-1.5">
+                          <label className="text-xs font-bold text-taupe">Recipient Name</label>
+                          <input type="text" required value={orderAddress.recipient || ""} onChange={(e) => setOrderAddress({...orderAddress, recipient: e.target.value})} className="rounded border border-line bg-white px-3 py-1.5 text-sm outline-none" />
+                        </div>
+
+                        <div className="flex flex-col gap-1.5">
+                          <label className="text-xs font-bold text-taupe">Line 1 (Street)</label>
+                          <input type="text" required value={orderAddress.line1 || ""} onChange={(e) => setOrderAddress({...orderAddress, line1: e.target.value})} className="rounded border border-line bg-white px-3 py-1.5 text-sm outline-none" />
+                        </div>
+
+                        <div className="flex flex-col gap-1.5">
+                          <label className="text-xs font-bold text-taupe">Line 2 (Area/Apt)</label>
+                          <input type="text" value={orderAddress.line2 || ""} onChange={(e) => setOrderAddress({...orderAddress, line2: e.target.value})} className="rounded border border-line bg-white px-3 py-1.5 text-sm outline-none" />
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-2">
+                          <div className="flex flex-col gap-1.5">
+                            <label className="text-xs font-bold text-taupe">City</label>
+                            <input type="text" required value={orderAddress.city || ""} onChange={(e) => setOrderAddress({...orderAddress, city: e.target.value})} className="rounded border border-line bg-white px-3 py-1.5 text-sm outline-none" />
+                          </div>
+                          <div className="flex flex-col gap-1.5">
+                            <label className="text-xs font-bold text-taupe">District</label>
+                            <input type="text" required value={orderAddress.district || ""} onChange={(e) => setOrderAddress({...orderAddress, district: e.target.value})} className="rounded border border-line bg-white px-3 py-1.5 text-sm outline-none" />
+                          </div>
+                          <div className="flex flex-col gap-1.5">
+                            <label className="text-xs font-bold text-taupe">State</label>
+                            <input type="text" required value={orderAddress.state || ""} onChange={(e) => setOrderAddress({...orderAddress, state: e.target.value})} className="rounded border border-line bg-white px-3 py-1.5 text-sm outline-none" />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-2">
+                          <div className="flex flex-col gap-1.5">
+                            <label className="text-xs font-bold text-taupe">Pincode</label>
+                            <input type="text" required value={orderAddress.pincode || ""} onChange={(e) => setOrderAddress({...orderAddress, pincode: e.target.value})} className="rounded border border-line bg-white px-3 py-1.5 text-sm outline-none" />
+                          </div>
+                          <div className="flex flex-col gap-1.5">
+                            <label className="text-xs font-bold text-taupe">Mobile</label>
+                            <input type="tel" required value={orderAddress.phone || ""} onChange={(e) => setOrderAddress({...orderAddress, phone: e.target.value})} className="rounded border border-line bg-white px-3 py-1.5 text-sm outline-none" />
+                          </div>
+                          <div className="flex flex-col gap-1.5">
+                            <label className="text-xs font-bold text-taupe">Alt Mobile</label>
+                            <input type="tel" value={orderAddress.alternate_phone || ""} onChange={(e) => setOrderAddress({...orderAddress, alternate_phone: e.target.value})} className="rounded border border-line bg-white px-3 py-1.5 text-sm outline-none" />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Right: order details summary */}
+                      <div className="space-y-4 text-sm">
+                        <h4 className="font-semibold text-sm text-ink border-b border-line pb-2">Invoice Summary</h4>
+                        
+                        <div className="space-y-2">
+                          {selectedOrder.order_items?.map((item: any) => (
+                            <div key={item.id} className="flex justify-between items-start text-xs border-b border-line pb-1.5">
+                              <div>
+                                <p className="font-semibold text-ink">{item.name}</p>
+                                <p className="text-taupe mt-0.5">{item.variant || "Standard variant"} &times; {item.quantity}</p>
+                              </div>
+                              <span className="font-medium">{formatRupees(item.unit_price_paise * item.quantity)}</span>
+                            </div>
+                          ))}
+                        </div>
+
+                        <div className="space-y-1.5 text-xs text-taupe border-t border-line pt-2">
+                          <div className="flex justify-between">
+                            <span>Subtotal:</span>
+                            <span>{formatRupees(selectedOrder.subtotal_paise)}</span>
+                          </div>
+                          {selectedOrder.discount_paise > 0 && (
+                            <div className="flex justify-between text-danger">
+                              <span>Coupon Discount:</span>
+                              <span>-{formatRupees(selectedOrder.discount_paise)}</span>
+                            </div>
+                          )}
+                          {selectedOrder.wallet_used_paise > 0 && (
+                            <div className="flex justify-between text-danger">
+                              <span>Wallet Used:</span>
+                              <span>-{formatRupees(selectedOrder.wallet_used_paise)}</span>
+                            </div>
+                          )}
+                          <div className="flex justify-between">
+                            <span>Shipping Charge:</span>
+                            <span>{selectedOrder.shipping_paise === 0 ? "FREE" : formatRupees(selectedOrder.shipping_paise)}</span>
+                          </div>
+                          <div className="flex justify-between font-bold text-ink text-sm border-t border-line pt-1.5">
+                            <span>Paid Total:</span>
+                            <span>{formatRupees(selectedOrder.total_paise)}</span>
+                          </div>
+                        </div>
+
+                        <div className="border border-line rounded p-3 bg-ivory text-xs text-taupe space-y-1">
+                          <p><strong>Razorpay Order:</strong> {selectedOrder.razorpay_order_id || "—"}</p>
+                          <p><strong>Razorpay Payment:</strong> {selectedOrder.razorpay_payment_id || "—"}</p>
+                          <p><strong>Customer Profile Email:</strong> {selectedOrder.profiles?.email || "—"}</p>
+                        </div>
+                      </div>
+                    </form>
+                  </div>
+                ) : (
+                  <>
+                    <div className="relative w-full">
+                      <Search className="absolute left-3 top-3 w-4 h-4 text-muted" />
+                      <input
+                        type="text"
+                        placeholder="Search orders by number, customer name, email, or courier status..."
+                        value={orderSearch}
+                        onChange={(e) => setOrderSearch(e.target.value)}
+                        className="w-full rounded-pill border border-line bg-white pl-9 pr-4 py-2 text-sm text-ink outline-none focus:border-zari"
+                      />
+                    </div>
+
+                    {/* Orders Registry Table */}
+                    <div className="bg-white border border-line rounded-card overflow-hidden shadow-soft">
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm text-left">
+                          <thead>
+                            <tr className="bg-cream border-b border-line text-taupe font-medium">
+                              <th className="p-4">Order Number</th>
+                              <th className="p-4">Customer</th>
+                              <th className="p-4 text-center">Status</th>
+                              <th className="p-4 text-center">Payment Status</th>
+                              <th className="p-4 text-right">Paid Total</th>
+                              <th className="p-4 text-center">Date Placed</th>
+                              <th className="p-4 text-center w-16">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {filteredOrders.map((o: any) => (
+                              <tr key={o.id} className="border-b border-line hover:bg-ivory/50">
+                                <td className="p-4 font-semibold text-ink">{o.order_number}</td>
+                                <td className="p-4">
+                                  <p className="font-medium">{o.profiles?.full_name || "Guest Checkout"}</p>
+                                  <p className="text-xs text-taupe">{o.profiles?.email || "—"}</p>
+                                </td>
+                                <td className="p-4 text-center">
+                                  <span className={`inline-block px-2.5 py-0.5 text-xs rounded-full font-medium uppercase ${
+                                    o.status === "delivered" ? "bg-success/15 text-success" : 
+                                    o.status === "pending" ? "bg-amber-100 text-amber-800" : "bg-blue-50 text-blue-800"
+                                  }`}>
+                                    {o.status}
+                                  </span>
+                                </td>
+                                <td className="p-4 text-center">
+                                  <span className={`inline-block px-2 py-0.5 text-xs rounded font-bold uppercase ${
+                                    o.payment_status === "paid" ? "bg-success/10 text-success" : "bg-danger/10 text-danger"
+                                  }`}>
+                                    {o.payment_status}
+                                  </span>
+                                </td>
+                                <td className="p-4 text-right font-semibold">{formatRupees(o.total_paise)}</td>
+                                <td className="p-4 text-center text-taupe text-xs">
+                                  {new Date(o.placed_at).toLocaleDateString("en-IN", { dateStyle: "medium" })}
+                                </td>
+                                <td className="p-4 text-center">
+                                  <button onClick={() => inspectOrder(o)} className="p-1 border border-line rounded bg-cream hover:bg-beige text-ink cursor-pointer" title="Inspect / Manage Order">
+                                    <Eye className="w-4 h-4" />
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* Users lists and signups management */}
+            {activeTab === "users" && (
+              <div className="space-y-6 animate-fade-up">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                  <div className="relative flex-1 w-full">
+                    <Search className="absolute left-3 top-3 w-4 h-4 text-muted" />
+                    <input
+                      type="text"
+                      placeholder="Search users by name, email, or role..."
+                      value={userSearch}
+                      onChange={(e) => setUserSearch(e.target.value)}
+                      className="w-full rounded-pill border border-line bg-white pl-9 pr-4 py-2 text-sm text-ink outline-none focus:border-zari"
+                    />
+                  </div>
+                  <Button size="sm" variant="gold" onClick={handleExportUsers} className="flex-shrink-0">
+                    <Download className="w-4 h-4" /> Download Users Excel (CSV)
+                  </Button>
+                </div>
+
+                <div className="bg-white border border-line rounded-card overflow-hidden shadow-soft">
+                  <div className="p-4 border-b border-line bg-cream/25">
+                    <p className="text-xs text-taupe font-semibold">New user signups automatically append to the local Excel-compatible sheet <span className="font-mono text-ink">public/users.csv</span>. Clicking "Download Users Excel" will synchronize the spreadsheet with the live database profiles and serve the download.</p>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm text-left">
+                      <thead>
+                        <tr className="bg-cream border-b border-line text-taupe font-medium">
+                          <th className="p-4">Customer Name</th>
+                          <th className="p-4">Email Address</th>
+                          <th className="p-4">Mobile Number</th>
+                          <th className="p-4 text-center">Sign-up Provider</th>
+                          <th className="p-4 text-center">Account Role</th>
+                          <th className="p-4 text-center">Joined Date</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredUsers.map((u: any) => (
+                          <tr key={u.id} className="border-b border-line hover:bg-ivory/50">
+                            <td className="p-4 font-semibold text-ink">{u.full_name || "—"}</td>
+                            <td className="p-4 text-taupe">{u.email}</td>
+                            <td className="p-4 text-ink font-mono">{u.phone || "—"}</td>
+                            <td className="p-4 text-center">
+                              <span className={`inline-block px-2 py-0.5 text-xs rounded font-medium ${
+                                u.provider === "google" ? "bg-amber-100 text-amber-900" : "bg-slate-100 text-slate-800"
+                              }`}>
+                                {u.provider}
+                              </span>
+                            </td>
+                            <td className="p-4 text-center">
+                              <select value={u.role} onChange={(e) => updateUserRole(u.id, e.target.value)} className="rounded border border-line bg-white px-2 py-1 text-xs outline-none font-semibold">
+                                <option value="customer">customer</option>
+                                <option value="staff">staff</option>
+                                <option value="admin">admin</option>
+                              </select>
+                            </td>
+                            <td className="p-4 text-center text-taupe text-xs">
+                              {new Date(u.created_at).toLocaleDateString("en-IN", { dateStyle: "long" })}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Coupons / Promo Codes Management Tab */}
+            {activeTab === "coupons" && (
+              <div className="space-y-6 animate-fade-up">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                  <div>
+                    <h3 className="font-display text-lg text-ink">Promo Codes & Coupons</h3>
+                    <p className="text-xs text-taupe mt-0.5">Manage promotional discount campaigns and checkout coupon codes</p>
+                  </div>
+                  <Button size="sm" variant="gold" onClick={() => setShowCouponForm(!showCouponForm)} className="flex-shrink-0">
+                    <Plus className="w-4 h-4 mr-1" /> {showCouponForm ? "Hide Form" : "Create Promo Code"}
+                  </Button>
+                </div>
+
+                {showCouponForm && (
+                  <form onSubmit={handleSaveCoupon} className="bg-white border border-line rounded-card p-6 shadow-soft space-y-6">
+                    <h4 className="font-semibold text-sm text-zari-deep border-b border-line pb-2">
+                      New Coupon details
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-xs font-bold text-taupe uppercase">Promo Code *</label>
+                        <input
+                          type="text"
+                          required
+                          placeholder="e.g. FESTIVE20"
+                          value={newCouponCode}
+                          onChange={(e) => setNewCouponCode(e.target.value.toUpperCase())}
+                          className="rounded border border-line bg-white px-3 py-2 text-sm outline-none focus:border-zari"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-xs font-bold text-taupe uppercase">Discount Type</label>
+                        <select
+                          value={newCouponType}
+                          onChange={(e) => setNewCouponType(e.target.value as "percent" | "flat")}
+                          className="rounded border border-line bg-white px-3 py-2 text-sm outline-none focus:border-zari h-[38px]"
+                        >
+                          <option value="percent">Percentage (%)</option>
+                          <option value="flat">Flat Amount (₹)</option>
+                        </select>
+                      </div>
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-xs font-bold text-taupe uppercase">
+                          Discount Value * {newCouponType === "percent" ? "(%)" : "(₹)"}
+                        </label>
+                        <input
+                          type="number"
+                          required
+                          min="1"
+                          step="any"
+                          value={newCouponValue || ""}
+                          onChange={(e) => setNewCouponValue(Number(e.target.value))}
+                          className="rounded border border-line bg-white px-3 py-2 text-sm outline-none focus:border-zari"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-xs font-bold text-taupe uppercase">Min Order Amount (₹)</label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="any"
+                          value={newCouponMinOrder || ""}
+                          onChange={(e) => setNewCouponMinOrder(Number(e.target.value))}
+                          className="rounded border border-line bg-white px-3 py-2 text-sm outline-none focus:border-zari"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-xs font-bold text-taupe uppercase">Max Discount Cap (₹) {newCouponType === "flat" && "(Ignored for Flat)"}</label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="any"
+                          disabled={newCouponType === "flat"}
+                          value={newCouponMaxDiscount || ""}
+                          onChange={(e) => setNewCouponMaxDiscount(Number(e.target.value))}
+                          className="rounded border border-line bg-white px-3 py-2 text-sm outline-none focus:border-zari disabled:opacity-50"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-xs font-bold text-taupe uppercase">Usage Limit (0 or empty = unlimited)</label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={newCouponLimit || ""}
+                          onChange={(e) => setNewCouponLimit(Number(e.target.value))}
+                          className="rounded border border-line bg-white px-3 py-2 text-sm outline-none focus:border-zari"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-xs font-bold text-taupe uppercase">Expiry Date & Time</label>
+                        <input
+                          type="datetime-local"
+                          value={newCouponExpiry}
+                          onChange={(e) => setNewCouponExpiry(e.target.value)}
+                          className="rounded border border-line bg-white px-3 py-2 text-sm outline-none focus:border-zari"
+                        />
+                      </div>
+                      <div className="flex items-center gap-2 mt-6">
+                        <input
+                          type="checkbox"
+                          id="firstOrderOnly"
+                          checked={newCouponFirstOrder}
+                          onChange={(e) => setNewCouponFirstOrder(e.target.checked)}
+                          className="w-4 h-4 accent-zari"
+                        />
+                        <label htmlFor="firstOrderOnly" className="text-sm font-semibold cursor-pointer select-none">
+                          First Order Only (e.g. WELCOME10 welcome campaign)
+                        </label>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end gap-3 border-t border-line pt-4">
+                      <Button type="button" variant="outline" size="sm" onClick={() => setShowCouponForm(false)}>
+                        Cancel
+                      </Button>
+                      <Button type="submit" variant="gold" size="sm">
+                        Create Promo Code
+                      </Button>
+                    </div>
+                  </form>
+                )}
+
+                <div className="bg-white border border-line rounded-card overflow-hidden shadow-soft">
+                  {coupons.length === 0 ? (
+                    <div className="p-12 text-center text-sm text-taupe italic">
+                      No promo codes configured in the database yet. Click "Create Promo Code" to get started.
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-xs sm:text-sm text-left">
+                        <thead>
+                          <tr className="bg-cream border-b border-line text-taupe font-medium">
+                            <th className="p-3">Coupon Code</th>
+                            <th className="p-3">Discount Type</th>
+                            <th className="p-3 text-right">Value</th>
+                            <th className="p-3 text-right">Min Order</th>
+                            <th className="p-3 text-right">Max Cap</th>
+                            <th className="p-3 text-center">First Order Only</th>
+                            <th className="p-3 text-center">Limit</th>
+                            <th className="p-3 text-center">Used Count</th>
+                            <th className="p-3 text-center">Expiry</th>
+                            <th className="p-3 text-center">Status</th>
+                            <th className="p-3 text-center w-16">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {coupons.map((c: any) => (
+                            <tr key={c.id} className="border-b border-line hover:bg-ivory/50">
+                              <td className="p-3 font-bold font-mono text-ink text-sm tracking-wide uppercase">{c.code}</td>
+                              <td className="p-3">
+                                <span className={`inline-block px-2 py-0.5 text-xs rounded font-semibold uppercase ${
+                                  c.type === "percent" ? "bg-blue-50 text-blue-800" : "bg-emerald-50 text-emerald-800"
+                                }`}>
+                                  {c.type === "percent" ? "Percent" : "Flat"}
+                                </span>
+                              </td>
+                              <td className="p-3 text-right font-semibold text-ink">
+                                {c.type === "percent" ? `${c.value}%` : formatRupees(c.value)}
+                              </td>
+                              <td className="p-3 text-right text-taupe">
+                                {c.min_order_paise > 0 ? formatRupees(c.min_order_paise) : "₹0"}
+                              </td>
+                              <td className="p-3 text-right text-taupe">
+                                {c.type === "percent" && c.max_discount_paise ? formatRupees(c.max_discount_paise) : "—"}
+                              </td>
+                              <td className="p-3 text-center">
+                                <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase ${
+                                  c.first_order_only ? "bg-amber-100 text-amber-800" : "bg-slate-100 text-slate-800"
+                                }`}>
+                                  {c.first_order_only ? "Yes" : "No"}
+                                </span>
+                              </td>
+                              <td className="p-3 text-center text-taupe">
+                                {c.usage_limit !== null ? c.usage_limit : "Unlimited"}
+                              </td>
+                              <td className="p-3 text-center font-bold text-ink">
+                                {c.used_count}
+                              </td>
+                              <td className="p-3 text-center text-xs text-taupe">
+                                {c.expires_at ? new Date(c.expires_at).toLocaleString("en-IN", { dateStyle: "short", timeStyle: "short" }) : "Never"}
+                              </td>
+                              <td className="p-3 text-center">
+                                <button
+                                  onClick={() => handleToggleCoupon(c.id, !c.is_active)}
+                                  className={`inline-block px-2.5 py-0.5 text-xs rounded-full font-medium cursor-pointer transition-colors ${
+                                    c.is_active ? "bg-success/15 text-success hover:bg-danger/10 hover:text-danger" : "bg-danger/10 text-danger hover:bg-success/10 hover:text-success"
+                                  }`}
+                                >
+                                  {c.is_active ? "Active" : "Disabled"}
+                                </button>
+                              </td>
+                              <td className="p-3 text-center">
+                                <button
+                                  onClick={() => handleDeleteCoupon(c.id)}
+                                  className="p-1 border border-line rounded bg-cream hover:bg-danger/10 hover:text-danger text-ink cursor-pointer"
+                                  title="Delete Promo Code"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Live customisation tab (Hero Carousel and Announcement message edits) */}
+            {activeTab === "cms" && (
+              <div className="space-y-8 animate-fade-up">
+                {/* Section 1: Hero Carousel management */}
+                <div className="bg-white border border-line rounded-card p-6 shadow-soft space-y-6">
+                  <div className="flex justify-between items-center border-b border-line pb-3">
+                    <h3 className="font-display text-lg">Homepage Hero Slides</h3>
+                    <Button size="sm" variant="gold" onClick={() => { setEditingSlide(null); resetSlideFormFields(); setShowSlideForm(true); }}>
+                      <Plus className="w-4 h-4" /> Add Slide
+                    </Button>
+                  </div>
+
+                  {showSlideForm && (
+                    <form onSubmit={handleSaveSlide} className="bg-cream/35 border border-line p-5 rounded-md space-y-4">
+                      <h4 className="font-semibold text-sm border-b border-line pb-2">
+                        {editingSlide ? "Edit Carousel Slide" : "Create Carousel Slide"}
+                      </h4>
+                      
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="flex flex-col gap-1">
+                          <label className="text-xs font-bold text-taupe">Eyebrow Text</label>
+                          <input type="text" placeholder="e.g. Festival arrivals" value={slideEyebrow} onChange={(e) => setSlideEyebrow(e.target.value)} className="rounded border border-line bg-white px-3 py-1.5 text-xs outline-none" />
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <label className="text-xs font-bold text-taupe">Slide Title *</label>
+                          <input type="text" required placeholder="e.g. Pure white veshtis" value={slideTitle} onChange={(e) => setSlideTitle(e.target.value)} className="rounded border border-line bg-white px-3 py-1.5 text-xs outline-none" />
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col gap-1">
+                        <label className="text-xs font-bold text-taupe">Subtitle / Paragraph Description</label>
+                        <input type="text" placeholder="e.g. Crafted on traditional dhotis looms..." value={slideSubtitle} onChange={(e) => setSlideSubtitle(e.target.value)} className="rounded border border-line bg-white px-3 py-1.5 text-xs outline-none" />
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div className="flex flex-col gap-1">
+                          <label className="text-xs font-bold text-taupe">CTA Button Label</label>
+                          <input type="text" placeholder="e.g. Shop the collection" value={slideCtaLabel} onChange={(e) => setSlideCtaLabel(e.target.value)} className="rounded border border-line bg-white px-3 py-1.5 text-xs outline-none" />
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <label className="text-xs font-bold text-taupe">CTA Target Link</label>
+                          <input type="text" placeholder="e.g. /shop/white-dhoti" value={slideCtaHref} onChange={(e) => setSlideCtaHref(e.target.value)} className="rounded border border-line bg-white px-3 py-1.5 text-xs outline-none" />
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <label className="text-xs font-bold text-taupe">Image URL * (Cloudinary/Public URL)</label>
+                          <input type="text" required placeholder="https://res.cloudinary.com/..." value={slideImageUrl} onChange={(e) => setSlideImageUrl(e.target.value)} className="rounded border border-line bg-white px-3 py-1.5 text-xs outline-none" />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4 items-center pt-2">
+                        <div className="flex flex-col gap-1">
+                          <label className="text-xs font-bold text-taupe">Sort Order Number</label>
+                          <input type="number" value={slideSortOrder} onChange={(e) => setSlideSortOrder(Number(e.target.value))} className="rounded border border-line bg-white px-3 py-1.5 text-xs outline-none" />
+                        </div>
+                        <div className="flex items-center gap-2 mt-4">
+                          <input type="checkbox" id="slideActive" checked={slideIsActive} onChange={(e) => setSlideIsActive(e.target.checked)} className="w-4 h-4 accent-zari" />
+                          <label htmlFor="slideActive" className="text-xs font-semibold cursor-pointer">Slide is Active</label>
+                        </div>
+                      </div>
+
+                      <div className="flex justify-end gap-2 pt-2">
+                        <Button type="button" variant="outline" size="sm" onClick={() => { setShowSlideForm(false); setEditingSlide(null); }}>
+                          Cancel
+                        </Button>
+                        <Button type="submit" variant="gold" size="sm">
+                          Save Slide
+                        </Button>
+                      </div>
+                    </form>
+                  )}
+
+                  {cmsSlides.some((s: any) => s.id.startsWith("default-")) && (
+                    <div className="mb-4 p-3 bg-amber-50 border border-amber-200 text-amber-950 rounded text-xs leading-relaxed">
+                      ⚠️ <strong>Showing default slide templates</strong>. Click the edit icon (pencil) on any slide and save it to create custom entries in your database that override these defaults.
+                    </div>
+                  )}
+
+                  {cmsSlides.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {cmsSlides.map((slide) => (
+                        <div key={slide.id} className="border border-line rounded-md p-4 bg-cream/15 flex gap-4 items-start relative group shadow-soft">
+                          <div className="relative w-20 h-20 border border-line rounded overflow-hidden flex-shrink-0 bg-cream">
+                            {slide.image_url ? (
+                              <Image src={slide.image_url} alt="" fill className="object-cover" />
+                            ) : (
+                              <ImageIcon className="w-6 h-6 m-7 text-muted" />
+                            )}
+                          </div>
+                          <div className="flex-1 space-y-1 min-w-0">
+                            <p className="text-xs font-bold uppercase text-zari tracking-wide">{slide.eyebrow || "Hero highlight"}</p>
+                            <p className="text-sm font-bold text-ink truncate">{slide.title}</p>
+                            <p className="text-xs text-taupe line-clamp-2">{slide.subtitle}</p>
+                            <div className="pt-1.5 flex gap-3 text-[11px] font-semibold">
+                              <span className="text-ink">Sort: #{slide.sort_order}</span>
+                              <span className={slide.is_active ? "text-success" : "text-danger"}>{slide.is_active ? "Active" : "Disabled"}</span>
+                            </div>
+                          </div>
+                          <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button onClick={() => startEditSlide(slide)} className="p-1 border border-line rounded bg-white hover:bg-cream text-ink" title="Edit Slide">
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </button>
+                            <button onClick={() => handleDeleteSlide(slide.id)} className="p-1 border border-line rounded bg-white hover:bg-danger/10 text-danger" title="Delete Slide">
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-taupe italic">No customized hero slides in database. Storefront is displaying the hardcoded default slides.</p>
+                  )}
+                </div>
+
+                {/* Section 2: Announcement Bar config */}
+                <div className="bg-white border border-line rounded-card p-6 shadow-soft space-y-6">
+                  <h3 className="font-display text-lg border-b border-line pb-3">Announcement Bar Banner Messages</h3>
+                  
+                  {!announcementBannerId && (
+                    <div className="p-3 bg-amber-50 border border-amber-200 text-amber-950 rounded text-xs leading-relaxed">
+                      ⚠️ <strong>Showing default banner message templates</strong>. Click "Save Announcement Messages" below to store these configurations as custom overrides in your database.
+                    </div>
+                  )}
+                  
+                  <div className="space-y-4">
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        placeholder="Add banner text message (e.g. Free shipping above ₹1000)"
+                        value={announcementMsg}
+                        onChange={(e) => setAnnouncementMsg(e.target.value)}
+                        className="flex-1 rounded border border-line px-3 py-2 text-sm outline-none focus:border-zari"
+                      />
+                      <Button size="sm" variant="gold" onClick={addAnnouncementMsg}>
+                        Add message
+                      </Button>
+                    </div>
+
+                    {announcementList.length > 0 ? (
+                      <div className="space-y-2">
+                        {announcementList.map((msg, idx) => (
+                          <div key={idx} className="flex justify-between items-center p-3 bg-cream/40 rounded border border-line text-sm">
+                            <span className="font-medium text-ink">{msg}</span>
+                            <button onClick={() => removeAnnouncementMsg(idx)} className="text-danger hover:text-danger/80">
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-taupe italic">No banner messages added. Default fallback announcements will be shown.</p>
+                    )}
+
+                    <div className="flex justify-end pt-3">
+                      <Button size="sm" variant="gold" onClick={handleSaveAnnouncement}>
+                        Save Announcement Messages
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Visitor History Tab */}
+            {activeTab === "visitor-history" && (
+              <div className="space-y-6 animate-fade-up">
+                <div className="flex justify-between items-center">
+                  <h3 className="font-display text-lg">Active & Historic Sessions</h3>
+                  <span className="text-xs text-taupe font-medium">Refreshes dynamically with store synchronization</span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+                  {/* Left: sessions list */}
+                  <div className="md:col-span-7 bg-white border border-line rounded-card overflow-hidden shadow-soft">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-xs text-left">
+                        <thead>
+                          <tr className="bg-cream border-b border-line text-taupe font-medium">
+                            <th className="p-3">Visitor OS/Device</th>
+                            <th className="p-3">Referrer</th>
+                            <th className="p-3 text-center">Country</th>
+                            <th className="p-3 text-center">Views</th>
+                            <th className="p-3 text-center">Duration</th>
+                            <th className="p-3 text-center w-12">Action</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {(analytics?.sessionHistory || []).map((session: any) => {
+                            const started = new Date(session.started_at).getTime();
+                            const lastSeen = new Date(session.last_seen_at).getTime();
+                            const durationSec = Math.max(0, Math.round((lastSeen - started) / 1000));
+                            const durationMin = Math.floor(durationSec / 60);
+                            const durationRemainderSec = durationSec % 60;
+                            const durationStr = durationMin > 0 ? `${durationMin}m ${durationRemainderSec}s` : `${durationRemainderSec}s`;
+
+                            return (
+                              <tr key={session.id} className={`border-b border-line hover:bg-ivory/50 ${selectedSession?.id === session.id ? "bg-zari/5" : ""}`}>
+                                <td className="p-3">
+                                  <p className="font-semibold text-ink">{session.os} ({session.device})</p>
+                                  <p className="text-taupe mt-0.5">{session.browser}</p>
+                                  {session.profiles?.email && <p className="text-[10px] text-zari-deep font-semibold mt-0.5">{session.profiles.full_name || session.profiles.email}</p>}
+                                </td>
+                                <td className="p-3 text-taupe truncate max-w-[120px]" title={session.referrer}>{session.referrer}</td>
+                                <td className="p-3 text-center font-medium">{session.country}</td>
+                                <td className="p-3 text-center font-semibold text-ink">{session.page_views}</td>
+                                <td className="p-3 text-center font-mono">{durationStr}</td>
+                                <td className="p-3 text-center">
+                                  <button onClick={() => setSelectedSession(session)} className="p-1 border border-line rounded bg-cream hover:bg-beige text-ink" title="View paths">
+                                    <Eye className="w-3.5 h-3.5" />
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  {/* Right: selected session pages history */}
+                  <div className="md:col-span-5 bg-white border border-line rounded-card p-5 shadow-soft space-y-4 self-start">
+                    <h4 className="font-display text-base border-b border-line pb-2 text-ink">Session Page Views Path</h4>
+                    
+                    {selectedSession ? (
+                      <div className="space-y-4">
+                        <div className="text-xs text-taupe space-y-1">
+                          <p><strong>Visitor UUID:</strong> <span className="font-mono">{selectedSession.visitor_id.slice(0, 18)}...</span></p>
+                          <p><strong>Device details:</strong> {selectedSession.os} - {selectedSession.browser} ({selectedSession.device})</p>
+                          <p><strong>Started At:</strong> {new Date(selectedSession.started_at).toLocaleString("en-IN")}</p>
+                        </div>
+
+                        <div className="border-l-2 border-zari pl-4 space-y-3.5">
+                          {selectedSession.page_views_list?.map((view: any, index: number) => (
+                            <div key={view.id || index} className="relative text-xs">
+                              <span className="absolute -left-[21px] top-1.5 w-2.5 h-2.5 bg-zari rounded-full border border-white" />
+                              <p className="font-semibold text-ink break-all">{view.path}</p>
+                              <p className="text-[10px] text-taupe mt-0.5">{new Date(view.created_at).toLocaleTimeString("en-IN")}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="py-12 text-center text-xs text-taupe italic">
+                        Select a session from the list on the left to inspect the detailed visitor page-view sequence.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Storage and Database Analytics tab */}
+            {activeTab === "storage" && (
+              <div className="space-y-6 animate-fade-up">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Database row counts card */}
+                  <div className="bg-white border border-line rounded-card p-6 shadow-soft space-y-4">
+                    <h3 className="font-display text-lg border-b border-line pb-2 flex items-center gap-2">
+                      <Database className="w-5 h-5 text-zari" />
+                      Supabase DB Table Sizes
+                    </h3>
+                    <div className="space-y-3.5">
+                      <RowDetail label="profiles (Registered Users)" count={analytics?.dbStats?.users} />
+                      <RowDetail label="products (Items catalog)" count={analytics?.dbStats?.products} />
+                      <RowDetail label="orders (Placed checkouts)" count={analytics?.dbStats?.orders} />
+                      <RowDetail label="sessions (Visitor sessions)" count={analytics?.dbStats?.sessions} />
+                      <RowDetail label="page_views (Individual views)" count={analytics?.dbStats?.pageViews} />
+                    </div>
+                  </div>
+
+                  {/* Cloudinary usage stats card */}
+                  <div className="bg-white border border-line rounded-card p-6 shadow-soft space-y-4">
+                    <h3 className="font-display text-lg border-b border-line pb-2 flex items-center gap-2">
+                      <FolderOpen className="w-5 h-5 text-zari" />
+                      Cloudinary Asset Storage
+                    </h3>
+                    
+                    {analytics?.cloudinaryStats ? (
+                      <div className="space-y-4 text-sm">
+                        <p className="text-xs text-taupe">Plan tier: <strong className="text-ink uppercase">{analytics.cloudinaryStats.plan}</strong> (Last checked: {new Date(analytics.cloudinaryStats.lastUpdated).toLocaleTimeString()})</p>
+                        
+                        <div className="space-y-2">
+                          <div className="flex justify-between text-xs font-semibold">
+                            <span>Storage used ({Math.round(analytics.cloudinaryStats.storage.used / (1024 * 1024 * 1024) * 100) / 100} GB)</span>
+                            <span>{analytics.cloudinaryStats.storage.percent}%</span>
+                          </div>
+                          <div className="w-full bg-cream h-2 rounded-full overflow-hidden">
+                            <div className="bg-zari h-full" style={{ width: `${analytics.cloudinaryStats.storage.percent}%` }} />
+                          </div>
+                          <p className="text-[10px] text-taupe text-right">Limit: {Math.round(analytics.cloudinaryStats.storage.limit / (1024 * 1024 * 1024) * 100) / 100} GB</p>
+                        </div>
+
+                        <div className="space-y-2">
+                          <div className="flex justify-between text-xs font-semibold">
+                            <span>Bandwidth consumed ({Math.round(analytics.cloudinaryStats.bandwidth.used / (1024 * 1024 * 1024) * 100) / 100} GB)</span>
+                            <span>{analytics.cloudinaryStats.bandwidth.percent}%</span>
+                          </div>
+                          <div className="w-full bg-cream h-2 rounded-full overflow-hidden">
+                            <div className="bg-zari h-full" style={{ width: `${analytics.cloudinaryStats.bandwidth.percent}%` }} />
+                          </div>
+                          <p className="text-[10px] text-taupe text-right">Limit: {Math.round(analytics.cloudinaryStats.bandwidth.limit / (1024 * 1024 * 1024) * 100) / 100} GB</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="py-8 text-center text-xs text-taupe italic">
+                        Cloudinary API credentials missing or quota endpoint failed. Image uploading utilizes direct browser payloads.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Support Messages tab */}
+            {activeTab === "support" && (
+              <div className="space-y-6 animate-fade-up">
+                <div className="flex justify-between items-center border-b border-line pb-3">
+                  <h3 className="font-display text-lg">Support & Contact Messages</h3>
+                  <span className="text-xs text-taupe font-medium">{supportMessages.length} messages received</span>
+                </div>
+
+                <div className="bg-white border border-line rounded-card overflow-hidden shadow-soft">
+                  {supportMessages.length === 0 ? (
+                    <div className="p-12 text-center text-sm text-taupe italic">
+                      No support inquiries received yet.
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-xs sm:text-sm text-left">
+                        <thead>
+                          <tr className="bg-cream border-b border-line text-taupe font-medium">
+                            <th className="p-3">Sender</th>
+                            <th className="p-3">Subject</th>
+                            <th className="p-3">Message</th>
+                            <th className="p-3 text-center">Date</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {supportMessages.map((msg) => (
+                            <tr key={msg.id} className="border-b border-line hover:bg-ivory/50">
+                              <td className="p-3">
+                                <p className="font-semibold text-ink">{msg.name}</p>
+                                <p className="text-[10px] text-taupe mt-0.5">{msg.email}</p>
+                              </td>
+                              <td className="p-3 font-medium text-ink">{msg.subject}</td>
+                              <td className="p-3 text-taupe whitespace-pre-wrap">{msg.message}</td>
+                              <td className="p-3 text-center text-[10px] text-taupe whitespace-nowrap">
+                                {new Date(msg.created_at).toLocaleString("en-IN", { dateStyle: "short", timeStyle: "short" })}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Bulk Inquiries tab */}
+            {activeTab === "bulk-inquiries" && (
+              <div className="space-y-6 animate-fade-up">
+                <div className="flex justify-between items-center border-b border-line pb-3">
+                  <h3 className="font-display text-lg">Bulk Order Inquiries</h3>
+                  <span className="text-xs text-taupe font-medium">{bulkInquiries.length} inquiries received</span>
+                </div>
+
+                <div className="bg-white border border-line rounded-card overflow-hidden shadow-soft">
+                  {bulkInquiries.length === 0 ? (
+                    <div className="p-12 text-center text-sm text-taupe italic">
+                      No bulk order enquiries received yet.
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-xs sm:text-sm text-left">
+                        <thead>
+                          <tr className="bg-cream border-b border-line text-taupe font-medium">
+                            <th className="p-3">Sender / Org</th>
+                            <th className="p-3">Category</th>
+                            <th className="p-3 text-center">Quantity</th>
+                            <th className="p-3">Message</th>
+                            <th className="p-3 text-center">Date</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {bulkInquiries.map((inq) => (
+                            <tr key={inq.id} className="border-b border-line hover:bg-ivory/50">
+                              <td className="p-3">
+                                <p className="font-semibold text-ink">{inq.name}</p>
+                                <p className="text-[10px] text-taupe mt-0.5">{inq.email}</p>
+                                {inq.organisation && <p className="text-[10px] text-zari-deep font-semibold mt-0.5">{inq.organisation}</p>}
+                              </td>
+                              <td className="p-3 text-ink font-semibold">{inq.category || "—"}</td>
+                              <td className="p-3 text-center font-mono font-medium">{inq.quantity || "—"}</td>
+                              <td className="p-3 text-taupe whitespace-pre-wrap">{inq.message || "—"}</td>
+                              <td className="p-3 text-center text-[10px] text-taupe whitespace-nowrap">
+                                {new Date(inq.created_at).toLocaleString("en-IN", { dateStyle: "short", timeStyle: "short" })}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Newsletter Subscriptions tab */}
+            {activeTab === "newsletter" && (
+              <div className="space-y-6 animate-fade-up">
+                <div className="flex justify-between items-center border-b border-line pb-3">
+                  <h3 className="font-display text-lg">Newsletter Subscriptions</h3>
+                  <span className="text-xs text-taupe font-medium">{newsletterSubs.length} subscribers</span>
+                </div>
+
+                <div className="bg-white border border-line rounded-card overflow-hidden shadow-soft max-w-lg">
+                  {newsletterSubs.length === 0 ? (
+                    <div className="p-12 text-center text-sm text-taupe italic">
+                      No newsletter subscribers yet.
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-xs sm:text-sm text-left">
+                        <thead>
+                          <tr className="bg-cream border-b border-line text-taupe font-medium">
+                            <th className="p-3">Subscribed Email Address</th>
+                            <th className="p-3 text-center">Subscribed Date</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {newsletterSubs.map((sub) => (
+                            <tr key={sub.id} className="border-b border-line hover:bg-ivory/50">
+                              <td className="p-3 font-semibold text-ink font-mono">{sub.email}</td>
+                              <td className="p-3 text-center text-[10px] text-taupe">
+                                {new Date(sub.created_at).toLocaleString("en-IN", { dateStyle: "long" })}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </Container>
+    </main>
+  );
+}
+
+// Sub components
+function TabButton({ active, onClick, icon, label, badge }: { active: boolean; onClick: () => void; icon: React.ReactNode; label: string; badge?: number }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`w-full flex items-center justify-between px-3 py-2.5 rounded-md text-sm font-medium transition-all duration-200 ${
+        active ? "bg-ink text-ivory shadow-soft" : "text-taupe hover:bg-cream hover:text-ink"
+      }`}
+    >
+      <div className="flex items-center gap-2.5">
+        <span className={active ? "text-zari" : "text-taupe"}>{icon}</span>
+        <span>{label}</span>
+      </div>
+      {badge !== undefined && (
+        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${active ? "bg-zari text-ink" : "bg-cream text-taupe"}`}>
+          {badge}
+        </span>
+      )}
+    </button>
+  );
+}
+
+function StatCard({ icon, label, value, subtitle }: { icon: React.ReactNode; label: string; value: any; subtitle?: string }) {
+  return (
+    <div className="bg-white border border-line rounded-card p-6 shadow-soft space-y-2 relative overflow-hidden">
+      <div className="absolute right-4 top-4 bg-cream/55 p-2 rounded-full border border-line">
+        {icon}
+      </div>
+      <p className="text-xs font-semibold text-taupe uppercase tracking-wider">{label}</p>
+      <p className="text-3xl font-display text-ink">{value}</p>
+      {subtitle && <p className="text-xs text-taupe">{subtitle}</p>}
+    </div>
+  );
+}
+
+function RowDetail({ label, count }: { label: string; count: any }) {
+  return (
+    <div className="flex justify-between items-center text-sm border-b border-line pb-2">
+      <span className="font-semibold text-taupe">{label}</span>
+      <span className="font-mono font-bold text-ink bg-cream px-2 py-0.5 rounded">{count !== undefined ? count : 0} rows</span>
+    </div>
+  );
+}

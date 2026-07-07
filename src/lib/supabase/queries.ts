@@ -23,6 +23,7 @@ type DbProduct = {
   rating_count: number;
   categories: { slug: string; name: string } | null;
   product_images: { url: string; alt: string | null; sort_order: number }[];
+  product_variants: { id: string; size: string | null; color: string | null; sku: string | null; stock: number }[];
 };
 
 function toCardProduct(row: DbProduct): Product {
@@ -41,12 +42,14 @@ function toCardProduct(row: DbProduct): Product {
     image: images[0]?.url ?? "",
     images: images.map((i) => i.url),
     inStock: row.stock > 0,
+    stock: row.stock,
     badges: row.is_on_sale ? ["sale"] : undefined,
+    variants: row.product_variants || [],
   };
 }
 
 const PRODUCT_SELECT =
-  "id, slug, name, description, price_paise, compare_at_paise, cashback_paise, stock, is_on_sale, rating_avg, rating_count, categories(slug, name), product_images(url, alt, sort_order)";
+  "id, slug, name, description, price_paise, compare_at_paise, cashback_paise, stock, is_on_sale, rating_avg, rating_count, categories(slug, name), product_images(url, alt, sort_order), product_variants(id, size, color, sku, stock)";
 
 export async function getCategoryBySlug(slug: string): Promise<DbCategory | null> {
   const supabase = await createClient();

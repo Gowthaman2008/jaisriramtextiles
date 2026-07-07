@@ -8,6 +8,7 @@ import { Heart, ShoppingBag } from "lucide-react";
 import { StarRating } from "@/components/ui/star-rating";
 import { formatINR, cn } from "@/lib/utils";
 import type { Product } from "@/lib/types";
+import { useWishlist } from "@/components/providers/wishlist-provider";
 
 const badgeStyles: Record<string, string> = {
   new: "bg-ink text-ivory",
@@ -18,7 +19,8 @@ const badgeStyles: Record<string, string> = {
 
 export function ProductCard({ product, index = 0 }: { product: Product; index?: number }) {
   const [loaded, setLoaded] = useState(false);
-  const [wished, setWished] = useState(false);
+  const { toggleWishlist, isWished } = useWishlist();
+  const wished = isWished(product.id);
 
   const discount =
     product.compareAtPaise && product.compareAtPaise > product.pricePaise
@@ -27,10 +29,9 @@ export function ProductCard({ product, index = 0 }: { product: Product; index?: 
 
   return (
     <motion.article
-      initial={{ opacity: 0, y: 18 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: "-60px" }}
-      transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1], delay: (index % 4) * 0.06 }}
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1], delay: (index % 4) * 0.04 }}
       className="group relative flex flex-col"
     >
       <Link href={`/product/${product.slug}`} className="relative block">
@@ -81,7 +82,7 @@ export function ProductCard({ product, index = 0 }: { product: Product; index?: 
       <button
         aria-label={wished ? "Remove from wishlist" : "Add to wishlist"}
         aria-pressed={wished}
-        onClick={() => setWished((w) => !w)}
+        onClick={() => toggleWishlist(product)}
         className="absolute right-3 top-3 grid h-9 w-9 place-items-center rounded-full bg-ivory/85 text-ink backdrop-blur transition hover:text-danger"
       >
         <Heart size={16} className={cn(wished && "fill-danger text-danger")} />

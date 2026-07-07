@@ -6,7 +6,12 @@ import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 import { SmoothScroll } from "@/components/providers/smooth-scroll";
 import { FirstOrderPopup } from "@/components/providers/first-order-popup";
+import { AnalyticsTracker } from "@/components/providers/analytics-tracker";
+import { CartProvider } from "@/components/providers/cart-provider";
+import { WishlistProvider } from "@/components/providers/wishlist-provider";
+import { AIChatbot } from "@/components/layout/ai-chatbot";
 import { BUSINESS } from "@/lib/constants";
+import { ProfilePrompt } from "@/components/providers/profile-prompt";
 
 const fraunces = Fraunces({
   subsets: ["latin"],
@@ -80,10 +85,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           dangerouslySetInnerHTML={{ __html: JSON.stringify(orgSchema) }}
         />
         <SmoothScroll>
-          <AnnouncementBar />
-          <Navbar />
-          <main>{children}</main>
-          <Footer />
+          <WishlistProvider>
+            <CartProvider>
+              <AnalyticsTracker />
+              <AnnouncementBar />
+              <Navbar />
+              <main>{children}</main>
+              <Footer />
+              <AIChatbot />
+              <ProfilePrompt />
+            </CartProvider>
+          </WishlistProvider>
         </SmoothScroll>
         {/* Phase 2: pass eligible={user has 0 completed orders} */}
         <FirstOrderPopup />

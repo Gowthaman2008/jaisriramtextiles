@@ -7,6 +7,13 @@ import { createServerClient, type CookieOptions } from "@supabase/ssr";
  * see README "Security".
  */
 export async function middleware(request: NextRequest) {
+  // /admin/upload has its own password gate (see src/lib/admin-session.ts) ahead of
+  // real Supabase-backed admin auth landing in Phase 5 — it needs no Supabase session,
+  // so skip client creation entirely (avoids requiring Supabase env vars just to use it).
+  if (request.nextUrl.pathname.startsWith("/admin/upload")) {
+    return NextResponse.next({ request });
+  }
+
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient(

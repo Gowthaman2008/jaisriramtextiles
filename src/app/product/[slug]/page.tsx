@@ -6,12 +6,21 @@ import { StarRating } from "@/components/ui/star-rating";
 import { Button } from "@/components/ui/button";
 import { formatINR } from "@/lib/utils";
 import { getProductBySlug } from "@/lib/supabase/queries";
+import { products as mockProducts } from "@/data/mock";
+import { ProductActions } from "@/components/product/product-actions";
 
 type Props = { params: Promise<{ slug: string }> };
 
+async function findProduct(slug: string) {
+  const dbProduct = await getProductBySlug(slug);
+  if (dbProduct) return dbProduct;
+  // Fall back to mock data when DB is empty (dev / empty catalogue)
+  return mockProducts.find((p) => p.slug === slug) ?? null;
+}
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const product = await getProductBySlug(slug);
+  const product = await findProduct(slug);
   if (!product) return {};
   return {
     title: product.name,
@@ -21,7 +30,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function ProductPage({ params }: Props) {
   const { slug } = await params;
-  const product = await getProductBySlug(slug);
+  const product = await findProduct(slug);
   if (!product) notFound();
 
   const discount =
@@ -94,9 +103,17 @@ export default async function ProductPage({ params }: Props) {
 
             <div className="zari-rule my-2" />
 
-            <Button variant="gold" size="lg" disabled={!product.inStock} className="w-full sm:w-auto">
-              Add to bag
-            </Button>
+            <ProductActions product={product} />
+
+            {/* Return Policy Notice badge */}
+            <div className="mt-4 bg-cream/35 border border-line rounded p-3 text-xs text-taupe space-y-1 bg-ivory/30">
+              <div className="flex items-center gap-1.5 font-bold text-ink text-[11px] uppercase tracking-wider">
+                🔄 7 Days Easy Return
+              </div>
+              <p className="leading-relaxed">
+                Return or replacement is only accepted if the product was received in a damaged condition.
+              </p>
+            </div>
           </div>
         </div>
       </Container>

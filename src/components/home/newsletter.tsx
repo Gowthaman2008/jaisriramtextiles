@@ -26,9 +26,26 @@ export function Newsletter() {
             </p>
           ) : (
             <form
-              onSubmit={(e) => {
+              onSubmit={async (e) => {
                 e.preventDefault();
-                setSent(true); // Phase 2: POST to /api/newsletter
+                const emailInput = document.getElementById("news") as HTMLInputElement;
+                if (!emailInput || !emailInput.value.trim()) return;
+                
+                try {
+                  const res = await fetch("/api/newsletter/subscribe", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ email: emailInput.value.trim() }),
+                  });
+                  if (res.ok) {
+                    setSent(true);
+                  } else {
+                    alert("Subscription failed. Please try again.");
+                  }
+                } catch (err) {
+                  console.error("Failed to subscribe:", err);
+                  alert("Subscription failed. Please check connection.");
+                }
               }}
               className="mx-auto mt-8 flex max-w-md items-center gap-2"
             >

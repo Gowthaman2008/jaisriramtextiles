@@ -1,0 +1,138 @@
+import { NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/admin";
+import cloudinary from "@/lib/cloudinary";
+
+async function checkAdminAuth() {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .single();
+
+    if (!profile || !["admin", "staff"].includes(profile.role)) {
+      return null;
+    }
+    return user;
+  } catch {
+    return null;
+  }
+}
+
+export async function GET() {
+  const auth = await checkAdminAuth();
+  if (!auth) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
+    const supabase = createServiceClient();
+
+    // 1. Get database counts (table row metrics)
+    const [
+      { count: countProfiles },
+      { count: countProducts },
+      { count: countOrders },
+      { count: countSessions },
+      { count: countPageViews },
+    ] = await Promise.all([
+      supabase.from("profiles").select("*", { count: "exact", head: true }),
+      supabase.from("products").select("*", { count: "exact", head: true }),
+      supabase.from("orders").select("*", { count: "exact", head: true }),
+      supabase.from("sessions").select("*", { count: "exact", head: true }),
+      supabase.from("page_views").select("*", { count: "exact", head: true }),
+    ]);
+
+    const dbStats = {
+      users: countProfiles || 0,
+      products: countProducts || 0,
+      orders: countOrders || 0,
+      sessions: countSessions || 0,
+      pageViews: countPageViews || 0,
+    };
+
+    // 2. Fetch Cloudinary usage details (handle missing config gracefully)
+    let cloudinaryStats: any = null;
+    try {
+      if (process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET) {
+        const usage = await cloudinary.api.usage();
+        cloudinaryStats = {
+          plan: usage.plan,
+          lastUpdated: usage.last_updated,
+          storage: {
+            used: usage.storage?.usage || 0,
+            limit: usage.storage?.limit || 0,
+            percent: usage.storage?.used_percent || 0,
+          },
+          bandwidth: {
+            used: usage.bandwidth?.usage || 0,
+            limit: usage.bandwidth?.limit || 0,
+            percent: usage.bandwidth?.used_percent || 0,
+          },
+          objects: {
+            used: usage.objects?.usage || 0,
+            limit: usage.objects?.limit || 0,
+            percent: usage.objects?.used_percent || 0,
+          },
+        };
+      }
+    } catch (cError) {
+      console.warn("Could not retrieve Cloudinary usage statistics:", cError);
+    }
+
+    // 3. Fetch visitor session history with profiles and page views (last 100 sessions)
+    const { data: sessionHistory, error: sessionsError } = await supabase
+      .from("sessions")
+      .select(`
+        id,
+        visitor_id,
+        user_id,
+        device,
+        browser,
+        os,
+        country,
+        referrer,
+        started_at,
+        last_seen_at,
+        page_views,
+        profiles (full_name, email),
+        page_views_list:page_views (id, path, created_at)
+      `)
+      .order("last_seen_at", { ascending: false })
+      .limit(100);
+
+    if (sessionsError) throw sessionsError;
+
+    // 4. Calculate some high-level admin metrics
+    // Fetch sum of all order totals (in paise) and count
+    const { data: salesSumData } = await supabase
+      .from("orders")
+      .select("total_paise")
+      .eq("payment_status", "paid");
+
+    const totalSalesPaise = (salesSumData || []).reduce((sum, ord) => sum + ord.total_paise, 0);
+    const completedOrdersCount = (salesSumData || []).length;
+    const avgOrderValPaise = completedOrdersCount > 0 ? Math.round(totalSalesPaise / completedOrdersCount) : 0;
+
+    const metrics = {
+      totalSalesPaise,
+      completedOrdersCount,
+      avgOrderValPaise,
+    };
+
+    return NextResponse.json({
+      dbStats,
+      cloudinaryStats,
+      sessionHistory: sessionHistory || [],
+      metrics,
+    });
+  } catch (error: any) {
+    console.error("Fetch admin analytics error:", error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}

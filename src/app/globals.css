@@ -5,12 +5,15 @@
 @layer base {
   :root {
     --header-h: 76px;
+    color-scheme: light;
   }
 
   html {
+    color-scheme: light;
     scroll-behavior: smooth;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
+    background-color: #FBF9F4;
   }
 
   body {

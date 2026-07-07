@@ -7,6 +7,8 @@ import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
 import { Container } from "@/components/ui/container";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { placeholderImage } from "@/lib/cloudinary-image";
+import { createClient } from "@/lib/supabase/client";
 
 type Slide = {
   eyebrow: string;
@@ -16,17 +18,16 @@ type Slide = {
   image: string;
 };
 
-const img = (id: string) =>
-  `https://images.unsplash.com/${id}?auto=format&fit=crop&w=2000&q=80`;
+const img = (id: string) => placeholderImage(id, 2000);
 
-const slides: Slide[] = [
+const defaultSlides: Slide[] = [
   {
     eyebrow: "Since a generation of weavers",
     title: "The art of the woven thread",
     subtitle:
       "JAI SRI RAM TEXTILES crafts dhotis, towels, scarfs and jute bags on traditional looms in Komarapalayam, Tamil Nadu.",
     cta: { label: "Our story", href: "/about" },
-    image: img("photo-1610030469983-98e550d6193c"),
+    image: img("white-dhoti"),
   },
   {
     eyebrow: "Premium manufacturing",
@@ -34,63 +35,91 @@ const slides: Slide[] = [
     subtitle:
       "Combed cotton, true zari borders and rigorous quality checks on every metre we make.",
     cta: { label: "See our craft", href: "/manufacturing" },
-    image: img("photo-1594938328870-9623159c8c99"),
+    image: img("gold-border-veshti"),
   },
   {
     eyebrow: "Limited-time offers",
     title: "Festive savings on our finest",
     subtitle: "Selected dhotis and towels now on sale — while stocks last.",
     cta: { label: "Shop the offers", href: "/shop/sale" },
-    image: img("photo-1583391733956-6c78276477e2"),
+    image: img("colour-dhoti"),
   },
   {
     eyebrow: "New arrivals",
     title: "Fresh off the loom",
     subtitle: "The latest additions to our collection, ready to ship across India.",
     cta: { label: "Browse new arrivals", href: "/shop?sort=newest" },
-    image: img("photo-1601924994987-69e26d50dc26"),
+    image: img("scarfs"),
   },
   {
     eyebrow: "Best sellers",
     title: "Loved across Tamil Nadu",
     subtitle: "The pieces our customers return for, again and again.",
     cta: { label: "Shop best sellers", href: "/shop?sort=popularity" },
-    image: img("photo-1620916566398-39f1143ab7be"),
+    image: img("towels"),
   },
   {
     eyebrow: "Festival collections",
     title: "Dressed for every celebration",
     subtitle: "Traditional whites and rich colour dhotis for temple days and festivities.",
     cta: { label: "Explore collections", href: "/shop/colour-dhoti" },
-    image: img("photo-1610030469983-98e550d6193c"),
+    image: img("white-dhoti"),
   },
   {
     eyebrow: "Bulk & wholesale",
     title: "Supplying temples, hotels & retailers",
     subtitle: "Custom manufacturing and wholesale pricing for institutions and businesses.",
     cta: { label: "Enquire about bulk orders", href: "/bulk-orders" },
-    image: img("photo-1597484662317-9bd7bdda2907"),
+    image: img("jute-bags"),
   },
   {
     eyebrow: "A gift for you",
     title: "10% off your first order",
     subtitle: "New here? Your welcome discount is waiting at checkout.",
     cta: { label: "Start shopping", href: "/shop" },
-    image: img("photo-1594938328870-9623159c8c99"),
+    image: img("gold-border-veshti"),
   },
 ];
 
 const AUTO_MS = 6000;
 
 export function HeroCarousel() {
+  const [slides, setSlides] = useState<Slide[]>(defaultSlides);
   const reduce = useReducedMotion();
   const [[index, dir], setState] = useState<[number, number]>([0, 1]);
   const [paused, setPaused] = useState(false);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  useEffect(() => {
+    async function fetchDbSlides() {
+      try {
+        const supabase = createClient();
+        const { data, error } = await supabase
+          .from("carousel_slides")
+          .select("*")
+          .eq("is_active", true)
+          .order("sort_order", { ascending: true });
+        
+        if (data && data.length > 0) {
+          const mapped = data.map((item: any) => ({
+            eyebrow: item.eyebrow || "",
+            title: item.title,
+            subtitle: item.subtitle || "",
+            cta: { label: item.cta_label || "Shop Now", href: item.cta_href || "/shop" },
+            image: item.image_url || img("white-dhoti"),
+          }));
+          setSlides(mapped);
+        }
+      } catch (err) {
+        console.error("Failed loading slides from database", err);
+      }
+    }
+    fetchDbSlides();
+  }, []);
+
   const go = useCallback((next: number, direction: number) => {
     setState([(next + slides.length) % slides.length, direction]);
-  }, []);
+  }, [slides.length]);
 
   useEffect(() => {
     if (paused || reduce) return;
@@ -98,7 +127,7 @@ export function HeroCarousel() {
     return () => {
       if (timer.current) clearInterval(timer.current);
     };
-  }, [paused, reduce]);
+  }, [paused, reduce, slides.length]);
 
   const slide = slides[index];
 

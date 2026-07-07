@@ -1,44 +1,43 @@
 import type { Category, Product, Review } from "@/lib/types";
+import { placeholderImage } from "@/lib/cloudinary-image";
 
 // NOTE: Dev-only placeholder data. Replace with Supabase queries in Phase 2.
-// Imagery uses Unsplash for local preview; swap for Cloudinary URLs in production.
-const img = (id: string) =>
-  `https://images.unsplash.com/${id}?auto=format&fit=crop&w=900&q=80`;
+const img = (id: string) => placeholderImage(id, 900);
 
 export const categories: Category[] = [
   {
     slug: "white-dhoti",
     label: "White Dhoti",
     tagline: "Pure combed cotton, temple-ready",
-    image: img("photo-1610030469983-98e550d6193c"),
+    image: img("white-dhoti"),
     count: 24,
   },
   {
     slug: "colour-dhoti",
     label: "Colour Dhoti",
     tagline: "Zari-bordered, festival hues",
-    image: img("photo-1583391733956-6c78276477e2"),
+    image: img("colour-dhoti"),
     count: 18,
   },
   {
     slug: "towels",
     label: "Towels",
     tagline: "Soft, absorbent, handloom-woven",
-    image: img("photo-1620916566398-39f1143ab7be"),
+    image: img("towels"),
     count: 32,
   },
   {
     slug: "scarfs",
     label: "Scarfs",
     tagline: "Featherweight everyday elegance",
-    image: img("photo-1601924994987-69e26d50dc26"),
+    image: img("scarfs"),
     count: 21,
   },
   {
     slug: "jute-bags",
     label: "Jute Bags",
     tagline: "Sustainable, sturdy, reusable",
-    image: img("photo-1597484662317-9bd7bdda2907"),
+    image: img("jute-bags"),
     count: 15,
   },
 ];
@@ -55,8 +54,9 @@ export const products: Product[] = [
     cashbackPaise: 3000,
     rating: 4.8,
     reviewCount: 214,
-    image: img("photo-1610030469983-98e550d6193c"),
+    image: img("white-dhoti"),
     inStock: true,
+    stock: 50,
     badges: ["bestseller", "sale"],
   },
   {
@@ -70,8 +70,9 @@ export const products: Product[] = [
     cashbackPaise: 6000,
     rating: 4.9,
     reviewCount: 98,
-    image: img("photo-1583391733956-6c78276477e2"),
+    image: img("colour-dhoti"),
     inStock: true,
+    stock: 30,
     badges: ["new", "trending"],
   },
   {
@@ -85,8 +86,9 @@ export const products: Product[] = [
     cashbackPaise: 2000,
     rating: 4.7,
     reviewCount: 341,
-    image: img("photo-1620916566398-39f1143ab7be"),
+    image: img("towels"),
     inStock: true,
+    stock: 120,
     badges: ["bestseller"],
   },
   {
@@ -100,8 +102,9 @@ export const products: Product[] = [
     cashbackPaise: 1500,
     rating: 4.6,
     reviewCount: 127,
-    image: img("photo-1601924994987-69e26d50dc26"),
+    image: img("scarfs"),
     inStock: true,
+    stock: 75,
     badges: ["sale"],
   },
   {
@@ -115,8 +118,9 @@ export const products: Product[] = [
     cashbackPaise: 1000,
     rating: 4.9,
     reviewCount: 76,
-    image: img("photo-1597484662317-9bd7bdda2907"),
+    image: img("jute-bags"),
     inStock: true,
+    stock: 150,
     badges: ["new", "trending"],
   },
   {
@@ -130,8 +134,9 @@ export const products: Product[] = [
     cashbackPaise: 8000,
     rating: 5.0,
     reviewCount: 54,
-    image: img("photo-1594938328870-9623159c8c99"),
+    image: img("gold-border-veshti"),
     inStock: true,
+    stock: 25,
     badges: ["bestseller", "sale"],
   },
 ];
