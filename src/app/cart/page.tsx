@@ -325,104 +325,107 @@ export default function CartPage() {
                             </div>
                           </div>
                         ) : (
-                          /* Unlocked State (Compact) */
-                          <div className="space-y-3.5">
-                            {/* Gold Corner Ribbon (Compact) */}
-                            <span className="absolute top-0 right-0 bg-gradient-to-r from-[#D9BE85] to-[#B08D4C] text-white text-[8px] font-bold uppercase px-2.5 py-0.5 rounded-bl shadow-xs tracking-wider flex items-center gap-1 animate-pulse">
-                              ✨ UNLOCKED ✨
+                          /* Unlocked State (Luxury Layout) */
+                          <div className="space-y-4">
+                            {/* Gold Corner Ribbon */}
+                            <span className="absolute top-0 right-0 bg-[#B08D4C] text-white text-[8px] font-bold uppercase px-3 py-1 rounded-bl-lg tracking-widest animate-pulse">
+                              ✨ REWARD ✨
                             </span>
 
-                            <div className="flex items-center justify-between border-b border-[#E5D5B3] pb-2">
-                              <div>
-                                <p className="text-sm font-bold text-[#8C6D2D] flex items-center gap-1.5">
-                                  <CheckCircle2 size={16} className="text-success shrink-0" />
-                                  Congratulations! Gift Unlocked
-                                </p>
-                                <p className="text-[11px] text-taupe mt-0.5">
+                            {/* Celebratory Alert Banner */}
+                            <div className="flex items-center gap-3 bg-[#FAF6EC] border border-[#E9DBB7]/60 rounded-xl p-3.5 mr-16 sm:mr-0">
+                              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#D9BE85] to-[#B08D4C] text-white flex items-center justify-center shrink-0 shadow-sm animate-bounce">
+                                <Sparkles size={14} className="stroke-[2]" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <h4 className="text-xs sm:text-sm font-bold text-[#6B5427]">
+                                  Free Gift Unlocked!
+                                </h4>
+                                <p className="text-[11px] text-taupe leading-normal mt-0.5">
                                   {selectedGift 
-                                    ? "You have claimed your free gift. You can switch to another one if desired." 
-                                    : "Select one of the premium rewards below to add it directly to your cart:"}
+                                    ? "Excellent! You claimed your free reward. You can switch to another choice below." 
+                                    : "Choose one of the premium rewards below to add it directly to your cart:"}
                                 </p>
                               </div>
                             </div>
 
-                            {/* Reward Selection Cards Grid (Compact) */}
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                              {campaigns.map((c: any) => {
-                                const isSelected = selectedGift && selectedGift.campaignId === c.id;
-                                const productVal = c.product?.price_paise ? formatINR(c.product.price_paise, true) : "";
-                                const img = c.product?.product_images?.[0]?.url || c.product?.image;
+                            {/* Reward Selection Cards Grid / Centered layout if single */}
+                            {(() => {
+                              const isSingleOption = campaigns.length === 1;
+                              return (
+                                <div className={`grid gap-3 pt-1 ${isSingleOption ? "grid-cols-1 max-w-sm" : "grid-cols-1 sm:grid-cols-2"}`}>
+                                  {campaigns.map((c: any) => {
+                                    const isSelected = selectedGift && selectedGift.campaignId === c.id;
+                                    const productVal = c.product?.price_paise ? formatINR(c.product.price_paise, true) : "";
+                                    const img = c.product?.product_images?.[0]?.url || c.product?.image;
 
-                                let details = "";
-                                if (c.variant) {
-                                  const parts = [c.variant.size, c.variant.color].filter(Boolean);
-                                  if (parts.length > 0) details = parts.join(" / ");
-                                }
+                                    let details = "";
+                                    if (c.variant) {
+                                      const parts = [c.variant.size, c.variant.color].filter(Boolean);
+                                      if (parts.length > 0) details = parts.join(" / ");
+                                    }
 
-                                return (
-                                  <div
-                                    key={c.id}
-                                    className={`rounded-xl border p-3 flex gap-3 transition-all duration-300 relative ${
-                                      isSelected
-                                        ? "bg-white border-[#B08D4C] ring-2 ring-[#B08D4C]/20 shadow-sm"
-                                        : "bg-cream/10 border-line hover:border-[#B08D4C]/40 hover:bg-cream/20"
-                                    }`}
-                                  >
-                                    {/* Gold sparkle corner badge on option image (Compact) */}
-                                    <span className="absolute -top-1 -left-1 bg-gradient-to-br from-[#D9BE85] to-[#B08D4C] text-white p-1 rounded-full shadow z-10 animate-float-gift">
-                                      <Sparkles size={7} />
-                                    </span>
-
-                                    <div className="relative w-12 h-12 rounded-md overflow-hidden bg-cream border border-line flex-shrink-0">
-                                      {img ? (
-                                        <Image src={img} alt={c.display_name || c.product?.name || ""} fill className="object-cover" />
-                                      ) : (
-                                        <ShoppingBag className="w-5 h-5 m-3.5 text-muted" />
-                                      )}
-                                    </div>
-
-                                    <div className="flex-1 min-w-0 flex flex-col justify-between">
-                                      <div className="space-y-0.5">
-                                        <h3 className="text-[11px] sm:text-xs font-bold text-ink truncate pr-5 leading-tight">
-                                          {c.display_name || c.product?.name}
-                                        </h3>
-                                        {details && (
-                                          <p className="text-[9px] text-[#8C6D2D] font-bold">
-                                            Variant: {details}
-                                          </p>
-                                        )}
-                                        {productVal && (
-                                          <p className="text-[9px] text-taupe/80 line-through">
-                                            Worth {productVal}
-                                          </p>
-                                        )}
-                                      </div>
-
-                                      <div className="pt-2 flex justify-start">
-                                        <button
-                                          type="button"
-                                          onClick={() => addFreeGift(c)}
-                                          className={`px-3 py-1 rounded-full text-[9px] font-bold tracking-wide transition-all duration-300 flex items-center gap-1 cursor-pointer hover:scale-[1.02] active:scale-[0.98] ${
-                                            isSelected
-                                              ? "bg-gradient-to-r from-[#D9BE85] to-[#B08D4C] text-[#553C0C] shadow border-0"
-                                              : "border border-[#B08D4C] text-[#8C6D2D] hover:bg-[#B08D4C] hover:text-white bg-white shadow-xs"
-                                          }`}
-                                        >
-                                          {isSelected ? (
-                                            <>
-                                              <CheckCircle2 size={10} className="stroke-[3]" />
-                                              Claimed
-                                            </>
+                                    return (
+                                      <div
+                                        key={c.id}
+                                        className={`rounded-xl border p-3 flex gap-3.5 transition-all duration-300 relative ${
+                                          isSelected
+                                            ? "bg-white border-[#B08D4C] ring-2 ring-[#B08D4C]/15 shadow-md -translate-y-0.5"
+                                            : "bg-[#FAF6EC]/10 border-line hover:border-[#B08D4C]/45 hover:bg-[#FAF6EC]/25 hover:shadow-xs"
+                                        }`}
+                                      >
+                                        <div className="relative w-12 h-12 rounded-lg overflow-hidden bg-cream border border-line/45 flex-shrink-0">
+                                          {img ? (
+                                            <Image src={img} alt={c.display_name || c.product?.name || ""} fill className="object-cover" />
                                           ) : (
-                                            "Claim Gift"
+                                            <ShoppingBag className="w-5 h-5 m-3.5 text-muted" />
                                           )}
-                                        </button>
+                                        </div>
+
+                                        <div className="flex-1 min-w-0 flex flex-col justify-between">
+                                          <div className="space-y-0.5">
+                                            <h3 className="text-xs font-bold text-ink truncate pr-3 leading-tight">
+                                              {c.display_name || c.product?.name}
+                                            </h3>
+                                            {details && (
+                                              <p className="text-[9px] text-[#8C6D2D] font-bold">
+                                                Variant: {details}
+                                              </p>
+                                            )}
+                                            {productVal && (
+                                              <p className="text-[9px] text-taupe/80 line-through">
+                                                Worth {productVal}
+                                              </p>
+                                            )}
+                                          </div>
+
+                                          <div className="pt-2 flex justify-start">
+                                            <button
+                                              type="button"
+                                              onClick={() => addFreeGift(c)}
+                                              className={`px-4 py-1.5 rounded-full text-[9px] font-bold tracking-wide transition-all duration-300 flex items-center gap-1 cursor-pointer hover:scale-[1.02] active:scale-[0.98] ${
+                                                isSelected
+                                                  ? "bg-gradient-to-r from-[#D9BE85] to-[#B08D4C] text-[#553C0C] shadow-md border-0"
+                                                  : "border border-[#C5A862] text-[#8C6D2D] bg-[#FAF6EC]/40 hover:bg-[#B08D4C] hover:text-white hover:border-[#B08D4C] shadow-xs"
+                                              }`}
+                                            >
+                                              {isSelected ? (
+                                                <>
+                                                  <CheckCircle2 size={10} className="stroke-[3]" />
+                                                  Claimed
+                                                </>
+                                              ) : (
+                                                "Claim Gift"
+                                              )}
+                                            </button>
+                                          </div>
+                                        </div>
                                       </div>
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
+                                    );
+                                  })}
+                                </div>
+                              );
+                            })()}
                           </div>
                         )}
                       </div>
