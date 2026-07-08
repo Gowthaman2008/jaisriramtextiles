@@ -15,7 +15,7 @@ export async function GET() {
     const { data, error } = await adminSupabase
       .from("support_messages")
       .select("id, name, email, subject, message, status, reply_message, replied_at, created_at")
-      .eq("user_id", user.id)
+      .or(`user_id.eq.${user.id},email.eq.${user.email}`)
       .order("created_at", { ascending: false });
 
     if (error) throw error;
