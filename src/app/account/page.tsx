@@ -28,7 +28,9 @@ import {
   ShieldCheck,
   Send,
   MessageSquare,
-  Copy
+  Copy,
+  Star,
+  X
 } from "lucide-react";
 
 export default function AccountPage() {
@@ -49,6 +51,19 @@ export default function AccountPage() {
   const [walletBalance, setWalletBalance] = useState(0);
   const [walletHistory, setWalletHistory] = useState<any[]>([]);
   const [addresses, setAddresses] = useState<any[]>([]);
+  const [userReviews, setUserReviews] = useState<any[]>([]);
+
+  // Review Modal States
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [reviewOrderId, setReviewOrderId] = useState("");
+  const [reviewProductId, setReviewProductId] = useState("");
+  const [reviewProductName, setReviewProductName] = useState("");
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewHoverRating, setReviewHoverRating] = useState<number | null>(null);
+  const [reviewTitle, setReviewTitle] = useState("");
+  const [reviewBody, setReviewBody] = useState("");
+  const [reviewPhotos, setReviewPhotos] = useState<File[]>([]);
+  const [reviewSubmitting, setReviewSubmitting] = useState(false);
 
   // Address Form States
   const [showAddressForm, setShowAddressForm] = useState(false);
@@ -75,6 +90,7 @@ export default function AccountPage() {
   const [profilePhone, setProfilePhone] = useState("");
   const [profileSubmitting, setProfileSubmitting] = useState(false);
   const [profileError, setProfileError] = useState("");
+  const [profileUserId, setProfileUserId] = useState("");
 
   // Sync state loader
   const [refreshing, setRefreshing] = useState(false);
@@ -95,7 +111,7 @@ export default function AccountPage() {
         const [{ data: profile, error: profileErr }] = await Promise.all([
           supabase
             .from("profiles")
-            .select("role, full_name, phone")
+            .select("role, full_name, phone, user_id")
             .eq("id", authUser.id)
             .single(),
           fetchAccountData(authUser.id),
@@ -108,6 +124,7 @@ export default function AccountPage() {
         if (profile) {
           setProfileName(profile.full_name || authUser.user_metadata?.full_name || authUser.user_metadata?.name || "");
           setProfilePhone(profile.phone || authUser.user_metadata?.phone || "");
+          setProfileUserId(profile.user_id ? String(profile.user_id) : "");
         }
 
         const isUserAdmin = profile && ["admin", "staff"].includes(profile.role);
@@ -124,9 +141,8 @@ export default function AccountPage() {
   async function fetchAccountData(userId: string) {
     setRefreshing(true);
     try {
-      // Run independent queries in parallel instead of one-after-another —
-      // cuts three sequential round-trips down to the time of the slowest single one.
-      const [ordersRes, walletRes, addrRes] = await Promise.all([
+      // Run independent queries in parallel instead of one-after-another
+      const [ordersRes, walletRes, addrRes, reviewsRes] = await Promise.all([
         supabase
           .from("orders")
           .select("*, order_items(*)")
@@ -142,9 +158,14 @@ export default function AccountPage() {
           .select("*")
           .eq("user_id", userId)
           .order("is_default", { ascending: false }),
+        supabase
+          .from("reviews")
+          .select("product_id, order_id")
+          .eq("user_id", userId)
       ]);
 
       setOrders(ordersRes.data || []);
+      setUserReviews(reviewsRes.data || []);
 
       const history = walletRes.data || [];
       setWalletHistory(history);
@@ -170,6 +191,81 @@ export default function AccountPage() {
       setRefreshing(false);
     }
   }
+
+  const isReviewed = (productId: string, orderId: string) => {
+    return userReviews.some(
+      (r) => r.product_id === productId && r.order_id === orderId
+    );
+  };
+
+  const openReviewModal = (orderId: string, productId: string, productName: string) => {
+    setReviewOrderId(orderId);
+    setReviewProductId(productId);
+    setReviewProductName(productName);
+    setReviewRating(5);
+    setReviewHoverRating(null);
+    setReviewTitle("");
+    setReviewBody("");
+    setReviewPhotos([]);
+    setShowReviewModal(true);
+  };
+
+  const handleReviewPhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+    const fileArray = Array.from(files);
+
+    if (reviewPhotos.length + fileArray.length > 5) {
+      alert("You can only upload up to 5 photos for a review.");
+      return;
+    }
+
+    setReviewPhotos([...reviewPhotos, ...fileArray]);
+  };
+
+  const removeReviewPhoto = (index: number) => {
+    setReviewPhotos(reviewPhotos.filter((_, idx) => idx !== index));
+  };
+
+  const handleReviewSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!reviewOrderId || !reviewProductId) return;
+
+    setReviewSubmitting(true);
+    try {
+      const formData = new FormData();
+      formData.append("orderId", reviewOrderId);
+      formData.append("productId", reviewProductId);
+      formData.append("rating", String(reviewRating));
+      formData.append("title", reviewTitle);
+      formData.append("body", reviewBody);
+
+      reviewPhotos.forEach((file) => {
+        formData.append("files", file);
+      });
+
+      const res = await fetch("/api/reviews", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to submit review");
+      }
+
+      alert("Review submitted successfully! Thank you for your feedback.");
+      setShowReviewModal(false);
+      
+      if (user) {
+        await fetchAccountData(user.id);
+      }
+    } catch (err: any) {
+      alert(err.message || "Something went wrong. Please try again.");
+    } finally {
+      setReviewSubmitting(false);
+    }
+  };
 
   // Handle Add Address
   async function handleAddAddress(e: React.FormEvent) {
@@ -317,7 +413,8 @@ export default function AccountPage() {
   function handlePrintInvoice(order: any) {
     const doc = new jsPDF();
     const orderNumber = order.order_number;
-    const name = order.shipping_address?.recipient || order.profiles?.full_name || order.profiles?.email || "Customer";
+    const name = order.shipping_address?.recipient || order.profiles?.full_name || order.profiles?.email || profileName || "Customer";
+    const userId = profileUserId || order.profiles?.user_id || "";
     const items = order.order_items || [];
     const shippingAddress = order.shipping_address || {};
     const subtotalPaise = order.subtotal_paise;
@@ -375,6 +472,9 @@ export default function AccountPage() {
     doc.text(`Order Number: ${orderNumber}`, 20, 62);
     doc.text(`Date: ${new Date(order.placed_at || order.created_at || new Date()).toLocaleDateString("en-IN", { dateStyle: "long" })}`, 20, 68);
     doc.text(`Customer: ${name}`, 20, 74);
+    if (userId) {
+      doc.text(`User ID: ${userId}`, 20, 80);
+    }
 
     // Shipping Address text
     doc.text(shippingAddress.recipient || "", 120, 62);
@@ -545,6 +645,13 @@ export default function AccountPage() {
             <div>
               <h1 className="font-display text-2xl text-ink leading-tight">{displayName}</h1>
               <p className="text-xs text-taupe mt-0.5">{user?.email}</p>
+              {profileUserId && (
+                <div className="mt-1.5 flex items-center">
+                  <span className="text-[10px] font-sans font-bold tracking-wider text-zari-deep bg-cream/50 px-2 py-0.5 rounded border border-zari/10 uppercase">
+                    User ID: {profileUserId}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -707,13 +814,30 @@ export default function AccountPage() {
                       <div className="md:col-span-7 space-y-3">
                         <p className="text-[10px] font-bold text-taupe uppercase tracking-wider">Ordered Items</p>
                         {o.order_items?.map((item: any) => (
-                          <div key={item.id} className="flex justify-between items-start text-xs border-b border-line/35 pb-2 last:border-0 last:pb-0">
-                            <div>
-                              <p className="font-bold text-ink">{item.name}</p>
-                              {item.variant && <p className="text-[10px] text-taupe mt-0.5">{item.variant}</p>}
-                              <p className="text-taupe mt-0.5">{formatINR(item.unit_price_paise, true)} &times; {item.quantity}</p>
+                          <div key={item.id} className="border-b border-line/35 pb-3 mb-2 last:border-0 last:pb-0 last:mb-0">
+                            <div className="flex justify-between items-start text-xs">
+                              <div>
+                                <p className="font-bold text-ink">{item.name}</p>
+                                {item.variant && <p className="text-[10px] text-taupe mt-0.5">{item.variant}</p>}
+                                <p className="text-taupe mt-0.5">{formatINR(item.unit_price_paise, true)} &times; {item.quantity}</p>
+                              </div>
+                              <span className="font-semibold text-ink">{formatINR(item.unit_price_paise * item.quantity, true)}</span>
                             </div>
-                            <span className="font-semibold text-ink">{formatINR(item.unit_price_paise * item.quantity, true)}</span>
+
+                            {item.product_id && o.status === "delivered" && (
+                              <div className="mt-2 flex justify-end">
+                                {isReviewed(item.product_id, o.id) ? (
+                                  <span className="text-[10px] font-bold uppercase tracking-wider text-taupe bg-cream px-2 py-0.5 rounded border border-line/40">Reviewed</span>
+                                ) : (
+                                  <button
+                                    onClick={() => openReviewModal(o.id, item.product_id, item.name)}
+                                    className="px-3 py-1 bg-ink text-ivory rounded text-[10px] font-bold uppercase tracking-wider hover:bg-zari transition-colors cursor-pointer border-0"
+                                  >
+                                    Rate & Review
+                                  </button>
+                                )}
+                              </div>
+                            )}
                           </div>
                         ))}
 
@@ -1316,6 +1440,140 @@ export default function AccountPage() {
                 <div className="pt-2 flex justify-end">
                   <Button type="submit" variant="gold" size="sm" disabled={profileSubmitting}>
                     {profileSubmitting ? "Saving changes..." : "Save Account Details"}
+                  </Button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+        {/* Write Review Modal */}
+        {showReviewModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/50 p-4 backdrop-blur-sm animate-fade-in">
+            <div className="relative w-full max-w-lg rounded-card border border-line bg-white p-6 shadow-xl animate-slide-up max-h-[90vh] overflow-y-auto">
+              {/* Modal Header */}
+              <div className="flex items-center justify-between border-b border-line pb-3">
+                <div>
+                  <h3 className="font-display text-lg text-ink">Rate & Review Product</h3>
+                  <p className="text-xs text-taupe leading-tight mt-0.5">{reviewProductName}</p>
+                </div>
+                <button
+                  onClick={() => setShowReviewModal(false)}
+                  className="rounded-full p-1 text-taupe hover:bg-cream hover:text-ink transition-colors cursor-pointer border-0"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Form Content */}
+              <form onSubmit={handleReviewSubmit} className="space-y-4 pt-4 text-xs">
+                {/* Stars selector */}
+                <div className="text-center space-y-1">
+                  <p className="font-semibold text-taupe">Your Rating</p>
+                  <div className="flex gap-2 justify-center">
+                    {[1, 2, 3, 4, 5].map((star) => {
+                      const isHighlighted = (reviewHoverRating !== null ? star <= reviewHoverRating : star <= reviewRating);
+                      return (
+                        <button
+                          key={star}
+                          type="button"
+                          onClick={() => setReviewRating(star)}
+                          onMouseEnter={() => setReviewHoverRating(star)}
+                          onMouseLeave={() => setReviewHoverRating(null)}
+                          className="text-2xl transition-transform duration-150 hover:scale-110 cursor-pointer bg-transparent border-0"
+                        >
+                          <Star 
+                            className={`w-7 h-7 ${
+                              isHighlighted ? "fill-zari text-zari" : "text-taupe fill-none"
+                            }`} 
+                          />
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Title */}
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-semibold text-taupe">Review Title (Optional)</label>
+                  <input 
+                    type="text" 
+                    placeholder="e.g. Extremely soft material!" 
+                    value={reviewTitle} 
+                    onChange={(e) => setReviewTitle(e.target.value)} 
+                    className="rounded border border-line bg-white px-3 py-2 text-xs outline-none focus:border-zari"
+                  />
+                </div>
+
+                {/* Body */}
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-semibold text-taupe">Review Message *</label>
+                  <textarea 
+                    required
+                    rows={4}
+                    placeholder="Tell us what you liked or disliked about this product..." 
+                    value={reviewBody} 
+                    onChange={(e) => setReviewBody(e.target.value)} 
+                    className="rounded border border-line bg-white px-3 py-2 text-xs outline-none focus:border-zari resize-none"
+                  />
+                </div>
+
+                {/* File Uploads */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-semibold text-taupe">Upload Photos (Max 5)</label>
+                  <div className="flex items-center gap-3">
+                    <label className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 border border-line rounded bg-cream hover:bg-cream/70 text-xs font-semibold text-ink transition-colors">
+                      📸 Select Photos
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        multiple 
+                        onChange={handleReviewPhotoChange} 
+                        className="hidden" 
+                      />
+                    </label>
+                    <span className="text-[10px] text-taupe">{reviewPhotos.length} / 5 photos selected</span>
+                  </div>
+
+                  {reviewPhotos.length > 0 && (
+                    <div className="grid grid-cols-5 gap-2 mt-2">
+                      {reviewPhotos.map((file, idx) => (
+                        <div key={idx} className="relative aspect-square border border-line rounded overflow-hidden bg-cream group">
+                          <img 
+                            src={URL.createObjectURL(file)} 
+                            alt="selected thumbnail" 
+                            className="object-cover w-full h-full"
+                          />
+                          <button 
+                            type="button" 
+                            onClick={() => removeReviewPhoto(idx)} 
+                            className="absolute top-0.5 right-0.5 bg-danger text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer border-0"
+                          >
+                            <Trash2 className="w-2.5 h-2.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Footer Buttons */}
+                <div className="flex justify-end gap-3 pt-4 border-t border-line">
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => setShowReviewModal(false)}
+                    disabled={reviewSubmitting}
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    type="submit" 
+                    variant="gold" 
+                    size="sm" 
+                    disabled={reviewSubmitting}
+                  >
+                    {reviewSubmitting ? "Submitting review..." : "Submit Review"}
                   </Button>
                 </div>
               </form>

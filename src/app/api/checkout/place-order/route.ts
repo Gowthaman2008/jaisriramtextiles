@@ -285,16 +285,38 @@ export async function POST(request: Request) {
         .eq("user_id", user.id);
     }
 
+    // Fetch user profile to get the 8-digit user_id, email, and name
+    let dbUserId: string | number | undefined = undefined;
+    let dbUserEmail: string | undefined = undefined;
+    let dbFullName: string | undefined = undefined;
+    try {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("user_id, email, full_name")
+        .eq("id", user.id)
+        .single();
+      if (profile) {
+        dbUserId = profile.user_id;
+        dbUserEmail = profile.email;
+        dbFullName = profile.full_name;
+      }
+    } catch (err) {
+      console.error("Failed to fetch user profile for invoice:", err);
+    }
+
+    const recipientEmail = dbUserEmail || user.email;
+    const recipientName = dbFullName || user.user_metadata?.full_name || user.user_metadata?.name;
+
     // 9. Send order confirmation email (with embedded invoice) — awaited so Vercel
     // doesn't freeze the function before the send completes. Failure here shouldn't
     // fail the checkout, since the order is already placed.
-    if (user.email) {
+    if (recipientEmail) {
       // Generate PDF Invoice
       let pdfBase64 = "";
       try {
         pdfBase64 = generateInvoicePdfBase64({
           orderNumber,
-          name: user.user_metadata?.full_name || user.user_metadata?.name,
+          name: recipientName,
           items: validatedItems,
           shippingAddress,
           subtotalPaise,
@@ -303,17 +325,18 @@ export async function POST(request: Request) {
           walletUsedPaise,
           totalPaise,
           cashbackEarnedPaise: totalCashbackEarned,
+          userId: dbUserId,
         });
       } catch (pdfErr) {
         console.error("PDF generation failed:", pdfErr);
       }
 
       await sendEmail({
-        to: user.email,
+        to: recipientEmail,
         subject: `Order Confirmed — ${orderNumber} | JAI SRI RAM TEXTILES`,
         html: orderConfirmationEmailHtml({
           orderNumber,
-          name: user.user_metadata?.full_name || user.user_metadata?.name,
+          name: recipientName,
           items: validatedItems,
           shippingAddress,
           subtotalPaise,
@@ -322,6 +345,7 @@ export async function POST(request: Request) {
           walletUsedPaise,
           totalPaise,
           cashbackEarnedPaise: totalCashbackEarned,
+          userId: dbUserId,
         }),
         ...(pdfBase64 ? {
           attachments: [

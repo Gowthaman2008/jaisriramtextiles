@@ -117,6 +117,11 @@ export function ProductCard({ product, index = 0 }: { product: Product; index?: 
           <StarRating rating={product.rating} />
           <span className="text-xs text-muted">({product.reviewCount})</span>
         </div>
+        {product.showSize && (
+          <div className="text-[11px] text-taupe font-semibold tracking-wide mt-0.5">
+            Sizes: {Array.from(new Set(product.variants?.map(v => v.size).filter(Boolean) || [])).join(", ") || "Standard"}
+          </div>
+        )}
         <div className="mt-1 flex items-baseline gap-2">
           <span className="font-semibold text-ink">{formatINR(product.pricePaise, true)}</span>
           {product.compareAtPaise && (

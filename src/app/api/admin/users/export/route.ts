@@ -44,15 +44,15 @@ export async function GET() {
     // 1. Fetch all profiles from database
     const { data: profiles, error } = await supabase
       .from("profiles")
-      .select("email, full_name, phone, role, provider, created_at")
+      .select("user_id, email, full_name, phone, role, provider, created_at")
       .order("created_at", { ascending: true });
 
     if (error) throw error;
 
     // 2. Build the CSV content
-    const headers = "Email,Full Name,Phone,Role,Provider,Created At\n";
+    const headers = "User ID,Email,Full Name,Phone,Role,Provider,Created At\n";
     const rows = (profiles || []).map(p => 
-      `${csvEscape(p.email)},${csvEscape(p.full_name || "")},${csvEscape(p.phone || "")},${csvEscape(p.role)},${csvEscape(p.provider)},${csvEscape(p.created_at)}`
+      `${csvEscape(p.user_id || "")},${csvEscape(p.email)},${csvEscape(p.full_name || "")},${csvEscape(p.phone || "")},${csvEscape(p.role)},${csvEscape(p.provider)},${csvEscape(p.created_at)}`
     ).join("\n");
 
     const csvContent = headers + rows + "\n";

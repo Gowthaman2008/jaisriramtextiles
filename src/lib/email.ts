@@ -199,6 +199,7 @@ export function orderConfirmationEmailHtml({
   walletUsedPaise,
   totalPaise,
   cashbackEarnedPaise,
+  userId,
 }: {
   orderNumber: string;
   name?: string;
@@ -210,6 +211,7 @@ export function orderConfirmationEmailHtml({
   walletUsedPaise: number;
   totalPaise: number;
   cashbackEarnedPaise: number;
+  userId?: string | number;
 }) {
   return `
     <div class="email-bg" style="background-color: #F5F2EB; background-image: linear-gradient(#F5F2EB, #F5F2EB); padding: 40px 16px; font-family: Georgia, 'Times New Roman', serif;">
@@ -222,6 +224,7 @@ export function orderConfirmationEmailHtml({
         <div style="padding: 32px; color: #2A2622; font-size: 14px; line-height: 1.6;">
           <p style="font-size: 16px; margin: 0 0 16px 0;">Hi ${name || "there"},</p>
           <p style="margin: 0 0 20px 0;">Thank you for your order! Here&apos;s your invoice for <strong>${orderNumber}</strong>.</p>
+          ${userId ? `<p style="margin: 0 0 20px 0; font-family: monospace; font-size: 13px; color: #6E655A;"><strong>User ID:</strong> ${userId}</p>` : ""}
  
           <table style="width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px;">
             <thead>
@@ -497,6 +500,7 @@ export function generateInvoicePdfBase64({
   walletUsedPaise,
   totalPaise,
   cashbackEarnedPaise,
+  userId,
 }: {
   orderNumber: string;
   name?: string;
@@ -508,6 +512,7 @@ export function generateInvoicePdfBase64({
   walletUsedPaise: number;
   totalPaise: number;
   cashbackEarnedPaise: number;
+  userId?: string | number;
 }): string {
   const doc = new jsPDF();
 
@@ -559,6 +564,9 @@ export function generateInvoicePdfBase64({
   doc.text(`Order Number: ${orderNumber}`, 20, 62);
   doc.text(`Date: ${new Date().toLocaleDateString("en-IN", { dateStyle: "long" })}`, 20, 68);
   doc.text(`Customer: ${name || "Guest User"}`, 20, 74);
+  if (userId) {
+    doc.text(`User ID: ${userId}`, 20, 80);
+  }
 
   // Shipping Address text
   doc.text(shippingAddress.recipient || "", 120, 62);

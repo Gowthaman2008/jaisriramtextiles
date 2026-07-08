@@ -37,7 +37,7 @@ export async function GET() {
       .from("orders")
       .select(`
         *,
-        profiles (full_name, email, phone),
+        profiles (user_id, full_name, email, phone),
         order_items (*),
         order_events (*),
         coupons (code, type, value)

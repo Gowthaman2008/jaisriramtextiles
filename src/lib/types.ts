@@ -16,6 +16,7 @@ export type Product = {
   inStock: boolean;
   stock: number;
   badges?: ("new" | "bestseller" | "trending" | "sale")[];
+  showSize?: boolean;
   variants?: {
     id: string;
     size: string | null;

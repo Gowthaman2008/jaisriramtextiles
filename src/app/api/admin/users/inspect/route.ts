@@ -31,10 +31,10 @@ export async function GET(request: Request) {
 
   try {
     const { searchParams } = new URL(request.url);
-    const email = searchParams.get("email")?.trim().toLowerCase();
+    const userId = searchParams.get("userId")?.trim().toUpperCase();
 
-    if (!email) {
-      return NextResponse.json({ error: "Email is required" }, { status: 400 });
+    if (!userId) {
+      return NextResponse.json({ error: "User ID is required" }, { status: 400 });
     }
 
     const supabase = createServiceClient();
@@ -43,7 +43,7 @@ export async function GET(request: Request) {
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
       .select("*")
-      .eq("email", email)
+      .eq("user_id", userId)
       .maybeSingle();
 
     if (profileError) throw profileError;

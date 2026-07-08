@@ -15,11 +15,38 @@ create type wallet_txn_type  as enum ('cashback_credit', 'redeem', 'expiry', 'ad
 create type review_status    as enum ('pending', 'approved', 'rejected');
 create type auth_provider     as enum ('email', 'google');
 
--- ============================================================================
--- PROFILES  (1:1 with auth.users)
--- ============================================================================
+-- Helper function to generate a random unique 8-digit numeric ID (no leading zeroes)
+create or replace function generate_unique_user_id()
+returns text as $$
+declare
+  new_id text;
+  is_unique boolean;
+  chars text := '0123456789';
+  first_chars text := '123456789';
+  i integer;
+begin
+  loop
+    -- First digit from 1-9
+    new_id := substr(first_chars, floor(random() * 9 + 1)::integer, 1);
+    
+    -- Next 7 digits from 0-9
+    for i in 2..8 loop
+      new_id := new_id || substr(chars, floor(random() * 10 + 1)::integer, 1);
+    end loop;
+    
+    select not exists (
+      select 1 from public.profiles where user_id = new_id
+    ) into is_unique;
+    
+    exit when is_unique;
+  end loop;
+  return new_id;
+end;
+$$ language plpgsql;
+
 create table profiles (
   id            uuid primary key references auth.users(id) on delete cascade,
+  user_id       text unique default generate_unique_user_id(),
   full_name     text,
   email         text not null,
   avatar_url    text,
@@ -91,6 +118,7 @@ create table products (
   stock             int  not null default 0 check (stock >= 0),
   is_active         boolean not null default true,
   is_on_sale        boolean not null default false,
+  show_size         boolean not null default false,
   -- denormalised rating cache, maintained by trigger from reviews
   rating_avg        numeric(2,1) not null default 0,
   rating_count      int not null default 0,
@@ -214,15 +242,22 @@ returns trigger language plpgsql as $$
 begin
   if new.status = 'delivered' and old.status <> 'delivered'
      and new.cashback_earned_paise > 0 then
-    insert into wallet_transactions (user_id, type, amount_paise, order_id, note, expires_at)
-    values (new.user_id, 'cashback_credit', new.cashback_earned_paise, new.id,
-            'Cashback for order ' || new.order_number, now() + interval '15 days');
+     
+    -- Only credit if no cashback_credit transaction already exists for this order
+    if not exists (
+      select 1 from public.wallet_transactions 
+      where order_id = new.id and type = 'cashback_credit'
+    ) then
+      insert into wallet_transactions (user_id, type, amount_paise, order_id, note, expires_at)
+      values (new.user_id, 'cashback_credit', new.cashback_earned_paise, new.id,
+              'Cashback for order ' || new.order_number, now() + interval '15 days');
 
-    insert into wallets (user_id, balance_paise)
-    values (new.user_id, new.cashback_earned_paise)
-    on conflict (user_id)
-    do update set balance_paise = wallets.balance_paise + excluded.balance_paise,
-                  updated_at = now();
+      insert into wallets (user_id, balance_paise)
+      values (new.user_id, new.cashback_earned_paise)
+      on conflict (user_id)
+      do update set balance_paise = wallets.balance_paise + excluded.balance_paise,
+                    updated_at = now();
+    end if;
 
     new.delivered_at := now();
   end if;

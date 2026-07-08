@@ -24,6 +24,19 @@ async function checkAdminAuth() {
   }
 }
 
+let adminHasShowSizeColumn: boolean | null = null;
+
+async function checkShowSizeColumn(supabase: any) {
+  if (adminHasShowSizeColumn !== null) return adminHasShowSizeColumn;
+  try {
+    const { error } = await supabase.from("products").select("show_size").limit(1);
+    adminHasShowSizeColumn = !(error && error.message.includes("show_size"));
+  } catch {
+    adminHasShowSizeColumn = false;
+  }
+  return adminHasShowSizeColumn;
+}
+
 // GET: Fetch all products with images, variants, and categories
 export async function GET() {
   const auth = await checkAdminAuth();
@@ -33,16 +46,29 @@ export async function GET() {
 
   try {
     const supabase = createServiceClient();
-    const { data: products, error } = await supabase
-      .from("products")
-      .select(`
+    const hasShowSize = await checkShowSizeColumn(supabase);
+    
+    const selectClause = hasShowSize
+      ? `
+        id, slug, name, description, price_paise, compare_at_paise, 
+        cashback_paise, stock, is_active, is_on_sale, rating_avg, rating_count, show_size,
+        category_id,
+        categories (slug, name),
+        product_images (id, url, alt, sort_order),
+        product_variants (id, size, color, sku, stock)
+      `
+      : `
         id, slug, name, description, price_paise, compare_at_paise, 
         cashback_paise, stock, is_active, is_on_sale, rating_avg, rating_count,
         category_id,
         categories (slug, name),
         product_images (id, url, alt, sort_order),
         product_variants (id, size, color, sku, stock)
-      `)
+      `;
+
+    const { data: products, error } = await supabase
+      .from("products")
+      .select(selectClause)
       .order("created_at", { ascending: false });
 
     if (error) throw error;
@@ -72,6 +98,7 @@ export async function POST(request: Request) {
       stock,
       is_active,
       is_on_sale,
+      show_size,
       images, // Array of strings or object {url, alt, sort_order}
       variants, // Array of {size, color, sku, stock}
     } = await request.json();
@@ -83,20 +110,27 @@ export async function POST(request: Request) {
     const supabase = createServiceClient();
 
     // 1. Insert product
+    const insertPayload: any = {
+      name,
+      slug,
+      description,
+      category_id: category_id || null,
+      price_paise,
+      compare_at_paise: compare_at_paise || null,
+      cashback_paise: cashback_paise || 0,
+      stock: stock || 0,
+      is_active: is_active !== undefined ? is_active : true,
+      is_on_sale: is_on_sale || false,
+    };
+
+    const hasShowSize = await checkShowSizeColumn(supabase);
+    if (hasShowSize) {
+      insertPayload.show_size = show_size || false;
+    }
+
     const { data: product, error: productError } = await supabase
       .from("products")
-      .insert({
-        name,
-        slug,
-        description,
-        category_id: category_id || null,
-        price_paise,
-        compare_at_paise: compare_at_paise || null,
-        cashback_paise: cashback_paise || 0,
-        stock: stock || 0,
-        is_active: is_active !== undefined ? is_active : true,
-        is_on_sale: is_on_sale || false,
-      })
+      .insert(insertPayload)
       .select("id")
       .single();
 
@@ -165,6 +199,7 @@ export async function PUT(request: Request) {
       stock,
       is_active,
       is_on_sale,
+      show_size,
       images,
       variants,
     } = await request.json();
@@ -176,20 +211,27 @@ export async function PUT(request: Request) {
     const supabase = createServiceClient();
 
     // 1. Update product base info
+    const updatePayload: any = {
+      name,
+      slug,
+      description,
+      category_id: category_id || null,
+      price_paise,
+      compare_at_paise: compare_at_paise || null,
+      cashback_paise: cashback_paise || 0,
+      stock: stock || 0,
+      is_active: is_active !== undefined ? is_active : true,
+      is_on_sale: is_on_sale || false,
+    };
+
+    const hasShowSize = await checkShowSizeColumn(supabase);
+    if (hasShowSize) {
+      updatePayload.show_size = show_size || false;
+    }
+
     const { error: productError } = await supabase
       .from("products")
-      .update({
-        name,
-        slug,
-        description,
-        category_id: category_id || null,
-        price_paise,
-        compare_at_paise: compare_at_paise || null,
-        cashback_paise: cashback_paise || 0,
-        stock: stock || 0,
-        is_active: is_active !== undefined ? is_active : true,
-        is_on_sale: is_on_sale || false,
-      })
+      .update(updatePayload)
       .eq("id", id);
 
     if (productError) throw productError;
@@ -233,6 +275,38 @@ export async function PUT(request: Request) {
     return NextResponse.json({ success: true });
   } catch (error: any) {
     console.error("Update product error:", error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
+// DELETE: Delete a product by ID
+export async function DELETE(request: Request) {
+  const auth = await checkAdminAuth();
+  if (!auth) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get("id");
+
+    if (!id) {
+      return NextResponse.json({ error: "Product ID is required" }, { status: 400 });
+    }
+
+    const supabase = createServiceClient();
+    
+    // Delete the product. Cascading delete should handle product_images and product_variants.
+    const { error } = await supabase
+      .from("products")
+      .delete()
+      .eq("id", id);
+
+    if (error) throw error;
+
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    console.error("Delete product error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

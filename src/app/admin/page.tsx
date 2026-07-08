@@ -36,7 +36,9 @@ import {
   Mail,
   Briefcase,
   Bell,
-  Ticket
+  Ticket,
+  Star,
+  X
 } from "lucide-react";
 
 // Helper for formatting money
@@ -247,6 +249,15 @@ export default function AdminDashboardPage() {
   const [orders, setOrders] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
+  const [reviews, setReviews] = useState<any[]>([]);
+
+  // Review moderation form fields
+  const [editingReview, setEditingReview] = useState<any>(null);
+  const [reviewFormRating, setReviewFormRating] = useState(5);
+  const [reviewFormTitle, setReviewFormTitle] = useState("");
+  const [reviewFormBody, setReviewFormBody] = useState("");
+  const [reviewFormStatus, setReviewFormStatus] = useState("approved");
+  const [reviewFormSubmitting, setReviewFormSubmitting] = useState(false);
 
   // Selection states for Modals/Inspectors
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
@@ -270,12 +281,13 @@ export default function AdminDashboardPage() {
   const [prodSlug, setProdSlug] = useState("");
   const [prodDesc, setProdDesc] = useState("");
   const [prodCatId, setProdCatId] = useState("");
-  const [prodPrice, setProdPrice] = useState(0); // in Rupees
-  const [prodCompare, setProdCompare] = useState(0); // in Rupees
-  const [prodCashback, setProdCashback] = useState(0); // in Rupees
-  const [prodStock, setProdStock] = useState(0);
+  const [prodPrice, setProdPrice] = useState<number | "">(""); // in Rupees
+  const [prodCompare, setProdCompare] = useState<number | "">(""); // in Rupees
+  const [prodCashback, setProdCashback] = useState<number | "">(""); // in Rupees
+  const [prodStock, setProdStock] = useState<number | "">("");
   const [prodIsActive, setProdIsActive] = useState(true);
   const [prodIsSale, setProdIsSale] = useState(false);
+  const [prodShowSize, setProdShowSize] = useState(false);
   const [prodImages, setProdImages] = useState<string[]>([]);
   const [prodVariants, setProdVariants] = useState<any[]>([]); // {size, color, sku, stock}
 
@@ -283,7 +295,10 @@ export default function AdminDashboardPage() {
   const [newVarSize, setNewVarSize] = useState("");
   const [newVarColor, setNewVarColor] = useState("");
   const [newVarSku, setNewVarSku] = useState("");
-  const [newVarStock, setNewVarStock] = useState(0);
+  const [newVarStock, setNewVarStock] = useState<number | "">("");
+
+  // Image drag/reorder helper states
+  const [draggedImgIndex, setDraggedImgIndex] = useState<number | null>(null);
 
   // Upload state
   const [uploadingImage, setUploadingImage] = useState(false);
@@ -298,7 +313,7 @@ export default function AdminDashboardPage() {
   const [uploadingScreenshot, setUploadingScreenshot] = useState(false);
 
   // User Inspector state variables
-  const [inspectEmail, setInspectEmail] = useState("");
+  const [inspectUserId, setInspectUserId] = useState("");
   const [inspectLoading, setInspectLoading] = useState(false);
   const [inspectedUser, setInspectedUser] = useState<any>(null);
   const [inspectError, setInspectError] = useState("");
@@ -412,6 +427,7 @@ export default function AdminDashboardPage() {
     const bulkPromise = supabase.from("bulk_inquiries").select("*").order("created_at", { ascending: false });
     const subsPromise = supabase.from("newsletter_subscriptions").select("*").order("created_at", { ascending: false });
     const couponsPromise = fetch("/api/admin/coupons");
+    const reviewsPromise = fetch("/api/admin/reviews");
 
     let hadError = false;
 
@@ -514,9 +530,70 @@ export default function AdminDashboardPage() {
       console.error("Load coupons failed:", err);
     }
 
+    try {
+      const reviewsRes = await reviewsPromise;
+      if (!reviewsRes.ok) throw new Error("Failed to load reviews");
+      setReviews((await reviewsRes.json()) || []);
+    } catch (err) {
+      hadError = true;
+      console.error("Load reviews failed:", err);
+    }
+
     setError(hadError ? "Some dashboard data failed to load — check the browser console for details." : "");
     setLoading(false);
     setRefreshing(false);
+  }
+
+  async function refreshProducts() {
+    try {
+      const res = await fetch("/api/admin/products");
+      if (!res.ok) throw new Error("Failed to load products");
+      const productsData = await res.json();
+      setProducts(productsData && productsData.length > 0 ? productsData : DEFAULT_PRODUCTS);
+    } catch (err) {
+      console.error("Refresh products failed:", err);
+    }
+  }
+
+  async function refreshOrders() {
+    try {
+      const res = await fetch("/api/admin/orders");
+      if (!res.ok) throw new Error("Failed to load orders");
+      setOrders(await res.json());
+    } catch (err) {
+      console.error("Refresh orders failed:", err);
+    }
+  }
+
+  async function refreshCms() {
+    try {
+      const res = await fetch("/api/admin/cms");
+      if (!res.ok) throw new Error("Failed to load CMS data");
+      const cmsData = await res.json();
+      setCmsSlides(cmsData.slides && cmsData.slides.length > 0 ? cmsData.slides : DEFAULT_SLIDES);
+      setCmsBanners(cmsData.banners || []);
+
+      const annBanner = (cmsData.banners || []).find((b: any) => b.placement === "announcement");
+      if (annBanner) {
+        setAnnouncementBannerId(annBanner.id);
+        setAnnouncementList(annBanner.content?.messages || []);
+      } else {
+        setAnnouncementBannerId(null);
+        setAnnouncementList(DEFAULT_ANNOUNCEMENTS);
+      }
+    } catch (err) {
+      console.error("Refresh CMS data failed:", err);
+    }
+  }
+
+  async function refreshCoupons() {
+    try {
+      const res = await fetch("/api/admin/coupons");
+      if (!res.ok) throw new Error("Failed to load promo codes");
+      setCoupons((await res.json()) || []);
+    } catch (err) {
+      console.error("Refresh coupons failed:", err);
+    }
   }
 
   // --- CMS Handling ---
@@ -538,7 +615,7 @@ export default function AdminDashboardPage() {
 
       if (!res.ok) throw new Error("Failed to save announcement bar");
       alert("Announcement Bar updated successfully!");
-      await loadAllData();
+      await refreshCms();
     } catch (err: any) {
       alert("Error: " + err.message);
     }
@@ -590,7 +667,7 @@ export default function AdminDashboardPage() {
       setEditingSlide(null);
       resetSlideFormFields();
       alert("Hero slide saved successfully!");
-      await loadAllData();
+      await refreshCms();
     } catch (err: any) {
       alert("Error: " + err.message);
     }
@@ -610,7 +687,7 @@ export default function AdminDashboardPage() {
       });
       if (!res.ok) throw new Error("Failed to delete Hero slide");
       alert("Hero slide deleted successfully!");
-      await loadAllData();
+      await refreshCms();
     } catch (err: any) {
       alert("Error: " + err.message);
     }
@@ -668,6 +745,76 @@ export default function AdminDashboardPage() {
     }
   }
 
+  async function refreshReviews() {
+    try {
+      const res = await fetch("/api/admin/reviews");
+      if (res.ok) {
+        setReviews(await res.json());
+      }
+    } catch (err) {
+      console.error("Refresh reviews error:", err);
+    }
+  }
+
+  const handleEditReviewClick = (r: any) => {
+    setEditingReview(r);
+    setReviewFormRating(r.rating);
+    setReviewFormTitle(r.title || "");
+    setReviewFormBody(r.body || "");
+    setReviewFormStatus(r.status);
+  };
+
+  const handleUpdateReviewSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingReview) return;
+    setReviewFormSubmitting(true);
+    try {
+      const res = await fetch("/api/admin/reviews", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: editingReview.id,
+          rating: reviewFormRating,
+          title: reviewFormTitle,
+          body: reviewFormBody,
+          status: reviewFormStatus,
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to update review");
+      }
+
+      alert("Review updated successfully!");
+      setEditingReview(null);
+      await refreshReviews();
+    } catch (err: any) {
+      alert(err.message || "Failed to update review");
+    } finally {
+      setReviewFormSubmitting(false);
+    }
+  };
+
+  const handleDeleteReviewClick = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this customer review? This cannot be undone.")) return;
+    try {
+      const res = await fetch(`/api/admin/reviews?id=${id}`, {
+        method: "DELETE",
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to delete review");
+      }
+
+      alert("Review deleted successfully!");
+      await refreshReviews();
+    } catch (err: any) {
+      alert(err.message || "Failed to delete review");
+    }
+  };
+
   // --- Product Editing/Adding ---
   function openAddProduct() {
     setEditingProduct(null);
@@ -675,12 +822,13 @@ export default function AdminDashboardPage() {
     setProdSlug("");
     setProdDesc("");
     setProdCatId(categories[0]?.id || "");
-    setProdPrice(0);
-    setProdCompare(0);
-    setProdCashback(0);
-    setProdStock(0);
+    setProdPrice("");
+    setProdCompare("");
+    setProdCashback("");
+    setProdStock("");
     setProdIsActive(true);
     setProdIsSale(false);
+    setProdShowSize(false);
     setProdImages([]);
     setProdVariants([]);
     setShowProductForm(true);
@@ -693,43 +841,123 @@ export default function AdminDashboardPage() {
     setProdDesc(p.description || "");
     setProdCatId(p.category_id || "");
     setProdPrice(p.price_paise / 100);
-    setProdCompare(p.compare_at_paise ? p.compare_at_paise / 100 : 0);
-    setProdCashback(p.cashback_paise / 100);
+    setProdCompare(p.compare_at_paise ? p.compare_at_paise / 100 : "");
+    setProdCashback(p.cashback_paise ? p.cashback_paise / 100 : "");
     setProdStock(p.stock);
     setProdIsActive(p.is_active);
     setProdIsSale(p.is_on_sale);
+    setProdShowSize(p.show_size || false);
     setProdImages((p.product_images || []).map((img: any) => img.url));
     setProdVariants(p.product_variants || []);
     setShowProductForm(true);
   }
 
+  const isProductModified = () => {
+    if (!editingProduct) return true; // always editable when creating a new product
+    
+    if (prodName !== editingProduct.name) return true;
+    if (prodSlug !== editingProduct.slug) return true;
+    if (prodDesc !== (editingProduct.description || "")) return true;
+    if (prodCatId !== (editingProduct.category_id || "")) return true;
+    if (prodPrice !== (editingProduct.price_paise / 100)) return true;
+    
+    const originalCompare = editingProduct.compare_at_paise ? editingProduct.compare_at_paise / 100 : "";
+    if (prodCompare !== originalCompare) return true;
+    
+    const originalCashback = editingProduct.cashback_paise ? editingProduct.cashback_paise / 100 : "";
+    if (prodCashback !== originalCashback) return true;
+    
+    if (prodStock !== editingProduct.stock) return true;
+    if (prodIsActive !== editingProduct.is_active) return true;
+    if (prodIsSale !== editingProduct.is_on_sale) return true;
+    if (prodShowSize !== (editingProduct.show_size || false)) return true;
+    
+    const originalImages = (editingProduct.product_images || []).map((img: any) => img.url);
+    if (JSON.stringify(prodImages) !== JSON.stringify(originalImages)) return true;
+    
+    const originalVariants = editingProduct.product_variants || [];
+    if (JSON.stringify(prodVariants) !== JSON.stringify(originalVariants)) return true;
+    
+    return false;
+  };
+
   async function handleProductImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    const filesArray = Array.from(files);
+    const currentCount = prodImages.length;
+    const incomingCount = filesArray.length;
+
+    if (currentCount >= 10) {
+      alert("You have already uploaded the maximum limit of 10 images.");
+      return;
+    }
+
+    let filesToUpload = filesArray;
+    if (currentCount + incomingCount > 10) {
+      const allowedCount = 10 - currentCount;
+      alert(`You can only upload up to 10 images. Only the first ${allowedCount} selected files will be uploaded.`);
+      filesToUpload = filesArray.slice(0, allowedCount);
+    }
 
     setUploadingImage(true);
     try {
-      const formData = new FormData();
-      formData.append("file", file);
+      const uploadPromises = filesToUpload.map(async (file) => {
+        const formData = new FormData();
+        formData.append("file", file);
 
-      const res = await fetch("/api/admin/products/upload-image", {
-        method: "POST",
-        body: formData
+        const res = await fetch("/api/admin/products/upload-image", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!res.ok) {
+          const errorData = await res.json().catch(() => ({}));
+          throw new Error(errorData.error || `Upload failed for ${file.name}`);
+        }
+
+        const data = await res.json();
+        return data.url;
       });
 
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.error || "Upload failed");
-      }
-
-      const data = await res.json();
-      setProdImages([...prodImages, data.url]);
+      const uploadedUrls = await Promise.all(uploadPromises);
+      setProdImages([...prodImages, ...uploadedUrls]);
     } catch (err: any) {
       alert("Image upload failed: " + err.message);
     } finally {
+      e.target.value = "";
       setUploadingImage(false);
     }
   }
+
+  const moveProductImage = (index: number, direction: "left" | "right") => {
+    const newIndex = direction === "left" ? index - 1 : index + 1;
+    if (newIndex < 0 || newIndex >= prodImages.length) return;
+
+    const reorderedImages = [...prodImages];
+    const temp = reorderedImages[index];
+    reorderedImages[index] = reorderedImages[newIndex];
+    reorderedImages[newIndex] = temp;
+    setProdImages(reorderedImages);
+  };
+
+  const handleImgDragStart = (index: number) => {
+    setDraggedImgIndex(index);
+  };
+
+  const handleImgDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handleImgDrop = (index: number) => {
+    if (draggedImgIndex === null) return;
+    const reorderedImages = [...prodImages];
+    const [draggedItem] = reorderedImages.splice(draggedImgIndex, 1);
+    reorderedImages.splice(index, 0, draggedItem);
+    setProdImages(reorderedImages);
+    setDraggedImgIndex(null);
+  };
 
   function addProductVariant() {
     if (!newVarSize.trim() && !newVarColor.trim()) {
@@ -749,11 +977,20 @@ export default function AdminDashboardPage() {
     setNewVarSize("");
     setNewVarColor("");
     setNewVarSku("");
-    setNewVarStock(0);
+    setNewVarStock("");
   }
 
   function removeProductVariant(index: number) {
     setProdVariants(prodVariants.filter((_, idx) => idx !== index));
+  }
+
+  function updateVariantField(index: number, field: string, value: any) {
+    const updatedVariants = [...prodVariants];
+    updatedVariants[index] = {
+      ...updatedVariants[index],
+      [field]: value
+    };
+    setProdVariants(updatedVariants);
   }
 
   function removeProductImage(index: number) {
@@ -774,12 +1011,13 @@ export default function AdminDashboardPage() {
         slug: prodSlug.trim(),
         description: prodDesc.trim(),
         category_id: prodCatId,
-        price_paise: Math.round(prodPrice * 100),
-        compare_at_paise: prodCompare > 0 ? Math.round(prodCompare * 100) : null,
-        cashback_paise: Math.round(prodCashback * 100),
-        stock: Number(prodStock),
+        price_paise: Math.round(Number(prodPrice || 0) * 100),
+        compare_at_paise: prodCompare && Number(prodCompare) > 0 ? Math.round(Number(prodCompare) * 100) : null,
+        cashback_paise: Math.round(Number(prodCashback || 0) * 100),
+        stock: Number(prodStock || 0),
         is_active: prodIsActive,
         is_on_sale: prodIsSale,
+        show_size: prodShowSize,
         images: prodImages,
         variants: prodVariants
       };
@@ -799,9 +1037,30 @@ export default function AdminDashboardPage() {
       alert("Product saved successfully!");
       setShowProductForm(false);
       setEditingProduct(null);
-      await loadAllData();
+      await refreshProducts();
     } catch (err: any) {
       alert("Error saving product: " + err.message);
+    }
+  }
+
+  async function handleDeleteProduct(p: any) {
+    if (!confirm(`Are you sure you want to delete the product "${p.name}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/admin/products?id=${p.id}`, {
+        method: "DELETE",
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to delete product");
+      }
+
+      await refreshProducts();
+    } catch (err: any) {
+      alert("Delete failed: " + err.message);
     }
   }
 
@@ -817,7 +1076,7 @@ export default function AdminDashboardPage() {
         body: JSON.stringify({ id: product.id, name: product.name, slug: product.slug, is_active: !product.is_active })
       });
       if (!res.ok) throw new Error("Failed to toggle product status");
-      await loadAllData();
+      await refreshProducts();
     } catch (err: any) {
       alert("Error: " + err.message);
     }
@@ -864,7 +1123,7 @@ export default function AdminDashboardPage() {
       }
       alert("Order updated successfully!");
       setSelectedOrder(null);
-      await loadAllData();
+      await refreshOrders();
     } catch (err: any) {
       alert("Error updating order: " + err.message);
     }
@@ -908,6 +1167,7 @@ export default function AdminDashboardPage() {
 
     const rows = users.map((u: any) => `
       <tr>
+        <td style="padding: 10px; border-bottom: 1px solid #EFE9DC; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-weight: bold; letter-spacing: 0.5px; color: #B08D4C;">${u.user_id || "—"}</td>
         <td style="padding: 10px; border-bottom: 1px solid #EFE9DC;">${u.full_name || "—"}</td>
         <td style="padding: 10px; border-bottom: 1px solid #EFE9DC;">${u.email}</td>
         <td style="padding: 10px; border-bottom: 1px solid #EFE9DC;">${u.phone || "—"}</td>
@@ -948,6 +1208,7 @@ export default function AdminDashboardPage() {
           <table>
             <thead>
               <tr>
+                <th>User ID</th>
                 <th>Name</th>
                 <th>Email</th>
                 <th>Phone</th>
@@ -1015,7 +1276,7 @@ export default function AdminDashboardPage() {
       setNewCouponLimit(0);
       setNewCouponExpiry("");
       setShowCouponForm(false);
-      await loadAllData();
+      await refreshCoupons();
     } catch (err: any) {
       alert("Error: " + err.message);
     }
@@ -1029,7 +1290,7 @@ export default function AdminDashboardPage() {
         body: JSON.stringify({ id, is_active: active })
       });
       if (!res.ok) throw new Error("Failed to toggle promo code status");
-      await loadAllData();
+      await refreshCoupons();
     } catch (err: any) {
       alert("Error: " + err.message);
     }
@@ -1051,7 +1312,7 @@ export default function AdminDashboardPage() {
       if (selectedOrder?.id === id) setSelectedOrder(null);
       setOrderPendingDelete(null);
       setDeleteConfirmInput("");
-      await loadAllData();
+      await refreshOrders();
     } catch (err: any) {
       alert("Error: " + err.message);
     } finally {
@@ -1066,7 +1327,7 @@ export default function AdminDashboardPage() {
         method: "DELETE"
       });
       if (!res.ok) throw new Error("Failed to delete promo code");
-      await loadAllData();
+      await refreshCoupons();
     } catch (err: any) {
       alert("Error: " + err.message);
     }
@@ -1137,6 +1398,11 @@ export default function AdminDashboardPage() {
     doc.text(`Order Number: ${orderNumber}`, 20, 62);
     doc.text(`Date: ${new Date(order.placed_at || order.created_at || new Date()).toLocaleDateString("en-IN", { dateStyle: "long" })}`, 20, 68);
     doc.text(`Customer: ${name}`, 20, 74);
+    if (order.profiles?.user_id) {
+      doc.setFont("helvetica", "bold");
+      doc.text(`User ID: ${order.profiles.user_id}`, 20, 80);
+      doc.setFont("helvetica", "normal");
+    }
 
     // Shipping Address text
     doc.text(shippingAddress.recipient || "", 120, 62);
@@ -1474,11 +1740,10 @@ export default function AdminDashboardPage() {
               <p>Courier URL: ${order.courier_tracking_url || "—"}</p>
             </div>
             <div class="box">
-              <h3>Customer</h3>
               <p>Name: <strong>${order.profiles?.full_name || "Guest Checkout"}</strong></p>
               <p>Email: ${order.profiles?.email || "—"}</p>
               <p>Phone: ${order.profiles?.phone || "—"}</p>
-              <p>User ID: <span style="font-family: monospace; font-size: 10px;">${order.user_id}</span></p>
+              <p>User ID: <strong style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; letter-spacing: 0.5px; color: #B08D4C;">${order.profiles?.user_id || "—"}</strong></p>
               <p>Razorpay Order ID: ${order.razorpay_order_id || "—"}</p>
               <p>Razorpay Payment ID: ${order.razorpay_payment_id || "—"}</p>
             </div>
@@ -1565,13 +1830,13 @@ export default function AdminDashboardPage() {
     // 2. Filter by search text
     if (!orderSearch) return true;
     const term = orderSearch.toLowerCase();
-    return o.order_number.toLowerCase().includes(term) || (o.profiles?.full_name || "").toLowerCase().includes(term) || (o.profiles?.email || "").toLowerCase().includes(term) || o.status.toLowerCase().includes(term);
+    return o.order_number.toLowerCase().includes(term) || (o.profiles?.full_name || "").toLowerCase().includes(term) || (o.profiles?.email || "").toLowerCase().includes(term) || o.status.toLowerCase().includes(term) || String(o.profiles?.user_id || "").toLowerCase().includes(term);
   });
 
   const filteredUsers = users.filter(u => {
     if (!userSearch) return true;
     const term = userSearch.toLowerCase();
-    return (u.full_name || "").toLowerCase().includes(term) || u.email.toLowerCase().includes(term) || u.role.toLowerCase().includes(term) || (u.phone || "").toLowerCase().includes(term);
+    return (u.full_name || "").toLowerCase().includes(term) || u.email.toLowerCase().includes(term) || u.role.toLowerCase().includes(term) || (u.phone || "").toLowerCase().includes(term) || String(u.user_id || "").toLowerCase().includes(term);
   });
 
 
@@ -1629,6 +1894,7 @@ export default function AdminDashboardPage() {
                 <TabButton active={activeTab === "coupons"} onClick={() => setActiveTab("coupons")} icon={<Ticket className="w-4 h-4" />} label="Promo Codes" badge={coupons.length} />
                 <TabButton active={activeTab === "users"} onClick={() => setActiveTab("users")} icon={<Users className="w-4 h-4" />} label="User Management" badge={users.length} />
                 <TabButton active={activeTab === "user-inspector"} onClick={() => setActiveTab("user-inspector")} icon={<Search className="w-4 h-4" />} label="User Inspector" />
+                <TabButton active={activeTab === "reviews"} onClick={() => setActiveTab("reviews")} icon={<Star className="w-4 h-4" />} label="Customer Reviews" badge={reviews.length} />
                 <TabButton active={activeTab === "visitor-history"} onClick={() => setActiveTab("visitor-history")} icon={<Activity className="w-4 h-4" />} label="Visitor Sessions" badge={analytics?.sessionHistory?.length} />
                 <TabButton active={activeTab === "communications"} onClick={() => setActiveTab("communications")} icon={<Mail className="w-4 h-4" />} label="Communications" badge={supportMessages.length + bulkInquiries.length + newsletterSubs.length} />
                 <TabButton active={activeTab === "storage"} onClick={() => setActiveTab("storage")} icon={<Database className="w-4 h-4" />} label="System & Storage" />
@@ -1789,22 +2055,22 @@ export default function AdminDashboardPage() {
                         </div>
                         <div className="flex flex-col gap-1.5">
                           <label className="text-sm font-semibold">Price (₹) *</label>
-                          <input type="number" required min="0" step="1" value={prodPrice} onChange={(e) => setProdPrice(Number(e.target.value))} className="rounded-md border border-line bg-ivory px-3 py-2 text-sm text-ink outline-none focus:border-zari" />
+                          <input type="number" required min="0" step="1" value={prodPrice} onChange={(e) => setProdPrice(e.target.value === "" ? "" : Number(e.target.value))} className="rounded-md border border-line bg-ivory px-3 py-2 text-sm text-ink outline-none focus:border-zari" />
                         </div>
                         <div className="flex flex-col gap-1.5">
                           <label className="text-sm font-semibold">Compare At (₹)</label>
-                          <input type="number" min="0" step="1" value={prodCompare} onChange={(e) => setProdCompare(Number(e.target.value))} className="rounded-md border border-line bg-ivory px-3 py-2 text-sm text-ink outline-none focus:border-zari" />
+                          <input type="number" min="0" step="1" value={prodCompare} onChange={(e) => setProdCompare(e.target.value === "" ? "" : Number(e.target.value))} className="rounded-md border border-line bg-ivory px-3 py-2 text-sm text-ink outline-none focus:border-zari" />
                         </div>
                         <div className="flex flex-col gap-1.5">
                           <label className="text-sm font-semibold">Cashback (₹)</label>
-                          <input type="number" min="0" step="1" value={prodCashback} onChange={(e) => setProdCashback(Number(e.target.value))} className="rounded-md border border-line bg-ivory px-3 py-2 text-sm text-ink outline-none focus:border-zari" />
+                          <input type="number" min="0" step="1" value={prodCashback} onChange={(e) => setProdCashback(e.target.value === "" ? "" : Number(e.target.value))} className="rounded-md border border-line bg-ivory px-3 py-2 text-sm text-ink outline-none focus:border-zari" />
                         </div>
                       </div>
 
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-6 items-center border-t border-line pt-4">
                         <div className="flex flex-col gap-1.5">
                           <label className="text-sm font-semibold">Stock Level *</label>
-                          <input type="number" required min="0" value={prodStock} onChange={(e) => setProdStock(Number(e.target.value))} className="rounded-md border border-line bg-ivory px-3 py-2 text-sm text-ink outline-none focus:border-zari" />
+                          <input type="number" required min="0" value={prodStock} onChange={(e) => setProdStock(e.target.value === "" ? "" : Number(e.target.value))} className="rounded-md border border-line bg-ivory px-3 py-2 text-sm text-ink outline-none focus:border-zari" />
                         </div>
                         <div className="flex items-center gap-2 mt-4">
                           <input type="checkbox" id="isActive" checked={prodIsActive} onChange={(e) => setProdIsActive(e.target.checked)} className="w-4 h-4 accent-zari" />
@@ -1813,6 +2079,10 @@ export default function AdminDashboardPage() {
                         <div className="flex items-center gap-2 mt-4">
                           <input type="checkbox" id="isSale" checked={prodIsSale} onChange={(e) => setProdIsSale(e.target.checked)} className="w-4 h-4 accent-zari" />
                           <label htmlFor="isSale" className="text-sm font-semibold cursor-pointer">Show "Live On Sale" badge</label>
+                        </div>
+                        <div className="flex items-center gap-2 mt-4">
+                          <input type="checkbox" id="showSize" checked={prodShowSize} onChange={(e) => setProdShowSize(e.target.checked)} className="w-4 h-4 accent-zari" />
+                          <label htmlFor="showSize" className="text-sm font-semibold cursor-pointer">Show sizes on product card</label>
                         </div>
                       </div>
 
@@ -1823,21 +2093,63 @@ export default function AdminDashboardPage() {
                         <div className="flex items-center gap-4">
                           <label className={`cursor-pointer inline-flex items-center gap-2 px-4 py-2 border border-line rounded-md text-sm font-medium hover:bg-cream transition-colors ${uploadingImage ? "opacity-50 pointer-events-none" : ""}`}>
                             <ImageIcon className="w-4 h-4 text-zari" />
-                            {uploadingImage ? "Uploading to Cloudinary..." : "Upload New Image"}
-                            <input type="file" accept="image/*" onChange={handleProductImageUpload} className="hidden" />
+                            {uploadingImage ? "Uploading images..." : "Upload Images (Max 10)"}
+                            <input type="file" accept="image/*" multiple onChange={handleProductImageUpload} className="hidden" />
                           </label>
                         </div>
 
                         {prodImages.length > 0 ? (
-                          <div className="grid grid-cols-3 sm:grid-cols-6 gap-4">
-                            {prodImages.map((url, index) => (
-                              <div key={index} className="relative aspect-square border border-line rounded-md overflow-hidden bg-cream group">
-                                <Image src={url} alt="Product" fill className="object-cover" />
-                                <button type="button" onClick={() => removeProductImage(index)} className="absolute top-1 right-1 bg-danger text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <Trash2 className="w-3 h-3" />
-                                </button>
-                              </div>
-                            ))}
+                          <div className="space-y-2">
+                            <p className="text-[10px] text-taupe">Drag and drop images (or use the arrow buttons) to rearrange their display order. The first image is the primary thumbnail.</p>
+                            <div className="grid grid-cols-3 sm:grid-cols-6 gap-4">
+                              {prodImages.map((url, index) => (
+                                <div 
+                                  key={index} 
+                                  draggable
+                                  onDragStart={() => handleImgDragStart(index)}
+                                  onDragOver={handleImgDragOver}
+                                  onDrop={() => handleImgDrop(index)}
+                                  className={`relative aspect-square border rounded-md overflow-hidden bg-cream group cursor-grab active:cursor-grabbing transition-all duration-200 ${
+                                    draggedImgIndex === index ? "border-zari ring-2 ring-zari opacity-50" : "border-line"
+                                  }`}
+                                >
+                                  <Image src={url} alt="Product" fill className="object-cover pointer-events-none" />
+                                  <button 
+                                    type="button" 
+                                    onClick={() => removeProductImage(index)} 
+                                    className="absolute top-1 right-1 bg-danger text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity z-10 cursor-pointer"
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                  </button>
+
+                                  {/* Left/Right swap buttons */}
+                                  <div className="absolute inset-x-0 bottom-1 flex justify-between px-1 opacity-0 group-hover:opacity-100 transition-opacity max-md:opacity-100 z-10">
+                                    {index > 0 ? (
+                                      <button
+                                        type="button"
+                                        onClick={() => moveProductImage(index, "left")}
+                                        className="bg-ink/80 hover:bg-ink text-white p-0.5 rounded cursor-pointer"
+                                      >
+                                        <ChevronLeft className="w-3.5 h-3.5" />
+                                      </button>
+                                    ) : (
+                                      <div />
+                                    )}
+                                    {index < prodImages.length - 1 ? (
+                                      <button
+                                        type="button"
+                                        onClick={() => moveProductImage(index, "right")}
+                                        className="bg-ink/80 hover:bg-ink text-white p-0.5 rounded cursor-pointer"
+                                      >
+                                        <ChevronRight className="w-3.5 h-3.5" />
+                                      </button>
+                                    ) : (
+                                      <div />
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
                           </div>
                         ) : (
                           <p className="text-xs text-taupe italic">No images uploaded yet. The first image will be the primary storefront listing image.</p>
@@ -1863,7 +2175,7 @@ export default function AdminDashboardPage() {
                           </div>
                           <div className="flex flex-col gap-1">
                             <label className="text-xs font-semibold text-taupe">Variant Stock</label>
-                            <input type="number" min="0" value={newVarStock} onChange={(e) => setNewVarStock(Number(e.target.value))} className="rounded border border-line bg-white px-2 py-1 text-xs outline-none h-[26px]" />
+                            <input type="number" min="0" value={newVarStock} onChange={(e) => setNewVarStock(e.target.value === "" ? "" : Number(e.target.value))} className="rounded border border-line bg-white px-2 py-1 text-xs outline-none h-[26px]" />
                           </div>
                           <button type="button" onClick={addProductVariant} className="bg-ink text-ivory px-3 py-1.5 rounded text-xs font-bold hover:bg-zari transition-colors h-[26px] flex items-center justify-center">
                             <Plus className="w-3.5 h-3.5 mr-1" /> Add Variant
@@ -1875,23 +2187,54 @@ export default function AdminDashboardPage() {
                             <table className="w-full text-left">
                               <thead>
                                 <tr className="bg-cream border-b border-line text-taupe font-medium">
-                                  <th className="p-2">Variant details (Size / Color)</th>
+                                  <th className="p-2">Size</th>
+                                  <th className="p-2">Color</th>
                                   <th className="p-2">SKU Code</th>
-                                  <th className="p-2 text-center">Stock</th>
+                                  <th className="p-2 text-center w-24">Stock</th>
                                   <th className="p-2 text-center w-12">Action</th>
                                 </tr>
                               </thead>
                               <tbody>
                                 {prodVariants.map((v, index) => (
                                   <tr key={index} className="border-b border-line hover:bg-ivory/35">
-                                    <td className="p-2 font-medium">
-                                      {v.size && <span className="bg-zari/15 text-zari-deep px-1.5 py-0.5 rounded mr-1.5">{v.size}</span>}
-                                      {v.color && <span className="bg-ink/10 text-ink px-1.5 py-0.5 rounded">{v.color}</span>}
+                                    <td className="p-2">
+                                      <input 
+                                        type="text" 
+                                        placeholder="Size" 
+                                        value={v.size || ""} 
+                                        onChange={(e) => updateVariantField(index, "size", e.target.value || null)} 
+                                        className="w-full rounded border border-line bg-white px-2 py-1 outline-none text-ink text-xs focus:border-zari"
+                                      />
                                     </td>
-                                    <td className="p-2 font-mono text-taupe">{v.sku}</td>
-                                    <td className="p-2 text-center font-bold">{v.stock} units</td>
+                                    <td className="p-2">
+                                      <input 
+                                        type="text" 
+                                        placeholder="Color" 
+                                        value={v.color || ""} 
+                                        onChange={(e) => updateVariantField(index, "color", e.target.value || null)} 
+                                        className="w-full rounded border border-line bg-white px-2 py-1 outline-none text-ink text-xs focus:border-zari"
+                                      />
+                                    </td>
+                                    <td className="p-2">
+                                      <input 
+                                        type="text" 
+                                        placeholder="SKU Code" 
+                                        value={v.sku || ""} 
+                                        onChange={(e) => updateVariantField(index, "sku", e.target.value || null)} 
+                                        className="w-full rounded border border-line bg-white px-2 py-1 outline-none text-ink text-xs font-mono focus:border-zari"
+                                      />
+                                    </td>
                                     <td className="p-2 text-center">
-                                      <button type="button" onClick={() => removeProductVariant(index)} className="text-danger hover:text-danger/80">
+                                      <input 
+                                        type="number" 
+                                        min="0" 
+                                        value={v.stock === "" ? "" : v.stock} 
+                                        onChange={(e) => updateVariantField(index, "stock", e.target.value === "" ? "" : Number(e.target.value))} 
+                                        className="w-20 mx-auto rounded border border-line bg-white px-2 py-1 outline-none text-ink text-center text-xs font-bold focus:border-zari"
+                                      />
+                                    </td>
+                                    <td className="p-2 text-center">
+                                      <button type="button" onClick={() => removeProductVariant(index)} className="text-danger hover:text-danger/80 cursor-pointer">
                                         <Trash2 className="w-4 h-4" />
                                       </button>
                                     </td>
@@ -1909,7 +2252,7 @@ export default function AdminDashboardPage() {
                         <Button type="button" variant="outline" size="sm" onClick={() => setShowProductForm(false)}>
                           Cancel
                         </Button>
-                        <Button type="submit" variant="gold" size="sm">
+                        <Button type="submit" variant="gold" size="sm" disabled={!isProductModified()}>
                           Save Product Details
                         </Button>
                       </div>
@@ -1975,11 +2318,16 @@ export default function AdminDashboardPage() {
                               </button>
                             </td>
                             <td className="p-4 text-center">
-                              <div className="flex justify-center gap-2">
-                                <button onClick={() => openEditProduct(p)} className="p-1 border border-line rounded bg-cream hover:bg-beige text-ink hover:text-zari-deep" title="Edit Product">
-                                  <Edit2 className="w-4 h-4" />
-                                </button>
-                              </div>
+                               <div className="flex justify-center items-center gap-1.5">
+                                 <button onClick={() => openEditProduct(p)} className="p-2 border border-line rounded bg-cream/35 hover:bg-cream text-ink cursor-pointer hover:border-zari inline-flex items-center" title="Edit Product">
+                                   <Edit2 className="w-4 h-4" />
+                                 </button>
+                                 {!p.id.startsWith("default-p") && (
+                                   <button onClick={() => handleDeleteProduct(p)} className="p-2 border border-line rounded bg-danger/10 hover:bg-danger text-danger hover:text-white cursor-pointer hover:border-danger inline-flex items-center" title="Delete Product">
+                                     <Trash2 className="w-4 h-4" />
+                                   </button>
+                                 )}
+                               </div>
                             </td>
                           </tr>
                         ))}
@@ -2163,6 +2511,7 @@ export default function AdminDashboardPage() {
                         <div className="border border-line rounded p-3 bg-ivory text-xs text-taupe space-y-1">
                           <p><strong>Razorpay Order:</strong> {selectedOrder.razorpay_order_id || "—"}</p>
                           <p><strong>Razorpay Payment:</strong> {selectedOrder.razorpay_payment_id || "—"}</p>
+                          <p><strong>Customer User ID:</strong> <span className="font-sans font-bold tracking-wider text-zari-deep bg-cream/50 px-1.5 py-0.5 rounded border border-zari/10">{selectedOrder.profiles?.user_id || "—"}</span></p>
                           <p><strong>Customer Profile Email:</strong> {selectedOrder.profiles?.email || "—"}</p>
                         </div>
                       </div>
@@ -2220,7 +2569,10 @@ export default function AdminDashboardPage() {
                                 <td className="p-4 font-semibold text-ink">{o.order_number}</td>
                                 <td className="p-4">
                                   <p className="font-medium">{o.profiles?.full_name || "Guest Checkout"}</p>
-                                  <p className="text-xs text-taupe">{o.profiles?.email || "—"}</p>
+                                  <p className="text-xs text-taupe flex flex-wrap items-center gap-1.5">
+                                    <span>{o.profiles?.email || "—"}</span>
+                                    {o.profiles?.user_id && <span className="text-[10px] bg-cream text-zari-deep px-1.5 py-0.5 rounded font-sans font-bold tracking-wider border border-zari/10">ID: {o.profiles.user_id}</span>}
+                                  </p>
                                 </td>
                                 <td className="p-4 text-center">
                                   <span className={`inline-block px-2.5 py-0.5 text-xs rounded-full font-medium uppercase ${
@@ -2395,7 +2747,7 @@ export default function AdminDashboardPage() {
                               }
                               alert("Refund details saved successfully!");
                               setSelectedRefundOrder(null);
-                              await loadAllData();
+                              await refreshOrders();
                             } catch (err: any) {
                               alert("Error updating refund: " + err.message);
                             }
@@ -2531,7 +2883,7 @@ export default function AdminDashboardPage() {
               <div className="space-y-6 animate-fade-up font-sans text-xs">
                 <div>
                   <h2 className="font-display text-2xl text-ink font-bold">User Inspector</h2>
-                  <p className="text-xs text-taupe mt-1">Search a user by email to view their complete account profile, saved addresses, wallet/cashback balance, transactions, and order history.</p>
+                  <p className="text-xs text-taupe mt-1">Search a user by User ID to view their complete account profile, saved addresses, wallet/cashback balance, transactions, and order history.</p>
                 </div>
 
                 {/* Email Search Card */}
@@ -2541,11 +2893,11 @@ export default function AdminDashboardPage() {
                       e.preventDefault();
                       setInspectError("");
                       setInspectedUser(null);
-                      if (!inspectEmail.trim()) return;
+                      if (!inspectUserId.trim()) return;
 
                       setInspectLoading(true);
                       try {
-                        const res = await fetch(`/api/admin/users/inspect?email=${encodeURIComponent(inspectEmail.trim())}`);
+                        const res = await fetch(`/api/admin/users/inspect?userId=${encodeURIComponent(inspectUserId.trim().toUpperCase())}`);
                         if (!res.ok) {
                           const data = await res.json().catch(() => ({}));
                           throw new Error(data.error || "User search failed");
@@ -2561,14 +2913,14 @@ export default function AdminDashboardPage() {
                     className="flex gap-3 items-end"
                   >
                     <div className="flex-1 flex flex-col gap-1.5">
-                      <label className="font-semibold text-ink">Search User Email</label>
+                      <label className="font-semibold text-ink">Search User ID</label>
                       <input 
-                        type="email" 
+                        type="text" 
                         required
-                        placeholder="e.g. customer@example.com" 
-                        value={inspectEmail}
-                        onChange={(e) => setInspectEmail(e.target.value)}
-                        className="rounded border border-line bg-white px-3 py-2 text-sm text-ink outline-none focus:border-zari w-full"
+                        placeholder="e.g. 48201538" 
+                        value={inspectUserId}
+                        onChange={(e) => setInspectUserId(e.target.value)}
+                        className="rounded border border-line bg-white px-3 py-2 text-sm text-ink outline-none focus:border-zari w-full font-sans font-bold tracking-wider uppercase"
                       />
                     </div>
                     <Button 
@@ -2632,10 +2984,14 @@ export default function AdminDashboardPage() {
                       </div>
 
                       {/* Info Summary Card */}
-                      <div className="bg-white border border-line rounded-card p-4 space-y-1">
-                        <p className="text-[10px] text-taupe"><strong>Member Since:</strong> {new Date(inspectedUser.profile.created_at).toLocaleDateString()}</p>
-                        <p className="text-[10px] text-taupe"><strong>Phone Number:</strong> {inspectedUser.profile.phone || "None"}</p>
-                        <p className="text-[10px] text-taupe"><strong>Auth Method:</strong> <span className="capitalize">{inspectedUser.profile.provider}</span></p>
+                      <div className="bg-white border border-line rounded-card p-4">
+                        <h4 className="font-semibold text-xs text-zari-deep uppercase tracking-wider mb-2">Account Meta</h4>
+                        <div className="space-y-1.5 font-medium">
+                          <p className="text-[10px] text-taupe"><strong>User ID:</strong> <span className="font-sans font-bold tracking-wider text-zari-deep bg-cream/50 px-1.5 py-0.5 rounded border border-zari/10">{inspectedUser.profile.user_id || "—"}</span></p>
+                          <p className="text-[10px] text-taupe"><strong>Member Since:</strong> {new Date(inspectedUser.profile.created_at).toLocaleDateString()}</p>
+                          <p className="text-[10px] text-taupe"><strong>Phone Number:</strong> {inspectedUser.profile.phone || "None"}</p>
+                          <p className="text-[10px] text-taupe"><strong>Auth Method:</strong> <span className="capitalize">{inspectedUser.profile.provider}</span></p>
+                        </div>
                       </div>
                     </div>
 
@@ -2885,6 +3241,7 @@ export default function AdminDashboardPage() {
                     <table className="w-full text-sm text-left">
                       <thead>
                         <tr className="bg-cream border-b border-line text-taupe font-medium">
+                          <th className="p-4">User ID</th>
                           <th className="p-4">Customer Name</th>
                           <th className="p-4">Email Address</th>
                           <th className="p-4">Mobile Number</th>
@@ -2896,6 +3253,7 @@ export default function AdminDashboardPage() {
                       <tbody>
                         {filteredUsers.map((u: any) => (
                           <tr key={u.id} className="border-b border-line hover:bg-ivory/50">
+                            <td className="p-4"><span className="px-2 py-0.5 text-xs rounded bg-cream/50 text-zari-deep border border-zari/10 font-sans font-bold tracking-wider">{u.user_id || "—"}</span></td>
                             <td className="p-4 font-semibold text-ink">{u.full_name || "—"}</td>
                             <td className="p-4 text-taupe">{u.email}</td>
                             <td className="p-4 text-ink font-mono">{u.phone || "—"}</td>
@@ -3613,6 +3971,244 @@ $$ language plpgsql;`}
                     )}
                   </div>
                 </div>
+              </div>
+            )}
+
+            {/* Customer Reviews Management Tab */}
+            {activeTab === "reviews" && (
+              <div className="space-y-6 animate-fade-up">
+                <div className="flex justify-between items-center border-b border-line pb-3">
+                  <div>
+                    <h3 className="font-display text-lg text-ink">Customer Reviews Registry</h3>
+                    <p className="text-xs text-taupe mt-0.5">Approve, edit, or delete customer-submitted reviews</p>
+                  </div>
+                  <span className="text-xs text-taupe font-medium font-mono">{reviews.length} reviews total</span>
+                </div>
+
+                {/* Review metrics summary widgets */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="bg-white border border-line rounded-card p-4 shadow-soft flex items-center gap-3">
+                    <div className="w-10 h-10 rounded bg-zari/10 flex items-center justify-center text-zari font-bold text-lg font-mono">
+                      {reviews.length}
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-ink uppercase tracking-wider">Total Reviews</p>
+                      <p className="text-[10px] text-taupe">Submitted by customers</p>
+                    </div>
+                  </div>
+                  <div className="bg-white border border-line rounded-card p-4 shadow-soft flex items-center gap-3">
+                    <div className="w-10 h-10 rounded bg-success/10 flex items-center justify-center text-success font-bold text-lg font-mono">
+                      {reviews.filter(r => r.status === "approved").length}
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-ink uppercase tracking-wider">Approved Reviews</p>
+                      <p className="text-[10px] text-taupe">Visible on product pages</p>
+                    </div>
+                  </div>
+                  <div className="bg-white border border-line rounded-card p-4 shadow-soft flex items-center gap-3">
+                    <div className="w-10 h-10 rounded bg-amber-500/10 flex items-center justify-center text-amber-600 font-bold text-lg font-mono">
+                      {reviews.filter(r => r.status === "pending").length}
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-ink uppercase tracking-wider">Pending Reviews</p>
+                      <p className="text-[10px] text-taupe">Awaiting moderation</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Reviews table */}
+                <div className="bg-white border border-line rounded-card shadow-soft overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead>
+                        <tr className="bg-cream/25 border-b border-line text-taupe uppercase tracking-wider font-bold text-[10px]">
+                          <th className="p-4">Product</th>
+                          <th className="p-4">Customer Details</th>
+                          <th className="p-4 text-center">Rating</th>
+                          <th className="p-4">Review Message</th>
+                          <th className="p-4 text-center">Status</th>
+                          <th className="p-4 text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-line/60">
+                        {reviews.length === 0 ? (
+                          <tr>
+                            <td colSpan={6} className="p-8 text-center text-taupe italic">
+                              No customer reviews found in the database.
+                            </td>
+                          </tr>
+                        ) : (
+                          reviews.map((r) => (
+                            <tr key={r.id} className="hover:bg-cream/10 transition-colors">
+                              {/* Product Info */}
+                              <td className="p-4">
+                                <p className="font-bold text-ink">{r.products?.name || "Unknown Product"}</p>
+                                <span className="font-mono text-[9px] text-taupe block mt-0.5">SLUG: {r.products?.slug}</span>
+                              </td>
+                              {/* Customer Profile Details */}
+                              <td className="p-4 space-y-1">
+                                <p className="font-bold text-ink">{r.profiles?.full_name || "Guest Customer"}</p>
+                                <div className="space-y-0.5 text-[10px] text-taupe">
+                                  <p className="font-mono">ID: {r.profiles?.user_id || "N/A"}</p>
+                                  <p>{r.profiles?.email}</p>
+                                  {r.profiles?.phone && <p>{r.profiles.phone}</p>}
+                                </div>
+                              </td>
+                              {/* Star Rating */}
+                              <td className="p-4 text-center">
+                                <div className="flex justify-center gap-0.5">
+                                  {[1, 2, 3, 4, 5].map((star) => (
+                                    <Star
+                                      key={star}
+                                      className={`w-3.5 h-3.5 ${
+                                        star <= r.rating ? "fill-zari text-zari" : "text-line fill-none"
+                                      }`}
+                                    />
+                                  ))}
+                                </div>
+                                <span className="text-[10px] text-taupe block mt-1 font-mono">ORDER: {r.orders?.order_number || "N/A"}</span>
+                              </td>
+                              {/* Review Content & Photos */}
+                              <td className="p-4 max-w-sm">
+                                {r.title && <p className="font-bold text-ink mb-1">{r.title}</p>}
+                                <p className="text-taupe leading-relaxed whitespace-pre-wrap">{r.body || <em className="text-[10px]">No text comment left</em>}</p>
+                                
+                                {r.review_photos && r.review_photos.length > 0 && (
+                                  <div className="flex gap-2 mt-2 flex-wrap">
+                                    {r.review_photos.map((photo: any) => (
+                                      <a key={photo.id} href={photo.url} target="_blank" rel="noopener noreferrer" className="relative w-10 h-10 rounded border border-line overflow-hidden bg-cream cursor-zoom-in hover:opacity-80 transition-opacity">
+                                        <img src={photo.url} alt="Review attachment" className="object-cover w-full h-full" />
+                                      </a>
+                                    ))}
+                                  </div>
+                                )}
+                              </td>
+                              {/* Moderation Status */}
+                              <td className="p-4 text-center">
+                                <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${
+                                  r.status === "approved" ? "bg-success/15 text-success" :
+                                  r.status === "rejected" ? "bg-danger/15 text-danger" :
+                                  "bg-amber-100 text-amber-800"
+                                }`}>
+                                  {r.status}
+                                </span>
+                              </td>
+                              {/* Action buttons */}
+                              <td className="p-4 text-right space-x-1.5 whitespace-nowrap">
+                                <button
+                                  onClick={() => handleEditReviewClick(r)}
+                                  className="p-1.5 border border-line rounded bg-white hover:bg-cream text-ink transition-colors cursor-pointer inline-flex items-center"
+                                  title="Edit Review"
+                                >
+                                  <Edit2 className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteReviewClick(r.id)}
+                                  className="p-1.5 border border-danger/30 rounded bg-white hover:bg-danger/5 text-danger transition-colors cursor-pointer inline-flex items-center"
+                                  title="Delete Review"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Review Edit Overlay Modal */}
+                {editingReview && (
+                  <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/50 p-4 backdrop-blur-sm animate-fade-in text-left">
+                    <div className="relative w-full max-w-md rounded-card border border-line bg-white p-6 shadow-xl animate-slide-up">
+                      <div className="flex items-center justify-between border-b border-line pb-3">
+                        <h3 className="font-display text-base text-ink">Moderate Review</h3>
+                        <button
+                          onClick={() => setEditingReview(null)}
+                          className="rounded-full p-1 text-taupe hover:bg-cream hover:text-ink transition-colors cursor-pointer border-0"
+                        >
+                          <X className="w-4 h-4 fill-none" />
+                        </button>
+                      </div>
+
+                      <form onSubmit={handleUpdateReviewSubmit} className="space-y-4 pt-4 text-xs">
+                        {/* Rating */}
+                        <div className="flex flex-col gap-1">
+                          <label className="font-semibold text-taupe">Rating Stars</label>
+                          <select
+                            value={reviewFormRating}
+                            onChange={(e) => setReviewFormRating(Number(e.target.value))}
+                            className="rounded border border-line bg-white px-3 py-2 text-xs outline-none focus:border-zari"
+                          >
+                            <option value={5}>5 Stars</option>
+                            <option value={4}>4 Stars</option>
+                            <option value={3}>3 Stars</option>
+                            <option value={2}>2 Stars</option>
+                            <option value={1}>1 Star</option>
+                          </select>
+                        </div>
+
+                        {/* Title */}
+                        <div className="flex flex-col gap-1">
+                          <label className="font-semibold text-taupe">Review Title</label>
+                          <input
+                            type="text"
+                            value={reviewFormTitle}
+                            onChange={(e) => setReviewFormTitle(e.target.value)}
+                            className="rounded border border-line bg-white px-3 py-2 text-xs outline-none focus:border-zari"
+                          />
+                        </div>
+
+                        {/* Body */}
+                        <div className="flex flex-col gap-1">
+                          <label className="font-semibold text-taupe">Review Content</label>
+                          <textarea
+                            rows={3}
+                            value={reviewFormBody}
+                            onChange={(e) => setReviewFormBody(e.target.value)}
+                            className="rounded border border-line bg-white px-3 py-2 text-xs outline-none focus:border-zari resize-none"
+                          />
+                        </div>
+
+                        {/* Status */}
+                        <div className="flex flex-col gap-1">
+                          <label className="font-semibold text-taupe">Status</label>
+                          <select
+                            value={reviewFormStatus}
+                            onChange={(e) => setReviewFormStatus(e.target.value)}
+                            className="rounded border border-line bg-white px-3 py-2 text-xs outline-none focus:border-zari"
+                          >
+                            <option value="approved">Approved</option>
+                            <option value="pending">Pending</option>
+                            <option value="rejected">Rejected</option>
+                          </select>
+                        </div>
+
+                        {/* Footer Buttons */}
+                        <div className="flex justify-end gap-3 pt-4 border-t border-line">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setEditingReview(null)}
+                            disabled={reviewFormSubmitting}
+                          >
+                            Cancel
+                          </Button>
+                          <Button
+                            type="submit"
+                            variant="gold"
+                            size="sm"
+                            disabled={reviewFormSubmitting}
+                          >
+                            {reviewFormSubmitting ? "Saving changes..." : "Save Review"}
+                          </Button>
+                        </div>
+                      </form>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
