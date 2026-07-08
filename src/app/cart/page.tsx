@@ -301,7 +301,7 @@ export default function CartPage() {
                                   style={{ width: `${progressPercent}%` }}
                                 />
                               </div>
-                              <div className="flex justify-between text-[9px] font-semibold text-taupe font-mono">
+                              <div className="flex justify-between text-[10px] font-bold text-taupe/90 tracking-wide font-sans">
                                 <span>₹0</span>
                                 <span>{progressPercent.toFixed(0)}% Completed</span>
                                 <span>{formatINR(targetAmount, true)}</span>
