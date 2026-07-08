@@ -41,16 +41,20 @@ export default function CartPage() {
       <div className="flex min-h-[60vh] items-center py-20 bg-ivory">
         <Container className="max-w-[560px] text-center">
           {/* Back Button */}
-          <Link
-            href="/"
-            className="flex items-center gap-1.5 text-xs font-semibold text-taupe hover:text-ink mb-6 transition-colors inline-flex cursor-pointer"
-          >
-            <ChevronLeft size={16} /> Back to Home
-          </Link>
-          <span className="inline-grid h-16 w-16 place-items-center rounded-full bg-cream text-taupe mx-auto border border-line">
-            <ShoppingBag size={28} />
-          </span>
-          <h1 className="mt-6 font-display text-3xl text-ink">Your cart is empty</h1>
+          <div className="mb-8 flex justify-center">
+            <Link
+              href="/"
+              className="flex items-center gap-1.5 text-xs font-semibold text-taupe hover:text-ink transition-colors cursor-pointer"
+            >
+              <ChevronLeft size={16} /> Back to Home
+            </Link>
+          </div>
+          <div className="flex justify-center mb-6">
+            <span className="grid h-16 w-16 place-items-center rounded-full bg-cream text-taupe border border-line">
+              <ShoppingBag size={28} />
+            </span>
+          </div>
+          <h1 className="font-display text-3xl text-ink">Your cart is empty</h1>
           <p className="mt-3 text-sm text-taupe">
             Browse our catalog and add premium handloom items to your bag.
           </p>
@@ -102,15 +106,15 @@ export default function CartPage() {
 
                 {/* Details */}
                 <div className="flex-1 min-w-0">
-                  <div className="flex justify-between items-start gap-4">
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
                     <div className="min-w-0 flex-1">
-                      <h2 className="font-semibold text-ink text-sm sm:text-base truncate hover:underline">
+                      <h2 className="font-semibold text-ink text-sm sm:text-base line-clamp-2 hover:underline">
                         <Link href={`/product/${item.slug}`}>{item.name}</Link>
                       </h2>
                       
                       {/* Selected variant details */}
                       {item.variant && (
-                        <div className="flex flex-wrap gap-1.5 mt-1">
+                        <div className="flex flex-wrap gap-1.5 mt-1.5">
                           {item.variant.size && (
                             <span className="text-[10px] font-bold bg-zari-tint text-zari-deep px-1.5 py-0.5 rounded">
                               Size: {item.variant.size}
@@ -125,7 +129,7 @@ export default function CartPage() {
                       )}
                     </div>
 
-                    <p className="font-display text-sm sm:text-base text-ink flex-shrink-0 font-semibold">
+                    <p className="font-display text-sm sm:text-base text-ink flex-shrink-0 font-bold mt-1 sm:mt-0 whitespace-nowrap">
                       {formatINR(item.pricePaise * item.quantity, true)}
                     </p>
                   </div>

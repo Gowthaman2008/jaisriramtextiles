@@ -1,8 +1,30 @@
 import { NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/admin";
 import { placeholderImage } from "@/lib/cloudinary-image";
 
 export async function GET() {
+  // 1. Verify admin/staff role
+  try {
+    const userClient = await createClient();
+    const { data: { user } } = await userClient.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { data: profile } = await userClient
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .single();
+
+    if (!profile || !["admin", "staff"].includes(profile.role)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+  } catch (err: any) {
+    return NextResponse.json({ error: "Authentication failed: " + err.message }, { status: 401 });
+  }
+
   const supabase = createServiceClient();
 
   try {

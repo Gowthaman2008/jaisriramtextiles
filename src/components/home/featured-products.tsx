@@ -21,10 +21,10 @@ export function FeaturedProducts({ products }: { products: Product[] }) {
 
   const list =
     tab === "featured"
-      ? products
+      ? products.filter((p) => p.isFeatured)
       : products.filter((p) => p.badges?.includes(tab as never));
 
-  const displayed = (list.length ? list : products).slice(0, 4);
+  const displayed = list.slice(0, 4);
 
   return (
     <section className="bg-cream py-20 sm:py-24">
@@ -76,9 +76,18 @@ export function FeaturedProducts({ products }: { products: Product[] }) {
               transition={{ duration: 0.35 }}
               className="mt-12 grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-3 lg:grid-cols-4"
             >
-              {displayed.map((p, i) => (
-                <ProductCard key={p.id} product={p} index={i} />
-              ))}
+              {displayed.length === 0 ? (
+                <div className="col-span-2 md:col-span-3 lg:col-span-4 rounded-card border border-dashed border-line bg-ivory/60 py-16 text-center w-full">
+                  <p className="font-display text-lg text-ink">More products coming soon</p>
+                  <p className="mt-1 text-xs text-taupe">
+                    We are adding products to this collection — check back shortly.
+                  </p>
+                </div>
+              ) : (
+                displayed.map((p, i) => (
+                  <ProductCard key={p.id} product={p} index={i} />
+                ))
+              )}
             </motion.div>
           </AnimatePresence>
         )}

@@ -128,6 +128,12 @@ export default async function ProductPage({ params }: Props) {
               )}
             </p>
 
+            {product.piecesPerPack && product.piecesPerPack > 1 && (
+              <div className="inline-flex items-center gap-1.5 rounded bg-zari/10 border border-zari/25 px-2.5 py-1 text-xs font-semibold text-zari-deep max-w-fit font-sans">
+                📦 {product.piecesPerPack} Pieces in 1 Pack
+              </div>
+            )}
+
             <div className="zari-rule my-2" />
 
             <ProductActions product={product} />

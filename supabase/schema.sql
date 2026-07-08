@@ -76,6 +76,44 @@ create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function handle_new_user();
 
+-- Prevent users from modifying critical profile fields (role, user_id, id) to elevate privileges.
+create or replace function public.check_profile_update()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  -- If auth.uid() is null, the action is run via the service_role client (trusted server code), so allow it.
+  if auth.uid() is null then
+    return new;
+  end if;
+
+  -- Block changing the role unless the executing user is already an admin.
+  if new.role <> old.role then
+    if not exists (
+      select 1 from public.profiles
+      where id = auth.uid() and role = 'admin'
+    ) then
+      raise exception 'Unauthorized: You cannot modify the profile role field.';
+    end if;
+  end if;
+
+  -- Block changing unique generated user_id
+  if new.user_id <> old.user_id then
+    raise exception 'Unauthorized: Cannot modify user_id field.';
+  end if;
+
+  -- Block changing id
+  if new.id <> old.id then
+    raise exception 'Unauthorized: Cannot modify id field.';
+  end if;
+
+  return new;
+end;
+$$;
+
+create trigger trg_check_profile_update
+  before update on public.profiles
+  for each row execute function public.check_profile_update();
+
+
 create table addresses (
   id           uuid primary key default gen_random_uuid(),
   user_id      uuid not null references profiles(id) on delete cascade,
@@ -119,6 +157,11 @@ create table products (
   is_active         boolean not null default true,
   is_on_sale        boolean not null default false,
   show_size         boolean not null default false,
+  is_featured       boolean not null default false,
+  is_bestseller     boolean not null default false,
+  is_new            boolean not null default false,
+  is_trending       boolean not null default false,
+  pieces_per_pack   int  not null default 1 check (pieces_per_pack >= 1),
   -- denormalised rating cache, maintained by trigger from reviews
   rating_avg        numeric(2,1) not null default 0,
   rating_count      int not null default 0,
@@ -349,11 +392,22 @@ create table bulk_inquiries (
 -- ============================================================================
 create table support_messages (
   id          uuid primary key default gen_random_uuid(),
+  user_id     uuid references public.profiles(id) on delete set null,
   name        text not null,
   email       text not null,
   subject     text not null,
   message     text not null,
   status      text not null default 'new',
+  reply_message text,
+  replied_at  timestamptz,
+  created_at  timestamptz not null default now()
+);
+
+create table support_message_replies (
+  id          uuid primary key default gen_random_uuid(),
+  message_id  uuid references public.support_messages(id) on delete cascade,
+  sender_type text not null check (sender_type in ('user', 'admin')),
+  message     text not null,
   created_at  timestamptz not null default now()
 );
 

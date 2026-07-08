@@ -3,7 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 
 export async function POST(request: Request) {
   try {
-    const { name, email, subject, message } = await request.json();
+    const { userId, name, email, subject, message } = await request.json();
 
     if (!name || !email || !subject || !message) {
       return NextResponse.json({ error: "Please fill in all fields" }, { status: 400 });
@@ -15,17 +15,23 @@ export async function POST(request: Request) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
-    const { error } = await supabase.from("support_messages").insert({
-      name: name.trim(),
-      email: email.trim(),
-      subject: subject.trim(),
-      message: message.trim(),
-    });
+    const { data, error } = await supabase
+      .from("support_messages")
+      .insert({
+        user_id: userId || null,
+        name: name.trim(),
+        email: email.trim(),
+        subject: subject.trim(),
+        message: message.trim(),
+      })
+      .select("id")
+      .single();
 
     if (error) throw error;
 
     return NextResponse.json({
       success: true,
+      queryId: data?.id,
       message: "Your message has been received! Our support team will get back to you shortly.",
     });
   } catch (error: any) {

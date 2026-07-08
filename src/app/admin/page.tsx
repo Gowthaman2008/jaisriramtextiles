@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
@@ -38,6 +38,7 @@ import {
   Bell,
   Ticket,
   Star,
+  Copy,
   X
 } from "lucide-react";
 
@@ -287,8 +288,13 @@ export default function AdminDashboardPage() {
   const [prodCompare, setProdCompare] = useState<number | "">(""); // in Rupees
   const [prodCashback, setProdCashback] = useState<number | "">(""); // in Rupees
   const [prodStock, setProdStock] = useState<number | "">("");
+  const [prodPiecesPerPack, setProdPiecesPerPack] = useState<number | "">(1);
   const [prodIsActive, setProdIsActive] = useState(true);
   const [prodIsSale, setProdIsSale] = useState(false);
+  const [prodIsFeatured, setProdIsFeatured] = useState(false);
+  const [prodIsBestseller, setProdIsBestseller] = useState(false);
+  const [prodIsNew, setProdIsNew] = useState(false);
+  const [prodIsTrending, setProdIsTrending] = useState(false);
   const [prodShowSize, setProdShowSize] = useState(false);
   const [prodImages, setProdImages] = useState<string[]>([]);
   const [prodVariants, setProdVariants] = useState<any[]>([]); // {size, color, sku, stock}
@@ -331,6 +337,51 @@ export default function AdminDashboardPage() {
   // Order update states
   const [orderStatusFilter, setOrderStatusFilter] = useState("all");
   const [commSubTab, setCommSubTab] = useState("support");
+  const [selectedSupportId, setSelectedSupportId] = useState<string | null>(null);
+  const [supportReplyText, setSupportReplyText] = useState("");
+  const [submittingReply, setSubmittingReply] = useState(false);
+  const [activeReplies, setActiveReplies] = useState<any[]>([]);
+  const [loadingReplies, setLoadingReplies] = useState(false);
+
+  useEffect(() => {
+    if (!selectedSupportId) {
+      setActiveReplies([]);
+      return;
+    }
+    
+    async function fetchReplies() {
+      setLoadingReplies(true);
+      try {
+        const res = await fetch(`/api/support/track?id=${selectedSupportId}`);
+        if (res.ok) {
+          const data = await res.json();
+          setActiveReplies(data.replies || []);
+        }
+      } catch (err) {
+        console.error("Failed to fetch ticket replies:", err);
+      } finally {
+        setLoadingReplies(false);
+      }
+    }
+    
+    fetchReplies();
+  }, [selectedSupportId]);
+
+  const chatEndRef = useRef<HTMLDivElement>(null);
+
+  const shortenId = (id: string) => {
+    if (!id || id.length < 12) return id;
+    return `${id.substring(0, 8).toUpperCase()}...${id.substring(id.length - 6).toUpperCase()}`;
+  };
+
+  useEffect(() => {
+    if (selectedSupportId) {
+      // Small timeout to allow render completion
+      setTimeout(() => {
+        chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      }, 80);
+    }
+  }, [activeReplies, selectedSupportId]);
   const [orderStatus, setOrderStatus] = useState("");
   const [orderTrackingId, setOrderTrackingId] = useState("");
   const [orderTrackingUrl, setOrderTrackingUrl] = useState("");
@@ -368,6 +419,7 @@ export default function AdminDashboardPage() {
   const [slideSortOrder, setSlideSortOrder] = useState(0);
   const [slideIsActive, setSlideIsActive] = useState(true);
   const [uploadingSlideImage, setUploadingSlideImage] = useState(false);
+  const [uploadingCatImage, setUploadingCatImage] = useState<string | null>(null);
 
   // CMS Announcement messages state
   const [announcementMsg, setAnnouncementMsg] = useState("");
@@ -427,7 +479,7 @@ export default function AdminDashboardPage() {
     const cmsPromise = fetch("/api/admin/cms");
     const usersPromise = supabase.from("profiles").select("*").order("created_at", { ascending: false });
     const categoriesPromise = supabase.from("categories").select("*").order("sort_order", { ascending: true });
-    const supportPromise = supabase.from("support_messages").select("*").order("created_at", { ascending: false });
+    const supportPromise = supabase.from("support_messages").select("*, profiles(user_id)").order("created_at", { ascending: false });
     const bulkPromise = supabase.from("bulk_inquiries").select("*").order("created_at", { ascending: false });
     const subsPromise = supabase.from("newsletter_subscriptions").select("*").order("created_at", { ascending: false });
     const couponsPromise = fetch("/api/admin/coupons");
@@ -769,6 +821,56 @@ export default function AdminDashboardPage() {
     }
   }
 
+  async function handleCatImageUpload(e: React.ChangeEvent<HTMLInputElement>, categoryId: string) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingCatImage(categoryId);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      // 1. Upload file to Cloudinary
+      const res = await fetch("/api/admin/products/upload-image", {
+        method: "POST",
+        body: formData
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || "Upload to Cloudinary failed");
+      }
+
+      const data = await res.json();
+      const imageUrl = data.url;
+
+      // 2. Persist updated image URL to database
+      const saveRes = await fetch("/api/admin/categories", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: categoryId, imageUrl })
+      });
+
+      if (!saveRes.ok) {
+        const saveData = await saveRes.json().catch(() => ({}));
+        throw new Error(saveData.error || "Failed to update category image in database");
+      }
+
+      alert("Category image updated successfully!");
+
+      // 3. Refresh categories local list
+      const { data: newCats } = await supabase
+        .from("categories")
+        .select("*")
+        .order("sort_order", { ascending: true });
+      setCategories(newCats || []);
+    } catch (err: any) {
+      alert("Category image update failed: " + err.message);
+    } finally {
+      setUploadingCatImage(null);
+    }
+  }
+
   async function refreshReviews() {
     try {
       const res = await fetch("/api/admin/reviews");
@@ -850,8 +952,13 @@ export default function AdminDashboardPage() {
     setProdCompare("");
     setProdCashback("");
     setProdStock("");
+    setProdPiecesPerPack(1);
     setProdIsActive(true);
     setProdIsSale(false);
+    setProdIsFeatured(false);
+    setProdIsBestseller(false);
+    setProdIsNew(false);
+    setProdIsTrending(false);
     setProdShowSize(false);
     setProdImages([]);
     setProdVariants([]);
@@ -868,8 +975,13 @@ export default function AdminDashboardPage() {
     setProdCompare(p.compare_at_paise ? p.compare_at_paise / 100 : "");
     setProdCashback(p.cashback_paise ? p.cashback_paise / 100 : "");
     setProdStock(p.stock);
+    setProdPiecesPerPack(p.pieces_per_pack !== undefined ? p.pieces_per_pack : 1);
     setProdIsActive(p.is_active);
     setProdIsSale(p.is_on_sale);
+    setProdIsFeatured(p.is_featured || false);
+    setProdIsBestseller(p.is_bestseller || false);
+    setProdIsNew(p.is_new || false);
+    setProdIsTrending(p.is_trending || false);
     setProdShowSize(p.show_size || false);
     setProdImages((p.product_images || []).map((img: any) => img.url));
     setProdVariants(p.product_variants || []);
@@ -877,7 +989,7 @@ export default function AdminDashboardPage() {
   }
 
   const isProductModified = () => {
-    if (!editingProduct) return true; // always editable when creating a new product
+    if (!editingProduct || editingProduct.id.startsWith("default-p")) return true; // always editable when creating new or template product
     
     if (prodName !== editingProduct.name) return true;
     if (prodSlug !== editingProduct.slug) return true;
@@ -892,8 +1004,13 @@ export default function AdminDashboardPage() {
     if (prodCashback !== originalCashback) return true;
     
     if (prodStock !== editingProduct.stock) return true;
+    if (prodPiecesPerPack !== (editingProduct.pieces_per_pack || 1)) return true;
     if (prodIsActive !== editingProduct.is_active) return true;
     if (prodIsSale !== editingProduct.is_on_sale) return true;
+    if (prodIsFeatured !== (editingProduct.is_featured || false)) return true;
+    if (prodIsBestseller !== (editingProduct.is_bestseller || false)) return true;
+    if (prodIsNew !== (editingProduct.is_new || false)) return true;
+    if (prodIsTrending !== (editingProduct.is_trending || false)) return true;
     if (prodShowSize !== (editingProduct.show_size || false)) return true;
     
     const originalImages = (editingProduct.product_images || []).map((img: any) => img.url);
@@ -1039,8 +1156,13 @@ export default function AdminDashboardPage() {
         compare_at_paise: prodCompare && Number(prodCompare) > 0 ? Math.round(Number(prodCompare) * 100) : null,
         cashback_paise: Math.round(Number(prodCashback || 0) * 100),
         stock: Number(prodStock || 0),
+        pieces_per_pack: prodPiecesPerPack || 1,
         is_active: prodIsActive,
         is_on_sale: prodIsSale,
+        is_featured: prodIsFeatured,
+        is_bestseller: prodIsBestseller,
+        is_new: prodIsNew,
+        is_trending: prodIsTrending,
         show_size: prodShowSize,
         images: prodImages,
         variants: prodVariants
@@ -1064,6 +1186,76 @@ export default function AdminDashboardPage() {
       await refreshProducts();
     } catch (err: any) {
       alert("Error saving product: " + err.message);
+    }
+  }
+
+  async function handleSendSupportReply(id: string, action: "reply" | "close") {
+    if (action === "reply" && !supportReplyText.trim()) {
+      alert("Please enter a reply message");
+      return;
+    }
+
+    setSubmittingReply(true);
+    try {
+      const res = await fetch("/api/admin/support/reply", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id,
+          action,
+          replyMessage: action === "reply" ? supportReplyText.trim() : undefined,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to update inquiry");
+
+      // Update the local support messages state list
+      setSupportMessages((prev) =>
+        prev.map((msg) => (msg.id === id ? { ...msg, ...data.message } : msg))
+      );
+
+      if (action === "reply") {
+        setSupportReplyText("");
+        // Fetch fresh replies from server to ensure database sync
+        const repliesRes = await fetch(`/api/support/track?id=${id}`);
+        if (repliesRes.ok) {
+          const repliesData = await repliesRes.json();
+          setActiveReplies(repliesData.replies || []);
+        }
+        alert("Reply sent successfully!");
+      } else {
+        alert("Ticket closed successfully!");
+        setSelectedSupportId(null);
+        setSupportReplyText("");
+      }
+    } catch (err: any) {
+      alert("Error: " + err.message);
+    } finally {
+      setSubmittingReply(false);
+    }
+  }
+
+  async function handleDeleteSupport(id: string) {
+    if (!confirm("Are you sure you want to delete this support inquiry? This will also remove it from the user's dashboard and tracking history. This action cannot be undone.")) {
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/admin/support/reply?id=${id}`, {
+        method: "DELETE",
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to delete inquiry");
+      }
+
+      // Remove from the local support messages state list
+      setSupportMessages((prev) => prev.filter((msg) => msg.id !== id));
+      alert("Support inquiry deleted successfully!");
+    } catch (err: any) {
+      alert("Error: " + err.message);
     }
   }
 
@@ -2194,6 +2386,10 @@ export default function AdminDashboardPage() {
                           <label className="text-sm font-semibold">Stock Level *</label>
                           <input type="number" required min="0" value={prodStock} onChange={(e) => setProdStock(e.target.value === "" ? "" : Number(e.target.value))} className="rounded-md border border-line bg-ivory px-3 py-2 text-sm text-ink outline-none focus:border-zari" />
                         </div>
+                        <div className="flex flex-col gap-1.5">
+                          <label className="text-sm font-semibold">Pieces in 1 Pack</label>
+                          <input type="number" min="1" value={prodPiecesPerPack} onChange={(e) => setProdPiecesPerPack(e.target.value === "" ? "" : Number(e.target.value))} className="rounded-md border border-line bg-ivory px-3 py-2 text-sm text-ink outline-none focus:border-zari" />
+                        </div>
                         <div className="flex items-center gap-2 mt-4">
                           <input type="checkbox" id="isActive" checked={prodIsActive} onChange={(e) => setProdIsActive(e.target.checked)} className="w-4 h-4 accent-zari" />
                           <label htmlFor="isActive" className="text-sm font-semibold cursor-pointer">Visible in Store (Active)</label>
@@ -2205,6 +2401,22 @@ export default function AdminDashboardPage() {
                         <div className="flex items-center gap-2 mt-4">
                           <input type="checkbox" id="showSize" checked={prodShowSize} onChange={(e) => setProdShowSize(e.target.checked)} className="w-4 h-4 accent-zari" />
                           <label htmlFor="showSize" className="text-sm font-semibold cursor-pointer">Show sizes on product card</label>
+                        </div>
+                        <div className="flex items-center gap-2 mt-4">
+                          <input type="checkbox" id="isFeatured" checked={prodIsFeatured} onChange={(e) => setProdIsFeatured(e.target.checked)} className="w-4 h-4 accent-zari" />
+                          <label htmlFor="isFeatured" className="text-sm font-semibold cursor-pointer">Mark as Featured Product</label>
+                        </div>
+                        <div className="flex items-center gap-2 mt-4">
+                          <input type="checkbox" id="isBestseller" checked={prodIsBestseller} onChange={(e) => setProdIsBestseller(e.target.checked)} className="w-4 h-4 accent-zari" />
+                          <label htmlFor="isBestseller" className="text-sm font-semibold cursor-pointer">Mark as Best Seller</label>
+                        </div>
+                        <div className="flex items-center gap-2 mt-4">
+                          <input type="checkbox" id="isNew" checked={prodIsNew} onChange={(e) => setProdIsNew(e.target.checked)} className="w-4 h-4 accent-zari" />
+                          <label htmlFor="isNew" className="text-sm font-semibold cursor-pointer">Mark as New Arrival</label>
+                        </div>
+                        <div className="flex items-center gap-2 mt-4">
+                          <input type="checkbox" id="isTrending" checked={prodIsTrending} onChange={(e) => setProdIsTrending(e.target.checked)} className="w-4 h-4 accent-zari" />
+                          <label htmlFor="isTrending" className="text-sm font-semibold cursor-pointer">Mark as Trending</label>
                         </div>
                       </div>
 
@@ -3844,6 +4056,54 @@ export default function AdminDashboardPage() {
                     </div>
                   </div>
                 </div>
+
+                {/* Section 3: Homepage Showcase Categories images */}
+                <div className="bg-white border border-line rounded-card p-6 shadow-soft space-y-6">
+                  <div>
+                    <h3 className="font-display text-lg border-b border-line pb-2">Homepage Category Showcase (Explore Collection)</h3>
+                    <p className="text-xs text-taupe mt-0.5">Edit cover photos displayed in the homepage "Crafted for every occasion" grid.</p>
+                  </div>
+
+                  <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                    {categories.filter(c => c.slug !== "all" && c.slug !== "bulk-orders").map((c: any) => (
+                      <div key={c.id} className="zari-frame border border-line rounded-card bg-cream/10 p-4 space-y-3.5 flex flex-col justify-between">
+                        <div>
+                          <p className="font-semibold text-ink text-sm sm:text-base capitalize">{c.name}</p>
+                          <p className="text-[10px] text-taupe tracking-wider font-mono">Slug: {c.slug}</p>
+                        </div>
+
+                        {/* Image Preview / Input */}
+                        <div className="space-y-2">
+                          <div className="relative aspect-[4/3] rounded overflow-hidden bg-cream border border-line">
+                            {c.image_url ? (
+                              <img src={c.image_url} alt={c.name} className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-taupe">No image set</div>
+                            )}
+                            {uploadingCatImage === c.id && (
+                              <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex flex-col items-center justify-center text-white">
+                                <RefreshCw className="animate-spin w-6 h-6 mb-2 text-zari" />
+                                <span className="text-[10px] font-semibold animate-pulse">Uploading to Cloudinary...</span>
+                              </div>
+                            )}
+                          </div>
+
+                          <label className="relative flex items-center justify-center gap-1.5 w-full py-2 bg-cream hover:bg-beige text-ink border border-line rounded text-xs font-bold cursor-pointer transition-colors">
+                            <ImageIcon className="w-3.5 h-3.5" />
+                            <span>{uploadingCatImage === c.id ? "Uploading..." : "Change Image"}</span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={(e) => handleCatImageUpload(e, c.id)}
+                              className="hidden"
+                              disabled={uploadingCatImage !== null}
+                            />
+                          </label>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             )}
 
@@ -4407,20 +4667,6 @@ $$ language plpgsql;`}
                   </button>
                   <button
                     type="button"
-                    onClick={() => setCommSubTab("bulk")}
-                    className={`flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-all duration-200 cursor-pointer ${
-                      commSubTab === "bulk"
-                        ? "bg-ink text-ivory border-ink shadow-sm"
-                        : "bg-white text-taupe border-line hover:border-zari hover:text-ink"
-                    }`}
-                  >
-                    <span>Bulk Enquiries</span>
-                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${commSubTab === "bulk" ? "bg-zari text-ink" : "bg-cream text-taupe"}`}>
-                      {bulkInquiries.length}
-                    </span>
-                  </button>
-                  <button
-                    type="button"
                     onClick={() => setCommSubTab("newsletter")}
                     className={`flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-all duration-200 cursor-pointer ${
                       commSubTab === "newsletter"
@@ -4449,23 +4695,202 @@ $$ language plpgsql;`}
                             <tr className="bg-cream border-b border-line text-taupe font-medium">
                               <th className="p-3">Sender</th>
                               <th className="p-3">Subject</th>
-                              <th className="p-3">Message</th>
+                              <th className="p-3">Message / History</th>
+                              <th className="p-3 text-center">Status</th>
                               <th className="p-3 text-center">Date</th>
+                              <th className="p-3 text-right">Actions</th>
                             </tr>
                           </thead>
                           <tbody>
                             {supportMessages.map((msg) => (
-                              <tr key={msg.id} className="border-b border-line hover:bg-ivory/50">
-                                <td className="p-3">
-                                  <p className="font-semibold text-ink">{msg.name}</p>
-                                  <p className="text-[10px] text-taupe mt-0.5">{msg.email}</p>
-                                </td>
-                                <td className="p-3 font-medium text-ink">{msg.subject}</td>
-                                <td className="p-3 text-taupe whitespace-pre-wrap">{msg.message}</td>
-                                <td className="p-3 text-center text-[10px] text-taupe whitespace-nowrap">
-                                  {new Date(msg.created_at).toLocaleString("en-IN", { dateStyle: "short", timeStyle: "short" })}
-                                </td>
-                              </tr>
+                              <React.Fragment key={msg.id}>
+                                <tr className="border-b border-line hover:bg-ivory/50">
+                                  <td className="p-3">
+                                    <p className="font-semibold text-ink">{msg.name}</p>
+                                    <p className="text-[10px] text-taupe mt-0.5 font-mono select-all">Ticket ID: {msg.id}</p>
+                                    <p className="text-[10px] text-taupe mt-0.5 font-mono select-all">User ID: {msg.profiles?.user_id || "Guest (Unregistered)"}</p>
+                                    <p className="text-[10px] text-taupe mt-0.5">{msg.email}</p>
+                                  </td>
+                                  <td className="p-3 font-medium text-ink">{msg.subject}</td>
+                                  <td className="p-3 text-taupe">
+                                    <div className="whitespace-pre-wrap">{msg.message}</div>
+                                  </td>
+                                  <td className="p-3 text-center">
+                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${
+                                      msg.status === "closed"
+                                        ? "bg-line text-taupe border border-line"
+                                        : msg.status === "replied"
+                                        ? "bg-success/15 text-success border border-success/35"
+                                        : "bg-zari/20 text-zari-deep border border-zari/45"
+                                    }`}>
+                                      {msg.status || "new"}
+                                    </span>
+                                  </td>
+                                  <td className="p-3 text-center text-[10px] text-taupe whitespace-nowrap">
+                                    {new Date(msg.created_at).toLocaleString("en-IN", { dateStyle: "short", timeStyle: "short" })}
+                                  </td>
+                                  <td className="p-3 text-right space-x-1.5 whitespace-nowrap">
+                                    {msg.status !== "closed" && (
+                                      <>
+                                        <button
+                                          onClick={() => {
+                                            if (selectedSupportId === msg.id) {
+                                              setSelectedSupportId(null);
+                                            } else {
+                                              setSelectedSupportId(msg.id);
+                                              setSupportReplyText("");
+                                            }
+                                          }}
+                                          className="px-2.5 py-1 bg-cream hover:bg-beige text-ink border border-line rounded text-[11px] font-bold transition-colors cursor-pointer"
+                                        >
+                                          {selectedSupportId === msg.id ? "Cancel" : "Reply"}
+                                        </button>
+                                        <button
+                                          onClick={() => {
+                                            if (confirm("Are you sure you want to close this support ticket?")) {
+                                              handleSendSupportReply(msg.id, "close");
+                                            }
+                                          }}
+                                          className="px-2.5 py-1 bg-white hover:bg-danger/5 text-danger border border-danger/25 rounded text-[11px] font-bold transition-colors cursor-pointer"
+                                        >
+                                          Close
+                                        </button>
+                                      </>
+                                    )}
+                                    {msg.status === "closed" && (
+                                      <span className="text-[11px] font-bold text-taupe italic mr-1.5">Closed</span>
+                                    )}
+                                    <button
+                                      onClick={() => handleDeleteSupport(msg.id)}
+                                      className="px-2.5 py-1 bg-danger hover:bg-danger/80 text-white rounded text-[11px] font-bold transition-colors cursor-pointer"
+                                    >
+                                      Delete
+                                    </button>
+                                  </td>
+                                </tr>
+                                {selectedSupportId === msg.id && (
+                                  <tr className="bg-cream/15 border-b border-line">
+                                    <td colSpan={6} className="p-4 bg-cream/5">
+                                      <div className="max-w-2xl border border-line rounded-card overflow-hidden bg-white shadow-soft font-sans">
+                                        {/* Chat Header */}
+                                        <div className="bg-[#FBF9F4] border-b border-line px-4 py-3 flex items-center justify-between">
+                                          <span className="text-xs font-bold text-ink uppercase tracking-wider">Live Chat Conversation</span>
+                                          <div className="flex items-center gap-1.5">
+                                            <span className="text-[10px] text-taupe font-mono">Ticket ID: {shortenId(msg.id)}</span>
+                                            <button
+                                              onClick={() => {
+                                                navigator.clipboard.writeText(msg.id);
+                                                alert("Ticket ID copied to clipboard!");
+                                              }}
+                                              title="Copy full Ticket ID"
+                                              className="text-zari-deep hover:text-ink transition-colors cursor-pointer p-0.5"
+                                            >
+                                              <Copy className="w-3.5 h-3.5" />
+                                            </button>
+                                          </div>
+                                        </div>
+
+                                        {/* Chat Messages */}
+                                        <div className="p-4 space-y-4 max-h-[300px] overflow-y-auto bg-ivory/10">
+                                          {/* Message 1: Original User Message (Left/Customer align) */}
+                                          <div className="flex flex-col items-start space-y-1 w-full">
+                                            <div className="flex items-center gap-1.5">
+                                              <div className="w-5 h-5 rounded-full bg-ink/10 text-[9px] font-bold text-ink flex items-center justify-center font-sans">U</div>
+                                              <span className="text-[10px] font-bold text-taupe uppercase tracking-wide">{msg.name}</span>
+                                            </div>
+                                            <div className="max-w-[80%] bg-white border border-line rounded-2xl rounded-tl-none px-3.5 py-2 text-xs text-ink whitespace-pre-wrap leading-relaxed shadow-xs">
+                                              {msg.message}
+                                            </div>
+                                            <span className="text-[8px] text-taupe/80 pl-1 block">
+                                              {new Date(msg.created_at).toLocaleString("en-IN", { dateStyle: "short", timeStyle: "short" })}
+                                            </span>
+                                          </div>
+
+                                          {/* Subsequent replies */}
+                                          {loadingReplies ? (
+                                            <div className="text-center py-6 text-xs text-taupe italic">
+                                              Loading chat history...
+                                            </div>
+                                          ) : (
+                                            <>
+                                              {activeReplies.map((r, ri) => {
+                                                const isUser = r.sender_type === "user";
+                                                return (
+                                                  <div
+                                                    key={r.id || ri}
+                                                    className={`flex flex-col space-y-1 w-full ${isUser ? "items-start" : "items-end"}`}
+                                                  >
+                                                    <div className="flex items-center gap-1.5">
+                                                      {!isUser && <div className="w-5 h-5 rounded-full bg-zari/15 text-[9px] font-bold text-zari-deep flex items-center justify-center font-sans">AD</div>}
+                                                      <span className="text-[10px] font-bold text-taupe uppercase tracking-wide">
+                                                        {isUser ? msg.name : "You (Admin)"}
+                                                      </span>
+                                                      {isUser && <div className="w-5 h-5 rounded-full bg-ink/10 text-[9px] font-bold text-ink flex items-center justify-center font-sans">U</div>}
+                                                    </div>
+                                                    <div className={`max-w-[80%] rounded-2xl px-3.5 py-2 text-xs whitespace-pre-wrap leading-relaxed shadow-sm ${
+                                                      isUser
+                                                        ? "bg-white border border-line text-ink rounded-tl-none"
+                                                        : "bg-ink text-ivory rounded-tr-none"
+                                                    }`}>
+                                                      {r.message}
+                                                    </div>
+                                                    <span className="text-[8px] text-taupe/80 px-1 block">
+                                                      {new Date(r.created_at).toLocaleString("en-IN", { dateStyle: "short", timeStyle: "short" })}
+                                                    </span>
+                                                  </div>
+                                                );
+                                              })}
+                                              {/* Auto-scroll anchor */}
+                                              <div ref={chatEndRef} />
+                                            </>
+                                          )}
+                                        </div>
+
+                                        {/* Reply Box Footer */}
+                                        <div className="border-t border-line p-3.5 bg-ivory/15">
+                                          {msg.status === "closed" ? (
+                                            <p className="text-xs text-taupe italic text-center py-1 font-sans">
+                                              🔒 This ticket has been closed.
+                                            </p>
+                                          ) : (
+                                            <form
+                                              onSubmit={(e) => {
+                                                e.preventDefault();
+                                                handleSendSupportReply(msg.id, "reply");
+                                              }}
+                                              className="flex gap-2 items-end"
+                                            >
+                                              <textarea
+                                                value={supportReplyText}
+                                                onChange={(e) => setSupportReplyText(e.target.value)}
+                                                placeholder="Type your reply to address client query..."
+                                                rows={2}
+                                                className="flex-1 rounded-card border border-line bg-white px-3.5 py-2.5 text-xs outline-none focus:border-zari focus:ring-1 focus:ring-zari/30 resize-none text-ink placeholder-taupe/60 shadow-inner font-sans tracking-wide"
+                                              />
+                                              <div className="flex flex-col gap-1.5 shrink-0">
+                                                <button
+                                                  type="submit"
+                                                  disabled={submittingReply || loadingReplies || !supportReplyText.trim()}
+                                                  className="bg-zari hover:bg-zari-deep text-ink font-bold px-4 py-2.5 rounded-card text-[11px] transition-all flex items-center justify-center gap-1 shadow-soft hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none cursor-pointer"
+                                                >
+                                                  Submit
+                                                </button>
+                                                <button
+                                                  type="button"
+                                                  onClick={() => setSelectedSupportId(null)}
+                                                  className="bg-white hover:bg-cream/45 border border-line text-taupe font-bold px-4 py-1.5 rounded-card text-[11px] transition-all flex items-center justify-center shadow-xs cursor-pointer"
+                                                >
+                                                  Minimize
+                                                </button>
+                                              </div>
+                                            </form>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                )}
+                              </React.Fragment>
                             ))}
                           </tbody>
                         </table>
@@ -4474,46 +4899,6 @@ $$ language plpgsql;`}
                   </div>
                 )}
 
-                {commSubTab === "bulk" && (
-                  <div className="bg-white border border-line rounded-card overflow-hidden shadow-soft animate-fade-in">
-                    {bulkInquiries.length === 0 ? (
-                      <div className="p-12 text-center text-sm text-taupe italic">
-                        No bulk order enquiries received yet.
-                      </div>
-                    ) : (
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-xs sm:text-sm text-left">
-                          <thead>
-                            <tr className="bg-cream border-b border-line text-taupe font-medium">
-                              <th className="p-3">Sender / Org</th>
-                              <th className="p-3">Category</th>
-                              <th className="p-3 text-center">Quantity</th>
-                              <th className="p-3">Message</th>
-                              <th className="p-3 text-center">Date</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {bulkInquiries.map((inq) => (
-                              <tr key={inq.id} className="border-b border-line hover:bg-ivory/50">
-                                <td className="p-3">
-                                  <p className="font-semibold text-ink">{inq.name}</p>
-                                  <p className="text-[10px] text-taupe mt-0.5">{inq.email}</p>
-                                  {inq.organisation && <p className="text-[10px] text-zari-deep font-semibold mt-0.5">{inq.organisation}</p>}
-                                </td>
-                                <td className="p-3 text-ink font-semibold">{inq.category || "—"}</td>
-                                <td className="p-3 text-center font-mono font-medium">{inq.quantity || "—"}</td>
-                                <td className="p-3 text-taupe whitespace-pre-wrap">{inq.message || "—"}</td>
-                                <td className="p-3 text-center text-[10px] text-taupe whitespace-nowrap">
-                                  {new Date(inq.created_at).toLocaleString("en-IN", { dateStyle: "short", timeStyle: "short" })}
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
-                  </div>
-                )}
 
                 {commSubTab === "newsletter" && (
                   <div className="bg-white border border-line rounded-card overflow-hidden shadow-soft max-w-lg animate-fade-in">

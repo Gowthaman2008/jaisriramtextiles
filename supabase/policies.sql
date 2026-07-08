@@ -43,6 +43,42 @@ create policy "variants public read"  on product_variants for select using (true
 create policy "own profile read"   on profiles for select using (auth.uid() = id or is_staff());
 create policy "own profile update" on profiles for update using (auth.uid() = id);
 
+-- Prevent unauthorized role escalation and user_id modifications via the update policy.
+create or replace function public.check_profile_update()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  if auth.uid() is null then
+    return new;
+  end if;
+
+  if new.role <> old.role then
+    if not exists (
+      select 1 from public.profiles
+      where id = auth.uid() and role = 'admin'
+    ) then
+      raise exception 'Unauthorized: You cannot modify the profile role field.';
+    end if;
+  end if;
+
+  if new.user_id <> old.user_id then
+    raise exception 'Unauthorized: Cannot modify user_id field.';
+  end if;
+
+  if new.id <> old.id then
+    raise exception 'Unauthorized: Cannot modify id field.';
+  end if;
+
+  return new;
+end;
+$$;
+
+-- Drop trigger if exists to prevent duplicate trigger errors when re-applying policies
+drop trigger if exists trg_check_profile_update on profiles;
+create trigger trg_check_profile_update
+  before update on public.profiles
+  for each row execute function public.check_profile_update();
+
+
 -- ---- Addresses ----
 create policy "own addresses" on addresses
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
@@ -87,3 +123,8 @@ create policy "audit staff read" on audit_logs for select using (is_staff());
 
 -- Coupons: readable so the client can preview a code; writes are staff-only via server.
 create policy "coupons read active" on coupons for select using (is_active or is_staff());
+
+-- ---- Support Messages ----
+alter table support_messages enable row level security;
+create policy "support messages select own or staff" on support_messages
+  for select using (auth.uid() = user_id or is_staff());

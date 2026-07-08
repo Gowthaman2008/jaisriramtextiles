@@ -196,6 +196,41 @@ export async function POST(request: Request) {
     // 6. Calculate grand total
     const totalPaise = subtotalPaise - discountPaise - walletUsedPaise + shippingPaise;
 
+    // Verify the payment with Razorpay if key/secret are set in the environment (Production Mode)
+    if (process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET) {
+      if (!isRazorpay || !razorpayPaymentId) {
+        return NextResponse.json({ error: "Razorpay payment details are required to complete this order" }, { status: 400 });
+      }
+
+      try {
+        const Razorpay = (await import("razorpay")).default;
+        const rzp = new Razorpay({
+          key_id: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+          key_secret: process.env.RAZORPAY_KEY_SECRET
+        });
+
+        const payment = await rzp.payments.fetch(razorpayPaymentId);
+        if (!payment) {
+          return NextResponse.json({ error: "Payment transaction not found in gateway." }, { status: 400 });
+        }
+
+        // Verify amount paid matches the server calculated total
+        if (Number(payment.amount) !== totalPaise) {
+          return NextResponse.json({
+            error: `Payment amount mismatch. Order total: ${totalPaise} paise, Paid amount: ${payment.amount} paise.`
+          }, { status: 400 });
+        }
+
+        // Verify payment is successful (captured or authorized)
+        if (payment.status !== "captured" && payment.status !== "authorized") {
+          return NextResponse.json({ error: `Payment is incomplete (Status: ${payment.status})` }, { status: 400 });
+        }
+      } catch (err: any) {
+        console.error("Razorpay verification failed:", err);
+        return NextResponse.json({ error: "Payment verification failed: " + (err.message || err) }, { status: 400 });
+      }
+    }
+
     // 7. Generate order number e.g. JSRT-2026-XXXXXX
     const randomDigits = Math.floor(100000 + Math.random() * 900000);
     const orderNumber = `JSRT-2026-${randomDigits}`;

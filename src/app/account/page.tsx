@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { useWishlist } from "@/components/providers/wishlist-provider";
 import { useCart } from "@/components/providers/cart-provider";
@@ -36,6 +36,11 @@ import {
 export default function AccountPage() {
   const supabase = createClient();
   const { wishlist } = useWishlist();
+
+  const shortenId = (id: string) => {
+    if (!id || id.length < 12) return id;
+    return `${id.substring(0, 8).toUpperCase()}...${id.substring(id.length - 6).toUpperCase()}`;
+  };
 
   // Tab State: "overview" | "orders" | "wallet" | "wishlist" | "addresses" | "contact"
   const [activeTab, setActiveTab] = useState("overview");
@@ -84,6 +89,25 @@ export default function AccountPage() {
   const [supportMessage, setSupportMessage] = useState("");
   const [supportStatus, setSupportStatus] = useState("");
   const [supportIsSubmitting, setSupportIsSubmitting] = useState(false);
+  const [lastSubmittedQueryId, setLastSubmittedQueryId] = useState<string | null>(null);
+  const [trackQueryId, setTrackQueryId] = useState("");
+  const [trackedQuery, setTrackedQuery] = useState<any | null>(null);
+  const [trackLoading, setTrackLoading] = useState(false);
+  const [trackError, setTrackError] = useState("");
+  const [supportHistory, setSupportHistory] = useState<any[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [userReplyText, setUserReplyText] = useState("");
+  const [submittingUserReply, setSubmittingUserReply] = useState(false);
+
+  const userChatEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (trackedQuery) {
+      setTimeout(() => {
+        userChatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      }, 80);
+    }
+  }, [trackedQuery, trackedQuery?.replies]);
 
   // Profile Edit States
   const [profileName, setProfileName] = useState("");
@@ -147,6 +171,7 @@ export default function AccountPage() {
   async function fetchAccountData(userId: string) {
     setRefreshing(true);
     try {
+      fetchSupportHistory();
       // Run independent queries in parallel instead of one-after-another
       const [ordersRes, walletRes, addrRes, reviewsRes] = await Promise.all([
         supabase
@@ -347,6 +372,7 @@ export default function AccountPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          userId: user.id,
           name: user.user_metadata?.full_name || user.email.split("@")[0],
           email: user.email,
           subject: supportSubject.trim(),
@@ -359,11 +385,82 @@ export default function AccountPage() {
 
       setSupportSubject("");
       setSupportMessage("");
-      alert("Message sent! Support will reach you via email shortly.");
+      fetchSupportHistory();
+      if (data.queryId) {
+        setTrackQueryId(data.queryId);
+        fetchTrackedQuery(data.queryId);
+      }
+      alert("Ticket created successfully. You can track it from your ticket history.");
     } catch (err: any) {
       setSupportStatus(err.message || "Failed to submit message");
     } finally {
       setSupportIsSubmitting(false);
+    }
+  }
+
+  async function fetchTrackedQuery(queryIdToCheck?: string) {
+    const id = queryIdToCheck || trackQueryId;
+    if (!id || !id.trim()) {
+      setTrackError("Please enter a valid Query ID");
+      return;
+    }
+    setTrackLoading(true);
+    setTrackError("");
+    setTrackedQuery(null);
+    try {
+      const res = await fetch(`/api/support/track?id=${id.trim()}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to find inquiry");
+      setTrackedQuery(data);
+    } catch (err: any) {
+      setTrackError(err.message || "Failed to find inquiry");
+    } finally {
+      setTrackLoading(false);
+    }
+  }
+
+  async function fetchSupportHistory() {
+    setLoadingHistory(true);
+    try {
+      const res = await fetch("/api/support/list");
+      if (res.ok) {
+        const data = await res.json();
+        setSupportHistory(data || []);
+      }
+    } catch (err) {
+      console.error("Failed to load support history:", err);
+    } finally {
+      setLoadingHistory(false);
+    }
+  }
+
+  async function handleSendUserReply(e: React.FormEvent) {
+    e.preventDefault();
+    if (!trackedQuery || !userReplyText.trim()) return;
+
+    setSubmittingUserReply(true);
+    try {
+      const res = await fetch("/api/support/reply", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messageId: trackedQuery.id,
+          message: userReplyText.trim(),
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to send reply");
+
+      setUserReplyText("");
+      // Refresh details and history
+      fetchTrackedQuery(trackedQuery.id);
+      fetchSupportHistory();
+      alert("Reply sent successfully!");
+    } catch (err: any) {
+      alert("Error: " + err.message);
+    } finally {
+      setSubmittingUserReply(false);
     }
   }
 
@@ -1102,11 +1199,11 @@ export default function AccountPage() {
         {/* TAB 4: ADDRESS BOOK */}
         {activeTab === "addresses" && (
           <div className="space-y-6 animate-fade-up">
-            <div className="flex justify-between items-center">
-              <h2 className="font-display text-xl text-ink">Saved Delivery Addresses</h2>
+            <div className="flex justify-between items-center gap-4 border-b border-line/45 pb-3">
+              <h2 className="font-display text-base sm:text-xl text-ink">Saved Delivery Addresses</h2>
               {!showAddressForm && (
-                <Button size="sm" variant="gold" onClick={() => setShowAddressForm(true)}>
-                  <Plus className="w-4 h-4" /> Add Address
+                <Button size="sm" variant="gold" onClick={() => setShowAddressForm(true)} className="whitespace-nowrap shrink-0 text-xs">
+                  <Plus className="w-3.5 h-3.5 mr-1" /> Add Address
                 </Button>
               )}
             </div>
@@ -1256,35 +1353,39 @@ export default function AccountPage() {
             ) : (
               <div className="grid gap-4 sm:grid-cols-2">
                 {addresses.map((addr) => (
-                  <div key={addr.id} className="bg-white border border-line rounded-card p-5 relative shadow-soft group">
-                    <div className="flex justify-between items-start border-b border-line pb-2 mb-2">
-                      <span className="bg-zari/15 text-zari-deep px-2 py-0.5 rounded font-bold text-[10px] uppercase">
-                        {addr.label}
-                      </span>
-                      {addr.is_default && (
-                        <span className="text-[9px] font-semibold text-success uppercase">Default</span>
-                      )}
-                    </div>
-                    <div className="text-xs text-taupe space-y-0.5">
-                      <strong className="text-sm font-bold text-ink">{addr.recipient}</strong>
-                      <p>{addr.line1}</p>
-                      {addr.line2 && <p>{addr.line2}</p>}
-                      <p>
-                        {addr.city}, {addr.district ? addr.district + ", " : ""}{addr.state} - <strong>{addr.pincode}</strong>
-                      </p>
-                      {addr.phone && (
-                        <p className="pt-1.5 text-[10px] text-ink font-semibold">
-                          📞 Mobile: {addr.phone} {addr.alternate_phone ? `/ ${addr.alternate_phone}` : ""}
-                        </p>
-                      )}
-                    </div>
-                    <button
-                      onClick={() => handleDeleteAddress(addr.id)}
-                      className="absolute top-4 right-4 text-muted hover:text-danger p-1 hover:bg-danger/5 rounded"
-                      title="Delete address"
-                    >
-                      <Trash2 size={14} />
-                    </button>
+                   <div key={addr.id} className="bg-white border border-line rounded-card p-5 shadow-soft group">
+                     <div className="flex justify-between items-center border-b border-line pb-2 mb-2">
+                       <div className="flex items-center gap-2">
+                         <span className="bg-zari/15 text-zari-deep px-2 py-0.5 rounded font-bold text-[10px] uppercase">
+                           {addr.label}
+                         </span>
+                         {addr.is_default && (
+                           <span className="text-[9px] font-semibold text-success uppercase border border-success/35 px-1.5 py-0.2 rounded bg-success/5">
+                             Default
+                           </span>
+                         )}
+                       </div>
+                       <button
+                         onClick={() => handleDeleteAddress(addr.id)}
+                         className="text-taupe hover:text-danger p-1 hover:bg-danger/5 rounded transition-colors"
+                         title="Delete address"
+                       >
+                         <Trash2 size={14} />
+                       </button>
+                     </div>
+                     <div className="text-xs text-taupe space-y-0.5">
+                       <strong className="text-sm font-bold text-ink">{addr.recipient}</strong>
+                       <p>{addr.line1}</p>
+                       {addr.line2 && <p>{addr.line2}</p>}
+                       <p>
+                         {addr.city}, {addr.district ? addr.district + ", " : ""}{addr.state} - <strong>{addr.pincode}</strong>
+                       </p>
+                       {addr.phone && (
+                         <p className="pt-1.5 text-[10px] text-ink font-semibold">
+                           📞 Mobile: {addr.phone} {addr.alternate_phone ? `/ ${addr.alternate_phone}` : ""}
+                         </p>
+                       )}
+                     </div>
                   </div>
                 ))}
               </div>
@@ -1396,8 +1497,9 @@ export default function AccountPage() {
                     <MapPin className="w-4 h-4 text-zari shrink-0 mt-0.5" />
                     <p>
                       <strong>JAI SRI RAM TEXTILES</strong><br/>
-                      136/5, Kallangattuvalasu, Komarapalayam,<br/>
-                      Namakkal District, Tamil Nadu - 638183
+                      136/5, Sasti Nagar, Kallangattuvalasu,<br/>
+                      Komarapalayam, Namakkal District,<br/>
+                      Tamil Nadu - 638183
                     </p>
                   </div>
                   <div className="flex gap-2 border-t border-line/45 pt-3">
@@ -1417,6 +1519,220 @@ export default function AccountPage() {
                 </div>
               </div>
             </div>
+
+            {/* Live Chat Panel (rendered when a ticket is loaded) */}
+            {trackedQuery && (
+              <div className="mt-6 animate-fade-in">
+                <div className="border border-line rounded-card bg-[#FBF9F4]/40 overflow-hidden shadow-soft font-sans">
+                  {/* Chat Header */}
+                  <div className="bg-white border-b border-line px-5 py-4 flex flex-wrap items-center justify-between gap-3 shadow-xs">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-full bg-zari-tint/15 flex items-center justify-center text-zari-deep">
+                        <MessageSquare className="w-4.5 h-4.5" />
+                      </div>
+                      <div>
+                        <h4 className="font-display font-semibold text-base text-ink leading-tight">{trackedQuery.subject}</h4>
+                        <div className="flex items-center gap-1.5 mt-1">
+                          <span className="text-[10px] text-taupe font-sans tracking-wide">Ticket ID: {shortenId(trackedQuery.id)}</span>
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(trackedQuery.id);
+                              alert("Ticket ID copied to clipboard!");
+                            }}
+                            title="Copy full Ticket ID"
+                            className="text-zari-deep hover:text-ink transition-colors cursor-pointer p-0.5 hover:bg-cream/40 rounded"
+                          >
+                            <Copy className="w-3 h-3" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className={`text-[9px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
+                        trackedQuery.status === "closed"
+                          ? "bg-line text-taupe border border-line"
+                          : trackedQuery.status === "replied"
+                          ? "bg-success/15 text-success border border-success/35"
+                          : "bg-zari/15 text-zari-deep border border-zari/45"
+                      }`}>
+                        {trackedQuery.status}
+                      </span>
+                      <button
+                        onClick={() => setTrackedQuery(null)}
+                        className="p-1.5 text-taupe hover:text-ink hover:bg-ivory/80 rounded transition-colors cursor-pointer flex items-center justify-center"
+                        title="Close Chat"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Chat Messages Body */}
+                  <div className="p-5 space-y-6 max-h-[400px] overflow-y-auto bg-ivory/20">
+                       {/* User's Original Message (Right align) */}
+                    <div className="flex flex-col items-end space-y-1 w-full animate-fade-in">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-bold text-taupe uppercase tracking-wide">You</span>
+                        <div className="w-5 h-5 rounded-full bg-ink/10 text-[9px] font-bold text-ink flex items-center justify-center font-sans">U</div>
+                      </div>
+                      <div className="max-w-[80%] sm:max-w-[65%] bg-ink text-ivory rounded-2xl rounded-tr-none px-4 py-2.5 shadow-sm text-[13px] whitespace-pre-wrap leading-relaxed tracking-wide font-sans">
+                        {trackedQuery.message}
+                      </div>
+                      <span className="text-[9px] text-taupe/80 pr-1 block">
+                        {new Date(trackedQuery.created_at).toLocaleString("en-IN", { dateStyle: "short", timeStyle: "short" })}
+                      </span>
+                    </div>
+
+                    {/* Replies conversation list thread */}
+                    {trackedQuery.replies && trackedQuery.replies.length > 0 ? (
+                      trackedQuery.replies.map((reply: any) => {
+                        const isUser = reply.sender_type === "user";
+                        return (
+                          <div key={reply.id} className={`flex flex-col space-y-1 w-full ${isUser ? "items-end" : "items-start"} animate-fade-in`}>
+                            <div className="flex items-center gap-2">
+                              {!isUser && <div className="w-5 h-5 rounded-full bg-zari/15 text-[9px] font-bold text-zari-deep flex items-center justify-center font-sans">SR</div>}
+                              <span className={`text-[10px] font-bold tracking-wide uppercase ${isUser ? "text-taupe" : "text-zari-deep"}`}>
+                                {isUser ? "You" : "Support Desk"}
+                              </span>
+                              {isUser && <div className="w-5 h-5 rounded-full bg-ink/10 text-[9px] font-bold text-ink flex items-center justify-center font-sans">U</div>}
+                            </div>
+                            <div className={`max-w-[80%] sm:max-w-[65%] rounded-2xl px-4 py-2.5 shadow-sm text-[13px] whitespace-pre-wrap leading-relaxed tracking-wide font-sans ${
+                              isUser
+                                ? "bg-ink text-ivory rounded-tr-none"
+                                : "bg-white border border-zari/35 text-ink rounded-tl-none font-medium"
+                            }`}>
+                              {reply.message}
+                            </div>
+                            <span className="text-[9px] text-taupe/80 px-1 block">
+                              {new Date(reply.created_at).toLocaleString("en-IN", { dateStyle: "short", timeStyle: "short" })}
+                            </span>
+                          </div>
+                        );
+                      })
+                    ) : (
+                      /* Backwards compatibility for single reply layout */
+                      trackedQuery.reply_message && (
+                        <div className="flex flex-col items-start space-y-1 w-full animate-fade-in font-sans">
+                          <div className="flex items-center gap-2">
+                            <div className="w-5 h-5 rounded-full bg-zari/15 text-[9px] font-bold text-zari-deep flex items-center justify-center font-sans">SR</div>
+                            <span className="text-[10px] font-bold text-zari-deep uppercase tracking-wide">Support Desk</span>
+                          </div>
+                          <div className="max-w-[80%] sm:max-w-[65%] bg-white border border-zari/35 text-ink rounded-2xl rounded-tl-none px-4 py-2.5 shadow-xs text-[13px] whitespace-pre-wrap leading-relaxed tracking-wide font-medium">
+                            {trackedQuery.reply_message}
+                          </div>
+                          {trackedQuery.replied_at && (
+                            <span className="text-[9px] text-taupe/80 pl-1 block">
+                              {new Date(trackedQuery.replied_at).toLocaleString("en-IN", { dateStyle: "short", timeStyle: "short" })}
+                            </span>
+                          )}
+                        </div>
+                      )
+                    )}
+
+                    {/* Live status indicator if no reply exists yet */}
+                    {(!trackedQuery.replies || trackedQuery.replies.length === 0) && !trackedQuery.reply_message && trackedQuery.status !== "closed" && (
+                      <div className="flex flex-col items-start space-y-1 w-full animate-pulse font-sans">
+                        <div className="flex items-center gap-2">
+                          <div className="w-5 h-5 rounded-full bg-taupe/10 text-[9px] font-bold text-taupe flex items-center justify-center animate-bounce font-sans">...</div>
+                          <span className="text-[10px] font-bold text-taupe uppercase tracking-wide">Support Desk</span>
+                        </div>
+                        <div className="max-w-[80%] sm:max-w-[65%] bg-white/80 border border-line border-dashed rounded-2xl rounded-tl-none px-4 py-3.5 text-[12px] text-taupe italic leading-relaxed">
+                          <p>Our support team is reviewing your message. We will reply within 24 hours.</p>
+                          <div className="flex items-center gap-1 mt-2">
+                            <span className="w-1.5 h-1.5 bg-zari rounded-full animate-bounce" style={{ animationDelay: "0ms" }}></span>
+                            <span className="w-1.5 h-1.5 bg-zari rounded-full animate-bounce" style={{ animationDelay: "150ms" }}></span>
+                            <span className="w-1.5 h-1.5 bg-zari rounded-full animate-bounce" style={{ animationDelay: "300ms" }}></span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Ticket Closed System Announcement Banner */}
+                    {trackedQuery.status === "closed" && (
+                      <div className="text-center py-2 animate-fade-in">
+                        <span className="inline-block bg-line/30 border border-line text-taupe text-[10px] font-semibold px-3 py-1 rounded-full uppercase tracking-wider">
+                          🔒 Ticket Closed by Admin
+                        </span>
+                      </div>
+                    )}
+                    {/* Auto-scroll anchor */}
+                    <div ref={userChatEndRef} />
+                  </div>
+
+                  {/* Customer Reply Input Form Footer */}
+                  {trackedQuery.status !== "closed" && (
+                    <div className="border-t border-line p-4 bg-ivory/15">
+                      <form onSubmit={handleSendUserReply} className="flex gap-2 items-end">
+                        <textarea
+                          rows={2}
+                          value={userReplyText}
+                          onChange={(e) => setUserReplyText(e.target.value)}
+                          placeholder="Type your reply to the support desk..."
+                          className="flex-1 rounded-card border border-line bg-white px-4 py-3 text-xs outline-none focus:border-zari focus:ring-1 focus:ring-zari/30 resize-none text-ink placeholder-taupe/60 shadow-inner font-sans tracking-wide"
+                        />
+                        <button
+                          type="submit"
+                          disabled={submittingUserReply || !userReplyText.trim()}
+                          className="bg-zari hover:bg-zari-deep text-ink font-bold px-5 py-3 rounded-card text-xs transition-all flex items-center justify-center gap-1.5 shadow-soft hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none cursor-pointer shrink-0"
+                        >
+                          <Send className="w-3.5 h-3.5" />
+                          <span>{submittingUserReply ? "Sending..." : "Send"}</span>
+                        </button>
+                      </form>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Recent inquiries history list */}
+            {supportHistory.length > 0 && (
+              <div className="bg-white border border-line rounded-card p-6 shadow-soft space-y-4 mt-6 animate-fade-in">
+                <div className="border-b border-line pb-3">
+                  <h3 className="font-display text-base text-ink">Your Support History</h3>
+                  <p className="text-[10px] text-taupe mt-0.5">Click any query below to load its full tracking details and admin response.</p>
+                </div>
+
+                <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1 font-sans">
+                  {supportHistory.map((h) => (
+                    <button
+                      key={h.id}
+                      onClick={() => {
+                        setTrackQueryId(h.id);
+                        fetchTrackedQuery(h.id);
+                      }}
+                      className="w-full text-left bg-white hover:bg-cream/20 border border-line hover:border-zari/45 rounded-card p-4 transition-all duration-300 flex items-center justify-between gap-4 cursor-pointer shadow-xs hover:shadow-soft group"
+                    >
+                      <div className="space-y-1">
+                        <span className="inline-block bg-ivory border border-line px-2 py-0.5 rounded text-[9px] text-taupe font-medium">
+                          #{shortenId(h.id)}
+                        </span>
+                        <p className="text-[13px] font-display font-semibold text-ink group-hover:text-zari-deep transition-colors leading-tight mt-1">
+                          {h.subject}
+                        </p>
+                        <p className="text-[10px] text-taupe/90">
+                          Submitted: {new Date(h.created_at).toLocaleDateString("en-IN", { dateStyle: "medium" })}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-3 shrink-0">
+                        <span className={`text-[9px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
+                          h.status === "closed"
+                            ? "bg-line text-taupe border border-line"
+                            : h.status === "replied"
+                            ? "bg-success/15 text-success border border-success/35"
+                            : "bg-zari/15 text-zari-deep border border-zari/45"
+                        }`}>
+                          {h.status || "new"}
+                        </span>
+                        <span className="text-xs font-bold text-zari-deep hover:text-ink transition-colors flex items-center gap-1 group-hover:translate-x-0.5 transition-transform duration-200">
+                          Track →
+                        </span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 

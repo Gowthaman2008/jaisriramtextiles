@@ -9,7 +9,7 @@ export const BUSINESS = {
   email: "jaisriramtextiles@gmail.com",
   // Deliberately no phone number anywhere on the public site.
   address: {
-    line1: "136/5, Kallangattuvalasu",
+    line1: "136/5, Sasti Nagar, Kallangattuvalasu",
     city: "Komarapalayam",
     district: "Namakkal",
     state: "Tamil Nadu",

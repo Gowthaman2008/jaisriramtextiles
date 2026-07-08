@@ -37,20 +37,38 @@ export default function AboutPage() {
             you need a single piece for a family occasion or a thousand pieces for an
             institution, the same care goes into every metre we weave.
           </p>
-          <p>
-            Our mill is located at{" "}
-            <strong className="text-ink">
-              136/5, Kallangattuvalasu, Komarapalayam, Namakkal District, Tamil Nadu — 638183
-            </strong>
-            . We welcome trade enquiries by email at{" "}
-            <a
-              href="mailto:jaisriramtextiles@gmail.com"
-              className="text-zari-deep underline underline-offset-2 hover:text-zari"
-            >
-              jaisriramtextiles@gmail.com
-            </a>
-            .
-          </p>
+          
+          <div className="zari-rule my-8" />
+
+          <div className="bg-cream/30 border border-line rounded-card p-6 mt-8 space-y-6">
+            <h2 className="font-display text-2xl text-ink">Official Contact & Address</h2>
+            <div className="grid gap-6 sm:grid-cols-2 text-sm text-taupe leading-relaxed">
+              <div className="space-y-2">
+                <p className="font-bold text-ink uppercase tracking-wider text-xs">Mill & Registered Office</p>
+                <p>
+                  <strong className="text-ink">JAI SRI RAM TEXTILES</strong><br />
+                  136/5, Sasti Nagar, Kallangattuvalasu,<br />
+                  Komarapalayam, Namakkal District,<br />
+                  Tamil Nadu, India – 638183
+                </p>
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <p className="font-bold text-ink uppercase tracking-wider text-xs">General & Trade Enquiries</p>
+                  <a
+                    href="mailto:jaisriramtextiles@gmail.com"
+                    className="text-zari-deep font-semibold underline underline-offset-2 hover:text-zari"
+                  >
+                    jaisriramtextiles@gmail.com
+                  </a>
+                </div>
+                <div>
+                  <p className="font-bold text-ink uppercase tracking-wider text-xs">Support Hours</p>
+                  <p>Monday to Saturday: 9:00 AM — 6:00 PM (IST)</p>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </Container>
     </div>

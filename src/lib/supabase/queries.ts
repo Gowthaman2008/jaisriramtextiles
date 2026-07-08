@@ -23,6 +23,11 @@ type DbProduct = {
   rating_avg: number;
   rating_count: number;
   show_size: boolean;
+  is_featured: boolean;
+  is_bestseller: boolean;
+  is_new: boolean;
+  is_trending: boolean;
+  pieces_per_pack: number | null;
   categories: { slug: string; name: string } | null;
   product_images: { url: string; alt: string | null; sort_order: number }[];
   product_variants: { id: string; size: string | null; color: string | null; sku: string | null; stock: number }[];
@@ -50,6 +55,13 @@ function toCardProduct(row: DbProduct): Product {
   const displayCount = defaultStats.count + realCount;
   const displayRating = Math.round((((defaultStats.rating * defaultStats.count) + (Number(realAvg) * realCount)) / displayCount) * 10) / 10;
 
+  // Build the badges array dynamically based on database properties
+  const badges: ("new" | "bestseller" | "trending" | "sale")[] = [];
+  if (row.is_new) badges.push("new");
+  if (row.is_bestseller) badges.push("bestseller");
+  if (row.is_trending) badges.push("trending");
+  if (row.is_on_sale) badges.push("sale");
+
   return {
     id: row.id,
     slug: row.slug,
@@ -65,15 +77,20 @@ function toCardProduct(row: DbProduct): Product {
     images: images.map((i) => i.url),
     inStock: row.stock > 0,
     stock: row.stock,
-    badges: row.is_on_sale ? ["sale"] : undefined,
+    badges: badges.length > 0 ? badges : undefined,
     variants: row.product_variants || [],
-    showSize: (row as any).show_size || false,
+    showSize: row.show_size || false,
+    isFeatured: row.is_featured || false,
+    isBestseller: row.is_bestseller || false,
+    isNewArrival: row.is_new || false,
+    isTrending: row.is_trending || false,
+    piecesPerPack: row.pieces_per_pack || 1,
   };
 }
 
 // Hardcoded select — avoids a runtime probe query on every page load
 const PRODUCT_SELECT =
-  "id, slug, name, description, price_paise, compare_at_paise, cashback_paise, stock, is_on_sale, rating_avg, rating_count, show_size, categories(slug, name), product_images(url, alt, sort_order), product_variants(id, size, color, sku, stock)";
+  "id, slug, name, description, price_paise, compare_at_paise, cashback_paise, stock, is_on_sale, rating_avg, rating_count, show_size, is_featured, is_bestseller, is_new, is_trending, pieces_per_pack, categories(slug, name), product_images(url, alt, sort_order), product_variants(id, size, color, sku, stock)";
 
 export async function getCategoryBySlug(slug: string): Promise<DbCategory | null> {
   const supabase = await createClient();
@@ -160,6 +177,20 @@ export async function getAllProductSlugs(): Promise<string[]> {
       .select("slug")
       .eq("is_active", true);
     return (data ?? []).map((p: { slug: string }) => p.slug);
+  } catch {
+    return [];
+  }
+}
+
+export async function getActiveCategories() {
+  try {
+    const supabase = await createClient();
+    const { data } = await supabase
+      .from("categories")
+      .select("id, slug, name, tagline, image_url")
+      .eq("is_active", true)
+      .order("name");
+    return data || [];
   } catch {
     return [];
   }

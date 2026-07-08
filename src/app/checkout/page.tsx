@@ -755,17 +755,21 @@ export default function CheckoutPage() {
             {/* Items review */}
             <div className="space-y-3.5 max-h-[220px] overflow-y-auto pr-2 divide-y divide-line/35">
               {cart.map((item) => (
-                <div key={item.id + (item.variant?.sku || "")} className="flex gap-3 text-xs pt-3 first:pt-0">
-                  <div className="w-10 h-10 border border-line rounded bg-cream flex-shrink-0 relative overflow-hidden">
-                    <img src={item.image} alt="" className="object-cover w-full h-full" />
+                <div key={item.id + (item.variant?.sku || "")} className="flex justify-between items-start gap-3 text-xs pt-3 first:pt-0">
+                  <div className="flex gap-3 min-w-0 flex-1">
+                    <div className="w-10 h-10 border border-line rounded bg-cream flex-shrink-0 relative overflow-hidden">
+                      <img src={item.image} alt="" className="object-cover w-full h-full" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold text-ink line-clamp-2 hover:underline">
+                        <Link href={`/product/${item.slug}`}>{item.name}</Link>
+                      </p>
+                      <p className="text-taupe mt-0.5 text-[10px]">
+                        {item.variant ? `${item.variant.size || ""} ${item.variant.color || ""}`.trim() : "Standard"} &times; {item.quantity}
+                      </p>
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-ink truncate">{item.name}</p>
-                    <p className="text-taupe mt-0.5">
-                      {item.variant ? `${item.variant.size || ""} ${item.variant.color || ""}`.trim() : "Standard"} &times; {item.quantity}
-                    </p>
-                  </div>
-                  <span className="font-medium text-ink">{formatINR(item.pricePaise * item.quantity, true)}</span>
+                  <span className="font-medium text-ink flex-shrink-0 whitespace-nowrap pl-2">{formatINR(item.pricePaise * item.quantity, true)}</span>
                 </div>
               ))}
             </div>

@@ -122,6 +122,13 @@ export function ProductCard({ product, index = 0 }: { product: Product; index?: 
             Sizes: {Array.from(new Set(product.variants?.map(v => v.size).filter(Boolean) || [])).join(", ") || "Standard"}
           </div>
         )}
+        {product.piecesPerPack && product.piecesPerPack > 1 && (
+          <div className="mt-1">
+            <span className="inline-flex items-center bg-zari/10 border border-zari/25 text-zari-deep rounded px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider font-sans">
+              Pack of {product.piecesPerPack} Pieces
+            </span>
+          </div>
+        )}
         <div className="mt-1 flex items-baseline gap-2">
           <span className="font-semibold text-ink">{formatINR(product.pricePaise, true)}</span>
           {product.compareAtPaise && (

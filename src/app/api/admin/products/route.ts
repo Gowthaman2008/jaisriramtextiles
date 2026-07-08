@@ -52,6 +52,7 @@ export async function GET() {
       ? `
         id, slug, name, description, price_paise, compare_at_paise, 
         cashback_paise, stock, is_active, is_on_sale, rating_avg, rating_count, show_size,
+        is_featured, is_bestseller, is_new, is_trending, pieces_per_pack,
         category_id,
         categories (slug, name),
         product_images (id, url, alt, sort_order),
@@ -60,6 +61,7 @@ export async function GET() {
       : `
         id, slug, name, description, price_paise, compare_at_paise, 
         cashback_paise, stock, is_active, is_on_sale, rating_avg, rating_count,
+        is_featured, is_bestseller, is_new, is_trending, pieces_per_pack,
         category_id,
         categories (slug, name),
         product_images (id, url, alt, sort_order),
@@ -99,6 +101,11 @@ export async function POST(request: Request) {
       is_active,
       is_on_sale,
       show_size,
+      is_featured,
+      is_bestseller,
+      is_new,
+      is_trending,
+      pieces_per_pack,
       images, // Array of strings or object {url, alt, sort_order}
       variants, // Array of {size, color, sku, stock}
     } = await request.json();
@@ -121,6 +128,11 @@ export async function POST(request: Request) {
       stock: stock || 0,
       is_active: is_active !== undefined ? is_active : true,
       is_on_sale: is_on_sale || false,
+      is_featured: is_featured || false,
+      is_bestseller: is_bestseller || false,
+      is_new: is_new || false,
+      is_trending: is_trending || false,
+      pieces_per_pack: pieces_per_pack || 1,
     };
 
     const hasShowSize = await checkShowSizeColumn(supabase);
@@ -200,6 +212,11 @@ export async function PUT(request: Request) {
       is_active,
       is_on_sale,
       show_size,
+      is_featured,
+      is_bestseller,
+      is_new,
+      is_trending,
+      pieces_per_pack,
       images,
       variants,
     } = await request.json();
@@ -222,6 +239,11 @@ export async function PUT(request: Request) {
       stock: stock || 0,
       is_active: is_active !== undefined ? is_active : true,
       is_on_sale: is_on_sale || false,
+      is_featured: is_featured || false,
+      is_bestseller: is_bestseller || false,
+      is_new: is_new || false,
+      is_trending: is_trending || false,
+      pieces_per_pack: pieces_per_pack !== undefined ? pieces_per_pack : 1,
     };
 
     const hasShowSize = await checkShowSizeColumn(supabase);

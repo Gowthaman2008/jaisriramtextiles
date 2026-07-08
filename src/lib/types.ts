@@ -7,6 +7,7 @@ export type Product = {
   pricePaise: number;
   compareAtPaise: number | null; // original price for showing discount
   cashbackPaise: number; // configurable per product, credited after delivery
+  piecesPerPack?: number;
   rating: number; // 0–5
   reviewCount: number;
   image: string;
@@ -17,6 +18,10 @@ export type Product = {
   stock: number;
   badges?: ("new" | "bestseller" | "trending" | "sale")[];
   showSize?: boolean;
+  isFeatured?: boolean;
+  isBestseller?: boolean;
+  isNewArrival?: boolean;
+  isTrending?: boolean;
   variants?: {
     id: string;
     size: string | null;

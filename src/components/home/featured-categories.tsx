@@ -6,9 +6,41 @@ import { motion } from "framer-motion";
 import { ArrowUpRight } from "lucide-react";
 import { Container } from "@/components/ui/container";
 import { SectionHeading } from "@/components/ui/section-heading";
-import { categories } from "@/data/mock";
+import { categories as mockCategories } from "@/data/mock";
+import type { Product } from "@/lib/types";
 
-export function FeaturedCategories() {
+type DbCategory = {
+  id: string;
+  slug: string;
+  name: string;
+  tagline: string | null;
+  image_url: string | null;
+};
+
+export function FeaturedCategories({
+  dbCategories = [],
+  products = [],
+}: {
+  dbCategories?: DbCategory[];
+  products?: Product[];
+}) {
+  // Map database categories to Category format. Fallback to mock categories if empty.
+  const activeCategories = dbCategories.length > 0
+    ? dbCategories
+        .filter((cat) => cat.slug !== "all" && cat.slug !== "bulk-orders") // exclude virtual lists
+        .map((dbCat) => {
+          const count = products.filter((p) => p.category === dbCat.slug).length;
+          const mockCat = mockCategories.find((m) => m.slug === dbCat.slug);
+          return {
+            slug: dbCat.slug,
+            label: dbCat.name,
+            tagline: dbCat.tagline || mockCat?.tagline || "",
+            image: dbCat.image_url || mockCat?.image || "",
+            count: count,
+          };
+        })
+    : mockCategories;
+
   return (
     <section className="py-20 sm:py-24">
       <Container>
@@ -19,7 +51,7 @@ export function FeaturedCategories() {
         />
 
         <div className="mt-12 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
-          {categories.map((c, i) => (
+          {activeCategories.map((c, i) => (
             <motion.div
               key={c.slug}
               initial={{ opacity: 0, y: 20 }}
