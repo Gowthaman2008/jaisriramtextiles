@@ -191,9 +191,26 @@ export async function POST(request: Request) {
       }
     }
 
-    // 5. Calculate Shipping Fee
-    const qualifiesFree = subtotalPaise >= 69900; // Free shipping threshold: ₹699
-    const shippingPaise = qualifiesFree ? 0 : 9900; // ₹99 Standard Shipping
+    // 5. Load shipping settings from app_settings (admin-configurable)
+    let freeShippingThresholdPaise = 69900; // default ₹699
+    let standardShippingPaise = 9900;       // default ₹99
+    try {
+      const { data: shippingSettings } = await supabase
+        .from("app_settings")
+        .select("value")
+        .eq("key", "shipping_settings")
+        .maybeSingle();
+      if (shippingSettings?.value) {
+        freeShippingThresholdPaise = shippingSettings.value.free_shipping_threshold_paise ?? freeShippingThresholdPaise;
+        standardShippingPaise = shippingSettings.value.shipping_charge_paise ?? standardShippingPaise;
+      }
+    } catch (err) {
+      console.error("Could not load shipping settings, using defaults:", err);
+    }
+
+    // 6. Calculate Shipping Fee
+    const qualifiesFree = subtotalPaise >= freeShippingThresholdPaise;
+    const shippingPaise = qualifiesFree ? 0 : standardShippingPaise;
 
     // 6. Calculate grand total
     const totalPaise = subtotalPaise - discountPaise - walletUsedPaise + shippingPaise;

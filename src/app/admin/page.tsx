@@ -347,6 +347,12 @@ export default function AdminDashboardPage() {
   const [activeReplies, setActiveReplies] = useState<any[]>([]);
   const [loadingReplies, setLoadingReplies] = useState(false);
 
+  // Shipping Settings state
+  const [shippingSettings, setShippingSettings] = useState<{ free_shipping_threshold_paise: number; shipping_charge_paise: number } | null>(null);
+  const [shippingThresholdInput, setShippingThresholdInput] = useState<number | "">("");
+  const [shippingChargeInput, setShippingChargeInput] = useState<number | "">("");
+  const [savingShipping, setSavingShipping] = useState(false);
+
   useEffect(() => {
     if (!selectedSupportId) {
       setActiveReplies([]);
@@ -492,6 +498,7 @@ export default function AdminDashboardPage() {
     const supportPromise = supabase.from("support_messages").select("*, profiles(user_id)").order("created_at", { ascending: false });
     const bulkPromise = supabase.from("bulk_inquiries").select("*").order("created_at", { ascending: false });
     const subsPromise = supabase.from("newsletter_subscriptions").select("*").order("created_at", { ascending: false });
+    const shippingPromise = fetch("/api/admin/settings");
     const couponsPromise = fetch("/api/admin/coupons");
     const reviewsPromise = fetch("/api/admin/reviews");
 
@@ -607,6 +614,18 @@ export default function AdminDashboardPage() {
       console.error("Load reviews failed:", err);
     }
 
+    try {
+      const shippingRes = await shippingPromise;
+      if (shippingRes.ok) {
+        const shippingData = await shippingRes.json();
+        setShippingSettings(shippingData);
+        setShippingThresholdInput(shippingData.free_shipping_threshold_paise / 100);
+        setShippingChargeInput(shippingData.shipping_charge_paise / 100);
+      }
+    } catch (err) {
+      console.error("Load shipping settings failed:", err);
+    }
+
     setError(hadError ? "Some dashboard data failed to load — check the browser console for details." : "");
     setLoading(false);
     setRefreshing(false);
@@ -663,6 +682,40 @@ export default function AdminDashboardPage() {
       setCoupons((await res.json()) || []);
     } catch (err) {
       console.error("Refresh coupons failed:", err);
+    }
+  }
+
+  async function handleSaveShipping(e: React.FormEvent) {
+    e.preventDefault();
+    const thresholdRupees = Number(shippingThresholdInput);
+    const chargeRupees = Number(shippingChargeInput);
+    if (!thresholdRupees || thresholdRupees < 0 || !chargeRupees || chargeRupees < 0) {
+      notify("Please enter valid positive values for both fields.");
+      return;
+    }
+    setSavingShipping(true);
+    try {
+      const res = await fetch("/api/admin/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          free_shipping_threshold_paise: Math.round(thresholdRupees * 100),
+          shipping_charge_paise: Math.round(chargeRupees * 100),
+        }),
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || "Failed to save shipping settings");
+      }
+      setShippingSettings({
+        free_shipping_threshold_paise: Math.round(thresholdRupees * 100),
+        shipping_charge_paise: Math.round(chargeRupees * 100),
+      });
+      notify("✅ Shipping settings saved! New orders will use the updated values.");
+    } catch (err: any) {
+      notify("Error: " + err.message);
+    } finally {
+      setSavingShipping(false);
     }
   }
 
@@ -2100,6 +2153,7 @@ export default function AdminDashboardPage() {
                 <TabButton active={activeTab === "cms"} onClick={() => setActiveTab("cms")} icon={<Wrench className="w-4 h-4" />} label="Storefront CMS" />
                 <TabButton active={activeTab === "refunds"} onClick={() => setActiveTab("refunds")} icon={<RefreshCw className="w-4 h-4" />} label="Issue Refund" badge={orders.filter(o => (o.status === "returned" || o.status === "rejected") && o.payment_status !== "refunded").length} />
                 <TabButton active={activeTab === "coupons"} onClick={() => setActiveTab("coupons")} icon={<Ticket className="w-4 h-4" />} label="Promo Codes" badge={coupons.length} />
+                <TabButton active={activeTab === "shipping"} onClick={() => setActiveTab("shipping")} icon={<Truck className="w-4 h-4" />} label="Shipping Settings" />
                 <TabButton active={activeTab === "users"} onClick={() => setActiveTab("users")} icon={<Users className="w-4 h-4" />} label="User Management" badge={users.length} />
                 <TabButton active={activeTab === "user-inspector"} onClick={() => setActiveTab("user-inspector")} icon={<Search className="w-4 h-4" />} label="User Inspector" />
                 <TabButton active={activeTab === "reviews"} onClick={() => setActiveTab("reviews")} icon={<Star className="w-4 h-4" />} label="Customer Reviews" badge={reviews.length} />
@@ -4862,7 +4916,153 @@ $$ language plpgsql;`}
                 )}
               </div>
             )}
+            {/* Shipping Settings Tab */}
+            {activeTab === "shipping" && (
+              <div className="space-y-6 animate-fade-up">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="font-display text-2xl text-ink">Shipping Settings</h2>
+                    <p className="text-sm text-taupe mt-1">Configure free delivery threshold and standard shipping fee for all orders.</p>
+                  </div>
+                  <div className="p-3 bg-zari/10 border border-zari/25 rounded-full">
+                    <Truck className="w-6 h-6 text-zari-deep" />
+                  </div>
+                </div>
+
+                {/* Current Active Settings Banner */}
+                {shippingSettings && (
+                  <div className="bg-ink text-ivory rounded-card p-5 flex flex-col sm:flex-row gap-4 sm:gap-8 shadow-lift">
+                    <div className="flex-1 text-center border-b sm:border-b-0 sm:border-r border-white/15 pb-4 sm:pb-0 sm:pr-8">
+                      <p className="text-[10px] uppercase tracking-widest text-zari font-bold mb-1">Free Delivery Above</p>
+                      <p className="font-display text-3xl font-bold text-ivory">₹{shippingSettings.free_shipping_threshold_paise / 100}</p>
+                      <p className="text-xs text-white/50 mt-1">Orders at or above this value get free shipping</p>
+                    </div>
+                    <div className="flex-1 text-center">
+                      <p className="text-[10px] uppercase tracking-widest text-zari font-bold mb-1">Standard Shipping Fee</p>
+                      <p className="font-display text-3xl font-bold text-ivory">₹{shippingSettings.shipping_charge_paise / 100}</p>
+                      <p className="text-xs text-white/50 mt-1">Applied to orders below the free delivery threshold</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Edit Form */}
+                <div className="bg-white border border-line rounded-card p-6 shadow-soft">
+                  <h3 className="font-semibold text-ink mb-5 flex items-center gap-2">
+                    <Edit2 className="w-4 h-4 text-zari" />
+                    Update Shipping Rules
+                  </h3>
+                  <form onSubmit={handleSaveShipping} className="space-y-6">
+                    {/* Free Delivery Threshold */}
+                    <div className="space-y-2">
+                      <label className="text-sm font-bold text-ink block">
+                        Free Delivery Threshold (₹)
+                      </label>
+                      <p className="text-xs text-taupe">Orders with subtotal equal to or above this amount qualify for FREE delivery.</p>
+                      <div className="flex items-center gap-3 mt-2">
+                        <div className="relative flex-1 max-w-xs">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-taupe font-bold text-sm">₹</span>
+                          <input
+                            type="number"
+                            min="0"
+                            step="1"
+                            value={shippingThresholdInput}
+                            onChange={(e) => setShippingThresholdInput(e.target.value === "" ? "" : Number(e.target.value))}
+                            className="w-full rounded-card border border-line bg-cream/30 pl-8 pr-4 py-2.5 text-sm font-semibold text-ink outline-none focus:border-zari focus:ring-1 focus:ring-zari/30 transition-all"
+                            placeholder="699"
+                            required
+                          />
+                        </div>
+                        {shippingThresholdInput !== "" && (
+                          <div className="flex items-center gap-1.5 bg-success/10 border border-success/25 text-success text-xs font-semibold px-3 py-1.5 rounded-full">
+                            <CheckCircle className="w-3.5 h-3.5" />
+                            Free above ₹{shippingThresholdInput}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="border-t border-line" />
+
+                    {/* Standard Shipping Fee */}
+                    <div className="space-y-2">
+                      <label className="text-sm font-bold text-ink block">
+                        Standard Shipping Fee (₹)
+                      </label>
+                      <p className="text-xs text-taupe">This fee is charged for orders below the free delivery threshold.</p>
+                      <div className="flex items-center gap-3 mt-2">
+                        <div className="relative flex-1 max-w-xs">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-taupe font-bold text-sm">₹</span>
+                          <input
+                            type="number"
+                            min="0"
+                            step="1"
+                            value={shippingChargeInput}
+                            onChange={(e) => setShippingChargeInput(e.target.value === "" ? "" : Number(e.target.value))}
+                            className="w-full rounded-card border border-line bg-cream/30 pl-8 pr-4 py-2.5 text-sm font-semibold text-ink outline-none focus:border-zari focus:ring-1 focus:ring-zari/30 transition-all"
+                            placeholder="99"
+                            required
+                          />
+                        </div>
+                        {shippingChargeInput !== "" && (
+                          <div className="flex items-center gap-1.5 bg-zari/10 border border-zari/25 text-zari-deep text-xs font-semibold px-3 py-1.5 rounded-full">
+                            <Truck className="w-3.5 h-3.5" />
+                            ₹{shippingChargeInput} charged
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Live Preview Box */}
+                    {shippingThresholdInput !== "" && shippingChargeInput !== "" && (
+                      <div className="bg-cream/40 border border-zari/20 rounded-card p-4 space-y-2">
+                        <p className="text-[11px] font-bold uppercase tracking-wider text-zari-deep">Live Preview</p>
+                        <div className="flex flex-col gap-1 text-sm text-taupe">
+                          <div className="flex items-center gap-2">
+                            <span className="text-success font-bold">✓</span>
+                            <span>Order ≥ <strong className="text-ink">₹{shippingThresholdInput}</strong> → <strong className="text-success">FREE delivery</strong></span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-danger font-bold">✗</span>
+                            <span>Order &lt; <strong className="text-ink">₹{shippingThresholdInput}</strong> → <strong className="text-danger">₹{shippingChargeInput} shipping fee</strong></span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex items-center gap-3 pt-2">
+                      <Button type="submit" variant="gold" disabled={savingShipping} className="shadow-glow">
+                        {savingShipping ? "Saving..." : "Save Shipping Settings"}
+                      </Button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (shippingSettings) {
+                            setShippingThresholdInput(shippingSettings.free_shipping_threshold_paise / 100);
+                            setShippingChargeInput(shippingSettings.shipping_charge_paise / 100);
+                          }
+                        }}
+                        className="text-sm text-taupe hover:text-ink underline underline-offset-2 cursor-pointer"
+                      >
+                        Reset to current
+                      </button>
+                    </div>
+                  </form>
+                </div>
+
+                {/* Info Card */}
+                <div className="bg-cream/30 border border-line rounded-card p-5 text-sm text-taupe space-y-2">
+                  <p className="font-semibold text-ink text-xs uppercase tracking-wider">ℹ️ How it works</p>
+                  <ul className="space-y-1.5 list-disc list-inside text-xs">
+                    <li>Changes take effect <strong className="text-ink">immediately</strong> for all new orders placed after saving.</li>
+                    <li>Already placed orders are <strong className="text-ink">not affected</strong> — their shipping fee is locked at checkout.</li>
+                    <li>The cart page also dynamically reads this threshold to show free delivery progress.</li>
+                    <li>Set shipping fee to <strong className="text-ink">0</strong> to offer free shipping for all orders regardless of value.</li>
+                  </ul>
+                </div>
+              </div>
+            )}
           </div>
+
         </div>
       </Container>
 
