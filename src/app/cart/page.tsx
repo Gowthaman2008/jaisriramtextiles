@@ -284,11 +284,11 @@ export default function CartPage() {
                                 </p>
                               </div>
 
-                              {/* Floating Gift Box Icon Wrapper (Compact) */}
-                              <div className="relative shrink-0 w-9 h-9 flex items-center justify-center">
+                              {/* Floating Gift Box Icon Wrapper */}
+                              <div className="relative shrink-0 w-11 h-11 flex items-center justify-center">
                                 <div className="absolute inset-0 rounded-full bg-[#B08D4C]/10 animate-pulse-ring" />
-                                <div className="w-7.5 h-7.5 rounded-full bg-gradient-to-br from-[#D9BE85] to-[#B08D4C] text-white flex items-center justify-center animate-float-gift shadow-sm relative z-10">
-                                  <Gift size={14} className="stroke-[2]" />
+                                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#D9BE85] to-[#B08D4C] text-white flex items-center justify-center animate-float-gift shadow-sm relative z-10">
+                                  <Gift size={16} className="stroke-[2]" />
                                 </div>
                               </div>
                             </div>
