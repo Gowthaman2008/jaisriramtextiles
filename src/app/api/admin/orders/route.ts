@@ -38,7 +38,7 @@ export async function GET() {
       .select(`
         *,
         profiles (user_id, full_name, email, phone),
-        order_items (*),
+        order_items (*, products(description)),
         order_events (*),
         coupons (code, type, value)
       `)
@@ -88,7 +88,7 @@ export async function PUT(request: Request) {
     // Load original order to compare status (and enough detail to email on delivery)
     const { data: originalOrder } = await supabase
       .from("orders")
-      .select("status, payment_status, order_number, total_paise, profiles(email, full_name), order_items(name, variant, unit_price_paise, quantity)")
+      .select("status, payment_status, order_number, total_paise, tracking_id, profiles(email, full_name), order_items(name, variant, unit_price_paise, quantity, image_url)")
       .eq("id", id)
       .single();
 
@@ -138,6 +138,7 @@ export async function PUT(request: Request) {
               name: profile.full_name,
               items: originalOrder.order_items || [],
               totalPaise: originalOrder.total_paise,
+              trackingId: originalOrder.tracking_id || tracking_id,
             }),
           }).catch((err) => console.error("Delivery email failed:", err));
         }
@@ -178,6 +179,25 @@ export async function PUT(request: Request) {
 
       const profile = originalOrder.profiles as any;
       if (profile?.email) {
+        // Fetch screenshot image to attach as a file
+        let attachments: any[] = [];
+        if (refund_screenshot_url) {
+          try {
+            const imgRes = await fetch(refund_screenshot_url);
+            if (imgRes.ok) {
+              const buffer = await imgRes.arrayBuffer();
+              const base64Content = Buffer.from(buffer).toString("base64");
+              const extension = refund_screenshot_url.split(".").pop()?.split("?")[0] || "jpg";
+              attachments.push({
+                filename: `refund_proof_receipt.${extension}`,
+                content: base64Content,
+              });
+            }
+          } catch (fetchErr) {
+            console.error("Failed to download refund screenshot for attachment:", fetchErr);
+          }
+        }
+
         await sendEmail({
           to: profile.email,
           subject: `Refund Processed — ${originalOrder.order_number} | JAI SRI RAM TEXTILES`,
@@ -191,6 +211,7 @@ export async function PUT(request: Request) {
             note: refund_note,
             screenshotUrl: refund_screenshot_url,
           }),
+          attachments: attachments.length > 0 ? attachments : undefined,
         }).catch((err) => console.error("Refund email failed:", err));
       }
     }

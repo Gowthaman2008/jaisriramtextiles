@@ -4,6 +4,7 @@ import React, { useEffect, useState, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { useNotification } from "@/components/providers/notification-provider";
 import { jsPDF } from "jspdf";
 import { drawInvoicePdf } from "@/lib/invoice-generator";
 import { Button } from "@/components/ui/button";
@@ -239,6 +240,7 @@ const DEFAULT_PRODUCTS = [
 ];
 
 export default function AdminDashboardPage() {
+  const { notify, confirm } = useNotification();
   const [activeTab, setActiveTab] = useState("overview");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -290,6 +292,7 @@ export default function AdminDashboardPage() {
   const [prodCashback, setProdCashback] = useState<number | "">(""); // in Rupees
   const [prodStock, setProdStock] = useState<number | "">("");
   const [prodPiecesPerPack, setProdPiecesPerPack] = useState<number | "">(1);
+  const [prodHsn, setProdHsn] = useState("52081190");
   const [prodIsActive, setProdIsActive] = useState(true);
   const [prodIsSale, setProdIsSale] = useState(false);
   const [prodIsFeatured, setProdIsFeatured] = useState(false);
@@ -681,10 +684,10 @@ export default function AdminDashboardPage() {
       });
 
       if (!res.ok) throw new Error("Failed to save announcement bar");
-      alert("Announcement Bar updated successfully!");
+      notify("Announcement Bar updated successfully!");
       await refreshCms();
     } catch (err: any) {
-      alert("Error: " + err.message);
+      notify("Error: " + err.message);
     }
   }
 
@@ -704,7 +707,7 @@ export default function AdminDashboardPage() {
   async function handleSaveSlide(e: React.FormEvent) {
     e.preventDefault();
     if (!slideTitle || !slideImageUrl) {
-      alert("Title and Image URL are required");
+      notify("Title and Image URL are required");
       return;
     }
 
@@ -736,19 +739,19 @@ export default function AdminDashboardPage() {
       setShowSlideForm(false);
       setEditingSlide(null);
       resetSlideFormFields();
-      alert("Hero slide saved successfully!");
+      notify("Hero slide saved successfully!");
       await refreshCms();
     } catch (err: any) {
-      alert("Error: " + err.message);
+      notify("Error: " + err.message);
     }
   }
 
   async function handleDeleteSlide(id: string) {
     if (id.startsWith("default-")) {
-      alert("Default templates cannot be deleted from the database. Save your edits to create custom database slides that override these defaults.");
+      notify("Default templates cannot be deleted from the database. Save your edits to create custom database slides that override these defaults.");
       return;
     }
-    if (!confirm("Are you sure you want to delete this slide?")) return;
+    if (!(await confirm("Are you sure you want to delete this slide?", { danger: true }))) return;
     try {
       const res = await fetch("/api/admin/cms", {
         method: "POST",
@@ -756,10 +759,10 @@ export default function AdminDashboardPage() {
         body: JSON.stringify({ type: "slide", action: "delete", id })
       });
       if (!res.ok) throw new Error("Failed to delete Hero slide");
-      alert("Hero slide deleted successfully!");
+      notify("Hero slide deleted successfully!");
       await refreshCms();
     } catch (err: any) {
-      alert("Error: " + err.message);
+      notify("Error: " + err.message);
     }
   }
 
@@ -822,7 +825,7 @@ export default function AdminDashboardPage() {
       const data = await res.json();
       setSlideImageUrl(data.url);
     } catch (err: any) {
-      alert("Image upload failed: " + err.message);
+      notify("Image upload failed: " + err.message);
     } finally {
       setUploadingSlideImage(false);
     }
@@ -863,7 +866,7 @@ export default function AdminDashboardPage() {
         throw new Error(saveData.error || "Failed to update category image in database");
       }
 
-      alert("Category image updated successfully!");
+      notify("Category image updated successfully!");
 
       // 3. Refresh categories local list
       const { data: newCats } = await supabase
@@ -872,7 +875,7 @@ export default function AdminDashboardPage() {
         .order("sort_order", { ascending: true });
       setCategories(newCats || []);
     } catch (err: any) {
-      alert("Category image update failed: " + err.message);
+      notify("Category image update failed: " + err.message);
     } finally {
       setUploadingCatImage(null);
     }
@@ -919,18 +922,18 @@ export default function AdminDashboardPage() {
         throw new Error(data.error || "Failed to update review");
       }
 
-      alert("Review updated successfully!");
+      notify("Review updated successfully!");
       setEditingReview(null);
       await refreshReviews();
     } catch (err: any) {
-      alert(err.message || "Failed to update review");
+      notify(err.message || "Failed to update review");
     } finally {
       setReviewFormSubmitting(false);
     }
   };
 
   const handleDeleteReviewClick = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this customer review? This cannot be undone.")) return;
+    if (!(await confirm("Are you sure you want to delete this customer review? This cannot be undone.", { danger: true }))) return;
     try {
       const res = await fetch(`/api/admin/reviews?id=${id}`, {
         method: "DELETE",
@@ -941,10 +944,10 @@ export default function AdminDashboardPage() {
         throw new Error(data.error || "Failed to delete review");
       }
 
-      alert("Review deleted successfully!");
+      notify("Review deleted successfully!");
       await refreshReviews();
     } catch (err: any) {
-      alert(err.message || "Failed to delete review");
+      notify(err.message || "Failed to delete review");
     }
   };
 
@@ -960,6 +963,7 @@ export default function AdminDashboardPage() {
     setProdCashback("");
     setProdStock("");
     setProdPiecesPerPack(1);
+    setProdHsn("52081190");
     setProdIsActive(true);
     setProdIsSale(false);
     setProdIsFeatured(false);
@@ -976,7 +980,20 @@ export default function AdminDashboardPage() {
     setEditingProduct(p);
     setProdName(p.name);
     setProdSlug(p.slug);
-    setProdDesc(p.description || "");
+    
+    // Parse HSN from description
+    const descText = p.description || "";
+    const hsnMatch = descText.match(/\[HSN:\s*(\d+)\]/);
+    let hsnVal = "52081190";
+    let cleanDesc = descText;
+    if (hsnMatch) {
+      hsnVal = hsnMatch[1];
+      cleanDesc = descText.replace(/\n*\[HSN:\s*\d+\]/g, "").trim();
+    }
+    
+    setProdDesc(cleanDesc);
+    setProdHsn(hsnVal);
+    
     setProdCatId(p.category_id || "");
     setProdPrice(p.price_paise / 100);
     setProdCompare(p.compare_at_paise ? p.compare_at_paise / 100 : "");
@@ -1000,7 +1017,15 @@ export default function AdminDashboardPage() {
     
     if (prodName !== editingProduct.name) return true;
     if (prodSlug !== editingProduct.slug) return true;
-    if (prodDesc !== (editingProduct.description || "")) return true;
+    // Check modified description without HSN tag
+    const originalDesc = editingProduct.description || "";
+    const originalHsnMatch = originalDesc.match(/\[HSN:\s*(\d+)\]/);
+    const originalCleanDesc = originalHsnMatch ? originalDesc.replace(/\n*\[HSN:\s*\d+\]/g, "").trim() : originalDesc;
+    if (prodDesc !== originalCleanDesc) return true;
+
+    const originalHsn = originalHsnMatch ? originalHsnMatch[1] : "52081190";
+    if (prodHsn !== originalHsn) return true;
+    
     if (prodCatId !== (editingProduct.category_id || "")) return true;
     if (prodPrice !== (editingProduct.price_paise / 100)) return true;
     
@@ -1038,14 +1063,14 @@ export default function AdminDashboardPage() {
     const incomingCount = filesArray.length;
 
     if (currentCount >= 10) {
-      alert("You have already uploaded the maximum limit of 10 images.");
+      notify("You have already uploaded the maximum limit of 10 images.");
       return;
     }
 
     let filesToUpload = filesArray;
     if (currentCount + incomingCount > 10) {
       const allowedCount = 10 - currentCount;
-      alert(`You can only upload up to 10 images. Only the first ${allowedCount} selected files will be uploaded.`);
+      notify(`You can only upload up to 10 images. Only the first ${allowedCount} selected files will be uploaded.`);
       filesToUpload = filesArray.slice(0, allowedCount);
     }
 
@@ -1072,7 +1097,7 @@ export default function AdminDashboardPage() {
       const uploadedUrls = await Promise.all(uploadPromises);
       setProdImages([...prodImages, ...uploadedUrls]);
     } catch (err: any) {
-      alert("Image upload failed: " + err.message);
+      notify("Image upload failed: " + err.message);
     } finally {
       e.target.value = "";
       setUploadingImage(false);
@@ -1109,7 +1134,7 @@ export default function AdminDashboardPage() {
 
   function addProductVariant() {
     if (!newVarSize.trim() && !newVarColor.trim()) {
-      alert("Please specify at least a size or color for the variant");
+      notify("Please specify at least a size or color for the variant");
       return;
     }
     const sku = newVarSku.trim() || `VAR-${prodSlug.toUpperCase() || "SKU"}-${newVarSize || "X"}-${newVarColor || "Y"}-${Date.now().toString().slice(-4)}`;
@@ -1148,16 +1173,21 @@ export default function AdminDashboardPage() {
   async function handleSaveProduct(e: React.FormEvent) {
     e.preventDefault();
     if (!prodName.trim() || !prodSlug.trim()) {
-      alert("Product Name and Slug are required");
+      notify("Product Name and Slug are required");
       return;
     }
 
     try {
+      // Append HSN code to description to bypass database schema limits
+      const descriptionWithHsn = prodHsn.trim()
+        ? `${prodDesc.trim()}\n\n[HSN: ${prodHsn.trim()}]`
+        : prodDesc.trim();
+
       const payload = {
         id: editingProduct && !editingProduct.id.startsWith("default-p") ? editingProduct.id : undefined,
         name: prodName.trim(),
         slug: prodSlug.trim(),
-        description: prodDesc.trim(),
+        description: descriptionWithHsn,
         category_id: prodCatId,
         price_paise: Math.round(Number(prodPrice || 0) * 100),
         compare_at_paise: prodCompare && Number(prodCompare) > 0 ? Math.round(Number(prodCompare) * 100) : null,
@@ -1187,18 +1217,18 @@ export default function AdminDashboardPage() {
         throw new Error(data.error || "Failed to save product");
       }
 
-      alert("Product saved successfully!");
+      notify("Product saved successfully!");
       setShowProductForm(false);
       setEditingProduct(null);
       await refreshProducts();
     } catch (err: any) {
-      alert("Error saving product: " + err.message);
+      notify("Error saving product: " + err.message);
     }
   }
 
   async function handleSendSupportReply(id: string, action: "reply" | "close") {
     if (action === "reply" && !supportReplyText.trim()) {
-      alert("Please enter a reply message");
+      notify("Please enter a reply message");
       return;
     }
 
@@ -1231,19 +1261,19 @@ export default function AdminDashboardPage() {
           setActiveReplies(repliesData.replies || []);
         }
       } else {
-        alert("Ticket closed successfully!");
+        notify("Ticket closed successfully!");
         setSelectedSupportId(null);
         setSupportReplyText("");
       }
     } catch (err: any) {
-      alert("Error: " + err.message);
+      notify("Error: " + err.message);
     } finally {
       setSubmittingReply(false);
     }
   }
 
   async function handleDeleteSupport(id: string) {
-    if (!confirm("Are you sure you want to delete this support inquiry? This will also remove it from the user's dashboard and tracking history. This action cannot be undone.")) {
+    if (!(await confirm("Are you sure you want to delete this support inquiry? This will also remove it from the user's dashboard and tracking history. This action cannot be undone.", { danger: true }))) {
       return;
     }
 
@@ -1259,14 +1289,14 @@ export default function AdminDashboardPage() {
 
       // Remove from the local support messages state list
       setSupportMessages((prev) => prev.filter((msg) => msg.id !== id));
-      alert("Support inquiry deleted successfully!");
+      notify("Support inquiry deleted successfully!");
     } catch (err: any) {
-      alert("Error: " + err.message);
+      notify("Error: " + err.message);
     }
   }
 
   async function handleDeleteProduct(p: any) {
-    if (!confirm(`Are you sure you want to delete the product "${p.name}"? This action cannot be undone.`)) {
+    if (!(await confirm(`Are you sure you want to delete the product "${p.name}"? This action cannot be undone.`, { danger: true }))) {
       return;
     }
 
@@ -1282,13 +1312,13 @@ export default function AdminDashboardPage() {
 
       await refreshProducts();
     } catch (err: any) {
-      alert("Delete failed: " + err.message);
+      notify("Delete failed: " + err.message);
     }
   }
 
   async function toggleProductActive(product: any) {
     if (product.id.startsWith("default-p")) {
-      alert("Default product templates cannot be toggled. Save the product to customize it first.");
+      notify("Default product templates cannot be toggled. Save the product to customize it first.");
       return;
     }
     try {
@@ -1300,7 +1330,7 @@ export default function AdminDashboardPage() {
       if (!res.ok) throw new Error("Failed to toggle product status");
       await refreshProducts();
     } catch (err: any) {
-      alert("Error: " + err.message);
+      notify("Error: " + err.message);
     }
   }
 
@@ -1331,7 +1361,7 @@ export default function AdminDashboardPage() {
     if (!selectedOrder) return;
 
     if (orderStatus === "rejected" && !orderRejectionReason.trim()) {
-      alert("Please enter a reason for rejecting this order.");
+      notify("Please enter a reason for rejecting this order.");
       return;
     }
 
@@ -1354,11 +1384,11 @@ export default function AdminDashboardPage() {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || "Failed to update order");
       }
-      alert("Order updated successfully!");
+      notify("Order updated successfully!");
       setSelectedOrder(null);
       await refreshOrders();
     } catch (err: any) {
-      alert("Error updating order: " + err.message);
+      notify("Error updating order: " + err.message);
     }
   }
 
@@ -1379,7 +1409,7 @@ export default function AdminDashboardPage() {
       if (!res.ok) throw new Error("Failed to update user role");
     } catch (err: any) {
       setUsers(previousUsers);
-      alert("Error: " + err.message);
+      notify("Error: " + err.message);
     }
   }
 
@@ -1475,7 +1505,7 @@ export default function AdminDashboardPage() {
   async function handleSaveCoupon(e: React.FormEvent) {
     e.preventDefault();
     if (!newCouponCode.trim() || newCouponValue <= 0) {
-      alert("Promo Code and Value are required");
+      notify("Promo Code and Value are required");
       return;
     }
 
@@ -1500,7 +1530,7 @@ export default function AdminDashboardPage() {
         throw new Error(errData.error || "Failed to create promo code");
       }
 
-      alert("Promo Code created successfully!");
+      notify("Promo Code created successfully!");
       setNewCouponCode("");
       setNewCouponValue(0);
       setNewCouponMinOrder(0);
@@ -1511,7 +1541,7 @@ export default function AdminDashboardPage() {
       setShowCouponForm(false);
       await refreshCoupons();
     } catch (err: any) {
-      alert("Error: " + err.message);
+      notify("Error: " + err.message);
     }
   }
 
@@ -1525,7 +1555,7 @@ export default function AdminDashboardPage() {
       if (!res.ok) throw new Error("Failed to toggle promo code status");
       await refreshCoupons();
     } catch (err: any) {
-      alert("Error: " + err.message);
+      notify("Error: " + err.message);
     }
   }
 
@@ -1547,7 +1577,7 @@ export default function AdminDashboardPage() {
       setDeleteConfirmInput("");
       await refreshOrders();
     } catch (err: any) {
-      alert("Error: " + err.message);
+      notify("Error: " + err.message);
     } finally {
       setDeletingOrder(false);
     }
@@ -1586,7 +1616,7 @@ export default function AdminDashboardPage() {
   async function handleUpdateCoupon(e: React.FormEvent) {
     e.preventDefault();
     if (!editingCoupon || !newCouponCode.trim() || newCouponValue <= 0) {
-      alert("Promo Code and Value are required");
+      notify("Promo Code and Value are required");
       return;
     }
     try {
@@ -1609,19 +1639,19 @@ export default function AdminDashboardPage() {
         const errData = await res.json().catch(() => ({}));
         throw new Error(errData.error || "Failed to update promo code");
       }
-      alert("Promo Code updated successfully!");
+      notify("Promo Code updated successfully!");
       setEditingCoupon(null);
       setNewCouponCode(""); setNewCouponValue(0); setNewCouponMinOrder(0);
       setNewCouponMaxDiscount(0); setNewCouponFirstOrder(false); setNewCouponLimit(0); setNewCouponExpiry("");
       setShowCouponForm(false);
       await refreshCoupons();
     } catch (err: any) {
-      alert("Error: " + err.message);
+      notify("Error: " + err.message);
     }
   }
 
   async function handleDeleteCoupon(id: string) {
-    if (!confirm("Are you sure you want to delete this promo code?")) return;
+    if (!(await confirm("Are you sure you want to delete this promo code?", { danger: true }))) return;
     try {
       const res = await fetch(`/api/admin/coupons?id=${id}`, {
         method: "DELETE"
@@ -1629,7 +1659,7 @@ export default function AdminDashboardPage() {
       if (!res.ok) throw new Error("Failed to delete promo code");
       await refreshCoupons();
     } catch (err: any) {
-      alert("Error: " + err.message);
+      notify("Error: " + err.message);
     }
   }
 
@@ -1646,9 +1676,31 @@ export default function AdminDashboardPage() {
     const printWindow = window.open("", "_blank");
     if (!printWindow) return;
 
+    const trackingId = order.tracking_id || "AWB-" + Math.floor(100000000 + Math.random() * 900000000);
+
+    // Generate dynamic SVG barcode
+    const str = String(trackingId);
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      hash = str.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const seed = Math.abs(hash);
+    let bars = '';
+    let x = 0;
+    for (let i = 0; i < 45; i++) {
+      const val = (seed >> (i % 30)) & 3;
+      const width = (val === 0) ? 1.2 : (val === 1) ? 2.4 : (val === 2) ? 3.6 : 1.8;
+      const isBar = i % 2 === 0;
+      if (isBar) {
+        bars += `<rect x="${x}" y="0" width="${width}" height="32" fill="black" />`;
+      }
+      x += width + (isBar ? 1 : 1.5);
+    }
+    const barcodeSvg = `<svg width="180" height="32" viewBox="0 0 ${x} 32" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">${bars}</svg>`;
+
     const itemsSummary = order.order_items.map((item: any) => `
-      <div style="padding: 6px 0; border-bottom: 1px dashed #E5DFD2; font-size: 14px;">
-        <strong>${item.quantity} x</strong> ${item.name} ${item.variant ? `(${item.variant})` : ""}
+      <div style="padding: 4px 0; border-bottom: 1px dashed #E5DFD2; font-size: 11px; color: #2A2622;">
+        <strong>${item.quantity} x</strong> ${item.name} ${item.variant ? `<span style="color: #6E655A;">(${item.variant})</span>` : ""}
       </div>
     `).join("");
 
@@ -1657,104 +1709,117 @@ export default function AdminDashboardPage() {
         <head>
           <title>Packing Sticker - ${order.order_number}</title>
           <style>
-            body { font-family: 'Segoe UI', Roboto, sans-serif; color: #2A2622; margin: 0; padding: 20px; }
-            .box {
-              border: 3px dashed #B08D4C;
-              border-radius: 12px;
-              padding: 25px;
-              max-width: 550px;
-              margin: 0 auto;
+            @page { size: A4; margin: 0; }
+            body { margin: 0; padding: 0; background-color: #FFFFFF; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+            .label-wrapper {
+              width: 210mm;
+              height: 148mm;
+              box-sizing: border-box;
+              padding: 12mm 15mm;
+              position: relative;
+            }
+            .label-box {
+              border: 2px dashed #B08D4C;
+              border-radius: 8px;
+              padding: 18px;
+              height: 100%;
+              box-sizing: border-box;
               background-color: #FBF9F4;
+              display: flex;
+              flex-direction: column;
+              justify-content: space-between;
             }
-            .header {
+            .cut-line {
+              width: 210mm;
+              border-top: 1.5px dashed #B08D4C;
+              position: absolute;
+              top: 148mm;
+              left: 0;
               text-align: center;
-              border-bottom: 2px solid #2A2622;
-              padding-bottom: 12px;
-              margin-bottom: 20px;
+              line-height: 0;
             }
-            .title { font-family: Georgia, serif; font-size: 20px; font-weight: bold; letter-spacing: 1px; }
-            .order-bar {
-              display: flex;
-              justify-content: space-between;
-              background-color: #2A2622;
-              color: #FBF9F4;
-              padding: 8px 15px;
+            .cut-line span {
+              background: #FFFFFF;
+              padding: 0 12px;
+              color: #B08D4C;
+              font-size: 9px;
               font-weight: bold;
-              font-size: 15px;
-              border-radius: 4px;
-              margin-bottom: 20px;
-            }
-            .address-section { margin-bottom: 25px; }
-            .address-label {
-              font-size: 11px;
-              color: #6E655A;
               text-transform: uppercase;
-              letter-spacing: 2px;
-              font-weight: bold;
-              margin-bottom: 6px;
-            }
-            .address-content {
-              font-size: 18px;
-              line-height: 1.5;
-              padding-left: 10px;
-              border-left: 3px solid #B08D4C;
-            }
-            .items-summary {
-              background-color: #F5F1E8;
-              border: 1px solid #E5DFD2;
-              border-radius: 6px;
-              padding: 15px;
-              margin-bottom: 20px;
-            }
-            .sender {
-              display: flex;
-              justify-content: space-between;
-              font-size: 11px;
-              color: #6E655A;
-              border-top: 1px solid #E5DFD2;
-              padding-top: 10px;
+              letter-spacing: 1.5px;
+              position: relative;
+              top: -6px;
             }
           </style>
         </head>
         <body>
-          <div class="box">
-            <div class="header">
-              <div class="title">JAI SRI RAM TEXTILES</div>
-              <div style="font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; color: #6E655A; margin-top: 4px;">PACKING SLIP & BOX LABEL</div>
-            </div>
+          <div class="label-wrapper">
+            <div class="label-box">
+              <!-- Header -->
+              <div style="display: flex; justify-content: space-between; border-bottom: 2px solid #1A1612; padding-bottom: 8px;">
+                <div>
+                  <div style="font-family: 'Times New Roman', Georgia, serif; font-size: 18px; font-weight: bold; color: #B08D4C; letter-spacing: 1px;">JAI SRI RAM TEXTILES</div>
+                  <div style="font-size: 9px; color: #6E655A; text-transform: uppercase; letter-spacing: 1.5px; margin-top: 1px; font-weight: bold;">Packing Slip &amp; Shipping Label</div>
+                </div>
+                <div style="background-color: #1A1612; color: #B08D4C; padding: 4px 12px; font-family: Arial, sans-serif; font-weight: bold; border-radius: 4px; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; align-self: center;">
+                  Shadowfax
+                </div>
+              </div>
 
-            <div class="order-bar">
-              <span>ORDER: ${order.order_number}</span>
-              <span>ITEMS: ${order.order_items.reduce((sum: number, it: any) => sum + it.quantity, 0)}</span>
-            </div>
+              <!-- Info Grid -->
+              <table style="width: 100%; border-collapse: collapse; margin-top: 10px; margin-bottom: 10px;">
+                <tr>
+                  <td style="width: 55%; vertical-align: top; padding: 0 10px 0 0;">
+                    <div style="font-size: 9px; color: #6E655A; text-transform: uppercase; font-weight: bold; letter-spacing: 0.5px; margin-bottom: 4px;">Deliver To:</div>
+                    <div style="font-size: 14px; font-weight: bold; color: #1A1612; margin-bottom: 4px;">${order.shipping_address.recipient}</div>
+                    <div style="font-size: 11px; color: #2A2622; line-height: 1.4;">
+                      ${order.shipping_address.line1}<br/>
+                      ${order.shipping_address.line2 ? order.shipping_address.line2 + "<br/>" : ""}
+                      ${order.shipping_address.city}, ${order.shipping_address.district ? order.shipping_address.district + ", " : ""}${order.shipping_address.state} - <b>${order.shipping_address.pincode}</b>
+                    </div>
+                    <div style="font-size: 12px; font-weight: bold; margin-top: 6px; color: #1A1612;">
+                      Mobile: ${order.shipping_address.phone}
+                    </div>
+                  </td>
+                  <td style="width: 45%; vertical-align: top; padding: 0 0 0 10px; border-left: 1px solid #E5DFD2; text-align: center;">
+                    <div style="font-size: 9px; color: #6E655A; text-transform: uppercase; font-weight: bold; letter-spacing: 0.5px; margin-bottom: 6px; text-align: left;">AWB Tracking Barcode:</div>
+                    <div style="margin-bottom: 6px; display: inline-block;">
+                      ${barcodeSvg}
+                      <div style="font-family: monospace; font-size: 9px; margin-top: 2px; letter-spacing: 1px; color: #6E655A;">${trackingId}</div>
+                    </div>
+                    <div style="border: 2px solid #1A1612; background-color: #FFFFFF; padding: 6px; border-radius: 4px; margin-top: 8px;">
+                      <span style="font-size: 8px; color: #6E655A; text-transform: uppercase; display: block; font-weight: bold; letter-spacing: 0.5px;">Destination Pincode</span>
+                      <span style="font-size: 20px; font-weight: bold; color: #1A1612; letter-spacing: 1px; font-family: monospace;">${order.shipping_address.pincode}</span>
+                    </div>
+                  </td>
+                </tr>
+              </table>
 
-            <div class="address-section">
-              <div class="address-label">DELIVER TO (SHIPPING ADDRESS)</div>
-              <div class="address-content">
-                <strong>${order.shipping_address.recipient}</strong><br/>
-                ${order.shipping_address.line1}<br/>
-                ${order.shipping_address.line2 ? order.shipping_address.line2 + "<br/>" : ""}
-                ${order.shipping_address.city}, ${order.shipping_address.district ? order.shipping_address.district + ", " : ""}${order.shipping_address.state} - <span style="font-size: 22px; font-weight: bold; text-decoration: underline; background-color: #EFEFEF; padding: 0 4px;">${order.shipping_address.pincode}</span><br/>
-                ${order.shipping_address.phone ? `<span style="font-size: 18px; font-weight: bold; display: inline-block; margin-top: 5px;">Mobile: ${order.shipping_address.phone}${order.shipping_address.alternate_phone ? " / " + order.shipping_address.alternate_phone : ""}</span><br/>` : ""}
+              <!-- Package Checklist -->
+              <div style="border: 1px solid #E5DFD2; border-radius: 6px; background-color: #FFFFFF; padding: 8px 12px;">
+                <div style="font-size: 8.5px; color: #6E655A; text-transform: uppercase; font-weight: bold; letter-spacing: 0.5px; border-bottom: 1px solid #F5F2EB; padding-bottom: 4px; margin-bottom: 6px;">
+                  Package Checklist (Total Items: ${order.order_items.reduce((sum: number, it: any) => sum + it.quantity, 0)})
+                </div>
+                <div style="max-height: 80px; overflow-y: auto;">
+                  ${itemsSummary}
+                </div>
+              </div>
+
+              <!-- Sender Details & Footer -->
+              <div style="display: flex; justify-content: space-between; border-top: 1px solid #E5DFD2; padding-top: 8px; font-size: 9px; color: #6E655A; margin-top: 10px;">
+                <div>
+                  <b>SENDER DETAILS:</b><br/>
+                  JAI SRI RAM TEXTILES, Komarapalayam, Tamil Nadu - 638183
+                </div>
+                <div style="text-align: right; line-height: 1.3;">
+                  Order ID: <b>${order.order_number}</b><br/>
+                  Razorpay: ${order.razorpay_payment_id || "PREPAID"}
+                </div>
               </div>
             </div>
-
-            <div class="items-summary">
-              <div class="address-label" style="margin-bottom: 10px;">Package Checklist</div>
-              ${itemsSummary}
-            </div>
-
-            <div class="sender">
-              <div>
-                <strong>SENDER DETAILS:</strong><br/>
-                JAI SRI RAM TEXTILES<br/>
-                Komarapalayam, Tamil Nadu - 638183
-              </div>
-              <div style="text-align: right;">
-                Razorpay ID: ${order.razorpay_payment_id || "PREPAID"}<br/>
-                Carrier Code: ${order.tracking_id || "STD-SURFACE"}
-              </div>
-            </div>
+          </div>
+          
+          <div class="cut-line">
+            <span>✂ - - - - - - - - - - - - CUT HERE - - - - - - - - - - - -</span>
           </div>
 
           <script>
@@ -1777,7 +1842,7 @@ export default function AdminDashboardPage() {
       o.order_number?.toLowerCase() === trimmed || o.id?.toLowerCase() === trimmed
     );
     if (!order) {
-      alert(`No order found matching "${emergencyLookupQuery}". Check the Order Number and try again.`);
+      notify(`No order found matching "${emergencyLookupQuery}". Check the Order Number and try again.`);
       return;
     }
     setEmergencyLookupOpen(false);
@@ -1798,134 +1863,146 @@ export default function AdminDashboardPage() {
 
     const itemsRows = items.map((item: any) => `
       <tr>
-        <td style="padding: 6px; border-bottom: 1px solid #EFE9DC;">${item.name}</td>
-        <td style="padding: 6px; border-bottom: 1px solid #EFE9DC; text-align: center;">${item.variant || "—"}</td>
-        <td style="padding: 6px; border-bottom: 1px solid #EFE9DC; text-align: right;">${formatRupees(item.unit_price_paise)}</td>
-        <td style="padding: 6px; border-bottom: 1px solid #EFE9DC; text-align: center;">${item.quantity}</td>
-        <td style="padding: 6px; border-bottom: 1px solid #EFE9DC; text-align: right;">${formatRupees(item.unit_price_paise * item.quantity)}</td>
-        <td style="padding: 6px; border-bottom: 1px solid #EFE9DC; text-align: right;">${formatRupees(item.cashback_paise || 0)}</td>
+        <td style="padding: 7px 8px; border-bottom: 1px solid #E5DFD2; color: #2A2622;">${item.name}</td>
+        <td style="padding: 7px 8px; border-bottom: 1px solid #E5DFD2; text-align: center; color: #2A2622;">${item.variant || "—"}</td>
+        <td style="padding: 7px 8px; border-bottom: 1px solid #E5DFD2; text-align: right; color: #2A2622; font-family: monospace;">${formatRupees(item.unit_price_paise)}</td>
+        <td style="padding: 7px 8px; border-bottom: 1px solid #E5DFD2; text-align: center; color: #2A2622; font-weight: bold;">${item.quantity}</td>
+        <td style="padding: 7px 8px; border-bottom: 1px solid #E5DFD2; text-align: right; color: #2A2622; font-weight: bold; font-family: monospace;">${formatRupees(item.unit_price_paise * item.quantity)}</td>
+        <td style="padding: 7px 8px; border-bottom: 1px solid #E5DFD2; text-align: right; color: #4B7A52; font-family: monospace;">+${formatRupees(item.cashback_paise || 0)}</td>
       </tr>
     `).join("");
 
     const eventsRows = events.length > 0 ? events.map((ev: any) => `
       <tr>
-        <td style="padding: 5px; border-bottom: 1px solid #EFE9DC; text-transform: capitalize;">${ev.status}</td>
-        <td style="padding: 5px; border-bottom: 1px solid #EFE9DC;">${ev.note || "—"}</td>
-        <td style="padding: 5px; border-bottom: 1px solid #EFE9DC;">${new Date(ev.created_at).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}</td>
+        <td style="padding: 6px 8px; border-bottom: 1px solid #E5DFD2; text-transform: uppercase; font-weight: bold; font-size: 10px; color: #1A1612;">${ev.status}</td>
+        <td style="padding: 6px 8px; border-bottom: 1px solid #E5DFD2; color: #2A2622;">${ev.note || "—"}</td>
+        <td style="padding: 6px 8px; border-bottom: 1px solid #E5DFD2; color: #6E655A; font-family: monospace;">${new Date(ev.created_at).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}</td>
       </tr>
-    `).join("") : `<tr><td colspan="3" style="padding: 5px; color: #9A9084;">No status history logged.</td></tr>`;
+    `).join("") : `<tr><td colspan="3" style="padding: 8px; color: #9A9084; text-align: center; font-style: italic;">No status history logged.</td></tr>`;
 
     printWindow.document.write(`
       <html>
         <head>
           <title>Emergency Order Sheet - ${order.order_number}</title>
           <style>
-            body { font-family: 'Segoe UI', Roboto, sans-serif; color: #2A2622; margin: 0; padding: 28px; line-height: 1.4; font-size: 12px; background-color: #ffffff; }
-            .header { display: flex; justify-content: space-between; border-bottom: 2px solid #B08D4C; padding-bottom: 14px; margin-bottom: 18px; }
-            .brand { font-family: Georgia, serif; font-size: 20px; font-weight: bold; }
-            .brand-subtitle { font-size: 10px; color: #6E655A; text-transform: uppercase; letter-spacing: 2px; margin-top: 2px; }
-            .flag { text-align: right; }
-            .flag h2 { font-family: Georgia, serif; color: #B08D4C; margin: 0 0 4px 0; font-size: 16px; }
-            .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 16px; }
-            .box { padding: 10px 12px; border: 1px solid #E5DFD2; border-radius: 6px; background-color: #FBF9F4; }
-            .box h3 { margin: 0 0 6px 0; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid #E5DFD2; padding-bottom: 5px; }
-            .box p { margin: 3px 0; }
-            table { width: 100%; border-collapse: collapse; margin-bottom: 14px; }
-            th { background-color: #2A2622; color: #FBF9F4; padding: 6px; text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
-            .rejected-box { padding: 10px 12px; border: 1px solid #A24B3E; background-color: #A24B3E10; border-radius: 6px; margin-bottom: 16px; }
-            .rejected-box h3 { color: #A24B3E; margin: 0 0 4px 0; font-size: 11px; text-transform: uppercase; }
-            .totals { width: 260px; margin-left: auto; border: 1px solid #E5DFD2; border-radius: 6px; padding: 10px 12px; background-color: #FBF9F4; }
-            .totals-row { display: flex; justify-content: space-between; padding: 3px 0; }
-            .totals-row.grand { font-weight: bold; color: #B08D4C; border-top: 1px solid #B08D4C; padding-top: 6px; margin-top: 4px; font-size: 14px; }
-            .footer-note { text-align: center; font-size: 10px; color: #9A9084; margin-top: 20px; border-top: 1px solid #E5DFD2; padding-top: 10px; }
-            @media print { body { padding: 0; } }
+            body { font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #2A2622; margin: 0; padding: 20px; line-height: 1.4; font-size: 11.5px; background-color: #FFFFFF; }
+            .page-container { border: 1.5px solid #B08D4C; border-radius: 8px; padding: 24px; min-height: 275mm; box-sizing: border-box; background-color: #FBF9F4; }
+            .header { display: flex; justify-content: space-between; border-bottom: 3px solid #B08D4C; padding-bottom: 12px; margin-bottom: 20px; }
+            .brand { font-family: 'Times New Roman', Georgia, serif; font-size: 22px; font-weight: bold; color: #B08D4C; letter-spacing: 1.5px; text-transform: uppercase; }
+            .brand-subtitle { font-size: 9.5px; color: #6E655A; text-transform: uppercase; letter-spacing: 2px; margin-top: 4px; font-weight: bold; }
+            .flag { text-align: right; font-family: Arial, sans-serif; }
+            .flag h2 { font-family: Georgia, serif; color: #1A1612; margin: 0 0 4px 0; font-size: 17px; font-weight: bold; }
+            .flag div { font-size: 10px; color: #6E655A; margin-top: 2px; }
+            .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+            .box { padding: 12px 14px; border: 1px solid #E5DFD2; border-radius: 6px; background-color: #FFFFFF; box-shadow: 0 1px 4px rgba(42,38,34,0.02); }
+            .box h3 { margin: 0 0 8px 0; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.8px; border-bottom: 1px solid #F5F2EB; padding-bottom: 6px; color: #B08D4C; font-weight: bold; }
+            .box p { margin: 4px 0; color: #2A2622; line-height: 1.4; }
+            table { width: 100%; border-collapse: collapse; margin-bottom: 20px; background-color: #FFFFFF; border: 1px solid #E5DFD2; border-radius: 6px; overflow: hidden; }
+            th { background-color: #1A1612; color: #B08D4C; padding: 8px; text-align: left; font-size: 9px; text-transform: uppercase; letter-spacing: 0.8px; border-bottom: 2px solid #B08D4C; }
+            .rejected-box { padding: 12px 14px; border: 1.5px solid #A24B3E; background-color: #FDF2F2; border-radius: 6px; margin-bottom: 20px; color: #721C24; }
+            .rejected-box h3 { color: #A24B3E; margin: 0 0 6px 0; font-size: 11px; text-transform: uppercase; font-weight: bold; }
+            .totals { width: 280px; margin-left: auto; border: 1px solid #E5DFD2; border-radius: 6px; padding: 12px 14px; background-color: #FFFFFF; margin-bottom: 20px; }
+            .totals-row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 11px; color: #6E655A; }
+            .totals-row span:last-child { font-weight: bold; color: #2A2622; font-family: monospace; }
+            .totals-row.grand { font-weight: bold; color: #B08D4C; border-top: 1px solid #B08D4C; padding-top: 8px; margin-top: 6px; font-size: 14px; }
+            .totals-row.grand span:last-child { color: #B08D4C; font-size: 14px; }
+            .footer-note { text-align: center; font-size: 9.5px; color: #9A9084; margin-top: 24px; border-top: 1px solid #E5DFD2; padding-top: 12px; font-family: Arial, sans-serif; }
+            @media print {
+              body { padding: 0; background-color: #FFFFFF; }
+              .page-container { border: 1.5px solid #B08D4C; box-shadow: none; min-height: 100%; border-radius: 0; }
+            }
           </style>
         </head>
         <body>
-          <div class="header">
-            <div>
-              <div class="brand">JAI SRI RAM TEXTILES</div>
-              <div class="brand-subtitle">Emergency Order Reference Sheet</div>
+          <div class="page-container">
+            <div class="header">
+              <div>
+                <div class="brand">JAI SRI RAM TEXTILES</div>
+                <div class="brand-subtitle">Emergency Order Reference & Packing Sheet</div>
+              </div>
+              <div class="flag">
+                <h2>Order: ${order.order_number}</h2>
+                <div>Order ID: <span style="font-family: monospace; font-weight: bold;">${order.id}</span></div>
+                <div>Generated: ${new Date().toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}</div>
+              </div>
             </div>
-            <div class="flag">
-              <h2>Order: ${order.order_number}</h2>
-              <div>Order ID: <span style="font-family: monospace;">${order.id}</span></div>
-              <div>Generated: ${new Date().toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}</div>
+
+            ${order.status === "rejected" && order.rejection_reason ? `
+            <div class="rejected-box">
+              <h3>⚠ Order Rejected / Cancelled</h3>
+              <p>${order.rejection_reason}</p>
+            </div>` : ""}
+
+            <div class="grid3">
+              <div class="box">
+                <h3>Order Status</h3>
+                <p>Status: <strong style="text-transform: uppercase; color: #B08D4C;">${order.status}</strong></p>
+                <p>Payment Status: <strong style="text-transform: uppercase;">${order.payment_status}</strong></p>
+                <p>Placed At: <strong>${new Date(order.placed_at || order.created_at).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}</strong></p>
+                <p>Delivered: ${order.delivered_at ? new Date(order.delivered_at).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" }) : "—"}</p>
+                <p>Carrier: <strong>SHADOWFAX</strong></p>
+                <p>AWB Tracking ID: <strong>${order.tracking_id || "—"}</strong></p>
+              </div>
+
+              <div class="box">
+                <h3>Customer Info</h3>
+                <p>Name: <strong>${order.profiles?.full_name || "Guest Checkout"}</strong></p>
+                <p>Email: ${order.profiles?.email || "—"}</p>
+                <p>Phone: ${order.profiles?.phone || "—"}</p>
+                <p>User Registry ID: <span style="font-family: monospace; font-weight: bold; color: #B08D4C;">${order.profiles?.user_id || "—"}</span></p>
+                <p>Razorpay Order: <span style="font-family: monospace; font-size: 10px;">${order.razorpay_order_id || "—"}</span></p>
+                <p>Razorpay Payment: <span style="font-family: monospace; font-size: 10px;">${order.razorpay_payment_id || "—"}</span></p>
+              </div>
+
+              <div class="box">
+                <h3>Shipping Destination</h3>
+                <p><strong>${addr.recipient || "—"}</strong></p>
+                <p>${addr.line1 || ""}</p>
+                <p>${addr.line2 ? addr.line2 : ""}</p>
+                <p>${addr.city || ""}${addr.district ? ", " + addr.district : ""}, ${addr.state || ""} - <strong>${addr.pincode || ""}</strong></p>
+                <p>Phone: <strong>${addr.phone || "—"}</strong></p>
+              </div>
             </div>
-          </div>
 
-          ${order.status === "rejected" && order.rejection_reason ? `
-          <div class="rejected-box">
-            <h3>⚠ Order Rejected</h3>
-            <p>${order.rejection_reason}</p>
-          </div>` : ""}
+            <table>
+              <thead>
+                <tr>
+                  <th style="width: 45%;">Product details</th>
+                  <th style="width: 15%; text-align: center;">Variant</th>
+                  <th style="width: 12%; text-align: right;">Unit Price</th>
+                  <th style="width: 8%; text-align: center;">Qty</th>
+                  <th style="width: 10%; text-align: right;">Subtotal</th>
+                  <th style="width: 10%; text-align: right;">Cashback</th>
+                </tr>
+              </thead>
+              <tbody>${itemsRows}</tbody>
+            </table>
 
-          <div class="grid2">
-            <div class="box">
-              <h3>Order Status</h3>
-              <p>Status: <strong style="text-transform: uppercase;">${order.status}</strong></p>
-              <p>Payment Status: <strong style="text-transform: uppercase;">${order.payment_status}</strong></p>
-              <p>Placed: ${new Date(order.placed_at).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}</p>
-              <p>Delivered: ${order.delivered_at ? new Date(order.delivered_at).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" }) : "—"}</p>
-              <p>Tracking ID: ${order.tracking_id || "—"}</p>
-              <p>Courier URL: ${order.courier_tracking_url || "—"}</p>
+            <div class="totals">
+              <div class="totals-row"><span>Cart Subtotal</span><span>${formatRupees(order.subtotal_paise)}</span></div>
+              ${order.coupon_id ? `<div class="totals-row"><span>Coupon Applied</span><span>${order.coupons?.code || "Code Applied"}</span></div>` : ""}
+              ${order.discount_paise > 0 ? `<div class="totals-row" style="color: #A24B3E;"><span>Coupon Discount</span><span>-${formatRupees(order.discount_paise)}</span></div>` : ""}
+              ${order.wallet_used_paise > 0 ? `<div class="totals-row" style="color: #A24B3E;"><span>Wallet Redeemed</span><span>-${formatRupees(order.wallet_used_paise)}</span></div>` : ""}
+              <div class="totals-row"><span>Courier Shipping Charges</span><span>${order.shipping_paise === 0 ? "FREE" : formatRupees(order.shipping_paise)}</span></div>
+              <div class="totals-row grand"><span>Total Paid Amount</span><span>${formatRupees(order.total_paise)}</span></div>
+              <div class="totals-row" style="color: #4B7A52; padding-top: 4px;"><span>Wallet Cashback Earned</span><span>+${formatRupees(order.cashback_earned_paise)}</span></div>
             </div>
-            <div class="box">
-              <p>Name: <strong>${order.profiles?.full_name || "Guest Checkout"}</strong></p>
-              <p>Email: ${order.profiles?.email || "—"}</p>
-              <p>Phone: ${order.profiles?.phone || "—"}</p>
-              <p>User ID: <strong style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; letter-spacing: 0.5px; color: #B08D4C;">${order.profiles?.user_id || "—"}</strong></p>
-              <p>Razorpay Order ID: ${order.razorpay_order_id || "—"}</p>
-              <p>Razorpay Payment ID: ${order.razorpay_payment_id || "—"}</p>
+
+            <div style="font-weight: bold; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #6E655A; margin-bottom: 8px; margin-top: 12px; font-family: Arial, sans-serif;">Status Event Audit Logs</div>
+            <table>
+              <thead>
+                <tr>
+                  <th style="width: 25%;">Status Transition</th>
+                  <th style="width: 50%;">Transition Note / Rejection Reason</th>
+                  <th style="width: 25%;">Transition Timestamp</th>
+                </tr>
+              </thead>
+              <tbody>${eventsRows}</tbody>
+            </table>
+
+            <div class="footer-note">
+              INTERNAL USE ONLY — Confidential. Generated under secure admin access control logs.
             </div>
-          </div>
-
-          <div class="box" style="margin-bottom: 16px;">
-            <h3>Shipping Address</h3>
-            <p><strong>${addr.recipient || "—"}</strong></p>
-            <p>${addr.line1 || ""} ${addr.line2 || ""}</p>
-            <p>${addr.city || ""}${addr.district ? ", " + addr.district : ""}, ${addr.state || ""} - ${addr.pincode || ""}</p>
-            <p>Phone: ${addr.phone || "—"}${addr.alternate_phone ? " / " + addr.alternate_phone : ""}</p>
-          </div>
-
-          <table>
-            <thead>
-              <tr>
-                <th style="width: 32%;">Product</th>
-                <th style="width: 13%; text-align: center;">Variant</th>
-                <th style="width: 15%; text-align: right;">Unit Price</th>
-                <th style="width: 10%; text-align: center;">Qty</th>
-                <th style="width: 15%; text-align: right;">Total</th>
-                <th style="width: 15%; text-align: right;">Cashback</th>
-              </tr>
-            </thead>
-            <tbody>${itemsRows}</tbody>
-          </table>
-
-          <div class="totals">
-            <div class="totals-row"><span>Subtotal:</span><span>${formatRupees(order.subtotal_paise)}</span></div>
-            ${order.coupon_id ? `<div class="totals-row"><span>Coupon Applied:</span><span>${order.coupons?.code || order.coupon_id}</span></div>` : ""}
-            ${order.discount_paise > 0 ? `<div class="totals-row"><span>Coupon Discount:</span><span>-${formatRupees(order.discount_paise)}</span></div>` : ""}
-            ${order.wallet_used_paise > 0 ? `<div class="totals-row"><span>Wallet Used:</span><span>-${formatRupees(order.wallet_used_paise)}</span></div>` : ""}
-            <div class="totals-row"><span>Shipping:</span><span>${order.shipping_paise === 0 ? "FREE" : formatRupees(order.shipping_paise)}</span></div>
-            ${order.tax_paise > 0 ? `<div class="totals-row"><span>Tax:</span><span>${formatRupees(order.tax_paise)}</span></div>` : ""}
-            <div class="totals-row grand"><span>Total Paid:</span><span>${formatRupees(order.total_paise)}</span></div>
-            <div class="totals-row"><span>Cashback Earned:</span><span>${formatRupees(order.cashback_earned_paise)}</span></div>
-          </div>
-
-          <table style="margin-top: 16px;">
-            <thead>
-              <tr>
-                <th style="width: 20%;">Status</th>
-                <th style="width: 55%;">Note</th>
-                <th style="width: 25%;">Timestamp</th>
-              </tr>
-            </thead>
-            <tbody>${eventsRows}</tbody>
-          </table>
-
-          <div class="footer-note">
-            Confidential — internal admin use only. Generated for emergency/offline reference.
           </div>
 
           <script>
@@ -2207,6 +2284,10 @@ export default function AdminDashboardPage() {
                           <label className="text-sm font-semibold">Pieces in 1 Pack</label>
                           <input type="number" min="1" value={prodPiecesPerPack} onChange={(e) => setProdPiecesPerPack(e.target.value === "" ? "" : Number(e.target.value))} className="rounded-md border border-line bg-ivory px-3 py-2 text-sm text-ink outline-none focus:border-zari" />
                         </div>
+                        <div className="flex flex-col gap-1.5">
+                          <label className="text-sm font-semibold">HSN Code</label>
+                          <input type="text" maxLength={8} value={prodHsn} onChange={(e) => setProdHsn(e.target.value.replace(/\D/g, ""))} placeholder="e.g. 52081190" className="rounded-md border border-line bg-ivory px-3 py-2 text-sm text-ink outline-none focus:border-zari" />
+                        </div>
                         <div className="flex items-center gap-2 mt-4">
                           <input type="checkbox" id="isActive" checked={prodIsActive} onChange={(e) => setProdIsActive(e.target.checked)} className="w-4 h-4 accent-zari" />
                           <label htmlFor="isActive" className="text-sm font-semibold cursor-pointer">Visible in Store (Active)</label>
@@ -2446,7 +2527,13 @@ export default function AdminDashboardPage() {
                                 <div>
                                   <p className="font-semibold text-ink leading-tight">{p.name}</p>
                                   <p className="text-xs text-taupe font-mono mt-0.5">slug: {p.slug}</p>
-                                  {p.is_on_sale && <span className="inline-block bg-danger/10 text-danger text-[10px] font-bold px-1.5 py-0.2 rounded mt-1 uppercase">Sale</span>}
+                                  {(() => {
+                                    const match = (p.description || "").match(/\[HSN:\s*(\d+)\]/);
+                                    return match ? (
+                                      <p className="text-[10px] text-zari-deep font-bold mt-1 bg-zari-tint/40 px-1.5 py-0.5 rounded border border-zari/20 inline-block">HSN: {match[1]}</p>
+                                    ) : null;
+                                  })()}
+                                  {p.is_on_sale && <span className="inline-block bg-danger/10 text-danger text-[10px] font-bold px-1.5 py-0.2 rounded mt-1 uppercase ml-1.5">Sale</span>}
                                 </div>
                               </div>
                             </td>
@@ -2909,7 +2996,7 @@ export default function AdminDashboardPage() {
                             
                             const amtPaise = Math.round(Number(refundAmountRupees) * 100);
                             if (isNaN(amtPaise) || amtPaise < 0) {
-                              alert("Please enter a valid refund amount.");
+                              notify("Please enter a valid refund amount.");
                               return;
                             }
 
@@ -2932,11 +3019,11 @@ export default function AdminDashboardPage() {
                                 const data = await res.json().catch(() => ({}));
                                 throw new Error(data.error || "Failed to update refund");
                               }
-                              alert("Refund details saved successfully!");
+                              notify("Refund details saved successfully!");
                               setSelectedRefundOrder(null);
                               await refreshOrders();
                             } catch (err: any) {
-                              alert("Error updating refund: " + err.message);
+                              notify("Error updating refund: " + err.message);
                             }
                           }} 
                           className="space-y-4 text-sm"
@@ -3034,7 +3121,7 @@ export default function AdminDashboardPage() {
                                         const data = await res.json();
                                         setRefundScreenshotUrl(data.url);
                                       } catch (err: any) {
-                                        alert("Screenshot upload failed: " + err.message);
+                                        notify("Screenshot upload failed: " + err.message);
                                       } finally {
                                         setUploadingScreenshot(false);
                                       }
@@ -4589,8 +4676,8 @@ $$ language plpgsql;`}
                                           {selectedSupportId === msg.id ? "Cancel" : "Reply"}
                                         </button>
                                         <button
-                                          onClick={() => {
-                                            if (confirm("Are you sure you want to close this support ticket?")) {
+                                          onClick={async () => {
+                                            if (await confirm("Are you sure you want to close this support ticket?")) {
                                               handleSendSupportReply(msg.id, "close");
                                             }
                                           }}
@@ -4623,7 +4710,7 @@ $$ language plpgsql;`}
                                             <button
                                               onClick={() => {
                                                 navigator.clipboard.writeText(msg.id);
-                                                alert("Ticket ID copied to clipboard!");
+                                                notify("Ticket ID copied to clipboard!");
                                               }}
                                               title="Copy full Ticket ID"
                                               className="text-zari-deep hover:text-ink transition-colors cursor-pointer p-0.5"

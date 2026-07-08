@@ -4,9 +4,11 @@ import { useState } from "react";
 import { Container } from "@/components/ui/container";
 import { Reveal } from "@/components/ui/reveal";
 import { Check, Send } from "lucide-react";
+import { useNotification } from "@/components/providers/notification-provider";
 
 export function Newsletter() {
   const [sent, setSent] = useState(false);
+  const { notify } = useNotification();
   return (
     <section className="py-20 sm:py-24">
       <Container className="max-w-2xl text-center">
@@ -40,11 +42,11 @@ export function Newsletter() {
                   if (res.ok) {
                     setSent(true);
                   } else {
-                    alert("Subscription failed. Please try again.");
+                    notify("Subscription failed. Please try again.", "error");
                   }
                 } catch (err) {
                   console.error("Failed to subscribe:", err);
-                  alert("Subscription failed. Please check connection.");
+                  notify("Subscription failed. Please check connection.", "error");
                 }
               }}
               className="mx-auto mt-8 flex max-w-md items-center gap-2"

@@ -9,6 +9,7 @@ import { FirstOrderPopup } from "@/components/providers/first-order-popup";
 import { AnalyticsTracker } from "@/components/providers/analytics-tracker";
 import { CartProvider } from "@/components/providers/cart-provider";
 import { WishlistProvider } from "@/components/providers/wishlist-provider";
+import { NotificationProvider } from "@/components/providers/notification-provider";
 import { AIChatbot } from "@/components/layout/ai-chatbot";
 import { BUSINESS } from "@/lib/constants";
 import { ProfilePrompt } from "@/components/providers/profile-prompt";
@@ -85,17 +86,19 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           dangerouslySetInnerHTML={{ __html: JSON.stringify(orgSchema) }}
         />
         <SmoothScroll>
-          <WishlistProvider>
-            <CartProvider>
-              <AnalyticsTracker />
-              <AnnouncementBar />
-              <Navbar />
-              <main>{children}</main>
-              <ConditionalFooter />
-              <AIChatbot />
-              <ProfilePrompt />
-            </CartProvider>
-          </WishlistProvider>
+          <NotificationProvider>
+            <WishlistProvider>
+              <CartProvider>
+                <AnalyticsTracker />
+                <AnnouncementBar />
+                <Navbar />
+                <main>{children}</main>
+                <ConditionalFooter />
+                <AIChatbot />
+                <ProfilePrompt />
+              </CartProvider>
+            </WishlistProvider>
+          </NotificationProvider>
         </SmoothScroll>
         {/* Phase 2: pass eligible={user has 0 completed orders} */}
         <FirstOrderPopup />

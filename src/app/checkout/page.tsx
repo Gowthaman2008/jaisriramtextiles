@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useCart } from "@/components/providers/cart-provider";
+import { useNotification } from "@/components/providers/notification-provider";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
@@ -14,6 +15,7 @@ import { ShieldCheck, MapPin, Tag, Wallet, AlertTriangle, RefreshCw, CreditCard,
 export default function CheckoutPage() {
   const router = useRouter();
   const { cart, clearCart, cartSubtotalPaise } = useCart();
+  const { notify } = useNotification();
   const supabase = createClient();
   // Prevents the empty-cart redirect below from racing against and hijacking
   // the navigation to /checkout/success once clearCart() empties the cart.
@@ -230,7 +232,7 @@ export default function CheckoutPage() {
 
       setEditingAddress(null);
     } catch (err: any) {
-      alert("Error updating address: " + err.message);
+      notify("Error updating address: " + err.message, "error");
     } finally {
       setSavingEdit(false);
     }

@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { useWishlist } from "@/components/providers/wishlist-provider";
 import { useCart } from "@/components/providers/cart-provider";
+import { useNotification } from "@/components/providers/notification-provider";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
@@ -38,6 +39,7 @@ import {
 export default function AccountPage() {
   const supabase = createClient();
   const { wishlist } = useWishlist();
+  const { notify, confirm } = useNotification();
 
   const shortenId = (id: string) => {
     if (!id || id.length < 12) return id;
@@ -194,7 +196,7 @@ export default function AccountPage() {
       const [ordersRes, walletRes, addrRes, reviewsRes] = await Promise.all([
         supabase
           .from("orders")
-          .select("*, order_items(*)")
+          .select("*, order_items(*, products(description))")
           .eq("user_id", userId)
           .order("placed_at", { ascending: false }),
         supabase
@@ -265,7 +267,7 @@ export default function AccountPage() {
     const fileArray = Array.from(files);
 
     if (reviewPhotos.length + fileArray.length > 5) {
-      alert("You can only upload up to 5 photos for a review.");
+      notify("You can only upload up to 5 photos for a review.");
       return;
     }
 
@@ -303,14 +305,14 @@ export default function AccountPage() {
         throw new Error(data.error || "Failed to submit review");
       }
 
-      alert("Review submitted successfully! Thank you for your feedback.");
+      notify("Review submitted successfully! Thank you for your feedback.");
       setShowReviewModal(false);
       
       if (user) {
         await fetchAccountData(user.id);
       }
     } catch (err: any) {
-      alert(err.message || "Something went wrong. Please try again.");
+      notify(err.message || "Something went wrong. Please try again.");
     } finally {
       setReviewSubmitting(false);
     }
@@ -350,7 +352,7 @@ export default function AccountPage() {
   async function handleAddAddress(e: React.FormEvent) {
     e.preventDefault();
     if (!addrRecipient.trim() || !addrLine1.trim() || !addrCity.trim() || !addrDistrict.trim() || !addrState.trim() || !addrPincode.trim() || !addrPhone.trim()) {
-      alert("Please fill in all required fields");
+      notify("Please fill in all required fields");
       return;
     }
     setAddrIsSubmitting(true);
@@ -374,7 +376,7 @@ export default function AccountPage() {
           .eq("id", editingAddressId);
 
         if (error) throw error;
-        alert("Address updated successfully!");
+        notify("Address updated successfully!");
       } else {
         // Insert new address
         const { error } = await supabase.from("addresses").insert({
@@ -393,13 +395,13 @@ export default function AccountPage() {
         });
 
         if (error) throw error;
-        alert("Address saved successfully!");
+        notify("Address saved successfully!");
       }
 
       resetAddressForm();
       await fetchAccountData(user.id);
     } catch (err: any) {
-      alert("Failed to save address: " + err.message);
+      notify("Failed to save address: " + err.message);
     } finally {
       setAddrIsSubmitting(false);
     }
@@ -407,14 +409,14 @@ export default function AccountPage() {
 
   // Handle Delete Address
   async function handleDeleteAddress(id: string) {
-    if (!confirm("Are you sure you want to delete this address?")) return;
+    if (!(await confirm("Are you sure you want to delete this address?", { danger: true }))) return;
     try {
       const { error } = await supabase.from("addresses").delete().eq("id", id);
       if (error) throw error;
       await fetchAccountData(user.id);
-      alert("Address deleted successfully!");
+      notify("Address deleted successfully!");
     } catch (err: any) {
-      alert("Failed to delete address: " + err.message);
+      notify("Failed to delete address: " + err.message);
     }
   }
 
@@ -450,7 +452,7 @@ export default function AccountPage() {
         setTrackQueryId(data.queryId);
         fetchTrackedQuery(data.queryId);
       }
-      alert("Ticket created successfully. You can track it from your ticket history.");
+      notify("Ticket created successfully. You can track it from your ticket history.");
     } catch (err: any) {
       setSupportStatus(err.message || "Failed to submit message");
     } finally {
@@ -523,7 +525,7 @@ export default function AccountPage() {
       fetchTrackedQuery(trackedQuery.id);
       fetchSupportHistory();
     } catch (err: any) {
-      alert("Error: " + err.message);
+      notify("Error: " + err.message);
     } finally {
       setSubmittingUserReply(false);
     }
@@ -571,7 +573,7 @@ export default function AccountPage() {
 
       setSavedProfileName(profileName.trim());
       setSavedProfilePhone(profilePhone.trim());
-      alert("Personal details updated successfully!");
+      notify("Personal details updated successfully!");
     } catch (err: any) {
       setProfileError(err.message || "Failed to update profile details");
     } finally {
@@ -1465,7 +1467,7 @@ export default function AccountPage() {
                           <button
                             onClick={() => {
                               navigator.clipboard.writeText(trackedQuery.id);
-                              alert("Ticket ID copied to clipboard!");
+                              notify("Ticket ID copied to clipboard!");
                             }}
                             title="Copy full Ticket ID"
                             className="text-zari-deep hover:text-ink transition-colors cursor-pointer p-0.5 hover:bg-cream/40 rounded"

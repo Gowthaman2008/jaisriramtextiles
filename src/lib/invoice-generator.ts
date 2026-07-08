@@ -123,6 +123,7 @@ export function getProductHSN(item: any): string {
 export function drawInvoicePdf(doc: jsPDF, order: any, profileUserId?: string | number) {
   // Invoice Metadata
   const orderNumber = order.order_number;
+  const cleanOrderNumber = String(orderNumber || "").startsWith("JSRT") ? String(orderNumber) : `JSRT-${orderNumber}`;
   const placedDate = new Date(order.placed_at || order.created_at || new Date()).toLocaleDateString("en-IN", { dateStyle: "long" });
   const recipientName = order.shipping_address?.recipient || order.profiles?.full_name || order.profiles?.email || "Customer";
   const items = order.order_items || [];
@@ -157,10 +158,9 @@ export function drawInvoicePdf(doc: jsPDF, order: any, profileUserId?: string | 
   const mt = 12; // margin top
   const width = mr - ml; // 186mm
 
-  // Border outline of the entire page
+  // Border outline configuration (drawn at the end of function to overlay fills)
   doc.setDrawColor(180, 180, 180);
   doc.setLineWidth(0.2);
-  doc.rect(ml, mt, width, 273); // Draw border surrounding page contents
 
   // --- SECTION 1: HEADER & LOGO ---
   // Store Branding Logo (Aligned Left)
@@ -184,7 +184,7 @@ export function drawInvoicePdf(doc: jsPDF, order: any, profileUserId?: string | 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(7.5);
   doc.text("Original For Recipient", mr - 4, mt + 11, { align: "right" });
-  doc.text(`TAX INVOICE NO: JSRT-${orderNumber}`, mr - 4, mt + 15, { align: "right" });
+  doc.text(`TAX INVOICE NO: ${cleanOrderNumber}`, mr - 4, mt + 15, { align: "right" });
   doc.text(`DATE: ${placedDate}`, mr - 4, mt + 19, { align: "right" });
 
   // Draw divider line under branding
@@ -215,7 +215,7 @@ export function drawInvoicePdf(doc: jsPDF, order: any, profileUserId?: string | 
   });
   doc.setFont("helvetica", "normal");
   doc.setFontSize(7.5);
-  doc.text(`*JSRT-${orderNumber}*`, barcodeX + 25, barcodeY + 15, { align: "center" });
+  doc.text(`*${cleanOrderNumber}*`, barcodeX + 25, barcodeY + 15, { align: "center" });
 
   // Draw division line
   doc.line(ml, mt + 44, mr, mt + 44);
@@ -248,9 +248,17 @@ export function drawInvoicePdf(doc: jsPDF, order: any, profileUserId?: string | 
   });
 
   doc.setFont("helvetica", "normal");
-  doc.text(`Mobile No.       : ${shippingAddress.phone || ""}`, ml + 4, mt + 74);
-  doc.text(`State Code       : ${gstStateCode.code}`, ml + 4, mt + 78);
-  doc.text(`Place Of Supply  : ${placeOfSupply}`, ml + 4, mt + 82);
+  doc.text("Mobile No.", ml + 4, mt + 74);
+  doc.text(":", ml + 26, mt + 74);
+  doc.text(shippingAddress.phone || "", ml + 28, mt + 74);
+
+  doc.text("State Code", ml + 4, mt + 78);
+  doc.text(":", ml + 26, mt + 78);
+  doc.text(gstStateCode.code, ml + 28, mt + 78);
+
+  doc.text("Place Of Supply", ml + 4, mt + 82);
+  doc.text(":", ml + 26, mt + 82);
+  doc.text(placeOfSupply, ml + 28, mt + 82);
 
   // Column 2: Ship From Address
   doc.setFont("helvetica", "bold");
@@ -276,7 +284,7 @@ export function drawInvoicePdf(doc: jsPDF, order: any, profileUserId?: string | 
   doc.setFontSize(8);
   doc.setTextColor(40, 40, 40);
   // Row 1
-  doc.text(`ORDER NUMBER: ${orderNumber}`, ml + 4, mt + 89);
+  doc.text(`ORDER NUMBER: ${cleanOrderNumber}`, ml + 4, mt + 89);
   doc.text(`PAYMENT MODE: ${totalPaise === 0 ? "ONLINE/WALLET" : "PREPAID"}`, ml + 100, mt + 89);
   // Row 2
   doc.text(`CARRIER NAME: ${carrierName}`, ml + 4, mt + 95);
@@ -286,6 +294,7 @@ export function drawInvoicePdf(doc: jsPDF, order: any, profileUserId?: string | 
   const tableY = mt + 103;
   doc.setFillColor(240, 238, 230);
   doc.rect(ml, tableY, width, 8, "F");
+  doc.line(ml, tableY, mr, tableY); // table top border
   doc.line(ml, tableY + 8, mr, tableY + 8);
 
   doc.setFont("helvetica", "bold");
@@ -293,7 +302,7 @@ export function drawInvoicePdf(doc: jsPDF, order: any, profileUserId?: string | 
   doc.setTextColor(30, 30, 30);
   doc.text("HSN Code", ml + 1, tableY + 5.5);
   doc.text("Description of Goods", ml + 17, tableY + 5.5);
-  doc.text("Qty", ml + 80, tableY + 5.5, { align: "center" });
+  doc.text("Qty", ml + 77.5, tableY + 5.5, { align: "center" });
   doc.text("MRP", ml + 94, tableY + 5.5, { align: "right" });
   doc.text("Disc/Unit", ml + 109, tableY + 5.5, { align: "right" });
   doc.text("Net Price", ml + 124, tableY + 5.5, { align: "right" });
@@ -399,7 +408,7 @@ export function drawInvoicePdf(doc: jsPDF, order: any, profileUserId?: string | 
   let shippingTaxable = 0;
   let shippingTax = 0;
   let shippingTotal = 0;
-  const shippingHSN = "99681"; // Postal and courier services SAC
+  const shippingHSN = "9965"; // Postal and courier services SAC
 
   if (shippingPaise > 0) {
     shippingTotal = shippingPaise / 100;
@@ -451,6 +460,10 @@ export function drawInvoicePdf(doc: jsPDF, order: any, profileUserId?: string | 
   currentY += 8;
   doc.line(ml, currentY, mr, currentY);
 
+  // Draw outer vertical borders of the items table
+  doc.line(ml, tableY, ml, currentY);
+  doc.line(mr, tableY, mr, currentY);
+
   // --- SECTION 5: TAX SUMMARY SECTION (Grid lines and explicit centered coordinates to avoid any jumbled look) ---
   currentY += 4;
   doc.setFont("helvetica", "bold");
@@ -467,16 +480,18 @@ export function drawInvoicePdf(doc: jsPDF, order: any, profileUserId?: string | 
   // Total Tax: ml+156 to mr-4 [168 to 194] (Width 26)
   const taxCols = [20, 58, 96, 134, 152];
   const taxTableHeight = 8;
+  const taxStartY = currentY;
   doc.setFillColor(242, 240, 232);
   doc.rect(ml + 4, currentY, width - 8, taxTableHeight, "F");
+  doc.line(ml + 4, taxStartY, mr - 4, taxStartY); // tax table top border
   doc.line(ml + 4, currentY + taxTableHeight, mr - 4, currentY + taxTableHeight);
 
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(7.5);
+  doc.setFontSize(7);
   doc.text("HSN Code", ml + 14, currentY + 5.5, { align: "center" });
-  doc.text("CGST (Rate % / Amt)", ml + 43, currentY + 5.5, { align: "center" });
-  doc.text("SGST/UTGST (Rate % / Amt)", ml + 81, currentY + 5.5, { align: "center" });
-  doc.text("IGST (Rate % / Amt)", ml + 119, currentY + 5.5, { align: "center" });
+  doc.text("CGST (Rate/Amt)", ml + 43, currentY + 5.5, { align: "center" });
+  doc.text("SGST (Rate/Amt)", ml + 81, currentY + 5.5, { align: "center" });
+  doc.text("IGST (Rate/Amt)", ml + 119, currentY + 5.5, { align: "center" });
   doc.text("Cess Amt", ml + 147, currentY + 5.5, { align: "center" });
   doc.text("Total Tax Value", mr - 8, currentY + 5.5, { align: "right" });
 
@@ -489,7 +504,7 @@ export function drawInvoicePdf(doc: jsPDF, order: any, profileUserId?: string | 
 
   // 1. First Row: Goods GST (5%)
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(7.5);
+  doc.setFontSize(7);
   doc.text(primaryGoodsHSN, ml + 14, currentY + 5, { align: "center" });
 
   if (isIntraState) {
@@ -536,6 +551,7 @@ export function drawInvoicePdf(doc: jsPDF, order: any, profileUserId?: string | 
   doc.setFillColor(250, 248, 242);
   doc.rect(ml + 4, currentY, width - 8, 7, "F");
   doc.setFont("helvetica", "bold");
+  doc.setFontSize(7);
   doc.text("TOTAL TAX", ml + 14, currentY + 5, { align: "center" });
   if (isIntraState) {
     const totalCGST = (goodsTaxAmtTotal / 2) + (shippingTax / 2);
@@ -555,6 +571,10 @@ export function drawInvoicePdf(doc: jsPDF, order: any, profileUserId?: string | 
   });
   currentY += 7;
   doc.line(ml + 4, currentY, mr - 4, currentY);
+
+  // Draw outer borders of the Tax Summary table
+  doc.line(ml + 4, taxStartY, ml + 4, currentY);
+  doc.line(mr - 4, taxStartY, mr - 4, currentY);
 
   // --- SECTION 6: SUMMARY METADATA STRIP ---
   currentY += 4;
@@ -592,4 +612,9 @@ export function drawInvoicePdf(doc: jsPDF, order: any, profileUserId?: string | 
   doc.setFont("helvetica", "italic");
   doc.setFontSize(7);
   doc.text("Authorized Signatory (Digital)", mr - 60, currentY + 11);
+
+  // Draw border surrounding page contents at the end to ensure it overlays cleanly on top of all filled regions
+  doc.setDrawColor(180, 180, 180);
+  doc.setLineWidth(0.2);
+  doc.rect(ml, mt, width, 273);
 }
