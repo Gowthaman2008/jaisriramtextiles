@@ -5836,7 +5836,7 @@ $$ language plpgsql;`}
                                   className="rounded border border-line bg-white px-3 py-2.5 text-sm outline-none focus:border-zari"
                                 />
                                 <p className="text-[10px] text-muted italic">
-                                  Leave empty to use auto-generated default: &quot;🎁 Get a FREE {prodName} on orders above ₹{campTargetRupees || "[Target]"}!&quot;
+                                  Leave empty to use auto-generated default: &quot;🎁 Get a FREE {prodName} on orders above ₹{campTargetRupees || "[Target]"}! Offer valid this week only.&quot;
                                 </p>
                               </>
                             );

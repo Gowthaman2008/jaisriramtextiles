@@ -48,14 +48,8 @@ export function AnnouncementBar() {
                 finalMessages.push(c.custom_announcement_message.trim());
               } else {
                 const threshold = c.target_amount_paise / 100;
-                let details = c.display_name || c.product?.name || "";
-                if (c.variant) {
-                  const parts = [c.variant.size, c.variant.color].filter(Boolean);
-                  if (parts.length > 0) {
-                    details += ` (${parts.join(" / ")})`;
-                  }
-                }
-                finalMessages.push(`🎁 Get a FREE ${details} on orders above ₹${threshold}!`);
+                const details = c.display_name || c.product?.name || "";
+                finalMessages.push(`🎁 Get a FREE ${details} on orders above ₹${threshold}! Offer valid this week only.`);
               }
             }
           });
