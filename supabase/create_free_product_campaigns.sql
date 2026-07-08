@@ -16,3 +16,6 @@ CREATE TABLE IF NOT EXISTS free_product_campaigns (
 
 -- Disable Row Level Security since it's fully managed via service role (admin API)
 ALTER TABLE free_product_campaigns DISABLE ROW LEVEL SECURITY;
+
+-- Reload Supabase PostgREST schema cache
+NOTIFY pgrst, 'reload schema';
