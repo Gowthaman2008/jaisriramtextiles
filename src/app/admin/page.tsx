@@ -719,6 +719,15 @@ export default function AdminDashboardPage() {
     }
   }
 
+  const isShippingModified = () => {
+    if (!shippingSettings) return false;
+    if (shippingThresholdInput === "" || shippingChargeInput === "") return false;
+    return (
+      Number(shippingThresholdInput) !== shippingSettings.free_shipping_threshold_paise / 100 ||
+      Number(shippingChargeInput) !== shippingSettings.shipping_charge_paise / 100
+    );
+  };
+
   // --- CMS Handling ---
   async function handleSaveAnnouncement() {
     try {
@@ -5030,7 +5039,13 @@ $$ language plpgsql;`}
                     )}
 
                     <div className="flex items-center gap-3 pt-2">
-                      <Button type="submit" variant="gold" disabled={savingShipping} className="shadow-glow">
+                      <Button
+                        type="submit"
+                        variant="gold"
+                        size="md"
+                        disabled={savingShipping || !isShippingModified()}
+                        className="shadow-glow font-bold"
+                      >
                         {savingShipping ? "Saving..." : "Save Shipping Settings"}
                       </Button>
                       <button
