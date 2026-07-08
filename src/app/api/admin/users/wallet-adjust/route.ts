@@ -14,7 +14,7 @@ async function checkAdminAuth() {
       .eq("id", user.id)
       .single();
 
-    if (!profile || !["admin", "staff"].includes(profile.role)) {
+    if (!profile || profile.role !== "admin") {
       return null;
     }
     return user;

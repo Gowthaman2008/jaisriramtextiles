@@ -411,6 +411,14 @@ create table support_message_replies (
   created_at  timestamptz not null default now()
 );
 
+-- Canned replies admins can pick from when responding to support tickets
+create table canned_responses (
+  id          uuid primary key default gen_random_uuid(),
+  message     text not null,
+  sort_order  int not null default 0,
+  created_at  timestamptz not null default now()
+);
+
 -- ============================================================================
 -- NEWSLETTER SUBSCRIPTIONS
 -- ============================================================================

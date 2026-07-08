@@ -764,7 +764,7 @@ export default function CheckoutPage() {
             <h3 className="font-display text-xl border-b border-line pb-2">Checkout Summary</h3>
 
             {/* Items review */}
-            <div className="space-y-3.5 max-h-[220px] overflow-y-auto pr-2 divide-y divide-line/35">
+            <div className="space-y-3.5 max-h-[220px] overflow-y-auto pr-2 divide-y divide-line/35" data-lenis-prevent>
               {cart.map((item) => (
                 <div key={item.id + (item.variant?.sku || "")} className="flex justify-between items-start gap-3 text-xs pt-3 first:pt-0">
                   <div className="flex gap-3 min-w-0 flex-1">

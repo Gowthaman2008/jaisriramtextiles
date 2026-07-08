@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
+import { Sparkles } from "lucide-react";
 
 export function ProfilePrompt() {
   const [show, setShow] = useState(false);
@@ -84,18 +85,25 @@ export function ProfilePrompt() {
   if (!show) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-ink/50 backdrop-blur-sm p-4 animate-fade-in">
-      <div className="zari-frame bg-white border-2 border-zari rounded-card max-w-[400px] w-full p-6 shadow-lift space-y-4">
-        <div className="text-center space-y-1.5">
-          <h2 className="font-display text-xl text-ink">Complete Your Profile</h2>
-          <p className="text-xs text-taupe">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-ink/30 backdrop-blur-md p-4 animate-fade-in">
+      <div className="bg-gradient-to-br from-white via-white to-[#FAF6EC]/35 border border-[#E9DBB7] rounded-3xl p-7 shadow-lift max-w-[380px] w-full relative overflow-hidden flex flex-col gap-5">
+        {/* Aesthetic Golden Sparkle Circle Badge */}
+        <div className="mx-auto w-10 h-10 rounded-full bg-gradient-to-br from-[#D9BE85] to-[#B08D4C] text-white flex items-center justify-center shadow-md animate-bounce">
+          <Sparkles size={16} className="stroke-[2]" />
+        </div>
+
+        <div className="text-center space-y-1">
+          <h2 className="font-display text-xl sm:text-2xl font-bold text-ink tracking-wide">
+            Complete Your Profile
+          </h2>
+          <p className="text-xs text-taupe leading-relaxed">
             Please provide your name and mobile number to complete your registration.
           </p>
         </div>
 
-        <form onSubmit={handleSave} className="space-y-4 pt-2">
-          <div className="flex flex-col gap-1">
-            <label htmlFor="prompt-name" className="text-[10px] font-bold text-taupe uppercase">
+        <form onSubmit={handleSave} className="space-y-4">
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="prompt-name" className="text-[10px] font-bold text-taupe uppercase tracking-wider">
               Full Name *
             </label>
             <input
@@ -105,12 +113,12 @@ export function ProfilePrompt() {
               placeholder="Your full name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="rounded border border-line bg-ivory/50 px-3 py-2 text-sm text-ink outline-none focus:border-zari"
+              className="rounded-xl border border-line bg-[#FAF6EC]/35 px-4 py-2.5 text-sm text-ink outline-none transition-all duration-300 focus:border-[#B08D4C] focus:bg-white focus:ring-2 focus:ring-[#B08D4C]/10"
             />
           </div>
 
-          <div className="flex flex-col gap-1">
-            <label htmlFor="prompt-phone" className="text-[10px] font-bold text-taupe uppercase">
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="prompt-phone" className="text-[10px] font-bold text-taupe uppercase tracking-wider">
               Mobile Number *
             </label>
             <input
@@ -120,20 +128,19 @@ export function ProfilePrompt() {
               placeholder="10-digit mobile number"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              className="rounded border border-line bg-ivory/50 px-3 py-2 text-sm text-ink outline-none focus:border-zari"
+              className="rounded-xl border border-line bg-[#FAF6EC]/35 px-4 py-2.5 text-sm text-ink outline-none transition-all duration-300 focus:border-[#B08D4C] focus:bg-white focus:ring-2 focus:ring-[#B08D4C]/10"
             />
           </div>
 
           {error && (
-            <p className="text-xs text-danger font-semibold bg-danger/5 p-2 rounded text-center">
+            <p className="text-xs text-danger font-semibold bg-danger/5 p-2.5 rounded-lg text-center border border-danger/10">
               {error}
             </p>
           )}
 
           <Button
             type="submit"
-            variant="gold"
-            className="w-full h-11"
+            className="w-full h-11 bg-gradient-to-r from-[#D9BE85] to-[#B08D4C] text-[#553C0C] font-bold tracking-widest uppercase text-xs rounded-xl hover:brightness-[1.05] shadow-[0_4px_12px_rgba(176,141,76,0.25)] hover:scale-[1.01] active:scale-[0.99] transition-all duration-300 border-0"
             disabled={loading}
           >
             {loading ? "Saving Details..." : "Save & Continue"}

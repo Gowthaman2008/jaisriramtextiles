@@ -3820,17 +3820,19 @@ export default function AdminDashboardPage() {
                             <p className="font-display text-lg text-success font-bold">
                               {formatRupees(inspectedUser.wallet.balance_paise)}
                             </p>
-                            <button
-                              onClick={() => {
-                                setWalletAdjustOpen(true);
-                                setWalletAdjustAmount("");
-                                setWalletAdjustNote("");
-                                setWalletAdjustError("");
-                              }}
-                              className="text-[10px] text-zari hover:underline font-bold uppercase tracking-wider cursor-pointer"
-                            >
-                              Adjust
-                            </button>
+                            {currentUser?.role === "admin" && (
+                              <button
+                                onClick={() => {
+                                  setWalletAdjustOpen(true);
+                                  setWalletAdjustAmount("");
+                                  setWalletAdjustNote("");
+                                  setWalletAdjustError("");
+                                }}
+                                className="text-[10px] text-zari hover:underline font-bold uppercase tracking-wider cursor-pointer"
+                              >
+                                Adjust
+                              </button>
+                            )}
                           </div>
                         </div>
                         <div className="px-2.5 py-1 bg-success/10 text-success rounded-full text-[10px] font-bold uppercase tracking-wider">

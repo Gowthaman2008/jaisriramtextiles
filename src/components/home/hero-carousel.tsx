@@ -160,7 +160,7 @@ export function HeroCarousel() {
               className="object-cover"
             />
             {/* Ivory scrim keeps the light, luxurious feel and text legible */}
-            <div className="absolute inset-0 bg-gradient-to-r from-ivory/95 via-ivory/70 to-ivory/20" />
+            <div className="absolute inset-0 bg-gradient-to-r from-ivory/55 via-ivory/25 to-transparent" />
             <div className="absolute inset-0 bg-weave opacity-40 mix-blend-multiply" />
           </motion.div>
         </AnimatePresence>

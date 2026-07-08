@@ -9,12 +9,14 @@ import { CATEGORIES, BUSINESS } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { useCart } from "@/components/providers/cart-provider";
 import { useWishlist } from "@/components/providers/wishlist-provider";
+import { SearchOverlay } from "@/components/layout/search-overlay";
 
 const navCategories = CATEGORIES;
 
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const { cart } = useCart();
   const { wishlist } = useWishlist();
 
@@ -75,7 +77,13 @@ export function Navbar() {
 
           {/* Actions */}
           <div className="flex items-center gap-1.5 sm:gap-2">
-            <IconLink href="/search" label="Search" className="hidden lg:inline-flex"><Search size={19} /></IconLink>
+            <button
+              onClick={() => setSearchOpen(true)}
+              aria-label="Search"
+              className="relative rounded-full p-2 text-ink transition-colors hover:bg-cream cursor-pointer"
+            >
+              <Search size={19} />
+            </button>
             <WishlistButton count={wishlistCount} className="hidden lg:inline-flex" />
             <IconLink href="/account" label="Account" className="hidden lg:inline-flex"><User size={19} /></IconLink>
             <CartButton count={cartCount} />
@@ -138,7 +146,7 @@ export function Navbar() {
               </div>
 
               {/* Main Content Area */}
-              <div className="flex-1 overflow-y-auto px-5 py-6 space-y-7">
+              <div className="flex-1 overflow-y-auto px-5 py-6 space-y-7" data-lenis-prevent>
                 {/* Categories */}
                 <div className="space-y-3">
                   <span className="text-[9px] font-bold uppercase tracking-[0.25em] text-muted px-2 block">
@@ -226,7 +234,7 @@ export function Navbar() {
                     }}
                   >
                     {[
-                      { href: "/search", label: "Search Catalog", icon: <Search size={16} /> },
+                      { href: "/search", label: "Search Catalog", icon: <Search size={16} />, action: () => { setMobileOpen(false); setSearchOpen(true); } },
                       { href: "/account/wishlist", label: "My Wishlist", icon: <Heart size={16} />, count: wishlistCount },
                       { href: "/account", label: "My Profile", icon: <User size={16} /> },
                       { href: "/cart", label: "Shopping Cart", icon: <ShoppingBag size={16} />, count: cartCount }
@@ -235,13 +243,30 @@ export function Navbar() {
                         key={link.href}
                         variants={{
                           hidden: { opacity: 0, x: 12 },
-                          show: { 
-                            opacity: 1, 
+                          show: {
+                            opacity: 1,
                             x: 0,
                             transition: { type: "spring", stiffness: 100, damping: 15 }
                           }
                         }}
                       >
+                        {"action" in link && link.action ? (
+                          <button
+                            onClick={link.action}
+                            className="group flex w-full items-center justify-between rounded-xl py-3 px-3.5 text-sm font-medium text-ink transition-all duration-300 hover:bg-cream/50 hover:text-zari-deep cursor-pointer"
+                          >
+                            <span className="flex items-center gap-3 transition-transform duration-300 ease-silk group-hover:translate-x-1">
+                              <span className="text-muted group-hover:text-zari transition-colors duration-300">
+                                {link.icon}
+                              </span>
+                              <span className="tracking-wide text-ink/80 group-hover:text-ink">{link.label}</span>
+                            </span>
+                            <ChevronRight
+                              size={14}
+                              className="text-muted/40 opacity-0 transform -translate-x-1 transition-all duration-300 ease-silk group-hover:opacity-100 group-hover:translate-x-0 group-hover:text-zari"
+                            />
+                          </button>
+                        ) : (
                         <Link
                           href={link.href}
                           onClick={() => setMobileOpen(false)}
@@ -265,6 +290,7 @@ export function Navbar() {
                             />
                           </div>
                         </Link>
+                        )}
                       </motion.div>
                     ))}
                   </motion.div>
@@ -281,6 +307,8 @@ export function Navbar() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <SearchOverlay open={searchOpen} onClose={() => setSearchOpen(false)} />
     </>
   );
 }

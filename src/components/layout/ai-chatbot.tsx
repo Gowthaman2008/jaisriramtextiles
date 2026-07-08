@@ -228,6 +228,7 @@ export function AIChatbot() {
             <div
               ref={scrollRef}
               className="flex-1 flex flex-col overflow-y-auto overscroll-contain p-4 space-y-4 scrollbar-none"
+              data-lenis-prevent
             >
               {messages.map((m, idx) => {
                 const isAI = m.role === "assistant";

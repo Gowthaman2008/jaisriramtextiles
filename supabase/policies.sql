@@ -128,3 +128,8 @@ create policy "coupons read active" on coupons for select using (is_active or is
 alter table support_messages enable row level security;
 create policy "support messages select own or staff" on support_messages
   for select using (auth.uid() = user_id or is_staff());
+
+-- ---- Canned Responses (admin/staff only) ----
+alter table canned_responses enable row level security;
+create policy "canned responses staff only" on canned_responses
+  for all using (is_staff()) with check (is_staff());
