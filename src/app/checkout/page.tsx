@@ -548,7 +548,10 @@ export default function CheckoutPage() {
               </div>
             )}
 
-            {/* Address Inputs Form */}
+            {/* Address Inputs Form — only shown when entering a new address, not when
+                a saved address is selected above (avoids showing the same address twice,
+                once nicely formatted and once as a redundant disabled/greyed-out form). */}
+            {selectedAddressId === "custom" && (
             <div className="bg-white border border-line rounded-card p-5 sm:p-6 shadow-soft space-y-4">
               <h3 className="font-semibold text-ink text-sm uppercase tracking-wider flex items-center gap-2">
                 <MapPin className="w-4 h-4 text-zari" /> Shipping Details
@@ -560,11 +563,10 @@ export default function CheckoutPage() {
                   <input
                     type="text"
                     required
-                    disabled={selectedAddressId !== "custom"}
                     placeholder="Full name of recipient"
                     value={recipient}
                     onChange={(e) => setRecipient(e.target.value)}
-                    className="rounded border border-line bg-ivory/50 px-3 py-2 text-sm text-ink outline-none focus:border-zari disabled:opacity-60"
+                    className="rounded border border-line bg-ivory/50 px-3 py-2 text-sm text-ink outline-none focus:border-zari"
                   />
                 </div>
 
@@ -573,11 +575,10 @@ export default function CheckoutPage() {
                   <input
                     type="text"
                     required
-                    disabled={selectedAddressId !== "custom"}
                     placeholder="House/Flat No, Street details"
                     value={line1}
                     onChange={(e) => setLine1(e.target.value)}
-                    className="rounded border border-line bg-ivory/50 px-3 py-2 text-sm text-ink outline-none focus:border-zari disabled:opacity-60"
+                    className="rounded border border-line bg-ivory/50 px-3 py-2 text-sm text-ink outline-none focus:border-zari"
                   />
                 </div>
 
@@ -585,11 +586,10 @@ export default function CheckoutPage() {
                   <label className="text-xs font-semibold text-taupe uppercase">Area / Landmark</label>
                   <input
                     type="text"
-                    disabled={selectedAddressId !== "custom"}
                     placeholder="Apartment name, area, landmark (optional)"
                     value={line2}
                     onChange={(e) => setLine2(e.target.value)}
-                    className="rounded border border-line bg-ivory/50 px-3 py-2 text-sm text-ink outline-none focus:border-zari disabled:opacity-60"
+                    className="rounded border border-line bg-ivory/50 px-3 py-2 text-sm text-ink outline-none focus:border-zari"
                   />
                 </div>
 
@@ -599,11 +599,10 @@ export default function CheckoutPage() {
                     <input
                       type="text"
                       required
-                      disabled={selectedAddressId !== "custom"}
                       placeholder="City"
                       value={city}
                       onChange={(e) => setCity(e.target.value)}
-                      className="rounded border border-line bg-ivory/50 px-3 py-2 text-sm text-ink outline-none focus:border-zari disabled:opacity-60"
+                      className="rounded border border-line bg-ivory/50 px-3 py-2 text-sm text-ink outline-none focus:border-zari"
                     />
                   </div>
                   <div className="flex flex-col gap-1">
@@ -611,11 +610,10 @@ export default function CheckoutPage() {
                     <input
                       type="text"
                       required
-                      disabled={selectedAddressId !== "custom"}
                       placeholder="District"
                       value={district}
                       onChange={(e) => setDistrict(e.target.value)}
-                      className="rounded border border-line bg-ivory/50 px-3 py-2 text-sm text-ink outline-none focus:border-zari disabled:opacity-60"
+                      className="rounded border border-line bg-ivory/50 px-3 py-2 text-sm text-ink outline-none focus:border-zari"
                     />
                   </div>
                   <div className="flex flex-col gap-1">
@@ -623,11 +621,10 @@ export default function CheckoutPage() {
                     <input
                       type="text"
                       required
-                      disabled={selectedAddressId !== "custom"}
                       placeholder="State"
                       value={state}
                       onChange={(e) => setState(e.target.value)}
-                      className="rounded border border-line bg-ivory/50 px-3 py-2 text-sm text-ink outline-none focus:border-zari disabled:opacity-60"
+                      className="rounded border border-line bg-ivory/50 px-3 py-2 text-sm text-ink outline-none focus:border-zari"
                     />
                   </div>
                 </div>
@@ -638,11 +635,10 @@ export default function CheckoutPage() {
                     <input
                       type="text"
                       required
-                      disabled={selectedAddressId !== "custom"}
                       placeholder="6-digit ZIP code"
                       value={pincode}
                       onChange={(e) => setPincode(e.target.value)}
-                      className="rounded border border-line bg-ivory/50 px-3 py-2 text-sm text-ink outline-none focus:border-zari disabled:opacity-60"
+                      className="rounded border border-line bg-ivory/50 px-3 py-2 text-sm text-ink outline-none focus:border-zari"
                     />
                   </div>
                   <div className="flex flex-col gap-1">
@@ -650,27 +646,26 @@ export default function CheckoutPage() {
                     <input
                       type="tel"
                       required
-                      disabled={selectedAddressId !== "custom"}
                       placeholder="10-digit mobile"
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
-                      className="rounded border border-line bg-ivory/50 px-3 py-2 text-sm text-ink outline-none focus:border-zari disabled:opacity-60"
+                      className="rounded border border-line bg-ivory/50 px-3 py-2 text-sm text-ink outline-none focus:border-zari"
                     />
                   </div>
                   <div className="flex flex-col gap-1">
                     <label className="text-xs font-semibold text-taupe uppercase">Alternate Mobile</label>
                     <input
                       type="tel"
-                      disabled={selectedAddressId !== "custom"}
                       placeholder="Alternate number"
                       value={alternatePhone}
                       onChange={(e) => setAlternatePhone(e.target.value)}
-                      className="rounded border border-line bg-ivory/50 px-3 py-2 text-sm text-ink outline-none focus:border-zari disabled:opacity-60"
+                      className="rounded border border-line bg-ivory/50 px-3 py-2 text-sm text-ink outline-none focus:border-zari"
                     />
                   </div>
                 </div>
               </div>
             </div>
+            )}
 
             {/* Coupons Card */}
             <div className="bg-white border border-line rounded-card p-5 shadow-soft space-y-4">

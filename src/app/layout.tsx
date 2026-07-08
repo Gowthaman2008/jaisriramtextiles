@@ -3,7 +3,7 @@ import { Fraunces, Manrope } from "next/font/google";
 import "./globals.css";
 import { AnnouncementBar } from "@/components/layout/announcement-bar";
 import { Navbar } from "@/components/layout/navbar";
-import { Footer } from "@/components/layout/footer";
+import { ConditionalFooter } from "@/components/layout/conditional-footer";
 import { SmoothScroll } from "@/components/providers/smooth-scroll";
 import { FirstOrderPopup } from "@/components/providers/first-order-popup";
 import { AnalyticsTracker } from "@/components/providers/analytics-tracker";
@@ -91,7 +91,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <AnnouncementBar />
               <Navbar />
               <main>{children}</main>
-              <Footer />
+              <ConditionalFooter />
               <AIChatbot />
               <ProfilePrompt />
             </CartProvider>

@@ -601,17 +601,37 @@ export function generateInvoicePdfBase64({
   doc.setFont("helvetica", "normal");
   doc.setTextColor(inkDark[0], inkDark[1], inkDark[2]);
 
+  const itemNameMaxWidth = 95; // keeps text inside the Item Details column, clear of Qty/Total
+
   items.forEach((item) => {
+    const nameText = `${item.name}${item.variant ? ` (${item.variant})` : ""}`;
+    const nameLines: string[] = doc.splitTextToSize(nameText, itemNameMaxWidth);
+    const lineHeight = 4.5;
+    const nameBlockHeight = nameLines.length * lineHeight;
+    const rowHeight = nameBlockHeight + (item.sku ? 4.5 : 0) + 3.5;
+
     // line border
     doc.setDrawColor(lineLight[0], lineLight[1], lineLight[2]);
     doc.setLineWidth(0.3);
-    doc.line(20, y + 8, 190, y + 8);
+    doc.line(20, y + rowHeight, 190, y + rowHeight);
 
-    doc.text(`${item.name}${item.variant ? ` (${item.variant})` : ""}`, 24, y + 5);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9.5);
+    doc.setTextColor(inkDark[0], inkDark[1], inkDark[2]);
+    doc.text(nameLines, 24, y + 5);
+
+    if (item.sku) {
+      doc.setFontSize(8);
+      doc.setTextColor(taupeGray[0], taupeGray[1], taupeGray[2]);
+      doc.text(`SKU: ${item.sku}`, 24, y + 5 + nameBlockHeight);
+    }
+
+    doc.setFontSize(9.5);
+    doc.setTextColor(inkDark[0], inkDark[1], inkDark[2]);
     doc.text(`${item.quantity}`, 127, y + 5);
     doc.text(`INR ${(item.unit_price_paise * item.quantity / 100).toFixed(2)}`, 165, y + 5);
 
-    y += 8;
+    y += rowHeight;
   });
 
   // 5. Totals Right Column

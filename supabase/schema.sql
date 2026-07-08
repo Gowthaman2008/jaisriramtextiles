@@ -203,6 +203,10 @@ create table order_items (
   product_id     uuid references products(id) on delete set null,
   name           text not null,          -- snapshot
   variant        text,
+  sku            text,                   -- snapshot
+  size           text,                   -- snapshot
+  color          text,                   -- snapshot
+  image_url      text,                   -- snapshot
   unit_price_paise int not null,
   quantity       int not null check (quantity > 0),
   cashback_paise int not null default 0

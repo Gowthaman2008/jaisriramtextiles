@@ -88,6 +88,8 @@ export default function AccountPage() {
   // Profile Edit States
   const [profileName, setProfileName] = useState("");
   const [profilePhone, setProfilePhone] = useState("");
+  const [savedProfileName, setSavedProfileName] = useState("");
+  const [savedProfilePhone, setSavedProfilePhone] = useState("");
   const [profileSubmitting, setProfileSubmitting] = useState(false);
   const [profileError, setProfileError] = useState("");
   const [profileUserId, setProfileUserId] = useState("");
@@ -122,8 +124,12 @@ export default function AccountPage() {
         }
 
         if (profile) {
-          setProfileName(profile.full_name || authUser.user_metadata?.full_name || authUser.user_metadata?.name || "");
-          setProfilePhone(profile.phone || authUser.user_metadata?.phone || "");
+          const loadedName = profile.full_name || authUser.user_metadata?.full_name || authUser.user_metadata?.name || "";
+          const loadedPhone = profile.phone || authUser.user_metadata?.phone || "";
+          setProfileName(loadedName);
+          setProfilePhone(loadedPhone);
+          setSavedProfileName(loadedName);
+          setSavedProfilePhone(loadedPhone);
           setProfileUserId(profile.user_id ? String(profile.user_id) : "");
         }
 
@@ -401,6 +407,8 @@ export default function AccountPage() {
         }
       }));
 
+      setSavedProfileName(profileName.trim());
+      setSavedProfilePhone(profilePhone.trim());
       alert("Personal details updated successfully!");
     } catch (err: any) {
       setProfileError(err.message || "Failed to update profile details");
@@ -509,17 +517,37 @@ export default function AccountPage() {
     doc.setFont("helvetica", "normal");
     doc.setTextColor(inkDark[0], inkDark[1], inkDark[2]);
 
+    const itemNameMaxWidth = 95; // keeps text inside the Item Details column, clear of Qty/Total
+
     items.forEach((item: any) => {
+      const nameText = `${item.name}${item.variant ? ` (${item.variant})` : ""}`;
+      const nameLines: string[] = doc.splitTextToSize(nameText, itemNameMaxWidth);
+      const lineHeight = 4.5;
+      const nameBlockHeight = nameLines.length * lineHeight;
+      const rowHeight = nameBlockHeight + (item.sku ? 4.5 : 0) + 3.5;
+
       // line border
       doc.setDrawColor(lineLight[0], lineLight[1], lineLight[2]);
       doc.setLineWidth(0.3);
-      doc.line(20, y + 8, 190, y + 8);
+      doc.line(20, y + rowHeight, 190, y + rowHeight);
 
-      doc.text(`${item.name}${item.variant ? ` (${item.variant})` : ""}`, 24, y + 5);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9.5);
+      doc.setTextColor(inkDark[0], inkDark[1], inkDark[2]);
+      doc.text(nameLines, 24, y + 5);
+
+      if (item.sku) {
+        doc.setFontSize(8);
+        doc.setTextColor(taupeGray[0], taupeGray[1], taupeGray[2]);
+        doc.text(`SKU: ${item.sku}`, 24, y + 5 + nameBlockHeight);
+      }
+
+      doc.setFontSize(9.5);
+      doc.setTextColor(inkDark[0], inkDark[1], inkDark[2]);
       doc.text(`${item.quantity}`, 127, y + 5);
       doc.text(`INR ${(item.unit_price_paise * item.quantity / 100).toFixed(2)}`, 165, y + 5);
 
-      y += 8;
+      y += rowHeight;
     });
 
     // 5. Totals Right Column
@@ -1438,7 +1466,12 @@ export default function AccountPage() {
                 {profileError && <p className="text-xs text-danger font-semibold font-sans">{profileError}</p>}
                 
                 <div className="pt-2 flex justify-end">
-                  <Button type="submit" variant="gold" size="sm" disabled={profileSubmitting}>
+                  <Button
+                    type="submit"
+                    variant="gold"
+                    size="sm"
+                    disabled={profileSubmitting || (profileName === savedProfileName && profilePhone === savedProfilePhone)}
+                  >
                     {profileSubmitting ? "Saving changes..." : "Save Account Details"}
                   </Button>
                 </div>

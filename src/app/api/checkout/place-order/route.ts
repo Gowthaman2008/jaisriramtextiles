@@ -32,7 +32,7 @@ export async function POST(request: Request) {
     for (const item of cart) {
       const { data: dbProduct, error: prodErr } = await supabase
         .from("products")
-        .select("id, name, price_paise, compare_at_paise, cashback_paise, stock, is_active")
+        .select("id, name, price_paise, compare_at_paise, cashback_paise, stock, is_active, product_images(url, sort_order)")
         .eq("id", item.id)
         .single();
 
@@ -70,10 +70,18 @@ export async function POST(request: Request) {
       subtotalPaise += itemSubtotal;
       totalCashbackEarned += (dbProduct.cashback_paise * item.quantity);
 
+      const primaryImage = (dbProduct.product_images || [])
+        .slice()
+        .sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0))[0];
+
       validatedItems.push({
         product_id: dbProduct.id,
         name: dbProduct.name,
         variant: matchedVar ? `${matchedVar.size || ""} ${matchedVar.color || ""}`.trim() : null,
+        sku: matchedVar?.sku || null,
+        size: matchedVar?.size || null,
+        color: matchedVar?.color || null,
+        image_url: primaryImage?.url || null,
         unit_price_paise: itemPrice,
         quantity: item.quantity,
         cashback_paise: dbProduct.cashback_paise,
@@ -229,7 +237,13 @@ export async function POST(request: Request) {
       order_id: orderId,
       ...item,
     }));
-    const { error: itemsInsertErr } = await supabase.from("order_items").insert(itemRows);
+    let { error: itemsInsertErr } = await supabase.from("order_items").insert(itemRows);
+    if (itemsInsertErr?.message?.match(/column .* does not exist|Could not find the .* column/i)) {
+      // sku/size/color/image_url snapshot columns haven't been migrated on this database
+      // yet — retry with only the guaranteed base columns so checkout still succeeds.
+      const itemRowsBase = validatedItems.map(({ sku, size, color, image_url, ...item }) => ({ order_id: orderId, ...item }));
+      ({ error: itemsInsertErr } = await supabase.from("order_items").insert(itemRowsBase));
+    }
     if (itemsInsertErr) throw itemsInsertErr;
 
     // 8c. Insert order placement tracking event

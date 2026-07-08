@@ -258,12 +258,21 @@ export async function DELETE(request: Request) {
       }
     }
 
+    // Cascade: remove any customer review linked to this order (review_photos cascade
+    // automatically via their own FK) so the order delete doesn't get blocked by the
+    // reviews.order_id foreign key.
+    const { error: reviewDeleteError } = await supabase
+      .from("reviews")
+      .delete()
+      .eq("order_id", id);
+    if (reviewDeleteError) throw reviewDeleteError;
+
     const { error } = await supabase.from("orders").delete().eq("id", id);
 
     if (error) {
       if (error.code === "23503") {
         return NextResponse.json(
-          { error: "Cannot delete: this order still has a customer review linked to it. Remove the review first." },
+          { error: "Cannot delete: this order still has linked records that could not be removed automatically." },
           { status: 409 }
         );
       }

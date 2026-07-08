@@ -1,16 +1,40 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useCart } from "@/components/providers/cart-provider";
+import { useCart, type CartItem } from "@/components/providers/cart-provider";
+import { useWishlist } from "@/components/providers/wishlist-provider";
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
-import { Plus, Minus, Trash2, ShoppingBag, ArrowRight, Truck, ChevronLeft } from "lucide-react";
+import { Plus, Minus, Trash2, ShoppingBag, ArrowRight, Truck, ChevronLeft, Heart } from "lucide-react";
 import { formatINR } from "@/lib/utils";
 import { computeShipping } from "@/lib/constants";
+import type { Product } from "@/lib/types";
+
+function cartItemToProduct(item: CartItem): Product {
+  return {
+    id: item.id,
+    slug: item.slug,
+    name: item.name,
+    category: "",
+    categoryLabel: "",
+    pricePaise: item.pricePaise,
+    compareAtPaise: null,
+    cashbackPaise: item.cashbackPaise,
+    rating: 0,
+    reviewCount: 0,
+    image: item.image,
+    inStock: true,
+    stock: item.variant?.stock ?? 99,
+    variants: item.variant ? [item.variant] : undefined,
+  };
+}
 
 export default function CartPage() {
   const { cart, updateQuantity, removeFromCart, cartSubtotalPaise } = useCart();
+  const { toggleWishlist, isWished } = useWishlist();
+  const [confirmDelete, setConfirmDelete] = useState<CartItem | null>(null);
 
   if (cart.length === 0) {
     return (
@@ -79,7 +103,7 @@ export default function CartPage() {
                 {/* Details */}
                 <div className="flex-1 min-w-0">
                   <div className="flex justify-between items-start gap-4">
-                    <div>
+                    <div className="min-w-0 flex-1">
                       <h2 className="font-semibold text-ink text-sm sm:text-base truncate hover:underline">
                         <Link href={`/product/${item.slug}`}>{item.name}</Link>
                       </h2>
@@ -130,7 +154,7 @@ export default function CartPage() {
 
                     {/* Delete Item */}
                     <button
-                      onClick={() => removeFromCart(item.id, item.variant?.sku || null)}
+                      onClick={() => setConfirmDelete(item)}
                       className="text-muted hover:text-danger p-1.5 rounded-full hover:bg-danger/5 transition-colors"
                       aria-label="Delete item"
                     >
@@ -201,6 +225,57 @@ export default function CartPage() {
           </div>
         </div>
       </Container>
+
+      {/* Remove item confirmation */}
+      {confirmDelete && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 backdrop-blur-sm p-4"
+          onClick={() => setConfirmDelete(null)}
+        >
+          <div
+            className="bg-white rounded-card shadow-lift max-w-sm w-full p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-3 mb-2">
+              <span className="inline-grid h-10 w-10 place-items-center rounded-full bg-danger/10 text-danger flex-shrink-0">
+                <Trash2 size={18} />
+              </span>
+              <h3 className="font-display text-lg text-ink">Remove item?</h3>
+            </div>
+            <p className="text-sm text-taupe mb-5">
+              Remove <strong className="text-ink">{confirmDelete.name}</strong> from your bag, or move it to your wishlist to save it for later.
+            </p>
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={() => {
+                  const product = cartItemToProduct(confirmDelete);
+                  if (!isWished(product.id)) toggleWishlist(product);
+                  removeFromCart(confirmDelete.id, confirmDelete.variant?.sku || null);
+                  setConfirmDelete(null);
+                }}
+                className="w-full flex items-center justify-center gap-2 rounded-pill bg-ink text-ivory py-2.5 text-sm font-semibold hover:bg-zari-deep transition-colors cursor-pointer"
+              >
+                <Heart size={15} /> Move to Wishlist
+              </button>
+              <button
+                onClick={() => {
+                  removeFromCart(confirmDelete.id, confirmDelete.variant?.sku || null);
+                  setConfirmDelete(null);
+                }}
+                className="w-full flex items-center justify-center gap-2 rounded-pill border border-line text-danger py-2.5 text-sm font-semibold hover:bg-danger/5 transition-colors cursor-pointer"
+              >
+                <Trash2 size={15} /> Delete
+              </button>
+              <button
+                onClick={() => setConfirmDelete(null)}
+                className="w-full text-center text-xs text-taupe hover:text-ink font-semibold py-1.5 cursor-pointer"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

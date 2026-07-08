@@ -372,6 +372,7 @@ export default function AdminDashboardPage() {
   // CMS Announcement messages state
   const [announcementMsg, setAnnouncementMsg] = useState("");
   const [announcementList, setAnnouncementList] = useState<string[]>([]);
+  const [savedAnnouncementList, setSavedAnnouncementList] = useState<string[]>([]);
   const [announcementBannerId, setAnnouncementBannerId] = useState<string | null>(null);
 
   // General Search states
@@ -473,9 +474,11 @@ export default function AdminDashboardPage() {
       if (annBanner) {
         setAnnouncementBannerId(annBanner.id);
         setAnnouncementList(annBanner.content?.messages || []);
+        setSavedAnnouncementList(annBanner.content?.messages || []);
       } else {
         setAnnouncementBannerId(null);
         setAnnouncementList(DEFAULT_ANNOUNCEMENTS);
+        setSavedAnnouncementList(DEFAULT_ANNOUNCEMENTS);
       }
     } catch (err) {
       hadError = true;
@@ -580,9 +583,11 @@ export default function AdminDashboardPage() {
       if (annBanner) {
         setAnnouncementBannerId(annBanner.id);
         setAnnouncementList(annBanner.content?.messages || []);
+        setSavedAnnouncementList(annBanner.content?.messages || []);
       } else {
         setAnnouncementBannerId(null);
         setAnnouncementList(DEFAULT_ANNOUNCEMENTS);
+        setSavedAnnouncementList(DEFAULT_ANNOUNCEMENTS);
       }
     } catch (err) {
       console.error("Refresh CMS data failed:", err);
@@ -633,6 +638,9 @@ export default function AdminDashboardPage() {
   function removeAnnouncementMsg(index: number) {
     setAnnouncementList(announcementList.filter((_, idx) => idx !== index));
   }
+
+  const isAnnouncementModified = () =>
+    JSON.stringify(announcementList) !== JSON.stringify(savedAnnouncementList);
 
   async function handleSaveSlide(e: React.FormEvent) {
     e.preventDefault();
@@ -708,6 +716,19 @@ export default function AdminDashboardPage() {
     setSlideIsActive(slide.is_active);
     setShowSlideForm(true);
   }
+
+  const isSlideModified = () => {
+    if (!editingSlide) return true; // creating new — always allow submit (required-field validated)
+    if (slideEyebrow !== (editingSlide.eyebrow || "")) return true;
+    if (slideTitle !== editingSlide.title) return true;
+    if (slideSubtitle !== (editingSlide.subtitle || "")) return true;
+    if (slideCtaLabel !== (editingSlide.cta_label || "")) return true;
+    if (slideCtaHref !== (editingSlide.cta_href || "")) return true;
+    if (slideImageUrl !== (editingSlide.image_url || "")) return true;
+    if (Number(slideSortOrder) !== (editingSlide.sort_order || 0)) return true;
+    if (slideIsActive !== editingSlide.is_active) return true;
+    return false;
+  };
 
   function resetSlideFormFields() {
     setSlideEyebrow("");
@@ -1096,6 +1117,17 @@ export default function AdminDashboardPage() {
     setOrderRejectionReason(order.rejection_reason || "");
   }
 
+  const isOrderModified = () => {
+    if (!selectedOrder) return false;
+    if (orderStatus !== selectedOrder.status) return true;
+    if (orderTrackingId !== (selectedOrder.tracking_id || "")) return true;
+    if (orderTrackingUrl !== (selectedOrder.courier_tracking_url || "")) return true;
+    if (orderNote.trim() !== "") return true; // a fresh audit note always counts as a change
+    if (orderRejectionReason !== (selectedOrder.rejection_reason || "")) return true;
+    if (JSON.stringify(orderAddress) !== JSON.stringify(selectedOrder.shipping_address || {})) return true;
+    return false;
+  };
+
   async function handleUpdateOrder(e: React.FormEvent) {
     e.preventDefault();
     if (!selectedOrder) return;
@@ -1338,6 +1370,21 @@ export default function AdminDashboardPage() {
     setShowCouponForm(true);
   }
 
+  const isCouponModified = () => {
+    if (!editingCoupon) return true; // creating new — always allow submit (required-field validated)
+    if (newCouponCode.trim() !== editingCoupon.code) return true;
+    if (newCouponType !== editingCoupon.type) return true;
+    const originalValue = editingCoupon.type === "flat" ? editingCoupon.value / 100 : editingCoupon.value;
+    if (newCouponValue !== originalValue) return true;
+    if (newCouponMinOrder !== (editingCoupon.min_order_paise ? editingCoupon.min_order_paise / 100 : 0)) return true;
+    if (newCouponMaxDiscount !== (editingCoupon.max_discount_paise ? editingCoupon.max_discount_paise / 100 : 0)) return true;
+    if (newCouponFirstOrder !== (editingCoupon.first_order_only || false)) return true;
+    if (newCouponLimit !== (editingCoupon.usage_limit || 0)) return true;
+    const originalExpiry = editingCoupon.expires_at ? new Date(editingCoupon.expires_at).toISOString().slice(0, 16) : "";
+    if (newCouponExpiry !== originalExpiry) return true;
+    return false;
+  };
+
   async function handleUpdateCoupon(e: React.FormEvent) {
     e.preventDefault();
     if (!editingCoupon || !newCouponCode.trim() || newCouponValue <= 0) {
@@ -1492,17 +1539,37 @@ export default function AdminDashboardPage() {
     doc.setFont("helvetica", "normal");
     doc.setTextColor(inkDark[0], inkDark[1], inkDark[2]);
 
+    const itemNameMaxWidth = 95; // keeps text inside the Item Details column, clear of Qty/Total
+
     items.forEach((item: any) => {
+      const nameText = `${item.name}${item.variant ? ` (${item.variant})` : ""}`;
+      const nameLines: string[] = doc.splitTextToSize(nameText, itemNameMaxWidth);
+      const lineHeight = 4.5;
+      const nameBlockHeight = nameLines.length * lineHeight;
+      const rowHeight = nameBlockHeight + (item.sku ? 4.5 : 0) + 3.5;
+
       // line border
       doc.setDrawColor(lineLight[0], lineLight[1], lineLight[2]);
       doc.setLineWidth(0.3);
-      doc.line(20, y + 8, 190, y + 8);
+      doc.line(20, y + rowHeight, 190, y + rowHeight);
 
-      doc.text(`${item.name}${item.variant ? ` (${item.variant})` : ""}`, 24, y + 5);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9.5);
+      doc.setTextColor(inkDark[0], inkDark[1], inkDark[2]);
+      doc.text(nameLines, 24, y + 5);
+
+      if (item.sku) {
+        doc.setFontSize(8);
+        doc.setTextColor(taupeGray[0], taupeGray[1], taupeGray[2]);
+        doc.text(`SKU: ${item.sku}`, 24, y + 5 + nameBlockHeight);
+      }
+
+      doc.setFontSize(9.5);
+      doc.setTextColor(inkDark[0], inkDark[1], inkDark[2]);
       doc.text(`${item.quantity}`, 127, y + 5);
       doc.text(`INR ${(item.unit_price_paise * item.quantity / 100).toFixed(2)}`, 165, y + 5);
 
-      y += 8;
+      y += rowHeight;
     });
 
     // 5. Totals Right Column
@@ -2465,7 +2532,7 @@ export default function AdminDashboardPage() {
                           <textarea placeholder="Reason for change..." value={orderNote} onChange={(e) => setOrderNote(e.target.value)} rows={2} className="rounded border border-line bg-white px-3 py-1.5 text-xs outline-none" />
                         </div>
 
-                        <Button type="submit" variant="gold" size="sm" className="w-full">
+                        <Button type="submit" variant="gold" size="sm" className="w-full" disabled={!isOrderModified()}>
                           Save Order Settings
                         </Button>
                       </div>
@@ -2524,14 +2591,32 @@ export default function AdminDashboardPage() {
                       <div className="space-y-4 text-sm">
                         <h4 className="font-semibold text-sm text-ink border-b border-line pb-2">Invoice Summary</h4>
                         
-                        <div className="space-y-2">
+                        <div className="space-y-2.5">
                           {selectedOrder.order_items?.map((item: any) => (
-                            <div key={item.id} className="flex justify-between items-start text-xs border-b border-line pb-1.5">
-                              <div>
-                                <p className="font-semibold text-ink">{item.name}</p>
-                                <p className="text-taupe mt-0.5">{item.variant || "Standard variant"} &times; {item.quantity}</p>
+                            <div key={item.id} className="flex justify-between items-start gap-2.5 text-xs border-b border-line pb-2">
+                              <div className="flex items-start gap-2.5 min-w-0">
+                                {item.image_url ? (
+                                  <img src={item.image_url} alt={item.name} className="w-10 h-10 rounded border border-line object-cover flex-shrink-0" />
+                                ) : (
+                                  <div className="w-10 h-10 rounded border border-line bg-cream flex-shrink-0" />
+                                )}
+                                <div className="min-w-0">
+                                  <p className="font-semibold text-ink">{item.name}</p>
+                                  <p className="text-taupe mt-0.5">{item.variant || "Standard variant"} &times; {item.quantity}</p>
+                                  <div className="flex flex-wrap gap-1 mt-1">
+                                    {item.size && (
+                                      <span className="text-[10px] font-bold bg-zari-tint text-zari-deep px-1.5 py-0.5 rounded">Size: {item.size}</span>
+                                    )}
+                                    {item.color && (
+                                      <span className="text-[10px] font-bold bg-cream text-taupe px-1.5 py-0.5 rounded">Color: {item.color}</span>
+                                    )}
+                                    {item.sku && (
+                                      <span className="text-[10px] font-bold bg-ink/5 text-ink px-1.5 py-0.5 rounded">SKU: {item.sku}</span>
+                                    )}
+                                  </div>
+                                </div>
                               </div>
-                              <span className="font-medium">{formatRupees(item.unit_price_paise * item.quantity)}</span>
+                              <span className="font-medium flex-shrink-0">{formatRupees(item.unit_price_paise * item.quantity)}</span>
                             </div>
                           ))}
                         </div>
@@ -3470,7 +3555,7 @@ export default function AdminDashboardPage() {
                       }}>
                         Cancel
                       </Button>
-                      <Button type="submit" variant="gold" size="sm">
+                      <Button type="submit" variant="gold" size="sm" disabled={!isCouponModified()}>
                         {editingCoupon ? "Save Changes" : "Create Promo Code"}
                       </Button>
                     </div>
@@ -3664,7 +3749,7 @@ export default function AdminDashboardPage() {
                         <Button type="button" variant="outline" size="sm" onClick={() => { setShowSlideForm(false); setEditingSlide(null); }}>
                           Cancel
                         </Button>
-                        <Button type="submit" variant="gold" size="sm">
+                        <Button type="submit" variant="gold" size="sm" disabled={!isSlideModified()}>
                           Save Slide
                         </Button>
                       </div>
@@ -3724,7 +3809,7 @@ export default function AdminDashboardPage() {
                   )}
                   
                   <div className="space-y-4">
-                    <div className="flex gap-2">
+                    <div className="flex flex-col sm:flex-row gap-2">
                       <input
                         type="text"
                         placeholder="Add banner text message (e.g. Free shipping above ₹1000)"
@@ -3732,7 +3817,7 @@ export default function AdminDashboardPage() {
                         onChange={(e) => setAnnouncementMsg(e.target.value)}
                         className="flex-1 rounded border border-line px-3 py-2 text-sm outline-none focus:border-zari"
                       />
-                      <Button size="sm" variant="gold" onClick={addAnnouncementMsg}>
+                      <Button size="sm" variant="gold" onClick={addAnnouncementMsg} className="whitespace-nowrap shrink-0 w-full sm:w-auto">
                         Add message
                       </Button>
                     </div>
@@ -3753,7 +3838,7 @@ export default function AdminDashboardPage() {
                     )}
 
                     <div className="flex justify-end pt-3">
-                      <Button size="sm" variant="gold" onClick={handleSaveAnnouncement}>
+                      <Button size="sm" variant="gold" onClick={handleSaveAnnouncement} disabled={!isAnnouncementModified()}>
                         Save Announcement Messages
                       </Button>
                     </div>
