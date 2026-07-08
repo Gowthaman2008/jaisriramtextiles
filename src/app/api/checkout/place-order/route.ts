@@ -126,17 +126,14 @@ export async function POST(request: Request) {
         // Validate that this campaign has not already been used by this user (once-per-user constraint)
         const { data: pastUsage, error: usageErr } = await supabase
           .from("order_items")
-          .select("campaign_id, product_id, size, color, unit_price_paise, orders!inner(status, user_id)")
+          .select("product_id, size, color, unit_price_paise, orders!inner(status, user_id)")
           .eq("orders.user_id", user.id)
           .neq("orders.status", "rejected");
 
         if (usageErr) throw usageErr;
 
         const hasClaimed = (pastUsage || []).some((pastItem: any) => {
-          // 1. Direct match by campaign_id
-          if (pastItem.campaign_id === campaign.id) return true;
-
-          // 2. Fallback check for old orders: product matches and unit price was 0 (free gift)
+          // Check if product matches and unit price was 0 (free gift)
           if (pastItem.unit_price_paise === 0 && pastItem.product_id === campaign.product_id) {
             if (!campaign.variant) return true;
             if (pastItem.size === campaign.variant.size && pastItem.color === campaign.variant.color) return true;
@@ -174,7 +171,6 @@ export async function POST(request: Request) {
         unit_price_paise: itemPrice,
         quantity: item.quantity,
         cashback_paise: itemCashback,
-        campaign_id: item.isFreeGift ? item.campaignId : null,
       });
 
       stockUpdates.push({
