@@ -64,9 +64,9 @@ export function Navbar() {
 
           {/* Actions */}
           <div className="flex items-center gap-1.5 sm:gap-2">
-            <IconLink href="/search" label="Search"><Search size={19} /></IconLink>
-            <WishlistButton count={wishlistCount} />
-            <IconLink href="/account" label="Account"><User size={19} /></IconLink>
+            <IconLink href="/search" label="Search" className="hidden lg:inline-flex"><Search size={19} /></IconLink>
+            <WishlistButton count={wishlistCount} className="hidden lg:inline-flex" />
+            <IconLink href="/account" label="Account" className="hidden lg:inline-flex"><User size={19} /></IconLink>
             <CartButton count={cartCount} />
             <button
               onClick={() => setMobileOpen(true)}
@@ -223,24 +223,24 @@ export function Navbar() {
   );
 }
 
-function IconLink({ href, label, children }: { href: string; label: string; children: React.ReactNode }) {
+function IconLink({ href, label, children, className }: { href: string; label: string; children: React.ReactNode; className?: string }) {
   return (
     <Link
       href={href}
       aria-label={label}
-      className="relative rounded-full p-2 text-ink transition-colors hover:bg-cream"
+      className={cn("relative rounded-full p-2 text-ink transition-colors hover:bg-cream", className)}
     >
       {children}
     </Link>
   );
 }
 
-function WishlistButton({ count }: { count: number }) {
+function WishlistButton({ count, className }: { count: number; className?: string }) {
   return (
     <Link
       href="/account/wishlist"
       aria-label={`Wishlist, ${count} items`}
-      className="relative rounded-full p-2 text-ink transition-colors hover:bg-cream"
+      className={cn("relative rounded-full p-2 text-ink transition-colors hover:bg-cream", className)}
     >
       <Heart size={19} />
       <AnimatePresence>

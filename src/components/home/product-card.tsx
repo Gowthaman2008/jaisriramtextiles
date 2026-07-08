@@ -59,9 +59,9 @@ export function ProductCard({ product, index = 0 }: { product: Product; index?: 
           />
 
           {/* Badges */}
-          <div className="absolute left-3 top-3 flex flex-col gap-1.5">
+          <div className="absolute left-2 top-2 flex flex-wrap gap-1 items-center max-w-[75%]">
             {discount > 0 && (
-              <span className="rounded-pill bg-danger px-2.5 py-1 text-[11px] font-bold text-ivory">
+              <span className="rounded-full bg-danger px-2 py-0.5 text-[9px] sm:text-[10px] font-bold text-ivory tracking-wide uppercase">
                 −{discount}%
               </span>
             )}
@@ -69,7 +69,7 @@ export function ProductCard({ product, index = 0 }: { product: Product; index?: 
               <span
                 key={b}
                 className={cn(
-                  "rounded-pill px-2.5 py-1 text-[11px] font-semibold capitalize",
+                  "rounded-full px-2 py-0.5 text-[9px] sm:text-[10px] font-bold tracking-wide uppercase",
                   badgeStyles[b]
                 )}
               >
