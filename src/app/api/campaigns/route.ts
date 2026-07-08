@@ -19,10 +19,12 @@ export async function GET() {
     }
 
     let claimedCampaignIds: string[] = [];
+    let claimedProducts: Array<{ product_id: string; size?: string; color?: string }> = [];
+
     if (userId) {
       const { data: pastItems } = await supabase
         .from("order_items")
-        .select("campaign_id, orders!inner(status, user_id)")
+        .select("campaign_id, product_id, size, color, unit_price_paise, orders!inner(status, user_id)")
         .eq("orders.user_id", userId)
         .neq("orders.status", "rejected");
 
@@ -30,6 +32,14 @@ export async function GET() {
         claimedCampaignIds = pastItems
           .map((item: any) => item.campaign_id)
           .filter(Boolean);
+
+        claimedProducts = pastItems
+          .filter((item: any) => item.unit_price_paise === 0)
+          .map((item: any) => ({
+            product_id: item.product_id,
+            size: item.size || undefined,
+            color: item.color || undefined,
+          }));
       }
     }
 
@@ -49,6 +59,15 @@ export async function GET() {
     const activeCampaigns = (campaigns || []).filter((c: any) => {
       // If user already claimed it, filter it out
       if (userId && claimedCampaignIds.includes(c.id)) {
+        return false;
+      }
+
+      // Fallback check for past orders placed before campaign_id column was introduced:
+      // If the user has a free order item for this product/variant, filter it out.
+      if (userId && claimedProducts.some(p => 
+        p.product_id === c.product_id && 
+        (!c.variant || (p.size === c.variant.size && p.color === c.variant.color))
+      )) {
         return false;
       }
 

@@ -126,14 +126,25 @@ export async function POST(request: Request) {
         // Validate that this campaign has not already been used by this user (once-per-user constraint)
         const { data: pastUsage, error: usageErr } = await supabase
           .from("order_items")
-          .select("id, orders!inner(status, user_id)")
-          .eq("campaign_id", campaign.id)
+          .select("campaign_id, product_id, size, color, unit_price_paise, orders!inner(status, user_id)")
           .eq("orders.user_id", user.id)
-          .neq("orders.status", "rejected")
-          .limit(1);
+          .neq("orders.status", "rejected");
 
         if (usageErr) throw usageErr;
-        if (pastUsage && pastUsage.length > 0) {
+
+        const hasClaimed = (pastUsage || []).some((pastItem: any) => {
+          // 1. Direct match by campaign_id
+          if (pastItem.campaign_id === campaign.id) return true;
+
+          // 2. Fallback check for old orders: product matches and unit price was 0 (free gift)
+          if (pastItem.unit_price_paise === 0 && pastItem.product_id === campaign.product_id) {
+            if (!campaign.variant) return true;
+            if (pastItem.size === campaign.variant.size && pastItem.color === campaign.variant.color) return true;
+          }
+          return false;
+        });
+
+        if (hasClaimed) {
           return NextResponse.json({ 
             error: `You have already claimed this free gift reward (${campaign.display_name || dbProduct.name}) in a past order.` 
           }, { status: 400 });
