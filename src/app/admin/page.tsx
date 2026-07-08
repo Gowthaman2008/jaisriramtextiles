@@ -5802,14 +5802,25 @@ $$ language plpgsql;`}
                       {campEnableAnnouncement && (
                         <div className="flex flex-col gap-1.5 pt-2 border-t border-line/65">
                           <label className="text-xs font-bold text-taupe uppercase">Custom Announcement message (Optional)</label>
-                          <input
-                            type="text"
-                            placeholder="e.g. 🎉 Get a premium White Towel FREE with all orders above ₹999! Offer valid this week."
-                            value={campCustomAnnouncement}
-                            onChange={(e) => setCampCustomAnnouncement(e.target.value)}
-                            className="rounded border border-line bg-white px-3 py-2.5 text-sm outline-none focus:border-zari"
-                          />
-                          <p className="text-[10px] text-muted italic">Leave empty to use auto-generated default: &quot;🎁 Get a FREE [Product Name] on orders above ₹[Target]!&quot;</p>
+                          {(() => {
+                            const selectedProd = products.find(p => p.id === campProductId);
+                            const prodName = selectedProd?.name || "Product Name";
+                            const targetVal = campTargetRupees || "999";
+                            return (
+                              <>
+                                <input
+                                  type="text"
+                                  placeholder={`e.g. 🎉 Get a premium ${prodName} FREE with all orders above ₹${targetVal}! Offer valid this week.`}
+                                  value={campCustomAnnouncement}
+                                  onChange={(e) => setCampCustomAnnouncement(e.target.value)}
+                                  className="rounded border border-line bg-white px-3 py-2.5 text-sm outline-none focus:border-zari"
+                                />
+                                <p className="text-[10px] text-muted italic">
+                                  Leave empty to use auto-generated default: &quot;🎁 Get a FREE {prodName} on orders above ₹{campTargetRupees || "[Target]"}!&quot;
+                                </p>
+                              </>
+                            );
+                          })()}
                         </div>
                       )}
                     </div>
@@ -6327,9 +6338,9 @@ function StatCard({ icon, label, value, subtitle }: { icon: React.ReactNode; lab
 
 function RowDetail({ label, count }: { label: string; count: any }) {
   return (
-    <div className="flex justify-between items-center text-sm border-b border-line pb-2">
-      <span className="font-semibold text-taupe">{label}</span>
-      <span className="font-mono font-bold text-ink bg-cream px-2 py-0.5 rounded">{count !== undefined ? count : 0} rows</span>
+    <div className="flex justify-between items-center gap-2 text-sm border-b border-line pb-2">
+      <span className="font-semibold text-taupe min-w-0 break-words">{label}</span>
+      <span className="font-mono font-bold text-ink bg-cream px-2 py-0.5 rounded shrink-0">{count !== undefined ? count : 0} rows</span>
     </div>
   );
 }
