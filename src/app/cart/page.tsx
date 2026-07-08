@@ -327,105 +327,111 @@ export default function CartPage() {
                         ) : (
                           /* Unlocked State (Luxury Layout) */
                           <div className="space-y-4">
-                            {/* Gold Corner Ribbon */}
-                            <span className="absolute top-0 right-0 bg-[#B08D4C] text-white text-[8px] font-bold uppercase px-3 py-1 rounded-bl-lg tracking-widest animate-pulse">
-                              ✨ REWARD ✨
-                            </span>
-
-                            {/* Celebratory Alert Banner */}
-                            <div className="flex items-center gap-3 bg-[#FAF6EC] border border-[#E9DBB7]/60 rounded-xl p-3.5 mr-16 sm:mr-0">
-                              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#D9BE85] to-[#B08D4C] text-white flex items-center justify-center shrink-0 shadow-sm animate-bounce">
-                                <Sparkles size={14} className="stroke-[2]" />
+                            {/* Gold Header Banner */}
+                            <div className="flex items-center justify-between bg-gradient-to-r from-[#FAF6EC] to-[#FDFBF7] border border-[#E9DBB7]/60 rounded-xl p-4 mr-12 sm:mr-0">
+                              <div className="flex items-center gap-3">
+                                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#D9BE85] to-[#B08D4C] text-white flex items-center justify-center shrink-0 shadow-md">
+                                  <Sparkles size={16} className="stroke-[2] animate-pulse" />
+                                </div>
+                                <div>
+                                  <h4 className="text-sm font-bold text-[#6B5427] tracking-wide">
+                                    Congratulations! Gift Unlocked
+                                  </h4>
+                                  <p className="text-xs text-taupe leading-normal mt-0.5">
+                                    {selectedGift 
+                                      ? "Excellent choice! Your complimentary reward has been added to your shopping bag." 
+                                      : "Select your preferred premium reward below to claim it with this order:"}
+                                  </p>
+                                </div>
                               </div>
-                              <div className="flex-1 min-w-0">
-                                <h4 className="text-xs sm:text-sm font-bold text-[#6B5427]">
-                                  Free Gift Unlocked!
-                                </h4>
-                                <p className="text-[11px] text-taupe leading-normal mt-0.5">
-                                  {selectedGift 
-                                    ? "Excellent! You claimed your free reward. You can switch to another choice below." 
-                                    : "Choose one of the premium rewards below to add it directly to your cart:"}
-                                </p>
-                              </div>
+                              <span className="hidden md:inline-block bg-[#B08D4C] text-white text-[9px] font-extrabold uppercase px-3 py-1 rounded-full tracking-widest shadow-sm">
+                                COMPLIMENTARY
+                              </span>
                             </div>
 
-                            {/* Reward Selection Cards Grid / Centered layout if single */}
-                            {(() => {
-                              const isSingleOption = campaigns.length === 1;
-                              return (
-                                <div className={`grid gap-3 pt-1 ${isSingleOption ? "grid-cols-1 max-w-sm" : "grid-cols-1 sm:grid-cols-2"}`}>
-                                  {campaigns.map((c: any) => {
-                                    const isSelected = selectedGift && selectedGift.campaignId === c.id;
-                                    const productVal = c.product?.price_paise ? formatINR(c.product.price_paise, true) : "";
-                                    const img = c.product?.product_images?.[0]?.url || c.product?.image;
+                            {/* Reward Selection Cards List (Luxury Horizontal Showcases) */}
+                            <div className="grid grid-cols-1 gap-3.5 pt-1">
+                              {campaigns.map((c: any) => {
+                                const isSelected = selectedGift && selectedGift.campaignId === c.id;
+                                const productVal = c.product?.price_paise ? formatINR(c.product.price_paise, true) : "";
+                                const img = c.product?.product_images?.[0]?.url || c.product?.image;
 
-                                    let details = "";
-                                    if (c.variant) {
-                                      const parts = [c.variant.size, c.variant.color].filter(Boolean);
-                                      if (parts.length > 0) details = parts.join(" / ");
-                                    }
+                                let details = "";
+                                if (c.variant) {
+                                  const parts = [c.variant.size, c.variant.color].filter(Boolean);
+                                  if (parts.length > 0) details = parts.join(" / ");
+                                }
 
-                                    return (
-                                      <div
-                                        key={c.id}
-                                        className={`rounded-xl border p-3 flex gap-3.5 transition-all duration-300 relative ${
+                                return (
+                                  <div
+                                    key={c.id}
+                                    className={`rounded-2xl border p-4 flex flex-col sm:flex-row items-center gap-5 transition-all duration-300 relative ${
+                                      isSelected
+                                        ? "bg-white border-[#B08D4C] ring-2 ring-[#B08D4C]/15 shadow-md shadow-[#B08D4C]/5"
+                                        : "bg-white border-line hover:border-[#B08D4C]/45 hover:shadow-xs"
+                                    }`}
+                                  >
+                                    {/* Left: Product Image */}
+                                    <div className="relative w-18 h-18 sm:w-20 sm:h-20 rounded-xl overflow-hidden bg-cream border border-line flex-shrink-0 shadow-inner">
+                                      {img ? (
+                                        <Image src={img} alt={c.display_name || c.product?.name || ""} fill className="object-cover transition-transform duration-500 hover:scale-105" />
+                                      ) : (
+                                        <ShoppingBag className="w-6 h-6 m-6 text-muted" />
+                                      )}
+                                    </div>
+
+                                    {/* Middle: Content Details */}
+                                    <div className="flex-1 text-center sm:text-left min-w-0">
+                                      <h3 className="text-sm sm:text-base font-bold text-ink leading-tight">
+                                        {c.display_name || c.product?.name}
+                                      </h3>
+                                      
+                                      {details && (
+                                        <div className="mt-1 flex flex-wrap justify-center sm:justify-start gap-1">
+                                          <span className="inline-block bg-[#FAF6EC] border border-[#E9DBB7]/40 text-[#8C6D2D] text-[10px] font-bold px-2 py-0.5 rounded">
+                                            Variant: {details}
+                                          </span>
+                                        </div>
+                                      )}
+
+                                      {productVal && (
+                                        <div className="mt-2 text-[10px] font-bold text-[#8C6D2D] bg-[#FAF6EC] border border-[#E9DBB7]/30 px-2.5 py-0.5 rounded-full inline-flex items-center gap-1.5">
+                                          <span>🎁 FREE GIFT</span>
+                                          <span className="text-[9px] text-taupe/80 line-through font-normal">
+                                            (Worth {productVal})
+                                          </span>
+                                        </div>
+                                      )}
+                                    </div>
+
+                                    {/* Right: CTA Selection Button */}
+                                    <div className="flex-shrink-0 w-full sm:w-auto pt-2 sm:pt-0">
+                                      <button
+                                        type="button"
+                                        onClick={() => addFreeGift(c)}
+                                        className={`w-full sm:w-auto px-5 py-2 rounded-xl text-[10px] font-bold tracking-widest uppercase transition-all duration-300 flex items-center justify-center gap-1.5 cursor-pointer ${
                                           isSelected
-                                            ? "bg-white border-[#B08D4C] ring-2 ring-[#B08D4C]/15 shadow-md -translate-y-0.5"
-                                            : "bg-[#FAF6EC]/10 border-line hover:border-[#B08D4C]/45 hover:bg-[#FAF6EC]/25 hover:shadow-xs"
+                                            ? "bg-[#FAF6EC] border-2 border-[#B08D4C] text-[#8C6D2D] shadow-inner"
+                                            : "bg-gradient-to-r from-[#D9BE85] to-[#B08D4C] text-[#553C0C] hover:brightness-[1.05] shadow-[0_4px_12px_rgba(176,141,76,0.2)] hover:scale-[1.02] active:scale-[0.98] border-0"
                                         }`}
                                       >
-                                        <div className="relative w-12 h-12 rounded-lg overflow-hidden bg-cream border border-line/45 flex-shrink-0">
-                                          {img ? (
-                                            <Image src={img} alt={c.display_name || c.product?.name || ""} fill className="object-cover" />
-                                          ) : (
-                                            <ShoppingBag className="w-5 h-5 m-3.5 text-muted" />
-                                          )}
-                                        </div>
-
-                                        <div className="flex-1 min-w-0 flex flex-col justify-between">
-                                          <div className="space-y-0.5">
-                                            <h3 className="text-xs font-bold text-ink truncate pr-3 leading-tight">
-                                              {c.display_name || c.product?.name}
-                                            </h3>
-                                            {details && (
-                                              <p className="text-[9px] text-[#8C6D2D] font-bold">
-                                                Variant: {details}
-                                              </p>
-                                            )}
-                                            {productVal && (
-                                              <p className="text-[9px] text-taupe/80 line-through">
-                                                Worth {productVal}
-                                              </p>
-                                            )}
-                                          </div>
-
-                                          <div className="pt-2 flex justify-start">
-                                            <button
-                                              type="button"
-                                              onClick={() => addFreeGift(c)}
-                                              className={`px-4 py-1.5 rounded-full text-[9px] font-bold tracking-wide transition-all duration-300 flex items-center gap-1 cursor-pointer hover:scale-[1.02] active:scale-[0.98] ${
-                                                isSelected
-                                                  ? "bg-gradient-to-r from-[#D9BE85] to-[#B08D4C] text-[#553C0C] shadow-md border-0"
-                                                  : "border border-[#C5A862] text-[#8C6D2D] bg-[#FAF6EC]/40 hover:bg-[#B08D4C] hover:text-white hover:border-[#B08D4C] shadow-xs"
-                                              }`}
-                                            >
-                                              {isSelected ? (
-                                                <>
-                                                  <CheckCircle2 size={10} className="stroke-[3]" />
-                                                  Claimed
-                                                </>
-                                              ) : (
-                                                "Claim Gift"
-                                              )}
-                                            </button>
-                                          </div>
-                                        </div>
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              );
-                            })()}
+                                        {isSelected ? (
+                                          <>
+                                            <CheckCircle2 size={11} className="stroke-[3]" />
+                                            Claimed
+                                          </>
+                                        ) : (
+                                          <>
+                                            <Gift size={11} />
+                                            Claim Gift
+                                          </>
+                                        )}
+                                      </button>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
                           </div>
                         )}
                       </div>
