@@ -262,83 +262,83 @@ export default function CartPage() {
                     return (
                       <div
                         key={targetAmount}
-                        className={`rounded-card border p-6 transition-all duration-500 relative overflow-hidden ${
+                        className={`rounded-card border p-4 transition-all duration-500 relative overflow-hidden ${
                           isAchieved
                             ? "bg-gradient-to-br from-[#FCF9F2] via-white to-[#F6EDE0] border-[#B08D4C] gold-shine-luxury"
                             : "bg-gradient-to-br from-white via-white to-cream/25 border-line gold-shine-soft"
                         }`}
                       >
                         {!isAchieved ? (
-                          /* Locked State */
-                          <div className="space-y-5">
-                            <div className="flex items-center justify-between gap-6">
-                              <div className="space-y-1.5">
-                                <span className="inline-block bg-[#FAF6EC] border border-[#E9DBB7] text-[#8C6D2D] text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full">
+                          /* Locked State (Compact) */
+                          <div className="space-y-3.5">
+                            <div className="flex items-center justify-between gap-4">
+                              <div className="space-y-1">
+                                <span className="inline-block bg-[#FAF6EC] border border-[#E9DBB7] text-[#8C6D2D] text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full">
                                   Goal Target: {formatINR(targetAmount, true)}
                                 </span>
-                                <p className="text-base font-bold text-ink">
+                                <p className="text-sm font-bold text-ink">
                                   Unlock a Free Gift!
                                 </p>
-                                <p className="text-xs text-taupe leading-relaxed">
+                                <p className="text-[11px] text-taupe leading-normal mt-0.5">
                                   Add another <strong className="font-bold text-[#8C6D2D]">{formatINR(remaining, true)}</strong> of products to choose your gift!
                                 </p>
                               </div>
 
-                              {/* Floating Gift Box Icon Wrapper */}
-                              <div className="relative shrink-0 w-12 h-12 flex items-center justify-center">
+                              {/* Floating Gift Box Icon Wrapper (Compact) */}
+                              <div className="relative shrink-0 w-9 h-9 flex items-center justify-center">
                                 <div className="absolute inset-0 rounded-full bg-[#B08D4C]/10 animate-pulse-ring" />
-                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#D9BE85] to-[#B08D4C] text-white flex items-center justify-center animate-float-gift shadow-md relative z-10">
-                                  <Gift size={18} className="stroke-[2]" />
+                                <div className="w-7.5 h-7.5 rounded-full bg-gradient-to-br from-[#D9BE85] to-[#B08D4C] text-white flex items-center justify-center animate-float-gift shadow-sm relative z-10">
+                                  <Gift size={14} className="stroke-[2]" />
                                 </div>
                               </div>
                             </div>
                             
-                            {/* Shiny Gold Progress Bar */}
-                            <div className="space-y-1">
-                              <div className="w-full bg-cream/80 h-2.5 rounded-full overflow-hidden border border-line/35 shadow-inner">
+                            {/* Shiny Gold Progress Bar (Compact) */}
+                            <div className="space-y-0.5">
+                              <div className="w-full bg-cream/80 h-2 rounded-full overflow-hidden border border-line/35 shadow-inner">
                                 <div
-                                  className="animate-shimmer-gold-bar h-full rounded-full transition-all duration-700 ease-silk shadow-[0_0_8px_rgba(176,141,76,0.45)]"
+                                  className="animate-shimmer-gold-bar h-full rounded-full transition-all duration-700 ease-silk shadow-[0_0_6px_rgba(176,141,76,0.35)]"
                                   style={{ width: `${progressPercent}%` }}
                                 />
                               </div>
-                              <div className="flex justify-between text-[10px] font-semibold text-taupe font-mono">
+                              <div className="flex justify-between text-[9px] font-semibold text-taupe font-mono">
                                 <span>₹0</span>
                                 <span>{progressPercent.toFixed(0)}% Completed</span>
                                 <span>{formatINR(targetAmount, true)}</span>
                               </div>
                             </div>
 
-                            {/* Available Gift Badges */}
-                            <div className="pt-2 border-t border-line/60 flex flex-wrap gap-2 items-center">
-                              <span className="text-[10px] uppercase font-bold tracking-wider text-taupe flex items-center gap-1 mr-1">
-                                <Sparkles size={11} className="text-[#B08D4C]" /> Available Rewards:
+                            {/* Available Gift Badges (Compact) */}
+                            <div className="pt-2 border-t border-line/60 flex flex-wrap gap-1.5 items-center">
+                              <span className="text-[9px] uppercase font-bold tracking-wider text-taupe flex items-center gap-1 mr-1">
+                                <Sparkles size={10} className="text-[#B08D4C]" /> Available Rewards:
                               </span>
                               {campaigns.map((c: any) => (
                                 <span
                                   key={c.id}
-                                  className="inline-flex items-center gap-1 text-[10px] font-bold bg-[#FAF6EC] border border-[#E9DBB7] text-[#8C6D2D] px-2.5 py-1 rounded-full shadow-xs transition-colors hover:bg-[#F3EAD5]"
+                                  className="inline-flex items-center gap-1 text-[9px] font-bold bg-[#FAF6EC] border border-[#E9DBB7] text-[#8C6D2D] px-2 py-0.5 rounded-full shadow-xs transition-colors hover:bg-[#F3EAD5]"
                                 >
-                                  <Gift size={9} />
+                                  <Gift size={8} />
                                   {c.display_name || c.product?.name}
                                 </span>
                               ))}
                             </div>
                           </div>
                         ) : (
-                          /* Unlocked State */
-                          <div className="space-y-5">
-                            {/* Gold Corner Ribbon */}
-                            <span className="absolute top-0 right-0 bg-gradient-to-r from-[#D9BE85] to-[#B08D4C] text-white text-[9px] font-bold uppercase px-3 py-1 rounded-bl-lg shadow-sm tracking-wider flex items-center gap-1 animate-pulse">
+                          /* Unlocked State (Compact) */
+                          <div className="space-y-3.5">
+                            {/* Gold Corner Ribbon (Compact) */}
+                            <span className="absolute top-0 right-0 bg-gradient-to-r from-[#D9BE85] to-[#B08D4C] text-white text-[8px] font-bold uppercase px-2.5 py-0.5 rounded-bl shadow-xs tracking-wider flex items-center gap-1 animate-pulse">
                               ✨ UNLOCKED ✨
                             </span>
 
-                            <div className="flex items-center justify-between border-b border-[#E5D5B3] pb-3">
+                            <div className="flex items-center justify-between border-b border-[#E5D5B3] pb-2">
                               <div>
-                                <p className="text-base font-bold text-[#8C6D2D] flex items-center gap-2">
-                                  <CheckCircle2 size={18} className="text-success shrink-0" />
+                                <p className="text-sm font-bold text-[#8C6D2D] flex items-center gap-1.5">
+                                  <CheckCircle2 size={16} className="text-success shrink-0" />
                                   Congratulations! Gift Unlocked
                                 </p>
-                                <p className="text-xs text-taupe mt-1">
+                                <p className="text-[11px] text-taupe mt-0.5">
                                   {selectedGift 
                                     ? "You have claimed your free gift. You can switch to another one if desired." 
                                     : "Select one of the premium rewards below to add it directly to your cart:"}
@@ -346,8 +346,8 @@ export default function CartPage() {
                               </div>
                             </div>
 
-                            {/* Reward Selection Cards Grid */}
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+                            {/* Reward Selection Cards Grid (Compact) */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                               {campaigns.map((c: any) => {
                                 const isSelected = selectedGift && selectedGift.campaignId === c.id;
                                 const productVal = c.product?.price_paise ? formatINR(c.product.price_paise, true) : "";
@@ -362,55 +362,55 @@ export default function CartPage() {
                                 return (
                                   <div
                                     key={c.id}
-                                    className={`rounded-xl border p-4 flex gap-4 transition-all duration-300 relative ${
+                                    className={`rounded-xl border p-3 flex gap-3 transition-all duration-300 relative ${
                                       isSelected
-                                        ? "bg-white border-[#B08D4C] ring-2 ring-[#B08D4C]/25 shadow-md -translate-y-0.5"
-                                        : "bg-cream/10 border-line hover:border-[#B08D4C]/50 hover:bg-cream/20"
+                                        ? "bg-white border-[#B08D4C] ring-2 ring-[#B08D4C]/20 shadow-sm"
+                                        : "bg-cream/10 border-line hover:border-[#B08D4C]/40 hover:bg-cream/20"
                                     }`}
                                   >
-                                    {/* Gold sparkle corner badge on option image */}
-                                    <span className="absolute -top-1 -left-1 bg-gradient-to-br from-[#D9BE85] to-[#B08D4C] text-white p-1.5 rounded-full shadow-md z-10 animate-float-gift">
-                                      <Sparkles size={8} />
+                                    {/* Gold sparkle corner badge on option image (Compact) */}
+                                    <span className="absolute -top-1 -left-1 bg-gradient-to-br from-[#D9BE85] to-[#B08D4C] text-white p-1 rounded-full shadow z-10 animate-float-gift">
+                                      <Sparkles size={7} />
                                     </span>
 
-                                    <div className="relative w-16 h-16 rounded-lg overflow-hidden bg-cream border border-line flex-shrink-0">
+                                    <div className="relative w-12 h-12 rounded-md overflow-hidden bg-cream border border-line flex-shrink-0">
                                       {img ? (
                                         <Image src={img} alt={c.display_name || c.product?.name || ""} fill className="object-cover" />
                                       ) : (
-                                        <ShoppingBag className="w-6 h-6 m-5 text-muted" />
+                                        <ShoppingBag className="w-5 h-5 m-3.5 text-muted" />
                                       )}
                                     </div>
 
                                     <div className="flex-1 min-w-0 flex flex-col justify-between">
                                       <div className="space-y-0.5">
-                                        <h3 className="text-xs sm:text-sm font-bold text-ink truncate pr-6">
+                                        <h3 className="text-[11px] sm:text-xs font-bold text-ink truncate pr-5 leading-tight">
                                           {c.display_name || c.product?.name}
                                         </h3>
                                         {details && (
-                                          <p className="text-[10px] text-[#8C6D2D] font-semibold">
+                                          <p className="text-[9px] text-[#8C6D2D] font-bold">
                                             Variant: {details}
                                           </p>
                                         )}
                                         {productVal && (
-                                          <p className="text-[10px] text-taupe/80 line-through">
+                                          <p className="text-[9px] text-taupe/80 line-through">
                                             Worth {productVal}
                                           </p>
                                         )}
                                       </div>
 
-                                      <div className="pt-2.5 flex justify-start">
+                                      <div className="pt-2 flex justify-start">
                                         <button
                                           type="button"
                                           onClick={() => addFreeGift(c)}
-                                          className={`px-4 py-1.5 rounded-full text-[10px] font-bold tracking-wide transition-all duration-300 flex items-center gap-1 cursor-pointer hover:scale-[1.03] active:scale-[0.97] ${
+                                          className={`px-3 py-1 rounded-full text-[9px] font-bold tracking-wide transition-all duration-300 flex items-center gap-1 cursor-pointer hover:scale-[1.02] active:scale-[0.98] ${
                                             isSelected
-                                              ? "bg-gradient-to-r from-[#D9BE85] to-[#B08D4C] text-[#553C0C] shadow-md border-0"
+                                              ? "bg-gradient-to-r from-[#D9BE85] to-[#B08D4C] text-[#553C0C] shadow border-0"
                                               : "border border-[#B08D4C] text-[#8C6D2D] hover:bg-[#B08D4C] hover:text-white bg-white shadow-xs"
                                           }`}
                                         >
                                           {isSelected ? (
                                             <>
-                                              <CheckCircle2 size={11} className="stroke-[3]" />
+                                              <CheckCircle2 size={10} className="stroke-[3]" />
                                               Claimed
                                             </>
                                           ) : (
