@@ -109,6 +109,15 @@ export default function AccountPage() {
     }
   }, [trackedQuery, trackedQuery?.replies]);
 
+  // Poll active support query details and replies every 4 seconds when the chat panel is open
+  useEffect(() => {
+    if (!trackedQuery?.id) return;
+    const interval = setInterval(() => {
+      fetchTrackedQuery(trackedQuery.id, true);
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [trackedQuery?.id]);
+
   // Profile Edit States
   const [profileName, setProfileName] = useState("");
   const [profilePhone, setProfilePhone] = useState("");
@@ -398,24 +407,30 @@ export default function AccountPage() {
     }
   }
 
-  async function fetchTrackedQuery(queryIdToCheck?: string) {
+  async function fetchTrackedQuery(queryIdToCheck?: string, silent: boolean = false) {
     const id = queryIdToCheck || trackQueryId;
     if (!id || !id.trim()) {
-      setTrackError("Please enter a valid Query ID");
+      if (!silent) setTrackError("Please enter a valid Query ID");
       return;
     }
-    setTrackLoading(true);
-    setTrackError("");
-    setTrackedQuery(null);
+    if (!silent) {
+      setTrackLoading(true);
+      setTrackError("");
+      setTrackedQuery(null);
+    }
     try {
       const res = await fetch(`/api/support/track?id=${id.trim()}`);
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to find inquiry");
       setTrackedQuery(data);
     } catch (err: any) {
-      setTrackError(err.message || "Failed to find inquiry");
+      if (!silent) {
+        setTrackError(err.message || "Failed to find inquiry");
+      }
     } finally {
-      setTrackLoading(false);
+      if (!silent) {
+        setTrackLoading(false);
+      }
     }
   }
 

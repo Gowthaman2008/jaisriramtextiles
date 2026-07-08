@@ -349,8 +349,8 @@ export default function AdminDashboardPage() {
       return;
     }
     
-    async function fetchReplies() {
-      setLoadingReplies(true);
+    async function fetchReplies(silent: boolean = false) {
+      if (!silent) setLoadingReplies(true);
       try {
         const res = await fetch(`/api/support/track?id=${selectedSupportId}`);
         if (res.ok) {
@@ -360,11 +360,17 @@ export default function AdminDashboardPage() {
       } catch (err) {
         console.error("Failed to fetch ticket replies:", err);
       } finally {
-        setLoadingReplies(false);
+        if (!silent) setLoadingReplies(false);
       }
     }
     
-    fetchReplies();
+    fetchReplies(false);
+
+    const interval = setInterval(() => {
+      fetchReplies(true);
+    }, 4000);
+
+    return () => clearInterval(interval);
   }, [selectedSupportId]);
 
   const chatEndRef = useRef<HTMLDivElement>(null);
