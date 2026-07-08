@@ -7,7 +7,7 @@ import { useCart, type CartItem } from "@/components/providers/cart-provider";
 import { useWishlist } from "@/components/providers/wishlist-provider";
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
-import { Plus, Minus, Trash2, ShoppingBag, ArrowRight, Truck, ChevronLeft, Heart, Gift, CheckCircle2 } from "lucide-react";
+import { Plus, Minus, Trash2, ShoppingBag, ArrowRight, Truck, ChevronLeft, Heart, Gift, CheckCircle2, Sparkles } from "lucide-react";
 import { formatINR } from "@/lib/utils";
 import { computeShipping } from "@/lib/constants";
 import type { Product } from "@/lib/types";
@@ -209,9 +209,43 @@ export default function CartPage() {
 
               return (
                 <div className="mt-8 space-y-6">
+                  {/* Luxury Gift Animations & Styles */}
+                  <style dangerouslySetInnerHTML={{ __html: `
+                    @keyframes float-gift {
+                      0%, 100% { transform: translateY(0) rotate(0deg); }
+                      50% { transform: translateY(-6px) rotate(2deg); }
+                    }
+                    @keyframes pulse-ring {
+                      0% { transform: scale(0.92); opacity: 0.9; }
+                      50% { transform: scale(1.06); opacity: 0.4; }
+                      100% { transform: scale(1.2); opacity: 0; }
+                    }
+                    @keyframes shimmer-gold-bar {
+                      0% { background-position: -200% 0; }
+                      100% { background-position: 200% 0; }
+                    }
+                    .animate-float-gift {
+                      animation: float-gift 4s ease-in-out infinite;
+                    }
+                    .animate-pulse-ring {
+                      animation: pulse-ring 2.2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+                    }
+                    .animate-shimmer-gold-bar {
+                      background: linear-gradient(90deg, #B08D4C 25%, #F4E9CD 50%, #B08D4C 75%);
+                      background-size: 200% 100%;
+                      animation: shimmer-gold-bar 2.5s infinite linear;
+                    }
+                    .gold-shine-soft {
+                      box-shadow: 0 4px 20px rgba(176, 141, 76, 0.08);
+                    }
+                    .gold-shine-luxury {
+                      box-shadow: 0 10px 30px rgba(176, 141, 76, 0.18);
+                    }
+                  `}} />
+
                   <div className="border-t border-line/60 pt-6">
                     <h2 className="font-display text-xl text-ink mb-4 flex items-center gap-2">
-                      <Gift size={20} className="text-zari animate-pulse" />
+                      <Gift size={20} className="text-[#B08D4C] animate-bounce" />
                       Claim Your Free Gift
                     </h2>
                   </div>
@@ -228,67 +262,91 @@ export default function CartPage() {
                     return (
                       <div
                         key={targetAmount}
-                        className={`rounded-card border p-5 transition-all duration-300 ${
+                        className={`rounded-card border p-6 transition-all duration-500 relative overflow-hidden ${
                           isAchieved
-                            ? "bg-zari-tint/10 border-zari/30 shadow-soft"
-                            : "bg-white border-line shadow-soft"
+                            ? "bg-gradient-to-br from-[#FCF9F2] via-white to-[#F6EDE0] border-[#B08D4C] gold-shine-luxury"
+                            : "bg-gradient-to-br from-white via-white to-cream/25 border-line gold-shine-soft"
                         }`}
                       >
                         {!isAchieved ? (
-                          <div className="space-y-4">
-                            <div className="flex items-start justify-between gap-4">
-                              <div className="space-y-1">
-                                <p className="text-sm font-semibold text-ink">
-                                  Unlock a Free Gift at{" "}
-                                  <strong className="text-zari-deep">{formatINR(targetAmount, true)}</strong>
+                          /* Locked State */
+                          <div className="space-y-5">
+                            <div className="flex items-center justify-between gap-6">
+                              <div className="space-y-1.5">
+                                <span className="inline-block bg-[#FAF6EC] border border-[#E9DBB7] text-[#8C6D2D] text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full">
+                                  Goal Target: {formatINR(targetAmount, true)}
+                                </span>
+                                <p className="text-base font-bold text-ink">
+                                  Unlock a Free Gift!
                                 </p>
-                                <p className="text-xs text-taupe">
-                                  Add another <strong className="font-bold text-ink">{formatINR(remaining, true)}</strong> of products to choose your gift!
+                                <p className="text-xs text-taupe leading-relaxed">
+                                  Add another <strong className="font-bold text-[#8C6D2D]">{formatINR(remaining, true)}</strong> of products to choose your gift!
                                 </p>
                               </div>
-                              <span className="p-2 rounded-full bg-cream text-muted">
-                                <Gift size={16} />
-                              </span>
+
+                              {/* Floating Gift Box Icon Wrapper */}
+                              <div className="relative shrink-0 w-12 h-12 flex items-center justify-center">
+                                <div className="absolute inset-0 rounded-full bg-[#B08D4C]/10 animate-pulse-ring" />
+                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#D9BE85] to-[#B08D4C] text-white flex items-center justify-center animate-float-gift shadow-md relative z-10">
+                                  <Gift size={18} className="stroke-[2]" />
+                                </div>
+                              </div>
                             </div>
                             
-                            <div className="w-full bg-cream h-1.5 rounded-full overflow-hidden">
-                              <div
-                                className="bg-zari h-full transition-all duration-500 ease-silk"
-                                style={{ width: `${progressPercent}%` }}
-                              />
+                            {/* Shiny Gold Progress Bar */}
+                            <div className="space-y-1">
+                              <div className="w-full bg-cream/80 h-2.5 rounded-full overflow-hidden border border-line/35 shadow-inner">
+                                <div
+                                  className="animate-shimmer-gold-bar h-full rounded-full transition-all duration-700 ease-silk shadow-[0_0_8px_rgba(176,141,76,0.45)]"
+                                  style={{ width: `${progressPercent}%` }}
+                                />
+                              </div>
+                              <div className="flex justify-between text-[10px] font-semibold text-taupe font-mono">
+                                <span>₹0</span>
+                                <span>{progressPercent.toFixed(0)}% Completed</span>
+                                <span>{formatINR(targetAmount, true)}</span>
+                              </div>
                             </div>
 
-                            <div className="pt-1 flex flex-wrap gap-2 items-center">
-                              <span className="text-[10px] uppercase font-bold tracking-wider text-taupe">Available Gifts:</span>
+                            {/* Available Gift Badges */}
+                            <div className="pt-2 border-t border-line/60 flex flex-wrap gap-2 items-center">
+                              <span className="text-[10px] uppercase font-bold tracking-wider text-taupe flex items-center gap-1 mr-1">
+                                <Sparkles size={11} className="text-[#B08D4C]" /> Available Rewards:
+                              </span>
                               {campaigns.map((c: any) => (
                                 <span
                                   key={c.id}
-                                  className="text-[10px] font-bold bg-cream text-taupe px-2 py-0.5 rounded border border-line"
+                                  className="inline-flex items-center gap-1 text-[10px] font-bold bg-[#FAF6EC] border border-[#E9DBB7] text-[#8C6D2D] px-2.5 py-1 rounded-full shadow-xs transition-colors hover:bg-[#F3EAD5]"
                                 >
+                                  <Gift size={9} />
                                   {c.display_name || c.product?.name}
                                 </span>
                               ))}
                             </div>
                           </div>
                         ) : (
-                          <div className="space-y-4">
-                            <div className="flex items-center justify-between border-b border-zari/10 pb-3">
+                          /* Unlocked State */
+                          <div className="space-y-5">
+                            {/* Gold Corner Ribbon */}
+                            <span className="absolute top-0 right-0 bg-gradient-to-r from-[#D9BE85] to-[#B08D4C] text-white text-[9px] font-bold uppercase px-3 py-1 rounded-bl-lg shadow-sm tracking-wider flex items-center gap-1 animate-pulse">
+                              ✨ UNLOCKED ✨
+                            </span>
+
+                            <div className="flex items-center justify-between border-b border-[#E5D5B3] pb-3">
                               <div>
-                                <p className="text-sm font-bold text-zari-deep flex items-center gap-1.5">
-                                  <CheckCircle2 size={16} className="text-success" />
-                                  Gift Unlocked! (Order above {formatINR(targetAmount, true)})
+                                <p className="text-base font-bold text-[#8C6D2D] flex items-center gap-2">
+                                  <CheckCircle2 size={18} className="text-success shrink-0" />
+                                  Congratulations! Gift Unlocked
                                 </p>
-                                <p className="text-xs text-taupe mt-0.5">
+                                <p className="text-xs text-taupe mt-1">
                                   {selectedGift 
                                     ? "You have claimed your free gift. You can switch to another one if desired." 
-                                    : "Please select one of the free products below to add it to your cart:"}
+                                    : "Select one of the premium rewards below to add it directly to your cart:"}
                                 </p>
                               </div>
-                              <span className="px-2.5 py-1 rounded-full bg-success/10 border border-success/20 text-success text-[10px] font-bold uppercase tracking-wider">
-                                Qualified
-                              </span>
                             </div>
 
+                            {/* Reward Selection Cards Grid */}
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
                               {campaigns.map((c: any) => {
                                 const isSelected = selectedGift && selectedGift.campaignId === c.id;
@@ -304,48 +362,60 @@ export default function CartPage() {
                                 return (
                                   <div
                                     key={c.id}
-                                    className={`rounded-xl border p-3 flex gap-3 transition-all duration-300 ${
+                                    className={`rounded-xl border p-4 flex gap-4 transition-all duration-300 relative ${
                                       isSelected
-                                        ? "bg-white border-zari ring-1 ring-zari shadow-soft"
-                                        : "bg-cream/20 border-line hover:border-taupe"
+                                        ? "bg-white border-[#B08D4C] ring-2 ring-[#B08D4C]/25 shadow-md -translate-y-0.5"
+                                        : "bg-cream/10 border-line hover:border-[#B08D4C]/50 hover:bg-cream/20"
                                     }`}
                                   >
-                                    <div className="relative w-14 h-14 rounded-md overflow-hidden bg-cream border border-line flex-shrink-0">
+                                    {/* Gold sparkle corner badge on option image */}
+                                    <span className="absolute -top-1 -left-1 bg-gradient-to-br from-[#D9BE85] to-[#B08D4C] text-white p-1.5 rounded-full shadow-md z-10 animate-float-gift">
+                                      <Sparkles size={8} />
+                                    </span>
+
+                                    <div className="relative w-16 h-16 rounded-lg overflow-hidden bg-cream border border-line flex-shrink-0">
                                       {img ? (
-                                        <Image src={img} alt={c.product?.name || ""} fill className="object-cover" />
+                                        <Image src={img} alt={c.display_name || c.product?.name || ""} fill className="object-cover" />
                                       ) : (
-                                        <ShoppingBag className="w-6 h-6 m-4 text-muted" />
+                                        <ShoppingBag className="w-6 h-6 m-5 text-muted" />
                                       )}
                                     </div>
 
                                     <div className="flex-1 min-w-0 flex flex-col justify-between">
                                       <div className="space-y-0.5">
-                                        <h3 className="text-xs font-bold text-ink truncate">
+                                        <h3 className="text-xs sm:text-sm font-bold text-ink truncate pr-6">
                                           {c.display_name || c.product?.name}
                                         </h3>
                                         {details && (
-                                          <p className="text-[10px] text-taupe font-medium">
+                                          <p className="text-[10px] text-[#8C6D2D] font-semibold">
                                             Variant: {details}
                                           </p>
                                         )}
                                         {productVal && (
-                                          <p className="text-[10px] text-muted line-through">
+                                          <p className="text-[10px] text-taupe/80 line-through">
                                             Worth {productVal}
                                           </p>
                                         )}
                                       </div>
 
-                                      <div className="pt-2 flex justify-start">
+                                      <div className="pt-2.5 flex justify-start">
                                         <button
                                           type="button"
                                           onClick={() => addFreeGift(c)}
-                                          className={`px-3 py-1 rounded-full text-[10px] font-bold transition-all cursor-pointer ${
+                                          className={`px-4 py-1.5 rounded-full text-[10px] font-bold tracking-wide transition-all duration-300 flex items-center gap-1 cursor-pointer hover:scale-[1.03] active:scale-[0.97] ${
                                             isSelected
-                                              ? "bg-zari text-ink shadow-xs"
-                                              : "border border-line hover:border-zari hover:text-zari-deep text-taupe bg-white"
+                                              ? "bg-gradient-to-r from-[#D9BE85] to-[#B08D4C] text-[#553C0C] shadow-md border-0"
+                                              : "border border-[#B08D4C] text-[#8C6D2D] hover:bg-[#B08D4C] hover:text-white bg-white shadow-xs"
                                           }`}
                                         >
-                                          {isSelected ? "✓ Selected" : "Claim Gift"}
+                                          {isSelected ? (
+                                            <>
+                                              <CheckCircle2 size={11} className="stroke-[3]" />
+                                              Claimed
+                                            </>
+                                          ) : (
+                                            "Claim Gift"
+                                          )}
                                         </button>
                                       </div>
                                     </div>
