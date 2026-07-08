@@ -35,8 +35,9 @@ export async function POST(request: Request) {
     if (!userId) {
       return NextResponse.json({ error: "User ID is required" }, { status: 400 });
     }
-    if (!amountRupees || isNaN(amountRupees) || amountRupees <= 0) {
-      return NextResponse.json({ error: "Valid amount in rupees is required" }, { status: 400 });
+    const amountInt = Math.floor(amountRupees);
+    if (!amountRupees || isNaN(amountRupees) || amountInt < 1) {
+      return NextResponse.json({ error: "Valid whole rupee amount (minimum ₹1) is required — no paisa adjustments" }, { status: 400 });
     }
     if (!["add", "deduct"].includes(actionType)) {
       return NextResponse.json({ error: "Action type must be either 'add' or 'deduct'" }, { status: 400 });
@@ -45,7 +46,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Adjustment note/reason is required" }, { status: 400 });
     }
 
-    const amountPaise = Math.round(amountRupees * 100);
+    // Only whole rupees — multiply integer by 100 for paise
+    const amountPaise = amountInt * 100;
     const adjustPaise = actionType === "add" ? amountPaise : -amountPaise;
 
     const supabase = createServiceClient();

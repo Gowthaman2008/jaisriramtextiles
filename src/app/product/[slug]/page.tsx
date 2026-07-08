@@ -6,24 +6,24 @@ import { Container } from "@/components/ui/container";
 import { StarRating } from "@/components/ui/star-rating";
 import { Button } from "@/components/ui/button";
 import { formatINR } from "@/lib/utils";
-import { getProductBySlug, getProductReviews } from "@/lib/supabase/queries";
-import { products as mockProducts } from "@/data/mock";
+import { getProductBySlug, getProductReviews, getAllProductSlugs } from "@/lib/supabase/queries";
 import { ProductActions } from "@/components/product/product-actions";
 import { ProductGallery } from "@/components/product/product-gallery";
 import { ChevronLeft } from "lucide-react";
 
 type Props = { params: Promise<{ slug: string }> };
 
-async function findProduct(slug: string) {
-  const dbProduct = await getProductBySlug(slug);
-  if (dbProduct) return dbProduct;
-  // Fall back to mock data when DB is empty (dev / empty catalogue)
-  return mockProducts.find((p) => p.slug === slug) ?? null;
+// Pre-render all product pages at build time for instant navigation
+export async function generateStaticParams() {
+  const slugs = await getAllProductSlugs();
+  return slugs.map((slug) => ({ slug }));
 }
+
+export const revalidate = 3600; // re-generate in background every hour
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const product = await findProduct(slug);
+  const product = await getProductBySlug(slug);
   if (!product) return {};
   return {
     title: product.name,
@@ -33,8 +33,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function ProductPage({ params }: Props) {
   const { slug } = await params;
-  const product = await findProduct(slug);
+  const product = await getProductBySlug(slug);
   if (!product) notFound();
+
+  // Fetch reviews in parallel with the rest of the page computation
+  const [realReviews] = await Promise.all([
+    getProductReviews(product.id),
+  ]);
 
   const discount =
     product.compareAtPaise && product.compareAtPaise > product.pricePaise
@@ -42,29 +47,17 @@ export default async function ProductPage({ params }: Props) {
       : 0;
   const gallery = product.images?.length ? product.images : product.image ? [product.image] : [];
 
-  // Fetch real reviews
-  const realReviews = await getProductReviews(product.id);
+  // Only real customer reviews — no mock data
 
-  // Generate category mock reviews matching the default stars
-  const mockReviews = [
-    { id: "mock-1", author: "Arun K.", rating: 5, date: "25 Jun 2026", title: "Outstanding quality!", body: "The fabric is incredibly premium. Highly recommend JAI SRI RAM TEXTILES!", photos: [] },
-    { id: "mock-2", author: "Priya Chandran", rating: 5, date: "01 Jul 2026", title: "Soft and comfortable", body: "Exactly as described. Authentic handloom quality and fast delivery.", photos: [] },
-    { id: "mock-3", author: "Ravi Teja", rating: 4, date: "15 Jun 2026", title: "Satisfied with purchase", body: "Very durable, colors look great. Will buy again.", photos: [] }
-  ];
-
-  // Mix of real reviews and mock reviews
-  const finalReviews = [
-    ...realReviews.map((r: any) => ({
-      id: r.id,
-      author: r.profiles?.full_name || "Verified Customer",
-      rating: r.rating,
-      date: new Date(r.created_at).toLocaleDateString("en-IN", { dateStyle: "medium" }),
-      title: r.title || "",
-      body: r.body || "",
-      photos: (r.review_photos || []).map((p: any) => p.url)
-    })),
-    ...mockReviews
-  ];
+  const finalReviews = realReviews.map((r: any) => ({
+    id: r.id,
+    author: r.profiles?.full_name || "Verified Customer",
+    rating: r.rating,
+    date: new Date(r.created_at).toLocaleDateString("en-IN", { dateStyle: "medium" }),
+    title: r.title || "",
+    body: r.body || "",
+    photos: (r.review_photos || []).map((p: any) => p.url),
+  }));
 
   const totalCount = product.reviewCount;
   const ratingAvg = product.rating;
@@ -193,33 +186,40 @@ export default async function ProductPage({ params }: Props) {
 
             {/* Reviews List */}
             <div className="md:col-span-8 space-y-6">
-              {finalReviews.map((r, index) => (
-                <div key={r.id || index} className="border-b border-line pb-6 last:border-0 last:pb-0">
-                  <div className="flex justify-between items-start gap-4 flex-wrap">
-                    <div>
-                      <p className="font-semibold text-ink text-sm">{r.author}</p>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <StarRating rating={r.rating} />
-                        {r.title && <span className="font-bold text-ink text-xs">{r.title}</span>}
-                      </div>
-                    </div>
-                    <span className="text-[10px] text-taupe font-medium">{r.date}</span>
-                  </div>
-                  
-                  <p className="text-xs text-taupe mt-3 leading-relaxed whitespace-pre-line">{r.body}</p>
-
-                  {/* Review photos */}
-                  {r.photos && r.photos.length > 0 && (
-                    <div className="flex gap-2 mt-3 flex-wrap">
-                      {r.photos.map((url: string, pIdx: number) => (
-                        <a key={pIdx} href={url} target="_blank" rel="noopener noreferrer" className="relative w-16 h-16 rounded border border-line overflow-hidden bg-cream cursor-zoom-in block hover:opacity-85 transition-opacity">
-                          <Image src={url} alt="Review attachment" fill className="object-cover" />
-                        </a>
-                      ))}
-                    </div>
-                  )}
+              {finalReviews.length === 0 ? (
+                <div className="py-10 text-center text-sm text-taupe">
+                  <p className="font-semibold text-ink">No reviews yet</p>
+                  <p className="mt-1">Be the first to review this product after purchase.</p>
                 </div>
-              ))}
+              ) : (
+                finalReviews.map((r, index) => (
+                  <div key={r.id || index} className="border-b border-line pb-6 last:border-0 last:pb-0">
+                    <div className="flex justify-between items-start gap-4 flex-wrap">
+                      <div>
+                        <p className="font-semibold text-ink text-sm">{r.author}</p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <StarRating rating={r.rating} />
+                          {r.title && <span className="font-bold text-ink text-xs">{r.title}</span>}
+                        </div>
+                      </div>
+                      <span className="text-[10px] text-taupe font-medium">{r.date}</span>
+                    </div>
+                    
+                    <p className="text-xs text-taupe mt-3 leading-relaxed whitespace-pre-line">{r.body}</p>
+
+                    {/* Review photos */}
+                    {r.photos && r.photos.length > 0 && (
+                      <div className="flex gap-2 mt-3 flex-wrap">
+                        {r.photos.map((url: string, pIdx: number) => (
+                          <a key={pIdx} href={url} target="_blank" rel="noopener noreferrer" className="relative w-16 h-16 rounded border border-line overflow-hidden bg-cream cursor-zoom-in block hover:opacity-85 transition-opacity">
+                            <Image src={url} alt="Review attachment" fill className="object-cover" />
+                          </a>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>

@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/admin";
 import type { Product } from "@/lib/types";
 
 type DbCategory = {
@@ -70,30 +71,9 @@ function toCardProduct(row: DbProduct): Product {
   };
 }
 
-let hasShowSizeColumn: boolean | null = null;
-
-async function getProductSelect() {
-  if (hasShowSizeColumn !== null) {
-    return hasShowSizeColumn 
-      ? "id, slug, name, description, price_paise, compare_at_paise, cashback_paise, stock, is_on_sale, rating_avg, rating_count, show_size, categories(slug, name), product_images(url, alt, sort_order), product_variants(id, size, color, sku, stock)"
-      : "id, slug, name, description, price_paise, compare_at_paise, cashback_paise, stock, is_on_sale, rating_avg, rating_count, categories(slug, name), product_images(url, alt, sort_order), product_variants(id, size, color, sku, stock)";
-  }
-
-  try {
-    const supabase = await createClient();
-    const { error } = await supabase.from("products").select("show_size").limit(1);
-    if (error && error.message.includes("show_size")) {
-      hasShowSizeColumn = false;
-    } else {
-      hasShowSizeColumn = true;
-    }
-  } catch (err) {
-    hasShowSizeColumn = false;
-  }
-  return hasShowSizeColumn 
-    ? "id, slug, name, description, price_paise, compare_at_paise, cashback_paise, stock, is_on_sale, rating_avg, rating_count, show_size, categories(slug, name), product_images(url, alt, sort_order), product_variants(id, size, color, sku, stock)"
-    : "id, slug, name, description, price_paise, compare_at_paise, cashback_paise, stock, is_on_sale, rating_avg, rating_count, categories(slug, name), product_images(url, alt, sort_order), product_variants(id, size, color, sku, stock)";
-}
+// Hardcoded select — avoids a runtime probe query on every page load
+const PRODUCT_SELECT =
+  "id, slug, name, description, price_paise, compare_at_paise, cashback_paise, stock, is_on_sale, rating_avg, rating_count, show_size, categories(slug, name), product_images(url, alt, sort_order), product_variants(id, size, color, sku, stock)";
 
 export async function getCategoryBySlug(slug: string): Promise<DbCategory | null> {
   const supabase = await createClient();
@@ -108,10 +88,9 @@ export async function getCategoryBySlug(slug: string): Promise<DbCategory | null
 
 export async function getProductsByCategoryId(categoryId: string): Promise<Product[]> {
   const supabase = await createClient();
-  const selectClause = await getProductSelect();
   const { data } = await supabase
     .from("products")
-    .select(selectClause)
+    .select(PRODUCT_SELECT)
     .eq("is_active", true)
     .eq("category_id", categoryId)
     .order("created_at", { ascending: false })
@@ -121,10 +100,9 @@ export async function getProductsByCategoryId(categoryId: string): Promise<Produ
 
 export async function getOnSaleProducts(): Promise<Product[]> {
   const supabase = await createClient();
-  const selectClause = await getProductSelect();
   const { data } = await supabase
     .from("products")
-    .select(selectClause)
+    .select(PRODUCT_SELECT)
     .eq("is_active", true)
     .eq("is_on_sale", true)
     .order("created_at", { ascending: false })
@@ -134,10 +112,9 @@ export async function getOnSaleProducts(): Promise<Product[]> {
 
 export async function getAllProducts(): Promise<Product[]> {
   const supabase = await createClient();
-  const selectClause = await getProductSelect();
   const { data } = await supabase
     .from("products")
-    .select(selectClause)
+    .select(PRODUCT_SELECT)
     .eq("is_active", true)
     .order("created_at", { ascending: false })
     .returns<DbProduct[]>();
@@ -146,10 +123,9 @@ export async function getAllProducts(): Promise<Product[]> {
 
 export async function getProductBySlug(slug: string): Promise<Product | null> {
   const supabase = await createClient();
-  const selectClause = await getProductSelect();
   const { data } = await supabase
     .from("products")
-    .select(selectClause)
+    .select(PRODUCT_SELECT)
     .eq("slug", slug)
     .eq("is_active", true)
     .maybeSingle<DbProduct>();
@@ -169,4 +145,22 @@ export async function getProductReviews(productId: string) {
     .eq("status", "approved")
     .order("created_at", { ascending: false });
   return data || [];
+}
+
+/**
+ * Used exclusively in generateStaticParams — runs at build time outside any
+ * request scope, so it must NOT use createClient() (which calls cookies()).
+ * Uses the service client instead.
+ */
+export async function getAllProductSlugs(): Promise<string[]> {
+  try {
+    const supabase = createServiceClient();
+    const { data } = await supabase
+      .from("products")
+      .select("slug")
+      .eq("is_active", true);
+    return (data ?? []).map((p: { slug: string }) => p.slug);
+  } catch {
+    return [];
+  }
 }

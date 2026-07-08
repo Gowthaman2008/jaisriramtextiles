@@ -8,13 +8,16 @@ import { BulkOrderBanner } from "@/components/home/bulk-order-banner";
 import { ReviewsMarquee } from "@/components/home/reviews-marquee";
 import { Faq } from "@/components/home/faq";
 import { Newsletter } from "@/components/home/newsletter";
+import { getAllProducts } from "@/lib/supabase/queries";
 
-export default function HomePage() {
+export default async function HomePage() {
+  const products = await getAllProducts();
+
   return (
     <>
       <HeroCarousel />
       <FeaturedCategories />
-      <FeaturedProducts />
+      <FeaturedProducts products={products} />
       <WhyChooseUs />
       <ShippingInfo />
       <CashbackBanner />

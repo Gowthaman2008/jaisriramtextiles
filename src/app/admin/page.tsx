@@ -41,13 +41,15 @@ import {
   X
 } from "lucide-react";
 
-// Helper for formatting money
+// Helper for formatting money — always whole rupees (no paise adjustments)
 function formatRupees(paise: number) {
+  const rupees = paise / 100;
   return new Intl.NumberFormat("en-IN", {
     style: "currency",
     currency: "INR",
-    maximumFractionDigits: 0
-  }).format(paise / 100);
+    maximumFractionDigits: 0,
+    minimumFractionDigits: 0
+  }).format(rupees);
 }
 
 const DEFAULT_ANNOUNCEMENTS = [
@@ -348,6 +350,7 @@ export default function AdminDashboardPage() {
   const [newCouponLimit, setNewCouponLimit] = useState(0);
   const [newCouponExpiry, setNewCouponExpiry] = useState("");
   const [showCouponForm, setShowCouponForm] = useState(false);
+  const [editingCoupon, setEditingCoupon] = useState<any>(null);
 
   // CMS configuration states
   const [cmsSlides, setCmsSlides] = useState<any[]>([]);
@@ -1317,6 +1320,58 @@ export default function AdminDashboardPage() {
       alert("Error: " + err.message);
     } finally {
       setDeletingOrder(false);
+    }
+  }
+
+  function handleEditCoupon(c: any) {
+    setEditingCoupon(c);
+    setNewCouponCode(c.code);
+    setNewCouponType(c.type);
+    // value stored as paise for flat, raw number for percent
+    setNewCouponValue(c.type === "flat" ? c.value / 100 : c.value);
+    setNewCouponMinOrder(c.min_order_paise ? c.min_order_paise / 100 : 0);
+    setNewCouponMaxDiscount(c.max_discount_paise ? c.max_discount_paise / 100 : 0);
+    setNewCouponFirstOrder(c.first_order_only || false);
+    setNewCouponLimit(c.usage_limit || 0);
+    // format for datetime-local input
+    setNewCouponExpiry(c.expires_at ? new Date(c.expires_at).toISOString().slice(0, 16) : "");
+    setShowCouponForm(true);
+  }
+
+  async function handleUpdateCoupon(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editingCoupon || !newCouponCode.trim() || newCouponValue <= 0) {
+      alert("Promo Code and Value are required");
+      return;
+    }
+    try {
+      const res = await fetch("/api/admin/coupons", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: editingCoupon.id,
+          code: newCouponCode.trim(),
+          type: newCouponType,
+          value: newCouponType === "percent" ? newCouponValue : Math.round(newCouponValue * 100),
+          min_order_paise: Math.round(newCouponMinOrder * 100),
+          max_discount_paise: newCouponType === "percent" && newCouponMaxDiscount > 0 ? Math.round(newCouponMaxDiscount * 100) : null,
+          first_order_only: newCouponFirstOrder,
+          usage_limit: newCouponLimit > 0 ? newCouponLimit : null,
+          expires_at: newCouponExpiry || null
+        })
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || "Failed to update promo code");
+      }
+      alert("Promo Code updated successfully!");
+      setEditingCoupon(null);
+      setNewCouponCode(""); setNewCouponValue(0); setNewCouponMinOrder(0);
+      setNewCouponMaxDiscount(0); setNewCouponFirstOrder(false); setNewCouponLimit(0); setNewCouponExpiry("");
+      setShowCouponForm(false);
+      await refreshCoupons();
+    } catch (err: any) {
+      alert("Error: " + err.message);
     }
   }
 
@@ -3076,15 +3131,7 @@ export default function AdminDashboardPage() {
                             </div>
                           )}
                         </div>
-
-                        {/* Local Cart Disclaimer */}
-                        <div className="bg-cream/15 border border-dashed border-line rounded-card p-4">
-                          <h3 className="font-semibold text-sm text-ink pb-2 mb-2">Shopping Cart</h3>
-                          <p className="text-taupe leading-relaxed">
-                            Shopping Cart data is stored locally in the customer's browser (<code className="font-mono text-[10px] bg-line/45 px-1 py-0.5 rounded">localStorage</code>) to enable high performance and offline shopping capability. It is not transmitted to the central database server until an order is placed.
-                          </p>
                         </div>
-                      </div>
 
                       {/* Right: Orders and Transaction Ledger (2/3) */}
                       <div className="xl:col-span-2 space-y-6">
@@ -3295,15 +3342,25 @@ export default function AdminDashboardPage() {
                     <h3 className="font-display text-lg text-ink">Promo Codes & Coupons</h3>
                     <p className="text-xs text-taupe mt-0.5">Manage promotional discount campaigns and checkout coupon codes</p>
                   </div>
-                  <Button size="sm" variant="gold" onClick={() => setShowCouponForm(!showCouponForm)} className="flex-shrink-0">
-                    <Plus className="w-4 h-4 mr-1" /> {showCouponForm ? "Hide Form" : "Create Promo Code"}
+                  <Button size="sm" variant="gold" onClick={() => {
+                    if (showCouponForm && editingCoupon) {
+                      setEditingCoupon(null);
+                      setNewCouponCode(""); setNewCouponValue(0); setNewCouponMinOrder(0);
+                      setNewCouponMaxDiscount(0); setNewCouponFirstOrder(false); setNewCouponLimit(0); setNewCouponExpiry("");
+                      setShowCouponForm(false);
+                    } else {
+                      setEditingCoupon(null);
+                      setShowCouponForm(!showCouponForm);
+                    }
+                  }} className="cursor-pointer">
+                    <Plus className="w-4 h-4 mr-1" /> {showCouponForm && !editingCoupon ? "Hide Form" : showCouponForm && editingCoupon ? "Cancel Edit" : "Create Promo Code"}
                   </Button>
                 </div>
 
                 {showCouponForm && (
-                  <form onSubmit={handleSaveCoupon} className="bg-white border border-line rounded-card p-6 shadow-soft space-y-6">
+                  <form onSubmit={editingCoupon ? handleUpdateCoupon : handleSaveCoupon} className="bg-white border border-line rounded-card p-6 shadow-soft space-y-6">
                     <h4 className="font-semibold text-sm text-zari-deep border-b border-line pb-2">
-                      New Coupon details
+                      {editingCoupon ? `✏️ Editing: ${editingCoupon.code}` : "New Coupon details"}
                     </h4>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div className="flex flex-col gap-1.5">
@@ -3405,11 +3462,16 @@ export default function AdminDashboardPage() {
                     </div>
 
                     <div className="flex justify-end gap-3 border-t border-line pt-4">
-                      <Button type="button" variant="outline" size="sm" onClick={() => setShowCouponForm(false)}>
+                      <Button type="button" variant="outline" size="sm" onClick={() => {
+                        setEditingCoupon(null);
+                        setNewCouponCode(""); setNewCouponValue(0); setNewCouponMinOrder(0);
+                        setNewCouponMaxDiscount(0); setNewCouponFirstOrder(false); setNewCouponLimit(0); setNewCouponExpiry("");
+                        setShowCouponForm(false);
+                      }}>
                         Cancel
                       </Button>
                       <Button type="submit" variant="gold" size="sm">
-                        Create Promo Code
+                        {editingCoupon ? "Save Changes" : "Create Promo Code"}
                       </Button>
                     </div>
                   </form>
@@ -3485,13 +3547,22 @@ export default function AdminDashboardPage() {
                                 </button>
                               </td>
                               <td className="p-3 text-center">
-                                <button
-                                  onClick={() => handleDeleteCoupon(c.id)}
-                                  className="p-1 border border-line rounded bg-cream hover:bg-danger/10 hover:text-danger text-ink cursor-pointer"
-                                  title="Delete Promo Code"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
+                                <div className="flex items-center justify-center gap-1.5">
+                                  <button
+                                    onClick={() => handleEditCoupon(c)}
+                                    className="p-1 border border-line rounded bg-cream hover:bg-zari/10 hover:text-zari-deep text-ink cursor-pointer"
+                                    title="Edit Promo Code"
+                                  >
+                                    <Edit2 className="w-4 h-4" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteCoupon(c.id)}
+                                    className="p-1 border border-line rounded bg-cream hover:bg-danger/10 hover:text-danger text-ink cursor-pointer"
+                                    title="Delete Promo Code"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </div>
                               </td>
                             </tr>
                           ))}
@@ -3547,21 +3618,34 @@ export default function AdminDashboardPage() {
                           <input type="text" placeholder="e.g. /shop/white-dhoti" value={slideCtaHref} onChange={(e) => setSlideCtaHref(e.target.value)} className="rounded border border-line bg-white px-3 py-1.5 text-xs outline-none" />
                         </div>
                         <div className="flex flex-col gap-1">
-                          <label className="text-xs font-bold text-taupe">Image URL * (Cloudinary/Public URL)</label>
-                          <div className="flex gap-2">
-                            <input type="text" required placeholder="https://res.cloudinary.com/..." value={slideImageUrl} onChange={(e) => setSlideImageUrl(e.target.value)} className="flex-1 rounded border border-line bg-white px-3 py-1.5 text-xs outline-none min-w-0" />
-                            <label className="relative shrink-0 flex items-center justify-center px-3 py-1.5 bg-cream hover:bg-beige text-ink border border-line rounded text-xs font-bold cursor-pointer transition-colors">
-                              <span>{uploadingSlideImage ? "Uploading..." : "Upload"}</span>
-                              <input
-                                type="file"
-                                accept="image/*"
-                                onChange={handleSlideImageUpload}
-                                className="hidden"
-                                disabled={uploadingSlideImage}
-                              />
-                            </label>
-                          </div>
-                          {uploadingSlideImage && <p className="text-[10px] text-zari font-semibold animate-pulse mt-0.5">Uploading to Cloudinary...</p>}
+                          <label className="text-xs font-bold text-taupe">Slide Image *</label>
+                          <label className={`relative flex flex-col items-center justify-center gap-2 rounded border-2 border-dashed transition-colors cursor-pointer ${uploadingSlideImage ? "border-zari bg-zari/5" : "border-line hover:border-zari bg-cream/30 hover:bg-zari/5"}`}>
+                            {slideImageUrl ? (
+                              <div className="relative w-full h-32 rounded overflow-hidden">
+                                <img src={slideImageUrl} alt="Slide preview" className="w-full h-full object-cover" />
+                                <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                                  <span className="text-white text-xs font-bold">Click to replace</span>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="flex flex-col items-center gap-1 py-6 text-taupe">
+                                <ImageIcon className="w-7 h-7 text-line" />
+                                {uploadingSlideImage
+                                  ? <span className="text-xs font-semibold text-zari animate-pulse">Uploading to Cloudinary…</span>
+                                  : <><span className="text-xs font-semibold">Click to upload image</span><span className="text-[10px]">PNG, JPG, WEBP — recommended 2000×1200px</span></>
+                                }
+                              </div>
+                            )}
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={handleSlideImageUpload}
+                              className="hidden"
+                              disabled={uploadingSlideImage}
+                            />
+                          </label>
+                          {uploadingSlideImage && <p className="text-[10px] text-zari font-semibold animate-pulse mt-0.5">Uploading to Cloudinary…</p>}
+                          {slideImageUrl && !uploadingSlideImage && <p className="text-[10px] text-success font-semibold mt-0.5">✓ Image uploaded successfully</p>}
                         </div>
                       </div>
 
@@ -4537,14 +4621,15 @@ $$ language plpgsql;`}
                 <label className="font-semibold text-ink">Amount (in Rupees)</label>
                 <input 
                   type="number" 
-                  step="0.01"
-                  min="0.01"
+                  step="1"
+                  min="1"
                   required
-                  placeholder="e.g. 150.00"
+                  placeholder="e.g. 150"
                   value={walletAdjustAmount}
-                  onChange={(e) => setWalletAdjustAmount(e.target.value)}
+                  onChange={(e) => setWalletAdjustAmount(e.target.value.replace(/[^0-9]/g, ""))}
                   className="rounded border border-line bg-white px-3 py-2 text-sm outline-none w-full"
                 />
+                <p className="text-[10px] text-taupe">Whole rupees only — no paisa adjustments allowed</p>
               </div>
 
               {/* Note Input */}
@@ -4576,8 +4661,9 @@ $$ language plpgsql;`}
                 disabled={walletAdjustLoading}
                 className="cursor-pointer"
                 onClick={async () => {
-                  if (!walletAdjustAmount || isNaN(parseFloat(walletAdjustAmount)) || parseFloat(walletAdjustAmount) <= 0) {
-                    setWalletAdjustError("Please enter a valid amount greater than 0");
+                  const parsedAmount = parseInt(walletAdjustAmount, 10);
+                  if (!walletAdjustAmount || isNaN(parsedAmount) || parsedAmount < 1) {
+                    setWalletAdjustError("Please enter a valid whole rupee amount (minimum ₹1)");
                     return;
                   }
                   if (!walletAdjustNote.trim()) {
@@ -4593,7 +4679,7 @@ $$ language plpgsql;`}
                       headers: { "Content-Type": "application/json" },
                       body: JSON.stringify({
                         userId: inspectedUser.profile.id,
-                        amountRupees: parseFloat(walletAdjustAmount),
+                        amountRupees: parseInt(walletAdjustAmount, 10),
                         actionType: walletAdjustType,
                         note: walletAdjustNote.trim(),
                       }),

@@ -9,7 +9,6 @@ import {
   getOnSaleProducts,
   getProductsByCategoryId,
 } from "@/lib/supabase/queries";
-import { products as mockProducts, categories as mockCategories } from "@/data/mock";
 
 type Props = { params: Promise<{ category: string }> };
 
@@ -37,24 +36,15 @@ export default async function CategoryPage({ params }: Props) {
   const isSale = slug === "sale";
   const category = isSale ? null : await getCategoryBySlug(slug);
 
-  let products = isSale
+  const products = isSale
     ? await getOnSaleProducts()
     : category
       ? await getProductsByCategoryId(category.id)
       : [];
 
-  // Fall back to mock data when DB is empty
-  if (products.length === 0) {
-    products = isSale
-      ? mockProducts.filter((p) => p.badges?.includes("sale"))
-      : mockProducts.filter((p) => p.category === slug);
-  }
-
-  const mockMeta = mockCategories.find((c) => c.slug === slug);
-  const title = category?.name ?? mockMeta?.label ?? staticLabel!;
+  const title = category?.name ?? staticLabel!;
   const tagline =
     category?.tagline ??
-    mockMeta?.tagline ??
     (isSale ? "Our best prices, while stock lasts." : `Handloom ${title.toLowerCase()}, made to last.`);
 
   return (

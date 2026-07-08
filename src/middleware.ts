@@ -3,17 +3,27 @@ import { createServerClient, type CookieOptions } from "@supabase/ssr";
 
 /**
  * Refreshes the Supabase auth session on every request and guards /admin.
- * Rate limiting for API routes should be layered on top (e.g. Upstash) —
- * see README "Security".
+ *
+ * PERFORMANCE: Auth check (getUser) only runs on protected routes (/account, /admin).
+ * Public pages (home, shop, product, etc.) skip this entirely for instant navigation.
  */
 export async function middleware(request: NextRequest) {
-  // /admin/upload has its own password gate (see src/lib/admin-session.ts) ahead of
-  // real Supabase-backed admin auth landing in Phase 5 — it needs no Supabase session,
-  // so skip client creation entirely (avoids requiring Supabase env vars just to use it).
-  if (request.nextUrl.pathname.startsWith("/admin/upload")) {
+  const path = request.nextUrl.pathname;
+
+  // Skip auth for /admin/upload (has its own password gate)
+  if (path.startsWith("/admin/upload")) {
     return NextResponse.next({ request });
   }
 
+  // ─── Public routes: no auth check needed ────────────────────────────────
+  // Only run Supabase getUser() when navigating to protected areas.
+  const isProtected = path.startsWith("/account") || path.startsWith("/admin");
+
+  if (!isProtected) {
+    return NextResponse.next({ request });
+  }
+
+  // ─── Protected routes: verify session ───────────────────────────────────
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient(
@@ -36,17 +46,17 @@ export async function middleware(request: NextRequest) {
   );
 
   const { data: { user } } = await supabase.auth.getUser();
-  const path = request.nextUrl.pathname;
 
-  // Protect account + admin areas
-  if ((path.startsWith("/account") || path.startsWith("/admin")) && !user) {
+  // Redirect unauthenticated users to sign-in
+  if (!user) {
     const url = request.nextUrl.clone();
     url.pathname = "/sign-in";
     url.searchParams.set("next", path);
     return NextResponse.redirect(url);
   }
 
-  if (path.startsWith("/admin") && user) {
+  // Restrict /admin to admin/staff roles only
+  if (path.startsWith("/admin")) {
     const { data: profile } = await supabase
       .from("profiles").select("role").eq("id", user.id).single();
     if (!profile || !["admin", "staff"].includes(profile.role)) {
