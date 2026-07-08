@@ -14,13 +14,17 @@
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
     background-color: #FBF9F4;
-    overflow-x: hidden;
   }
 
   body {
     @apply bg-ivory text-ink font-sans antialiased;
     font-feature-settings: "ss01", "cv05";
     overflow-x: hidden;
+  }
+
+  /* Prevent any element from forcing horizontal scroll */
+  img, video, iframe, pre, table, svg {
+    max-width: 100%;
   }
 
   ::selection {

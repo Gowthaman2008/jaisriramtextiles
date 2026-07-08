@@ -99,7 +99,7 @@ export default async function ProductPage({ params }: Props) {
   }
 
   return (
-    <div className="py-6 sm:py-10 lg:py-14 overflow-x-hidden">
+    <div className="py-6 sm:py-10 lg:py-14">
       <Container>
         {/* Back Button */}
         <Link
@@ -108,21 +108,23 @@ export default async function ProductPage({ params }: Props) {
         >
           <ChevronLeft size={16} /> Back to Shop
         </Link>
-        <div className="grid gap-6 sm:gap-10 lg:grid-cols-2 lg:gap-16">
+        <div className="grid gap-6 sm:gap-10 lg:grid-cols-2 lg:gap-16 w-full min-w-0">
           {/* Gallery */}
-          <ProductGallery images={gallery} name={product.name} />
+          <div className="w-full min-w-0 overflow-hidden">
+            <ProductGallery images={gallery} name={product.name} />
+          </div>
 
           {/* Info */}
-          <div className="flex flex-col gap-4 min-w-0">
+          <div className="flex flex-col gap-4 w-full min-w-0 overflow-hidden">
             <span className="eyebrow text-[11px]">{product.categoryLabel}</span>
-            <h1 className="font-display text-2xl sm:text-3xl lg:text-4xl text-ink leading-snug break-words">{product.name}</h1>
+            <h1 className="font-display text-2xl sm:text-3xl lg:text-4xl text-ink leading-snug break-words [overflow-wrap:anywhere] w-full">{product.name}</h1>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <StarRating rating={ratingAvg} />
               <span className="text-sm text-muted">({totalCount} reviews)</span>
             </div>
 
-            <div className="mt-2 flex items-baseline gap-3">
+            <div className="mt-2 flex items-baseline gap-3 flex-wrap">
               <span className="font-display text-2xl text-ink">
                 {formatINR(product.pricePaise, true)}
               </span>
@@ -139,7 +141,7 @@ export default async function ProductPage({ params }: Props) {
             </div>
 
             {product.cashbackPaise > 0 && (
-              <p className="text-sm font-medium text-zari-deep">
+              <p className="text-sm font-medium text-zari-deep break-words">
                 Earn {formatINR(product.cashbackPaise, true)} cashback after delivery
               </p>
             )}
@@ -163,20 +165,20 @@ export default async function ProductPage({ params }: Props) {
             <ProductActions product={product} />
 
             {/* Return Policy Notice badge */}
-            <div className="mt-4 bg-cream/35 border border-line rounded p-3 text-xs text-taupe space-y-1 bg-ivory/30">
+            <div className="mt-4 bg-cream/35 border border-line rounded p-3 text-xs text-taupe space-y-1 bg-ivory/30 w-full">
               <div className="flex items-center gap-1.5 font-bold text-ink text-[11px] uppercase tracking-wider">
                 🔄 7 Days Easy Return
               </div>
-              <p className="leading-relaxed">
+              <p className="leading-relaxed break-words">
                 Return or replacement is only accepted if the product was received in a damaged condition.
               </p>
             </div>
 
             {/* Product Description */}
             {product.description && (
-              <div className="mt-2">
+              <div className="mt-2 w-full">
                 <h2 className="font-display text-lg text-ink">Description</h2>
-                <p className="mt-2 text-sm text-taupe leading-relaxed whitespace-pre-line break-words">
+                <p className="mt-2 text-sm text-taupe leading-relaxed whitespace-pre-line break-words [overflow-wrap:anywhere]">
                   {product.description}
                 </p>
               </div>
