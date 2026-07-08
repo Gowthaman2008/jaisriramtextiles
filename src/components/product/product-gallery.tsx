@@ -32,7 +32,7 @@ export function ProductGallery({ images, name }: ProductGalleryProps) {
   const activeImage = images[currentIndex];
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 w-full">
       {/* Main Image Frame */}
       <div className="zari-frame aspect-square overflow-hidden rounded-card bg-cream relative group">
         <Image

@@ -99,7 +99,7 @@ export default async function ProductPage({ params }: Props) {
   }
 
   return (
-    <div className="py-10 sm:py-14">
+    <div className="py-6 sm:py-10 lg:py-14 overflow-x-hidden">
       <Container>
         {/* Back Button */}
         <Link
@@ -108,14 +108,14 @@ export default async function ProductPage({ params }: Props) {
         >
           <ChevronLeft size={16} /> Back to Shop
         </Link>
-        <div className="grid gap-10 lg:grid-cols-2 lg:gap-16">
+        <div className="grid gap-6 sm:gap-10 lg:grid-cols-2 lg:gap-16">
           {/* Gallery */}
           <ProductGallery images={gallery} name={product.name} />
 
           {/* Info */}
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-4 min-w-0">
             <span className="eyebrow text-[11px]">{product.categoryLabel}</span>
-            <h1 className="font-display text-3xl text-ink sm:text-4xl">{product.name}</h1>
+            <h1 className="font-display text-2xl sm:text-3xl lg:text-4xl text-ink leading-snug break-words">{product.name}</h1>
 
             <div className="flex items-center gap-2">
               <StarRating rating={ratingAvg} />
@@ -176,7 +176,7 @@ export default async function ProductPage({ params }: Props) {
             {product.description && (
               <div className="mt-2">
                 <h2 className="font-display text-lg text-ink">Description</h2>
-                <p className="mt-2 text-sm text-taupe leading-relaxed whitespace-pre-line">
+                <p className="mt-2 text-sm text-taupe leading-relaxed whitespace-pre-line break-words">
                   {product.description}
                 </p>
               </div>
