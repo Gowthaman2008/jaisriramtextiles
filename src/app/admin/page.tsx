@@ -3268,7 +3268,14 @@ export default function AdminDashboardPage() {
                                   <div className="w-10 h-10 rounded border border-line bg-cream flex-shrink-0" />
                                 )}
                                 <div className="min-w-0">
-                                  <p className="font-semibold text-ink">{item.name}</p>
+                                  <p className="font-semibold text-ink flex items-center gap-1.5 flex-wrap">
+                                    {item.name.replace(" (Free Gift)", "")}
+                                    {item.name.toLowerCase().includes("free gift") && (
+                                      <span className="inline-flex items-center gap-1 bg-[#FAF6EC] border border-[#E9DBB7]/60 text-[#8C6D2D] text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded shadow-xs">
+                                        🎁 Free Gift
+                                      </span>
+                                    )}
+                                  </p>
                                   <p className="text-taupe mt-0.5">{item.variant || "Standard variant"} &times; {item.quantity}</p>
                                   <div className="flex flex-wrap gap-1 mt-1">
                                     {item.size && (

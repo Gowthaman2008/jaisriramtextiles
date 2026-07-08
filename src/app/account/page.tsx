@@ -196,7 +196,7 @@ export default function AccountPage() {
       const [ordersRes, walletRes, addrRes, reviewsRes] = await Promise.all([
         supabase
           .from("orders")
-          .select("*, order_items(*, products(description))")
+          .select("*, order_items(*, products(description, slug))")
           .eq("user_id", userId)
           .order("placed_at", { ascending: false }),
         supabase
@@ -849,16 +849,52 @@ export default function AccountPage() {
                         <p className="text-xs text-taupe uppercase tracking-wide flex items-center gap-1.5 font-bold">
                           <ShoppingBag size={13} /> Ordered Items
                         </p>
-                        {o.order_items?.map((item: any) => (
-                          <div key={item.id} className="flex justify-between items-start gap-3 py-3 border-b border-line/25 last:border-0 last:pb-0">
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm text-ink leading-snug font-bold">{item.name}</p>
-                              {item.variant && <p className="text-xs text-taupe mt-1 bg-cream/60 inline-block px-1.5 py-0.5 rounded font-bold">{item.variant}</p>}
-                              <p className="text-xs text-taupe mt-1"><strong className="text-ink font-bold">{formatINR(item.unit_price_paise, true)}</strong> &times; <strong className="text-ink font-bold">{item.quantity}</strong></p>
+                        {o.order_items?.map((item: any) => {
+                          const productSlug = item.products?.slug;
+                          const thumb = item.image_url ? (
+                            <img
+                              src={item.image_url}
+                              alt={item.name}
+                              className="h-14 w-14 rounded-lg border border-line object-cover shrink-0 bg-cream"
+                            />
+                          ) : (
+                            <div className="h-14 w-14 rounded-lg border border-line bg-cream flex items-center justify-center shrink-0">
+                              <ShoppingBag size={18} className="text-taupe" />
                             </div>
-                            <span className="text-sm text-ink font-bold shrink-0">{formatINR(item.unit_price_paise * item.quantity, true)}</span>
-                          </div>
-                        ))}
+                          );
+                          return (
+                            <div key={item.id} className="flex justify-between items-start gap-3 py-3 border-b border-line/25 last:border-0 last:pb-0">
+                              <div className="flex items-start gap-3 flex-1 min-w-0">
+                                {productSlug ? (
+                                  <Link href={`/product/${productSlug}`} className="shrink-0">
+                                    {thumb}
+                                  </Link>
+                                ) : (
+                                  thumb
+                                )}
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    {productSlug ? (
+                                      <Link href={`/product/${productSlug}`} className="text-sm text-ink leading-snug font-bold hover:text-zari-deep hover:underline">
+                                        {item.name.replace(" (Free Gift)", "")}
+                                      </Link>
+                                    ) : (
+                                      <p className="text-sm text-ink leading-snug font-bold">{item.name.replace(" (Free Gift)", "")}</p>
+                                    )}
+                                    {item.name.toLowerCase().includes("free gift") && (
+                                      <span className="inline-flex items-center gap-1 bg-[#FAF6EC] border border-[#E9DBB7]/60 text-[#8C6D2D] text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded shadow-xs">
+                                        🎁 Free Gift
+                                      </span>
+                                    )}
+                                  </div>
+                                  {item.variant && <p className="text-xs text-taupe mt-1 bg-cream/60 inline-block px-1.5 py-0.5 rounded font-bold">{item.variant}</p>}
+                                  <p className="text-xs text-taupe mt-1"><strong className="text-ink font-bold">{formatINR(item.unit_price_paise, true)}</strong> &times; <strong className="text-ink font-bold">{item.quantity}</strong></p>
+                                </div>
+                              </div>
+                              <span className="text-sm text-ink font-bold shrink-0">{formatINR(item.unit_price_paise * item.quantity, true)}</span>
+                            </div>
+                          );
+                        })}
 
                         {/* Rejection / Return Reason Display */}
                         {(o.status === "rejected" || o.status === "returned") && o.payment_status !== "refunded" && (
@@ -1498,7 +1534,7 @@ export default function AccountPage() {
                   </div>
 
                   {/* Chat Messages Body */}
-                  <div className="p-5 space-y-6 max-h-[400px] overflow-y-auto bg-ivory/20">
+                  <div className="p-5 space-y-6 max-h-[400px] overflow-y-auto bg-ivory/20" data-lenis-prevent>
                        {/* User's Original Message (Right align) */}
                     <div className="flex flex-col items-end space-y-1 w-full animate-fade-in">
                       <div className="flex items-center gap-2">
@@ -1623,7 +1659,7 @@ export default function AccountPage() {
                   <p className="text-[10px] text-taupe mt-0.5">Click any query below to load its full tracking details and admin response.</p>
                 </div>
 
-                <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1 font-sans">
+                <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1 font-sans" data-lenis-prevent>
                   {supportHistory.map((h) => (
                     <button
                       key={h.id}
@@ -1728,7 +1764,7 @@ export default function AccountPage() {
         {/* Write Review Modal */}
         {showReviewModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/50 p-4 backdrop-blur-sm animate-fade-in">
-            <div className="relative w-full max-w-lg rounded-card border border-line bg-white p-6 shadow-xl animate-slide-up max-h-[90vh] overflow-y-auto">
+            <div className="relative w-full max-w-lg rounded-card border border-line bg-white p-6 shadow-xl animate-slide-up max-h-[90vh] overflow-y-auto" data-lenis-prevent>
               {/* Modal Header */}
               <div className="flex items-center justify-between border-b border-line pb-3">
                 <div>
