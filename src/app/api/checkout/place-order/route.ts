@@ -23,7 +23,22 @@ export async function POST(request: Request) {
 
     const supabase = createServiceClient(); // bypass RLS to perform orders writes & stock decs
 
-    // 2. Load products from DB to validate prices, stock, and cashback values
+    // 2. Pre-calculate regular subtotal (excluding free gifts) for threshold validations
+    let regularSubtotalPaise = 0;
+    for (const item of cart) {
+      if (!item.isFreeGift) {
+        const { data: dbProduct } = await supabase
+          .from("products")
+          .select("price_paise")
+          .eq("id", item.id)
+          .single();
+        if (dbProduct) {
+          regularSubtotalPaise += dbProduct.price_paise * item.quantity;
+        }
+      }
+    }
+
+    // 2b. Load products from DB to validate prices, stock, and cashback values
     let subtotalPaise = 0;
     let totalCashbackEarned = 0;
     const validatedItems: any[] = [];
@@ -65,10 +80,57 @@ export async function POST(request: Request) {
         }
       }
 
-      const itemPrice = dbProduct.price_paise;
+      let itemPrice = dbProduct.price_paise;
+      let itemCashback = dbProduct.cashback_paise;
+
+      // Server-side validation for Free Gift campaign items
+      if (item.isFreeGift) {
+        if (!item.campaignId) {
+          return NextResponse.json({ error: "Invalid free gift campaign context" }, { status: 400 });
+        }
+
+        const { data: campaign, error: campErr } = await supabase
+          .from("free_product_campaigns")
+          .select("*")
+          .eq("id", item.campaignId)
+          .single();
+
+        if (campErr || !campaign || !campaign.is_active) {
+          return NextResponse.json({ error: "The free gift campaign is no longer active" }, { status: 400 });
+        }
+
+        // Validate timing
+        const nowTime = new Date();
+        if (campaign.starts_at && nowTime < new Date(campaign.starts_at)) {
+          return NextResponse.json({ error: "The free gift campaign has not started yet" }, { status: 400 });
+        }
+        if (campaign.expires_at && nowTime > new Date(campaign.expires_at)) {
+          return NextResponse.json({ error: "The free gift campaign has expired" }, { status: 400 });
+        }
+
+        // Validate qualifying subtotal threshold
+        if (regularSubtotalPaise < campaign.target_amount_paise) {
+          return NextResponse.json({ error: "Your order value does not qualify for this free gift" }, { status: 400 });
+        }
+
+        // Validate product ID matching
+        if (campaign.product_id !== item.id) {
+          return NextResponse.json({ error: "Free gift product does not match campaign" }, { status: 400 });
+        }
+
+        // Validate variant ID matching if a specific variant is tied to the campaign
+        if (campaign.variant_id && (!item.variant || campaign.variant_id !== item.variant.id)) {
+          return NextResponse.json({ error: "Free gift variant does not match campaign" }, { status: 400 });
+        }
+
+        // Override price and cashback rewards to 0 for free gifts
+        itemPrice = 0;
+        itemCashback = 0;
+      }
+
       const itemSubtotal = itemPrice * item.quantity;
       subtotalPaise += itemSubtotal;
-      totalCashbackEarned += (dbProduct.cashback_paise * item.quantity);
+      totalCashbackEarned += (itemCashback * item.quantity);
 
       const primaryImage = (dbProduct.product_images || [])
         .slice()
@@ -76,7 +138,7 @@ export async function POST(request: Request) {
 
       validatedItems.push({
         product_id: dbProduct.id,
-        name: dbProduct.name,
+        name: dbProduct.name + (item.isFreeGift ? " (Free Gift)" : ""),
         variant: matchedVar ? `${matchedVar.size || ""} ${matchedVar.color || ""}`.trim() : null,
         sku: matchedVar?.sku || null,
         size: matchedVar?.size || null,
@@ -84,7 +146,7 @@ export async function POST(request: Request) {
         image_url: primaryImage?.url || null,
         unit_price_paise: itemPrice,
         quantity: item.quantity,
-        cashback_paise: dbProduct.cashback_paise,
+        cashback_paise: itemCashback,
       });
 
       stockUpdates.push({

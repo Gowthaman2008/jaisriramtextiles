@@ -18,18 +18,51 @@ export function AnnouncementBar() {
     async function loadBanner() {
       try {
         const supabase = createClient();
-        const { data, error } = await supabase
-          .from("banners")
-          .select("content")
-          .eq("placement", "announcement")
-          .eq("is_active", true)
-          .maybeSingle();
+        
+        // Load standard CMS announcements and active free product campaigns in parallel
+        const [cmsRes, campaignsRes] = await Promise.all([
+          supabase
+            .from("banners")
+            .select("content")
+            .eq("placement", "announcement")
+            .eq("is_active", true)
+            .maybeSingle(),
+          fetch("/api/campaigns").then((r) => r.json()).catch(() => [])
+        ]);
 
-        if (data && data.content && Array.isArray((data.content as any).messages)) {
-          const list = (data.content as any).messages.filter((msg: any) => typeof msg === "string" && msg.trim() !== "");
-          if (list.length > 0) {
-            setMessages(list);
-          }
+        let finalMessages: string[] = [];
+
+        // 1. Add standard CMS messages
+        if (cmsRes.data && cmsRes.data.content && Array.isArray((cmsRes.data.content as any).messages)) {
+          const list = (cmsRes.data.content as any).messages.filter((msg: any) => typeof msg === "string" && msg.trim() !== "");
+          finalMessages = [...list];
+        } else {
+          finalMessages = [...defaultMessages];
+        }
+
+        // 2. Add auto-generated active campaign messages
+        if (Array.isArray(campaignsRes)) {
+          campaignsRes.forEach((c: any) => {
+            if (c.enable_announcement) {
+              if (c.custom_announcement_message && c.custom_announcement_message.trim() !== "") {
+                finalMessages.push(c.custom_announcement_message.trim());
+              } else {
+                const threshold = c.target_amount_paise / 100;
+                let details = c.product?.name || "";
+                if (c.variant) {
+                  const parts = [c.variant.size, c.variant.color].filter(Boolean);
+                  if (parts.length > 0) {
+                    details += ` (${parts.join(" / ")})`;
+                  }
+                }
+                finalMessages.push(`🎁 Get a FREE ${details} on orders above ₹${threshold}!`);
+              }
+            }
+          });
+        }
+
+        if (finalMessages.length > 0) {
+          setMessages(finalMessages);
         }
       } catch (err) {
         console.error("Error loading banners", err);

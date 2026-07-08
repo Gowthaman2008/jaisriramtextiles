@@ -41,7 +41,9 @@ import {
   Ticket,
   Star,
   Copy,
-  X
+  X,
+  MessageSquareText,
+  Gift
 } from "lucide-react";
 
 // Helper for formatting money — always whole rupees (no paise adjustments)
@@ -277,7 +279,11 @@ export default function AdminDashboardPage() {
   // Emergency order-detail PDF lookup modal state
   const [emergencyLookupOpen, setEmergencyLookupOpen] = useState(false);
   const [emergencyLookupQuery, setEmergencyLookupQuery] = useState("");
-  
+
+  // Bulk "Download Orders by Status" report modal state
+  const [bulkReportOpen, setBulkReportOpen] = useState(false);
+  const [bulkReportFilter, setBulkReportFilter] = useState("all");
+
   // Product Edit/Add State
   const [editingProduct, setEditingProduct] = useState<any>(null); // null means adding a new product, or closed
   const [showProductForm, setShowProductForm] = useState(false);
@@ -347,11 +353,36 @@ export default function AdminDashboardPage() {
   const [activeReplies, setActiveReplies] = useState<any[]>([]);
   const [loadingReplies, setLoadingReplies] = useState(false);
 
+  // Quick Replies (canned responses) state
+  const [cannedResponses, setCannedResponses] = useState<any[]>([]);
+  const [cannedIsDefault, setCannedIsDefault] = useState(false);
+  const [showCannedPopup, setShowCannedPopup] = useState(false);
+  const [editingCannedId, setEditingCannedId] = useState<string | null>(null);
+  const [editingCannedText, setEditingCannedText] = useState("");
+  const [newCannedText, setNewCannedText] = useState("");
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressTriggeredRef = useRef(false);
+
   // Shipping Settings state
   const [shippingSettings, setShippingSettings] = useState<{ free_shipping_threshold_paise: number; shipping_charge_paise: number } | null>(null);
   const [shippingThresholdInput, setShippingThresholdInput] = useState<number | "">("");
   const [shippingChargeInput, setShippingChargeInput] = useState<number | "">("");
   const [savingShipping, setSavingShipping] = useState(false);
+
+  // Campaigns / Free Products state
+  const [campaigns, setCampaigns] = useState<any[]>([]);
+  const [showCampaignForm, setShowCampaignForm] = useState(false);
+  const [editingCampaign, setEditingCampaign] = useState<any>(null);
+  const [campTitle, setCampTitle] = useState("");
+  const [campProductId, setCampProductId] = useState("");
+  const [campVariantId, setCampVariantId] = useState("");
+  const [campTargetRupees, setCampTargetRupees] = useState<number | "">("");
+  const [campStartsAt, setCampStartsAt] = useState("");
+  const [campExpiresAt, setCampExpiresAt] = useState("");
+  const [campEnableAnnouncement, setCampEnableAnnouncement] = useState(true);
+  const [campCustomAnnouncement, setCampCustomAnnouncement] = useState("");
+  const [campIsActive, setCampIsActive] = useState(true);
+  const [savingCampaign, setSavingCampaign] = useState(false);
 
   useEffect(() => {
     if (!selectedSupportId) {
@@ -501,6 +532,7 @@ export default function AdminDashboardPage() {
     const shippingPromise = fetch("/api/admin/settings");
     const couponsPromise = fetch("/api/admin/coupons");
     const reviewsPromise = fetch("/api/admin/reviews");
+    const campaignsPromise = fetch("/api/admin/campaigns");
 
     let hadError = false;
 
@@ -626,6 +658,15 @@ export default function AdminDashboardPage() {
       console.error("Load shipping settings failed:", err);
     }
 
+    try {
+      const campaignsRes = await campaignsPromise;
+      if (!campaignsRes.ok) throw new Error("Failed to load campaigns");
+      setCampaigns((await campaignsRes.json()) || []);
+    } catch (err) {
+      hadError = true;
+      console.error("Load campaigns failed:", err);
+    }
+
     setError(hadError ? "Some dashboard data failed to load — check the browser console for details." : "");
     setLoading(false);
     setRefreshing(false);
@@ -682,6 +723,16 @@ export default function AdminDashboardPage() {
       setCoupons((await res.json()) || []);
     } catch (err) {
       console.error("Refresh coupons failed:", err);
+    }
+  }
+
+  async function refreshCampaigns() {
+    try {
+      const res = await fetch("/api/admin/campaigns");
+      if (!res.ok) throw new Error("Failed to load campaigns");
+      setCampaigns((await res.json()) || []);
+    } catch (err) {
+      console.error("Refresh campaigns failed:", err);
     }
   }
 
@@ -1334,6 +1385,136 @@ export default function AdminDashboardPage() {
     }
   }
 
+  // --- Quick Replies (canned responses) ---
+  async function handleToggleCannedPopup() {
+    if (!showCannedPopup && cannedResponses.length === 0) {
+      try {
+        const res = await fetch("/api/admin/canned-responses");
+        const data = await res.json();
+        if (res.ok) {
+          setCannedResponses(data.responses || []);
+          setCannedIsDefault(!!data.isDefault);
+        }
+      } catch (err) {
+        console.error("Failed to load quick replies:", err);
+      }
+    }
+    setShowCannedPopup((prev) => !prev);
+  }
+
+  async function ensureCannedSeeded(): Promise<any[]> {
+    if (!cannedIsDefault) return cannedResponses;
+    try {
+      const res = await fetch("/api/admin/canned-responses", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ seedDefaults: true }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to initialize quick replies");
+      setCannedResponses(data.responses);
+      setCannedIsDefault(false);
+      return data.responses;
+    } catch (err: any) {
+      notify("Error: " + err.message);
+      return cannedResponses;
+    }
+  }
+
+  function startCannedLongPress(c: any) {
+    longPressTriggeredRef.current = false;
+    longPressTimerRef.current = setTimeout(() => {
+      longPressTriggeredRef.current = true;
+      setEditingCannedId(c.id);
+      setEditingCannedText(c.message);
+    }, 550);
+  }
+
+  function cancelCannedLongPress() {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  }
+
+  function handleCannedClick(c: any) {
+    if (longPressTriggeredRef.current) {
+      longPressTriggeredRef.current = false;
+      return;
+    }
+    setSupportReplyText(c.message);
+    setShowCannedPopup(false);
+  }
+
+  async function handleSaveCannedEdit(c: any) {
+    if (!editingCannedText.trim()) return;
+    try {
+      let targetId = c.id;
+      if (cannedIsDefault) {
+        const seeded = await ensureCannedSeeded();
+        const match = seeded.find((s: any) => s.message === c.message);
+        if (!match) throw new Error("Could not find quick reply to update");
+        targetId = match.id;
+      }
+      const res = await fetch("/api/admin/canned-responses", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: targetId, message: editingCannedText.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to update quick reply");
+      setCannedResponses((prev) => prev.map((x) => (x.id === targetId ? data : x)));
+      setEditingCannedId(null);
+      notify("Quick reply updated!");
+    } catch (err: any) {
+      notify("Error: " + err.message);
+    }
+  }
+
+  async function handleDeleteCanned(c: any) {
+    if (!(await confirm("Delete this quick reply?", { danger: true }))) return;
+    try {
+      let targetId = c.id;
+      let list = cannedResponses;
+      if (cannedIsDefault) {
+        list = await ensureCannedSeeded();
+        const match = list.find((s: any) => s.message === c.message);
+        if (!match) throw new Error("Could not find quick reply to delete");
+        targetId = match.id;
+      }
+      const res = await fetch(`/api/admin/canned-responses?id=${targetId}`, { method: "DELETE" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to delete quick reply");
+      setCannedResponses((prev) => prev.filter((x) => x.id !== targetId));
+      setEditingCannedId(null);
+      notify("Quick reply deleted.");
+    } catch (err: any) {
+      notify("Error: " + err.message);
+    }
+  }
+
+  async function handleAddCanned() {
+    if (!newCannedText.trim()) return;
+    try {
+      let currentList = cannedResponses;
+      if (cannedIsDefault) {
+        currentList = await ensureCannedSeeded();
+      }
+      const res = await fetch("/api/admin/canned-responses", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: newCannedText.trim(), sort_order: currentList.length }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to add quick reply");
+      setCannedResponses((prev) => [...prev, data]);
+      setNewCannedText("");
+      notify("Quick reply added!");
+    } catch (err: any) {
+      notify("Error: " + err.message);
+    }
+  }
+
   async function handleDeleteSupport(id: string) {
     if (!(await confirm("Are you sure you want to delete this support inquiry? This will also remove it from the user's dashboard and tracking history. This action cannot be undone.", { danger: true }))) {
       return;
@@ -1725,6 +1906,168 @@ export default function AdminDashboardPage() {
     }
   }
 
+  // --- Free Product Campaign Handlers ---
+  function handleEditCampaign(c: any) {
+    setEditingCampaign(c);
+    setCampTitle(c.title);
+    setCampProductId(c.product_id);
+    setCampVariantId(c.variant_id || "");
+    setCampTargetRupees(c.target_amount_paise / 100);
+    setCampStartsAt(c.starts_at ? new Date(c.starts_at).toISOString().slice(0, 16) : "");
+    setCampExpiresAt(c.expires_at ? new Date(c.expires_at).toISOString().slice(0, 16) : "");
+    setCampEnableAnnouncement(c.enable_announcement);
+    setCampCustomAnnouncement(c.custom_announcement_message || "");
+    setCampIsActive(c.is_active);
+    setShowCampaignForm(true);
+  }
+
+  const isCampaignModified = () => {
+    if (!editingCampaign) return true;
+    if (campTitle !== editingCampaign.title) return true;
+    if (campProductId !== editingCampaign.product_id) return true;
+    if (campVariantId !== (editingCampaign.variant_id || "")) return true;
+    if (Number(campTargetRupees) !== editingCampaign.target_amount_paise / 100) return true;
+    
+    const origStarts = editingCampaign.starts_at ? new Date(editingCampaign.starts_at).toISOString().slice(0, 16) : "";
+    if (campStartsAt !== origStarts) return true;
+
+    const origExpires = editingCampaign.expires_at ? new Date(editingCampaign.expires_at).toISOString().slice(0, 16) : "";
+    if (campExpiresAt !== origExpires) return true;
+
+    if (campEnableAnnouncement !== editingCampaign.enable_announcement) return true;
+    if (campCustomAnnouncement !== (editingCampaign.custom_announcement_message || "")) return true;
+    if (campIsActive !== editingCampaign.is_active) return true;
+    
+    return false;
+  };
+
+  async function handleSaveCampaign(e: React.FormEvent) {
+    e.preventDefault();
+    if (!campTitle.trim() || !campProductId || !campTargetRupees || Number(campTargetRupees) <= 0) {
+      notify("Title, Free Product, and Target Amount are required");
+      return;
+    }
+
+    setSavingCampaign(true);
+    try {
+      const res = await fetch("/api/admin/campaigns", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: campTitle.trim(),
+          product_id: campProductId,
+          variant_id: campVariantId || null,
+          target_amount_paise: Math.round(Number(campTargetRupees) * 100),
+          starts_at: campStartsAt ? new Date(campStartsAt).toISOString() : null,
+          expires_at: campExpiresAt ? new Date(campExpiresAt).toISOString() : null,
+          enable_announcement: campEnableAnnouncement,
+          custom_announcement_message: campCustomAnnouncement.trim() || null,
+          is_active: campIsActive
+        })
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || "Failed to create free product campaign");
+      }
+
+      notify("Free product campaign created successfully!");
+      setCampTitle("");
+      setCampProductId("");
+      setCampVariantId("");
+      setCampTargetRupees("");
+      setCampStartsAt("");
+      setCampExpiresAt("");
+      setCampEnableAnnouncement(true);
+      setCampCustomAnnouncement("");
+      setCampIsActive(true);
+      setShowCampaignForm(false);
+      await refreshCampaigns();
+    } catch (err: any) {
+      notify("Error: " + err.message);
+    } finally {
+      setSavingCampaign(false);
+    }
+  }
+
+  async function handleUpdateCampaign(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editingCampaign || !campTitle.trim() || !campProductId || !campTargetRupees || Number(campTargetRupees) <= 0) {
+      notify("Title, Free Product, and Target Amount are required");
+      return;
+    }
+
+    setSavingCampaign(true);
+    try {
+      const res = await fetch("/api/admin/campaigns", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: editingCampaign.id,
+          title: campTitle.trim(),
+          product_id: campProductId,
+          variant_id: campVariantId || null,
+          target_amount_paise: Math.round(Number(campTargetRupees) * 100),
+          starts_at: campStartsAt ? new Date(campStartsAt).toISOString() : null,
+          expires_at: campExpiresAt ? new Date(campExpiresAt).toISOString() : null,
+          enable_announcement: campEnableAnnouncement,
+          custom_announcement_message: campCustomAnnouncement.trim() || null,
+          is_active: campIsActive
+        })
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || "Failed to update free product campaign");
+      }
+
+      notify("Free product campaign updated successfully!");
+      setEditingCampaign(null);
+      setCampTitle("");
+      setCampProductId("");
+      setCampVariantId("");
+      setCampTargetRupees("");
+      setCampStartsAt("");
+      setCampExpiresAt("");
+      setCampEnableAnnouncement(true);
+      setCampCustomAnnouncement("");
+      setCampIsActive(true);
+      setShowCampaignForm(false);
+      await refreshCampaigns();
+    } catch (err: any) {
+      notify("Error: " + err.message);
+    } finally {
+      setSavingCampaign(false);
+    }
+  }
+
+  async function handleToggleCampaign(id: string, active: boolean) {
+    try {
+      const res = await fetch("/api/admin/campaigns", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, is_active: active })
+      });
+      if (!res.ok) throw new Error("Failed to toggle free product campaign status");
+      await refreshCampaigns();
+    } catch (err: any) {
+      notify("Error: " + err.message);
+    }
+  }
+
+  async function handleDeleteCampaign(id: string) {
+    if (!(await confirm("Are you sure you want to delete this free product campaign?", { danger: true }))) return;
+    try {
+      const res = await fetch(`/api/admin/campaigns?id=${id}`, {
+        method: "DELETE"
+      });
+      if (!res.ok) throw new Error("Failed to delete free product campaign");
+      await refreshCampaigns();
+    } catch (err: any) {
+      notify("Error: " + err.message);
+    }
+  }
+
   // --- Invoice & Packing Slip Printer ---
   async function printInvoice(order: any) {
     // Dynamic import to avoid SSR issues
@@ -2079,6 +2422,143 @@ export default function AdminDashboardPage() {
     printWindow.document.close();
   }
 
+  // --- Bulk "Download Orders by Status" report ---
+  const BULK_REPORT_FILTERS = [
+    { key: "all", label: "All Orders" },
+    { key: "pending", label: "Pending" },
+    { key: "confirmed", label: "Confirmed / Packed" },
+    { key: "shipped", label: "Shipped" },
+    { key: "delivered", label: "Delivered" },
+    { key: "returned", label: "Returned" },
+    { key: "rejected", label: "Rejected" },
+    { key: "free_delivery", label: "Free Delivery Orders" },
+    { key: "charged_delivery", label: "Charged Delivery Orders" },
+  ];
+
+  function getOrdersForBulkFilter(filterKey: string) {
+    switch (filterKey) {
+      case "pending": return orders.filter((o: any) => o.status === "pending");
+      case "confirmed": return orders.filter((o: any) => ["confirmed", "packed"].includes(o.status));
+      case "shipped": return orders.filter((o: any) => ["shipped", "out_for_delivery"].includes(o.status));
+      case "delivered": return orders.filter((o: any) => o.status === "delivered");
+      case "returned": return orders.filter((o: any) => o.status === "returned");
+      case "rejected": return orders.filter((o: any) => o.status === "rejected");
+      case "free_delivery": return orders.filter((o: any) => o.shipping_paise === 0);
+      case "charged_delivery": return orders.filter((o: any) => o.shipping_paise > 0);
+      default: return orders;
+    }
+  }
+
+  function printBulkOrderReport(filterKey: string) {
+    const list = getOrdersForBulkFilter(filterKey);
+    const filterLabel = BULK_REPORT_FILTERS.find((f) => f.key === filterKey)?.label || "All Orders";
+
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+
+    const totalPaid = list.reduce((sum: number, o: any) => sum + (o.total_paise || 0), 0);
+    const freeCount = list.filter((o: any) => o.shipping_paise === 0).length;
+
+    const rows = list.length > 0 ? list.map((o: any) => `
+      <tr>
+        <td style="padding: 10px 8px; border-bottom: 1px solid #E5DFD2; font-weight: 700; color: #1A1612;">${o.order_number}</td>
+        <td style="padding: 10px 8px; border-bottom: 1px solid #E5DFD2; color: #2A2622;">${o.profiles?.full_name || o.profiles?.email || "Guest"}</td>
+        <td style="padding: 10px 8px; border-bottom: 1px solid #E5DFD2; text-transform: uppercase; font-size: 10px; font-weight: 700; letter-spacing: 0.4px; color: #B08D4C;">${o.status}</td>
+        <td style="padding: 10px 8px; border-bottom: 1px solid #E5DFD2; text-transform: uppercase; font-size: 10px; font-weight: 600; letter-spacing: 0.4px; color: #6E655A;">${o.payment_status}</td>
+        <td style="padding: 10px 8px; border-bottom: 1px solid #E5DFD2; text-align: right; font-weight: 700; color: #2A2622;">${formatRupees(o.total_paise)}</td>
+        <td style="padding: 10px 8px; border-bottom: 1px solid #E5DFD2; text-align: center; font-size: 10.5px; ${o.shipping_paise === 0 ? "color: #4B7A52; font-weight: 700;" : "color: #6E655A; font-weight: 500;"}">${o.shipping_paise === 0 ? "FREE" : formatRupees(o.shipping_paise)}</td>
+        <td style="padding: 10px 8px; border-bottom: 1px solid #E5DFD2; color: #6E655A; font-size: 11px; font-weight: 500;">${new Date(o.placed_at).toLocaleDateString("en-IN", { dateStyle: "medium" })}</td>
+      </tr>
+    `).join("") : `<tr><td colspan="7" style="padding: 30px; text-align: center; color: #9A9084; font-style: italic;">No orders found for this filter.</td></tr>`;
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Order Report - ${filterLabel}</title>
+          <link rel="preconnect" href="https://fonts.googleapis.com">
+          <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+          <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+          <style>
+            * { box-sizing: border-box; }
+            body { font-family: 'Manrope', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #2A2622; margin: 0; padding: 28px; background-color: #FFFFFF; font-size: 12.5px; -webkit-font-smoothing: antialiased; }
+            .header { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 3px solid #B08D4C; padding-bottom: 16px; margin-bottom: 22px; }
+            .brand { font-family: 'Fraunces', Georgia, serif; font-size: 25px; font-weight: 600; color: #B08D4C; letter-spacing: 0.5px; }
+            .brand-subtitle { font-family: 'Manrope', sans-serif; font-size: 10px; color: #6E655A; text-transform: uppercase; letter-spacing: 1.8px; margin-top: 5px; font-weight: 700; }
+            .meta { text-align: right; font-size: 11px; color: #6E655A; line-height: 1.6; }
+            .meta strong { color: #1A1612; font-weight: 700; }
+            .summary { display: flex; gap: 14px; margin-bottom: 20px; }
+            .stat { flex: 1; padding: 14px 16px; border: 1px solid #E5DFD2; border-radius: 8px; background-color: #FBF9F4; }
+            .stat .label { font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.8px; color: #B08D4C; font-weight: 700; margin-bottom: 6px; }
+            .stat .value { font-family: 'Fraunces', Georgia, serif; font-size: 22px; font-weight: 600; color: #1A1612; }
+            table { width: 100%; border-collapse: collapse; border: 1px solid #E5DFD2; border-radius: 8px; overflow: hidden; font-size: 12px; }
+            thead { display: table-header-group; }
+            tr { page-break-inside: avoid; }
+            th { background-color: #1A1612; color: #B08D4C; padding: 10px 8px; text-align: left; font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.8px; font-weight: 700; }
+            tbody tr:nth-child(even) { background-color: #FBF9F4; }
+            .footer-note { text-align: center; font-size: 10px; color: #9A9084; margin-top: 26px; border-top: 1px solid #E5DFD2; padding-top: 14px; font-weight: 500; }
+            @media print { body { padding: 10mm; } }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div>
+              <div class="brand">JAI SRI RAM TEXTILES</div>
+              <div class="brand-subtitle">Order Status Report — ${filterLabel}</div>
+            </div>
+            <div class="meta">
+              <div>Generated: <strong>${new Date().toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}</strong></div>
+              <div>Filter: <strong>${filterLabel}</strong></div>
+            </div>
+          </div>
+
+          <div class="summary">
+            <div class="stat">
+              <div class="label">Total Orders</div>
+              <div class="value">${list.length}</div>
+            </div>
+            <div class="stat">
+              <div class="label">Total Paid Value</div>
+              <div class="value">${formatRupees(totalPaid)}</div>
+            </div>
+            <div class="stat">
+              <div class="label">Free Delivery Count</div>
+              <div class="value">${freeCount}</div>
+            </div>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th>Order Number</th>
+                <th>Customer</th>
+                <th>Status</th>
+                <th>Payment</th>
+                <th style="text-align: right;">Paid Total</th>
+                <th style="text-align: center;">Shipping</th>
+                <th>Date Placed</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rows}
+            </tbody>
+          </table>
+
+          <div class="footer-note">
+            INTERNAL USE ONLY — Confidential administrative report generated from the JAI SRI RAM TEXTILES admin panel.
+          </div>
+
+          <script>
+            window.onload = function() {
+              window.print();
+              setTimeout(function(){ window.close(); }, 500);
+            }
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  }
+
   // --- Filtering computations ---
   const filteredProducts = products.filter(p => {
     if (!productSearch) return true;
@@ -2163,6 +2643,7 @@ export default function AdminDashboardPage() {
                 <TabButton active={activeTab === "refunds"} onClick={() => setActiveTab("refunds")} icon={<RefreshCw className="w-4 h-4" />} label="Issue Refund" badge={orders.filter(o => (o.status === "returned" || o.status === "rejected") && o.payment_status !== "refunded").length} />
                 <TabButton active={activeTab === "coupons"} onClick={() => setActiveTab("coupons")} icon={<Ticket className="w-4 h-4" />} label="Promo Codes" badge={coupons.length} />
                 <TabButton active={activeTab === "shipping"} onClick={() => setActiveTab("shipping")} icon={<Truck className="w-4 h-4" />} label="Shipping Settings" />
+                <TabButton active={activeTab === "campaigns"} onClick={() => setActiveTab("campaigns")} icon={<Gift className="w-4 h-4" />} label="Free Products" badge={campaigns.length} />
                 <TabButton active={activeTab === "users"} onClick={() => setActiveTab("users")} icon={<Users className="w-4 h-4" />} label="User Management" badge={users.length} />
                 <TabButton active={activeTab === "user-inspector"} onClick={() => setActiveTab("user-inspector")} icon={<Search className="w-4 h-4" />} label="User Inspector" />
                 <TabButton active={activeTab === "reviews"} onClick={() => setActiveTab("reviews")} icon={<Star className="w-4 h-4" />} label="Customer Reviews" badge={reviews.length} />
@@ -2838,11 +3319,26 @@ export default function AdminDashboardPage() {
                   </div>
                 ) : (
                   <>
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 p-3.5 rounded-card border border-line bg-cream/25">
                       <p className="text-xs text-taupe">Look up any single order by its Order Number or Order ID and download a full one-page detail sheet — handy for emergency/offline reference.</p>
-                      <Button size="sm" variant="outline" onClick={() => { setEmergencyLookupQuery(""); setEmergencyLookupOpen(true); }} className="flex-shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => { setEmergencyLookupQuery(""); setEmergencyLookupOpen(true); }}
+                        className="shrink-0 inline-flex items-center gap-2 h-10 px-4 rounded-full text-xs font-bold text-ink bg-white border border-line hover:border-zari hover:text-zari-deep hover:bg-zari-tint/40 transition-colors shadow-xs cursor-pointer whitespace-nowrap"
+                      >
                         <Download className="w-4 h-4" /> Download Order Detail (PDF)
-                      </Button>
+                      </button>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 p-3.5 rounded-card border border-line bg-cream/25">
+                      <p className="text-xs text-taupe">Generate a bulk PDF report of orders filtered by status or delivery type — handy for reconciliation and record-keeping.</p>
+                      <button
+                        type="button"
+                        onClick={() => { setBulkReportFilter("all"); setBulkReportOpen(true); }}
+                        className="shrink-0 inline-flex items-center gap-2 h-10 px-4 rounded-full text-xs font-bold text-ink bg-white border border-line hover:border-zari hover:text-zari-deep hover:bg-zari-tint/40 transition-colors shadow-xs cursor-pointer whitespace-nowrap"
+                      >
+                        <Download className="w-4 h-4" /> Download Orders by Status
+                      </button>
                     </div>
 
                     <div className="relative w-full">
@@ -4784,7 +5280,7 @@ $$ language plpgsql;`}
                                         </div>
 
                                         {/* Chat Messages */}
-                                        <div className="p-4 space-y-4 max-h-[300px] overflow-y-auto bg-ivory/10">
+                                        <div className="p-4 space-y-4 max-h-[300px] overflow-y-auto bg-ivory/10" data-lenis-prevent>
                                           {/* Message 1: Original User Message (Left/Customer align) */}
                                           <div className="flex flex-col items-start space-y-1 w-full">
                                             <div className="flex items-center gap-1.5">
@@ -4853,6 +5349,86 @@ $$ language plpgsql;`}
                                               }}
                                               className="flex gap-2 items-end"
                                             >
+                                              {/* Quick Replies (canned responses) */}
+                                              <div className="relative shrink-0">
+                                                <button
+                                                  type="button"
+                                                  onClick={handleToggleCannedPopup}
+                                                  className="h-[42px] w-[42px] grid place-items-center rounded-card border border-line bg-white hover:bg-cream text-taupe hover:text-zari-deep transition-colors cursor-pointer shadow-xs"
+                                                  title="Quick Replies"
+                                                >
+                                                  <MessageSquareText size={16} />
+                                                </button>
+
+                                                {showCannedPopup && (
+                                                  <div className="absolute bottom-full left-0 mb-2 w-72 max-h-80 bg-white border border-line rounded-card shadow-lift overflow-hidden flex flex-col z-20">
+                                                    <div className="px-3 py-2 border-b border-line bg-cream/40 flex items-center justify-between shrink-0">
+                                                      <p className="text-[11px] font-bold text-ink uppercase tracking-wide">Quick Replies</p>
+                                                      <button
+                                                        type="button"
+                                                        onClick={() => { setShowCannedPopup(false); setEditingCannedId(null); }}
+                                                        className="text-taupe hover:text-ink cursor-pointer"
+                                                      >
+                                                        <X size={14} />
+                                                      </button>
+                                                    </div>
+                                                    <p className="text-[10px] text-taupe px-3 pt-2 font-sans">Tap to insert into reply &middot; Long-press to edit/delete</p>
+                                                    <div className="flex-1 overflow-y-auto p-2 space-y-1" data-lenis-prevent>
+                                                      {cannedResponses.map((c) => (
+                                                        editingCannedId === c.id ? (
+                                                          <div key={c.id} className="p-2 border border-zari/40 rounded-lg bg-zari-tint/30 space-y-1.5">
+                                                            <textarea
+                                                              value={editingCannedText}
+                                                              onChange={(e) => setEditingCannedText(e.target.value)}
+                                                              rows={2}
+                                                              autoFocus
+                                                              className="w-full text-xs rounded border border-line px-2 py-1.5 outline-none focus:border-zari resize-none font-sans"
+                                                            />
+                                                            <div className="flex gap-1.5 justify-end">
+                                                              <button type="button" onClick={() => setEditingCannedId(null)} className="text-[10px] font-bold text-taupe hover:text-ink px-2 py-1 cursor-pointer">Cancel</button>
+                                                              <button type="button" onClick={() => handleDeleteCanned(c)} className="text-[10px] font-bold text-danger hover:bg-danger/10 px-2 py-1 rounded cursor-pointer">Delete</button>
+                                                              <button type="button" onClick={() => handleSaveCannedEdit(c)} className="text-[10px] font-bold bg-zari hover:bg-zari-deep text-ink hover:text-white px-2.5 py-1 rounded cursor-pointer">Save</button>
+                                                            </div>
+                                                          </div>
+                                                        ) : (
+                                                          <button
+                                                            key={c.id}
+                                                            type="button"
+                                                            onMouseDown={() => startCannedLongPress(c)}
+                                                            onMouseUp={cancelCannedLongPress}
+                                                            onMouseLeave={cancelCannedLongPress}
+                                                            onTouchStart={() => startCannedLongPress(c)}
+                                                            onTouchEnd={cancelCannedLongPress}
+                                                            onClick={() => handleCannedClick(c)}
+                                                            className="w-full text-left text-xs text-ink px-2.5 py-2 rounded-lg hover:bg-cream/70 transition-colors cursor-pointer select-none leading-snug font-sans"
+                                                          >
+                                                            {c.message}
+                                                          </button>
+                                                        )
+                                                      ))}
+                                                    </div>
+                                                    <div className="border-t border-line p-2 flex gap-1.5 shrink-0">
+                                                      <input
+                                                        type="text"
+                                                        value={newCannedText}
+                                                        onChange={(e) => setNewCannedText(e.target.value)}
+                                                        onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAddCanned(); } }}
+                                                        placeholder="Add a new quick reply..."
+                                                        className="flex-1 text-xs rounded border border-line px-2 py-1.5 outline-none focus:border-zari font-sans"
+                                                      />
+                                                      <button
+                                                        type="button"
+                                                        onClick={handleAddCanned}
+                                                        disabled={!newCannedText.trim()}
+                                                        className="shrink-0 text-[10px] font-bold bg-ink text-ivory px-2.5 rounded hover:bg-zari disabled:opacity-40 cursor-pointer"
+                                                      >
+                                                        Add
+                                                      </button>
+                                                    </div>
+                                                  </div>
+                                                )}
+                                              </div>
+
                                               <textarea
                                                 value={supportReplyText}
                                                 onChange={(e) => setSupportReplyText(e.target.value)}
@@ -5039,15 +5615,17 @@ $$ language plpgsql;`}
                     )}
 
                     <div className="flex items-center gap-3 pt-2">
-                      <Button
+                      <button
                         type="submit"
-                        variant="gold"
-                        size="md"
                         disabled={savingShipping || !isShippingModified()}
-                        className="shadow-glow font-bold"
+                        className={`h-11 px-6 rounded-full text-sm font-bold transition-all duration-200 shadow-sm cursor-pointer ${
+                          isShippingModified() && !savingShipping
+                            ? "text-[#6B5427] bg-[#D9BE85] hover:bg-[#CDAE6C] hover:-translate-y-0.5"
+                            : "bg-[#EFE9DC] text-taupe border border-line cursor-not-allowed opacity-50"
+                        }`}
                       >
                         {savingShipping ? "Saving..." : "Save Shipping Settings"}
-                      </Button>
+                      </button>
                       <button
                         type="button"
                         onClick={() => {
@@ -5073,6 +5651,337 @@ $$ language plpgsql;`}
                     <li>The cart page also dynamically reads this threshold to show free delivery progress.</li>
                     <li>Set shipping fee to <strong className="text-ink">0</strong> to offer free shipping for all orders regardless of value.</li>
                   </ul>
+                </div>
+              </div>
+            )}
+
+            {/* Free Products Campaign Management Tab */}
+            {activeTab === "campaigns" && (
+              <div className="space-y-6 animate-fade-up">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                  <div>
+                    <h2 className="font-display text-2xl text-ink">Free Product Campaigns</h2>
+                    <p className="text-sm text-taupe mt-1">Automatically add free gifts to checkout orders when cart thresholds are achieved.</p>
+                  </div>
+                  <Button size="sm" variant="gold" onClick={() => {
+                    if (showCampaignForm && editingCampaign) {
+                      setEditingCampaign(null);
+                      setCampTitle(""); setCampProductId(""); setCampVariantId("");
+                      setCampTargetRupees(""); setCampStartsAt(""); setCampExpiresAt("");
+                      setCampEnableAnnouncement(true); setCampCustomAnnouncement(""); setCampIsActive(true);
+                      setShowCampaignForm(false);
+                    } else {
+                      setEditingCampaign(null);
+                      setShowCampaignForm(!showCampaignForm);
+                    }
+                  }} className="cursor-pointer">
+                    <Plus className="w-4 h-4 mr-1" /> {showCampaignForm && !editingCampaign ? "Hide Form" : showCampaignForm && editingCampaign ? "Cancel Edit" : "Create Campaign"}
+                  </Button>
+                </div>
+
+                {showCampaignForm && (
+                  <form onSubmit={editingCampaign ? handleUpdateCampaign : handleSaveCampaign} className="bg-white border border-line rounded-card p-6 shadow-soft space-y-6">
+                    <h3 className="font-semibold text-sm text-zari-deep border-b border-line pb-2 flex items-center gap-1.5">
+                      {editingCampaign ? `✏️ Editing Campaign: ${editingCampaign.title}` : "🎁 New Free Gift Campaign details"}
+                    </h3>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Campaign Title */}
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-xs font-bold text-taupe uppercase">Campaign Title *</label>
+                        <input
+                          type="text"
+                          required
+                          placeholder="e.g. Free Towel Campaign"
+                          value={campTitle}
+                          onChange={(e) => setCampTitle(e.target.value)}
+                          className="rounded border border-line bg-white px-3 py-2.5 text-sm outline-none focus:border-zari"
+                        />
+                      </div>
+
+                      {/* Target Order Value */}
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-xs font-bold text-taupe uppercase">Target Order Value (₹) *</label>
+                        <input
+                          type="number"
+                          required
+                          min="1"
+                          step="1"
+                          placeholder="e.g. 999"
+                          value={campTargetRupees}
+                          onChange={(e) => setCampTargetRupees(e.target.value === "" ? "" : Number(e.target.value))}
+                          className="rounded border border-line bg-white px-3 py-2.5 text-sm outline-none focus:border-zari"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Product Selector */}
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-xs font-bold text-taupe uppercase">Select Free Gift Product *</label>
+                        <select
+                          required
+                          value={campProductId}
+                          onChange={(e) => { setCampProductId(e.target.value); setCampVariantId(""); }}
+                          className="rounded border border-line bg-white px-3 py-2.5 text-sm outline-none focus:border-zari h-[46px]"
+                        >
+                          <option value="">-- Choose Product --</option>
+                          {products
+                            .filter(p => !p.id.startsWith("default-p"))
+                            .map(p => (
+                              <option key={p.id} value={p.id}>
+                                {p.name} (Value: {formatRupees(p.price_paise || p.pricePaise)})
+                              </option>
+                            ))
+                          }
+                        </select>
+                      </div>
+
+                      {/* Variant Selector */}
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-xs font-bold text-taupe uppercase">Select Product Variant (Optional)</label>
+                        <select
+                          value={campVariantId}
+                          onChange={(e) => setCampVariantId(e.target.value)}
+                          disabled={!campProductId}
+                          className="rounded border border-line bg-white px-3 py-2.5 text-sm outline-none focus:border-zari h-[46px] disabled:opacity-50"
+                        >
+                          <option value="">No variant (Default main product)</option>
+                          {(() => {
+                            const selectedProd = products.find(p => p.id === campProductId);
+                            const variants = selectedProd?.product_variants || selectedProd?.variants || [];
+                            return variants.map((v: any) => (
+                              <option key={v.id} value={v.id}>
+                                {[v.size, v.color].filter(Boolean).join(" / ")} (SKU: {v.sku || "—"}, Stock: {v.stock})
+                              </option>
+                            ));
+                          })()}
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Starts At */}
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-xs font-bold text-taupe uppercase">Starts At (Optional)</label>
+                        <input
+                          type="datetime-local"
+                          value={campStartsAt}
+                          onChange={(e) => setCampStartsAt(e.target.value)}
+                          className="rounded border border-line bg-white px-3 py-2.5 text-sm outline-none focus:border-zari"
+                        />
+                      </div>
+
+                      {/* Expires At */}
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-xs font-bold text-taupe uppercase">Expires At (Optional)</label>
+                        <input
+                          type="datetime-local"
+                          value={campExpiresAt}
+                          onChange={(e) => setCampExpiresAt(e.target.value)}
+                          className="rounded border border-line bg-white px-3 py-2.5 text-sm outline-none focus:border-zari"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Announcement Banner options */}
+                    <div className="space-y-4 bg-cream/20 border border-line rounded-xl p-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <label className="text-xs font-bold text-ink uppercase block">Announcement Bar Banner Message</label>
+                          <span className="text-[10px] text-taupe mt-0.5">Toggle to publish an offer detail announcement message automatically in storefront header.</span>
+                        </div>
+                        <input
+                          type="checkbox"
+                          checked={campEnableAnnouncement}
+                          onChange={(e) => setCampEnableAnnouncement(e.target.checked)}
+                          className="h-4 w-4 rounded border-line focus:ring-zari text-zari"
+                        />
+                      </div>
+
+                      {campEnableAnnouncement && (
+                        <div className="flex flex-col gap-1.5 pt-2 border-t border-line/65">
+                          <label className="text-xs font-bold text-taupe uppercase">Custom Announcement message (Optional)</label>
+                          <input
+                            type="text"
+                            placeholder="e.g. 🎉 Get a premium White Towel FREE with all orders above ₹999! Offer valid this week."
+                            value={campCustomAnnouncement}
+                            onChange={(e) => setCampCustomAnnouncement(e.target.value)}
+                            className="rounded border border-line bg-white px-3 py-2.5 text-sm outline-none focus:border-zari"
+                          />
+                          <p className="text-[10px] text-muted italic">Leave empty to use auto-generated default: &quot;🎁 Get a FREE [Product Name] on orders above ₹[Target]!&quot;</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Active toggle */}
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        id="campIsActive"
+                        checked={campIsActive}
+                        onChange={(e) => setCampIsActive(e.target.checked)}
+                        className="h-4 w-4 rounded border-line text-zari focus:ring-zari"
+                      />
+                      <label htmlFor="campIsActive" className="text-xs font-bold text-ink uppercase cursor-pointer select-none">
+                        Active & Enabled (Visible to customers in Cart)
+                      </label>
+                    </div>
+
+                    {/* Action buttons */}
+                    <div className="flex gap-2 pt-2 border-t border-line">
+                      <button
+                        type="submit"
+                        disabled={savingCampaign || !isCampaignModified()}
+                        className="h-11 px-6 rounded-full text-sm font-bold text-[#6B5427] bg-[#D9BE85] hover:bg-[#CDAE6C] transition-colors duration-200 shadow-sm disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
+                      >
+                        {savingCampaign ? "Saving..." : editingCampaign ? "Save Changes" : "Create Campaign"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingCampaign(null);
+                          setCampTitle(""); setCampProductId(""); setCampVariantId("");
+                          setCampTargetRupees(""); setCampStartsAt(""); setCampExpiresAt("");
+                          setCampEnableAnnouncement(true); setCampCustomAnnouncement(""); setCampIsActive(true);
+                          setShowCampaignForm(false);
+                        }}
+                        className="h-11 px-6 rounded-full text-sm font-bold text-taupe border border-line bg-white hover:bg-cream/45 transition-colors duration-200 cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </form>
+                )}
+
+                {/* Campaigns List */}
+                <div className="bg-white border border-line rounded-card overflow-hidden shadow-soft">
+                  {campaigns.length === 0 ? (
+                    <div className="p-12 text-center text-sm text-taupe italic">
+                      No free product campaigns found. Create one above!
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-xs sm:text-sm text-left">
+                        <thead>
+                          <tr className="bg-cream border-b border-line text-taupe font-medium">
+                            <th className="p-4">Campaign Info</th>
+                            <th className="p-4">Cart Target (₹)</th>
+                            <th className="p-4">Free Product Reward</th>
+                            <th className="p-4">Announcement Bar</th>
+                            <th className="p-4 text-center">Timing Status</th>
+                            <th className="p-4 text-center">Active</th>
+                            <th className="p-4 text-right">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {campaigns.map((c) => {
+                            const starts = c.starts_at ? new Date(c.starts_at) : null;
+                            const expires = c.expires_at ? new Date(c.expires_at) : null;
+                            const now = new Date();
+
+                            let timingStatus = "Active";
+                            let timingBadge = "bg-success/10 text-success border-success/20";
+                            
+                            if (!c.is_active) {
+                              timingStatus = "Disabled";
+                              timingBadge = "bg-muted/10 text-muted border-muted/20";
+                            } else if (starts && now < starts) {
+                              timingStatus = "Scheduled";
+                              timingBadge = "bg-warning/10 text-warning border-warning/20";
+                            } else if (expires && now > expires) {
+                              timingStatus = "Expired";
+                              timingBadge = "bg-danger/10 text-danger border-danger/20";
+                            }
+
+                            const freeProduct = c.product || {};
+                            const imgUrl = freeProduct.product_images?.[0]?.url || freeProduct.image;
+                            const hasVariant = !!c.variant;
+                            const variantLabel = hasVariant 
+                              ? [c.variant.size, c.variant.color].filter(Boolean).join(" / ")
+                              : null;
+
+                            return (
+                              <tr key={c.id} className="border-b border-line hover:bg-ivory/50">
+                                <td className="p-4">
+                                  <div className="font-semibold text-ink">{c.title}</div>
+                                  <div className="text-[10px] text-taupe mt-0.5 font-mono">ID: {c.id.slice(0, 8)}...</div>
+                                </td>
+                                <td className="p-4 font-mono font-bold text-ink">
+                                  ₹{c.target_amount_paise / 100}
+                                </td>
+                                <td className="p-4">
+                                  <div className="flex items-center gap-2.5">
+                                    <div className="relative w-8 h-8 rounded border border-line bg-cream overflow-hidden flex-shrink-0">
+                                      {imgUrl ? (
+                                        <Image src={imgUrl} alt={freeProduct.name || ""} fill className="object-cover" />
+                                      ) : (
+                                        <ShoppingBag className="w-4 h-4 m-2 text-muted" />
+                                      )}
+                                    </div>
+                                    <div className="min-w-0">
+                                      <div className="font-semibold text-ink truncate max-w-[180px]">{freeProduct.name}</div>
+                                      {variantLabel && (
+                                        <div className="text-[10px] text-zari-deep font-bold mt-0.5">{variantLabel}</div>
+                                      )}
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className="p-4">
+                                  {c.enable_announcement ? (
+                                    <span className="inline-flex items-center gap-1 bg-zari-tint text-zari-deep px-2 py-0.5 rounded-full text-[10px] font-bold border border-zari/20">
+                                      📣 On
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-1 bg-cream text-taupe px-2 py-0.5 rounded-full text-[10px] font-bold border border-line">
+                                      Off
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="p-4 text-center">
+                                  <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${timingBadge}`}>
+                                    {timingStatus}
+                                  </span>
+                                </td>
+                                <td className="p-4 text-center">
+                                  <button
+                                    onClick={() => handleToggleCampaign(c.id, !c.is_active)}
+                                    className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                                      c.is_active ? "bg-zari" : "bg-cream border-line"
+                                    }`}
+                                  >
+                                    <span
+                                      className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-xs ring-0 transition duration-200 ease-in-out ${
+                                        c.is_active ? "translate-x-4" : "translate-x-0"
+                                      }`}
+                                    />
+                                  </button>
+                                </td>
+                                <td className="p-4 text-right">
+                                  <div className="flex justify-end gap-1.5">
+                                    <button
+                                      onClick={() => handleEditCampaign(c)}
+                                      className="p-1.5 text-taupe hover:text-ink hover:bg-cream rounded transition-colors cursor-pointer"
+                                      title="Edit campaign"
+                                    >
+                                      <Edit2 className="w-4 h-4" />
+                                    </button>
+                                    <button
+                                      onClick={() => handleDeleteCampaign(c.id)}
+                                      className="p-1.5 text-muted hover:text-danger hover:bg-danger/5 rounded transition-colors cursor-pointer"
+                                      title="Delete campaign"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -5170,6 +6079,60 @@ $$ language plpgsql;`}
                 className="px-4 py-2 text-xs font-semibold text-white bg-zari rounded disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
               >
                 Download PDF
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk "Download Orders by Status" report modal */}
+      {bulkReportOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-ink/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-card border border-line shadow-lift w-full max-w-lg p-6 space-y-4">
+            <div>
+              <h3 className="font-display text-lg text-ink">Download orders by status</h3>
+              <p className="text-xs text-taupe mt-1">
+                Select which orders to include — the report opens in a new tab where you can save it as a PDF.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {BULK_REPORT_FILTERS.map((f) => (
+                <button
+                  key={f.key}
+                  type="button"
+                  onClick={() => setBulkReportFilter(f.key)}
+                  className={`px-3 py-2.5 rounded-card border text-xs font-semibold text-left transition-colors cursor-pointer ${
+                    bulkReportFilter === f.key
+                      ? "border-zari bg-zari-tint/50 text-zari-deep"
+                      : "border-line bg-white text-ink hover:border-zari/50 hover:bg-cream/40"
+                  }`}
+                >
+                  {f.label}
+                  <span className="block text-[10px] font-normal text-taupe mt-0.5">
+                    {getOrdersForBulkFilter(f.key).length} order{getOrdersForBulkFilter(f.key).length === 1 ? "" : "s"}
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            <div className="flex justify-end gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setBulkReportOpen(false)}
+                className="px-4 py-2 text-xs font-semibold text-taupe hover:text-ink border border-line rounded bg-white cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  printBulkOrderReport(bulkReportFilter);
+                  setBulkReportOpen(false);
+                }}
+                className="px-4 py-2 text-xs font-semibold text-white bg-zari rounded hover:bg-zari-deep cursor-pointer"
+              >
+                Generate PDF
               </button>
             </div>
           </div>

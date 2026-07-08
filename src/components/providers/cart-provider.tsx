@@ -18,6 +18,9 @@ export type CartItem = {
     sku: string | null;
     stock: number;
   } | null;
+  isFreeGift?: boolean;
+  campaignId?: string;
+  targetAmountPaise?: number;
 };
 
 type CartContextType = {
@@ -26,6 +29,7 @@ type CartContextType = {
   removeFromCart: (productId: string, variantSku: string | null) => void;
   updateQuantity: (productId: string, variantSku: string | null, quantity: number) => void;
   clearCart: () => void;
+  addFreeGift: (campaign: any) => void;
   cartSubtotalPaise: number;
 };
 
@@ -141,11 +145,57 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
+  const addFreeGift = (campaign: any) => {
+    const product = campaign.product;
+    const variant = campaign.variant;
+    
+    setCart((prev) => {
+      // 1. Remove any existing free gifts from the same target amount group
+      const clean = prev.filter(
+        (item) => !(item.isFreeGift && item.targetAmountPaise === campaign.target_amount_paise)
+      );
+
+      // 2. Add the selected free gift
+      const giftItem: CartItem = {
+        id: product.id,
+        slug: product.slug,
+        name: `${product.name} (Free Gift)`,
+        pricePaise: 0,
+        cashbackPaise: 0,
+        image: product.image || (product.product_images?.[0]?.url) || "",
+        quantity: 1,
+        variant: variant || null,
+        isFreeGift: true,
+        campaignId: campaign.id,
+        targetAmountPaise: campaign.target_amount_paise
+      };
+
+      return [...clean, giftItem];
+    });
+  };
+
   const clearCart = () => {
     setCart([]);
   };
 
-  const cartSubtotalPaise = cart.reduce((sum, item) => sum + item.pricePaise * item.quantity, 0);
+  // Exclude free gifts from standard subtotal calculation
+  const cartSubtotalPaise = cart.reduce(
+    (sum, item) => sum + (item.isFreeGift ? 0 : item.pricePaise * item.quantity),
+    0
+  );
+
+  // Auto-remove free gifts if cart subtotal drops below required threshold
+  useEffect(() => {
+    if (!isLoaded) return;
+    const hasInvalidGifts = cart.some(
+      (item) => item.isFreeGift && item.targetAmountPaise && cartSubtotalPaise < item.targetAmountPaise
+    );
+    if (hasInvalidGifts) {
+      setCart((prev) =>
+        prev.filter((item) => !(item.isFreeGift && item.targetAmountPaise && cartSubtotalPaise < item.targetAmountPaise))
+      );
+    }
+  }, [cartSubtotalPaise, isLoaded, cart]);
 
   return (
     <CartContext.Provider
@@ -155,6 +205,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         removeFromCart,
         updateQuantity,
         clearCart,
+        addFreeGift,
         cartSubtotalPaise,
       }}
     >
