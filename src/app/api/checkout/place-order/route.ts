@@ -148,7 +148,8 @@ export async function POST(request: Request) {
       if (coupon.type === "flat") {
         discountPaise = Math.min(coupon.value, subtotalPaise);
       } else {
-        let calculated = Math.round((subtotalPaise * coupon.value) / 100);
+        // Round to the nearest whole rupee so every on-site transaction is a whole number
+        let calculated = Math.round((subtotalPaise * coupon.value) / 100 / 100) * 100;
         if (coupon.max_discount_paise) {
           calculated = Math.min(calculated, coupon.max_discount_paise);
         }
@@ -181,8 +182,9 @@ export async function POST(request: Request) {
       }
 
       if (activeBalance > 0) {
-        // Enforce 20% cap rule: wallet_used_paise <= (subtotal_paise / 5)
-        const walletCap = Math.floor(subtotalPaise / 5);
+        // Enforce 20% cap rule: wallet_used_paise <= (subtotal_paise / 5), rounded
+        // down to the nearest whole rupee so every on-site transaction is a whole number.
+        const walletCap = Math.floor(subtotalPaise / 5 / 100) * 100;
         const maxRedeemable = Math.min(activeBalance, walletCap);
         // Ensure wallet deduction doesn't exceed order value remaining after coupon
         walletUsedPaise = Math.min(maxRedeemable, subtotalPaise - discountPaise);
@@ -407,7 +409,7 @@ export async function POST(request: Request) {
       }).catch((err) => console.error("Order confirmation email failed:", err));
     }
 
-    return NextResponse.json({ success: true, orderId, orderNumber });
+    return NextResponse.json({ success: true, orderId, orderNumber, cashbackEarnedPaise: totalCashbackEarned });
   } catch (error: any) {
     console.error("Place Order Server Error:", error);
     return NextResponse.json({ error: error.message || "Failed to process checkout" }, { status: 500 });

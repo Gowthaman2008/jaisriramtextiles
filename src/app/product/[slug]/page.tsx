@@ -171,6 +171,16 @@ export default async function ProductPage({ params }: Props) {
                 Return or replacement is only accepted if the product was received in a damaged condition.
               </p>
             </div>
+
+            {/* Product Description */}
+            {product.description && (
+              <div className="mt-2">
+                <h2 className="font-display text-lg text-ink">Description</h2>
+                <p className="mt-2 text-sm text-taupe leading-relaxed whitespace-pre-line">
+                  {product.description}
+                </p>
+              </div>
+            )}
           </div>
         </div>
 

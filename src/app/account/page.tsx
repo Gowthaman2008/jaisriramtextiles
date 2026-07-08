@@ -10,6 +10,7 @@ import { Container } from "@/components/ui/container";
 import { ProductCard } from "@/components/home/product-card";
 import { formatINR } from "@/lib/utils";
 import { jsPDF } from "jspdf";
+import { drawInvoicePdf } from "@/lib/invoice-generator";
 import {
   User,
   ShoppingBag,
@@ -30,7 +31,8 @@ import {
   MessageSquare,
   Copy,
   Star,
-  X
+  X,
+  Pencil
 } from "lucide-react";
 
 export default function AccountPage() {
@@ -44,6 +46,12 @@ export default function AccountPage() {
 
   // Tab State: "overview" | "orders" | "wallet" | "wishlist" | "addresses" | "contact"
   const [activeTab, setActiveTab] = useState("overview");
+
+  // Land directly on a specific tab when arriving via a link like /account?tab=orders
+  useEffect(() => {
+    const tab = new URLSearchParams(window.location.search).get("tab");
+    if (tab) setActiveTab(tab);
+  }, []);
 
   // User States
   const [user, setUser] = useState<any>(null);
@@ -83,6 +91,7 @@ export default function AccountPage() {
   const [addrPhone, setAddrPhone] = useState("");
   const [addrAltPhone, setAddrAltPhone] = useState("");
   const [addrIsSubmitting, setAddrIsSubmitting] = useState(false);
+  const [editingAddressId, setEditingAddressId] = useState<string | null>(null);
 
   // Contact Form States
   const [supportSubject, setSupportSubject] = useState("");
@@ -307,7 +316,37 @@ export default function AccountPage() {
     }
   };
 
-  // Handle Add Address
+  function resetAddressForm() {
+    setEditingAddressId(null);
+    setAddrLabel("Home");
+    setAddrRecipient(user?.user_metadata?.full_name || user?.user_metadata?.name || "");
+    setAddrLine1("");
+    setAddrLine2("");
+    setAddrCity("");
+    setAddrState("");
+    setAddrPincode("");
+    setAddrDistrict("");
+    setAddrPhone("");
+    setAddrAltPhone("");
+    setShowAddressForm(false);
+  }
+
+  function startEditAddress(addr: any) {
+    setEditingAddressId(addr.id);
+    setAddrLabel(addr.label);
+    setAddrRecipient(addr.recipient);
+    setAddrLine1(addr.line1);
+    setAddrLine2(addr.line2 || "");
+    setAddrCity(addr.city);
+    setAddrDistrict(addr.district || "");
+    setAddrState(addr.state);
+    setAddrPincode(addr.pincode);
+    setAddrPhone(addr.phone || "");
+    setAddrAltPhone(addr.alternate_phone || "");
+    setShowAddressForm(true);
+  }
+
+  // Handle Add/Edit Address
   async function handleAddAddress(e: React.FormEvent) {
     e.preventDefault();
     if (!addrRecipient.trim() || !addrLine1.trim() || !addrCity.trim() || !addrDistrict.trim() || !addrState.trim() || !addrPincode.trim() || !addrPhone.trim()) {
@@ -316,37 +355,49 @@ export default function AccountPage() {
     }
     setAddrIsSubmitting(true);
     try {
-      const { error } = await supabase.from("addresses").insert({
-        user_id: user.id,
-        label: addrLabel,
-        recipient: addrRecipient.trim(),
-        line1: addrLine1.trim(),
-        line2: addrLine2.trim() || null,
-        city: addrCity.trim(),
-        state: addrState.trim(),
-        pincode: addrPincode.trim(),
-        district: addrDistrict.trim(),
-        phone: addrPhone.trim(),
-        alternate_phone: addrAltPhone.trim() || null,
-        is_default: addresses.length === 0,
-      });
+      if (editingAddressId) {
+        // Update existing address
+        const { error } = await supabase
+          .from("addresses")
+          .update({
+            label: addrLabel,
+            recipient: addrRecipient.trim(),
+            line1: addrLine1.trim(),
+            line2: addrLine2.trim() || null,
+            city: addrCity.trim(),
+            state: addrState.trim(),
+            pincode: addrPincode.trim(),
+            district: addrDistrict.trim(),
+            phone: addrPhone.trim(),
+            alternate_phone: addrAltPhone.trim() || null,
+          })
+          .eq("id", editingAddressId);
 
-      if (error) throw error;
+        if (error) throw error;
+        alert("Address updated successfully!");
+      } else {
+        // Insert new address
+        const { error } = await supabase.from("addresses").insert({
+          user_id: user.id,
+          label: addrLabel,
+          recipient: addrRecipient.trim(),
+          line1: addrLine1.trim(),
+          line2: addrLine2.trim() || null,
+          city: addrCity.trim(),
+          state: addrState.trim(),
+          pincode: addrPincode.trim(),
+          district: addrDistrict.trim(),
+          phone: addrPhone.trim(),
+          alternate_phone: addrAltPhone.trim() || null,
+          is_default: addresses.length === 0,
+        });
 
-      // Reset address form
-      setAddrLabel("Home");
-      setAddrLine1("");
-      setAddrLine2("");
-      setAddrCity("");
-      setAddrState("");
-      setAddrPincode("");
-      setAddrDistrict("");
-      setAddrPhone("");
-      setAddrAltPhone("");
-      setShowAddressForm(false);
-      
+        if (error) throw error;
+        alert("Address saved successfully!");
+      }
+
+      resetAddressForm();
       await fetchAccountData(user.id);
-      alert("Address saved successfully!");
     } catch (err: any) {
       alert("Failed to save address: " + err.message);
     } finally {
@@ -471,7 +522,6 @@ export default function AccountPage() {
       // Refresh details and history
       fetchTrackedQuery(trackedQuery.id);
       fetchSupportHistory();
-      alert("Reply sent successfully!");
     } catch (err: any) {
       alert("Error: " + err.message);
     } finally {
@@ -532,195 +582,8 @@ export default function AccountPage() {
   // Download Invoice PDF directly
   function handlePrintInvoice(order: any) {
     const doc = new jsPDF();
-    const orderNumber = order.order_number;
-    const name = order.shipping_address?.recipient || order.profiles?.full_name || order.profiles?.email || profileName || "Customer";
-    const userId = profileUserId || order.profiles?.user_id || "";
-    const items = order.order_items || [];
-    const shippingAddress = order.shipping_address || {};
-    const subtotalPaise = order.subtotal_paise;
-    const discountPaise = order.discount_paise;
-    const shippingPaise = order.shipping_paise;
-    const walletUsedPaise = order.wallet_used_paise;
-    const totalPaise = order.total_paise;
-    const cashbackEarnedPaise = order.cashback_earned_paise || 0;
-
-    // Color Palette
-    const zariGold = [176, 141, 76]; // #B08D4C
-    const inkDark = [42, 38, 34]; // #2A2622
-    const taupeGray = [110, 101, 90]; // #6E655A
-    const lineLight = [229, 223, 210]; // #E5DFD2
-
-    // 1. Header Banner
-    doc.setFillColor(inkDark[0], inkDark[1], inkDark[2]);
-    doc.rect(0, 0, 210, 40, "F");
-
-    // Title Text
-    doc.setTextColor(zariGold[0], zariGold[1], zariGold[2]);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(22);
-    doc.text("JAI SRI RAM TEXTILES", 20, 25);
-
-    // Subtitle
-    doc.setTextColor(255, 255, 255);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
-    doc.text("PREMIUM WEAVERS  |  JAISRIRAMTEXTILES.IN", 20, 32);
-
-    // Invoice label
-    doc.setTextColor(zariGold[0], zariGold[1], zariGold[2]);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(16);
-    doc.text("INVOICE", 155, 26);
-
-    // 2. Metadata Columns
-    doc.setTextColor(inkDark[0], inkDark[1], inkDark[2]);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(10);
-    doc.text("Order Information", 20, 52);
-    doc.text("Shipping To", 120, 52);
-
-    doc.setDrawColor(zariGold[0], zariGold[1], zariGold[2]);
-    doc.setLineWidth(0.5);
-    doc.line(20, 55, 90, 55);
-    doc.line(120, 55, 190, 55);
-
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9.5);
-    doc.setTextColor(taupeGray[0], taupeGray[1], taupeGray[2]);
-
-    // Order Info text
-    doc.text(`Order Number: ${orderNumber}`, 20, 62);
-    doc.text(`Date: ${new Date(order.placed_at || order.created_at || new Date()).toLocaleDateString("en-IN", { dateStyle: "long" })}`, 20, 68);
-    doc.text(`Customer: ${name}`, 20, 74);
-    if (userId) {
-      doc.text(`User ID: ${userId}`, 20, 80);
-    }
-
-    // Shipping Address text
-    doc.text(shippingAddress.recipient || "", 120, 62);
-    doc.text(shippingAddress.line1 || "", 120, 68);
-    if (shippingAddress.line2) {
-      doc.text(shippingAddress.line2, 120, 74);
-      doc.text(`${shippingAddress.city}, ${shippingAddress.state} - ${shippingAddress.pincode}`, 120, 80);
-      if (shippingAddress.phone) {
-        doc.text(`Phone: ${shippingAddress.phone}`, 120, 86);
-      }
-    } else {
-      doc.text(`${shippingAddress.city}, ${shippingAddress.state} - ${shippingAddress.pincode}`, 120, 74);
-      if (shippingAddress.phone) {
-        doc.text(`Phone: ${shippingAddress.phone}`, 120, 80);
-      }
-    }
-
-    // 3. Items Table Header
-    let y = 100;
-    doc.setFillColor(inkDark[0], inkDark[1], inkDark[2]);
-    doc.rect(20, y, 170, 8, "F");
-
-    doc.setTextColor(255, 255, 255);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(9);
-    doc.text("Item Details", 24, y + 5.5);
-    doc.text("Qty", 125, y + 5.5);
-    doc.text("Total Price", 165, y + 5.5);
-
-    // 4. Table Items List
-    y += 8;
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(inkDark[0], inkDark[1], inkDark[2]);
-
-    const itemNameMaxWidth = 95; // keeps text inside the Item Details column, clear of Qty/Total
-
-    items.forEach((item: any) => {
-      const nameText = `${item.name}${item.variant ? ` (${item.variant})` : ""}`;
-      const nameLines: string[] = doc.splitTextToSize(nameText, itemNameMaxWidth);
-      const lineHeight = 4.5;
-      const nameBlockHeight = nameLines.length * lineHeight;
-      const rowHeight = nameBlockHeight + (item.sku ? 4.5 : 0) + 3.5;
-
-      // line border
-      doc.setDrawColor(lineLight[0], lineLight[1], lineLight[2]);
-      doc.setLineWidth(0.3);
-      doc.line(20, y + rowHeight, 190, y + rowHeight);
-
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(9.5);
-      doc.setTextColor(inkDark[0], inkDark[1], inkDark[2]);
-      doc.text(nameLines, 24, y + 5);
-
-      if (item.sku) {
-        doc.setFontSize(8);
-        doc.setTextColor(taupeGray[0], taupeGray[1], taupeGray[2]);
-        doc.text(`SKU: ${item.sku}`, 24, y + 5 + nameBlockHeight);
-      }
-
-      doc.setFontSize(9.5);
-      doc.setTextColor(inkDark[0], inkDark[1], inkDark[2]);
-      doc.text(`${item.quantity}`, 127, y + 5);
-      doc.text(`INR ${(item.unit_price_paise * item.quantity / 100).toFixed(2)}`, 165, y + 5);
-
-      y += rowHeight;
-    });
-
-    // 5. Totals Right Column
-    y += 10;
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9.5);
-    doc.setTextColor(taupeGray[0], taupeGray[1], taupeGray[2]);
-
-    doc.text("Subtotal:", 125, y);
-    doc.text(`INR ${(subtotalPaise / 100).toFixed(2)}`, 165, y);
-    y += 6;
-
-    if (discountPaise > 0) {
-      doc.text("Discount:", 125, y);
-      doc.text(`-INR ${(discountPaise / 100).toFixed(2)}`, 165, y);
-      y += 6;
-    }
-
-    if (walletUsedPaise > 0) {
-      doc.text("Wallet Credits Used:", 125, y);
-      doc.text(`-INR ${(walletUsedPaise / 100).toFixed(2)}`, 165, y);
-      y += 6;
-    }
-
-    doc.text("Shipping:", 125, y);
-    doc.text(shippingPaise === 0 ? "FREE" : `INR ${(shippingPaise / 100).toFixed(2)}`, 165, y);
-    y += 8;
-
-    // Total Paid
-    doc.setDrawColor(zariGold[0], zariGold[1], zariGold[2]);
-    doc.setLineWidth(0.5);
-    doc.line(120, y - 5, 190, y - 5);
-
-    doc.setTextColor(zariGold[0], zariGold[1], zariGold[2]);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(11);
-    doc.text("Total Paid:", 125, y);
-    doc.text(`INR ${(totalPaise / 100).toFixed(2)}`, 165, y);
-
-    if (cashbackEarnedPaise > 0) {
-      y += 6;
-      doc.setTextColor(75, 122, 82); // Green
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(9.5);
-      doc.text("Cashback Earned:", 125, y);
-      doc.text(`INR ${(cashbackEarnedPaise / 100).toFixed(2)}`, 165, y);
-    }
-
-    // 6. Footer Disclaimer
-    y = 265;
-    doc.setDrawColor(lineLight[0], lineLight[1], lineLight[2]);
-    doc.setLineWidth(0.5);
-    doc.line(20, y, 190, y);
-
-    doc.setFont("helvetica", "italic");
-    doc.setFontSize(8);
-    doc.setTextColor(taupeGray[0], taupeGray[1], taupeGray[2]);
-    doc.text("This is an electronically generated invoice document for your purchase.", 20, y + 5);
-    doc.text("Thank you for shopping with JAI SRI RAM TEXTILES!", 20, y + 9);
-
-    doc.save(`Invoice-${orderNumber}.pdf`);
+    drawInvoicePdf(doc, order, profileUserId);
+    doc.save(`Invoice-${order.order_number}.pdf`);
   }
 
   async function handleSignOut() {
@@ -763,50 +626,66 @@ export default function AccountPage() {
         {activeTab === "overview" ? (
           <Link
             href="/"
-            className="flex items-center gap-1.5 text-xs font-semibold text-taupe hover:text-ink mb-6 transition-colors inline-flex cursor-pointer"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-taupe hover:text-zari mb-6 transition-colors group cursor-pointer"
           >
-            <ChevronLeft size={16} /> Back to Home
+            <span className="w-6 h-6 rounded-full bg-cream border border-line flex items-center justify-center group-hover:bg-zari/10 group-hover:border-zari/30 transition-all">
+              <ChevronLeft size={14} />
+            </span>
+            Back to Home
           </Link>
         ) : (
           <button
             onClick={() => setActiveTab("overview")}
-            className="flex items-center gap-1.5 text-xs font-semibold text-taupe hover:text-ink mb-6 transition-colors cursor-pointer"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-taupe hover:text-zari mb-6 transition-colors group cursor-pointer"
           >
-            <ChevronLeft size={16} /> Back to Dashboard
+            <span className="w-6 h-6 rounded-full bg-cream border border-line flex items-center justify-center group-hover:bg-zari/10 group-hover:border-zari/30 transition-all">
+              <ChevronLeft size={14} />
+            </span>
+            Back to Dashboard
           </button>
         )}
 
         {/* Dashboard Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white border border-line rounded-card p-6 shadow-soft mb-8">
-          <div className="flex items-center gap-4">
-            <span className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-cream text-taupe border border-line">
-              <User size={24} />
-            </span>
-            <div>
-              <h1 className="font-display text-2xl text-ink leading-tight">{displayName}</h1>
-              <p className="text-xs text-taupe mt-0.5">{user?.email}</p>
-              {profileUserId && (
-                <div className="mt-1.5 flex items-center">
-                  <span className="text-[10px] font-sans font-bold tracking-wider text-zari-deep bg-cream/50 px-2 py-0.5 rounded border border-zari/10 uppercase">
-                    User ID: {profileUserId}
-                  </span>
-                </div>
-              )}
+        <div className="relative overflow-hidden bg-gradient-to-br from-white via-[#fffdf7] to-[#fdfbf0] border border-zari/20 rounded-2xl p-6 shadow-soft mb-8">
+          {/* Decorative top bar */}
+          <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-zari to-transparent" />
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-5">
+            <div className="flex items-center gap-4">
+              <div className="relative">
+                <span className="grid h-16 w-16 shrink-0 place-items-center rounded-full bg-gradient-to-br from-zari/40 to-zari/15 text-zari-deep border-2 border-zari/50 shadow-md">
+                  <User size={26} />
+                </span>
+                <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-success rounded-full border-2 border-white" />
+              </div>
+              <div>
+                <h1 className="font-display text-2xl text-ink leading-tight">{displayName}</h1>
+                <p className="text-xs text-taupe mt-0.5">{user?.email}</p>
+                {profileUserId && (
+                  <div className="mt-2 flex items-center">
+                    <span className="text-[10px] font-sans font-bold tracking-wider text-zari-deep bg-white/70 px-2.5 py-1 rounded-full border border-zari/30 uppercase">
+                      User ID: {profileUserId}
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => fetchAccountData(user.id)}
-              disabled={refreshing}
-              className="bg-white hover:bg-cream"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin" : ""}`} />
-            </Button>
-            <Button size="sm" variant="outline" onClick={handleSignOut} className="bg-white hover:bg-cream text-danger border-danger/10 hover:bg-danger/5">
-              Sign out
-            </Button>
+            <div className="flex items-center gap-2.5">
+              <button
+                onClick={() => fetchAccountData(user.id)}
+                disabled={refreshing}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white/60 hover:bg-white/90 text-ink text-xs font-semibold border border-zari/30 transition-all duration-200 cursor-pointer disabled:opacity-50 shadow-sm"
+                title="Refresh"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 text-zari-deep ${refreshing ? "animate-spin" : ""}`} />
+                Refresh
+              </button>
+              <button
+                onClick={handleSignOut}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-danger/10 hover:bg-danger/20 text-danger text-xs font-semibold border border-danger/20 transition-all duration-200 cursor-pointer"
+              >
+                Sign out
+              </button>
+            </div>
           </div>
         </div>
 
@@ -910,40 +789,53 @@ export default function AccountPage() {
         {/* TAB 2: MY ORDERS LIST */}
         {activeTab === "orders" && (
           <div className="space-y-6 animate-fade-up">
-            <h2 className="font-display text-xl text-ink">My Order Registry</h2>
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="font-sans text-2xl text-ink">My Order Registry</h2>
+            <span className="px-3 py-1 bg-zari/10 text-zari text-xs rounded-full border border-zari/20">
+              {orders.length} {orders.length === 1 ? "order" : "orders"}
+            </span>
+          </div>
 
             {orders.length === 0 ? (
-              <div className="bg-white border border-line rounded-card p-12 text-center shadow-soft">
-                <ShoppingBag className="w-12 h-12 text-muted mx-auto mb-3" />
-                <p className="text-sm text-taupe italic">No orders placed yet.</p>
-                <Link href="/shop" className="mt-4 inline-block text-xs font-bold text-zari hover:underline">
-                  Browse Shop Now &rarr;
+              <div className="bg-white border border-line rounded-2xl p-14 text-center shadow-soft">
+                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-cream/80 flex items-center justify-center border border-line">
+                  <ShoppingBag className="w-7 h-7 text-taupe" />
+                </div>
+                <p className="text-base font-display text-ink">No Orders Yet</p>
+                <p className="text-sm text-taupe mt-1">You haven&apos;t placed any orders yet.</p>
+                <Link href="/shop" className="mt-5 inline-flex items-center gap-2 px-5 py-2.5 bg-ink text-ivory text-xs rounded-xl hover:bg-zari transition-colors">
+                  Browse Shop &rarr;
                 </Link>
               </div>
             ) : (
               <div className="space-y-6">
                 {orders.map((o) => (
-                  <div key={o.id} className="bg-white border border-line rounded-card shadow-soft overflow-hidden">
+                  <div key={o.id} className="bg-white border border-line/60 rounded-2xl shadow-soft overflow-hidden transition-all duration-300 hover:shadow-md">
                     {/* Top bar info */}
-                    <div className="bg-cream/25 border-b border-line px-5 py-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                    <div className="px-5 py-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-line/40 bg-gradient-to-r from-cream/30 to-transparent">
                       <div>
-                        <p className="font-mono text-xs text-taupe">ORDER #: <strong className="text-ink">{o.order_number}</strong></p>
-                        <p className="text-[10px] text-taupe mt-0.5">Placed: {new Date(o.placed_at).toLocaleDateString("en-IN", { dateStyle: "long" })}</p>
+                        <p className="text-xs text-taupe uppercase tracking-wide font-bold">Order</p>
+                        <p className="font-mono text-base text-ink mt-0.5 font-bold italic select-all cursor-pointer hover:text-zari" title="Double-click to select / drag to copy">{o.order_number}</p>
+                        <p className="text-xs text-taupe mt-1 flex items-center gap-1.5 font-bold">
+                          <Calendar size={12} /> {new Date(o.placed_at).toLocaleDateString("en-IN", { dateStyle: "long" })}
+                        </p>
                       </div>
-                      <div className="flex items-center gap-4">
-                        <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold uppercase ${
-                          o.status === "delivered" ? "bg-success/15 text-success" :
-                          o.status === "rejected" ? "bg-danger/15 text-danger" :
-                          o.status === "pending" ? "bg-amber-100 text-amber-800" : "bg-blue-50 text-blue-800"
+                      <div className="flex items-center gap-2.5">
+                        <span className={`px-3 py-1 rounded-full text-xs uppercase tracking-wide border ${
+                          o.status === "delivered" ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
+                          o.status === "rejected" ? "bg-red-50 text-red-600 border-red-200" :
+                          o.status === "returned" ? "bg-amber-50 text-amber-700 border-amber-200" :
+                          o.status === "pending" ? "bg-amber-50 text-amber-800 border-amber-200" :
+                          "bg-blue-50 text-blue-700 border-blue-200"
                         }`}>
                           {o.status}
                         </span>
                         <button
                           onClick={() => handlePrintInvoice(o)}
-                          className="flex items-center gap-1.5 p-1 px-2.5 border border-line rounded bg-white hover:bg-cream text-[10px] font-bold text-ink transition-colors"
-                          title="Print Receipt"
+                          className="flex items-center gap-1.5 px-3.5 py-1.5 bg-ink text-ivory rounded-lg text-xs transition-all hover:bg-zari cursor-pointer shadow-sm"
+                          title="Download Invoice"
                         >
-                          <Printer size={12} /> Invoice
+                          <Printer size={13} /> Invoice
                         </button>
                       </div>
                     </div>
@@ -952,48 +844,29 @@ export default function AccountPage() {
                     <div className="p-5 grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
                       {/* Products items checklist */}
                       <div className="md:col-span-7 space-y-3">
-                        <p className="text-[10px] font-bold text-taupe uppercase tracking-wider">Ordered Items</p>
+                        <p className="text-xs text-taupe uppercase tracking-wide flex items-center gap-1.5 font-bold">
+                          <ShoppingBag size={13} /> Ordered Items
+                        </p>
                         {o.order_items?.map((item: any) => (
-                          <div key={item.id} className="border-b border-line/35 pb-3 mb-2 last:border-0 last:pb-0 last:mb-0">
-                            <div className="flex justify-between items-start text-xs">
-                              <div>
-                                <p className="font-bold text-ink">{item.name}</p>
-                                {item.variant && <p className="text-[10px] text-taupe mt-0.5">{item.variant}</p>}
-                                <p className="text-taupe mt-0.5">{formatINR(item.unit_price_paise, true)} &times; {item.quantity}</p>
-                              </div>
-                              <span className="font-semibold text-ink">{formatINR(item.unit_price_paise * item.quantity, true)}</span>
+                          <div key={item.id} className="flex justify-between items-start gap-3 py-3 border-b border-line/25 last:border-0 last:pb-0">
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm text-ink leading-snug font-bold">{item.name}</p>
+                              {item.variant && <p className="text-xs text-taupe mt-1 bg-cream/60 inline-block px-1.5 py-0.5 rounded font-bold">{item.variant}</p>}
+                              <p className="text-xs text-taupe mt-1"><strong className="text-ink font-bold">{formatINR(item.unit_price_paise, true)}</strong> &times; <strong className="text-ink font-bold">{item.quantity}</strong></p>
                             </div>
-
-                            {item.product_id && o.status === "delivered" && (
-                              <div className="mt-2 flex justify-end">
-                                {isReviewed(item.product_id, o.id) ? (
-                                  <span className="text-[10px] font-bold uppercase tracking-wider text-taupe bg-cream px-2 py-0.5 rounded border border-line/40">Reviewed</span>
-                                ) : (
-                                  <button
-                                    onClick={() => openReviewModal(o.id, item.product_id, item.name)}
-                                    className="px-3 py-1 bg-ink text-ivory rounded text-[10px] font-bold uppercase tracking-wider hover:bg-zari transition-colors cursor-pointer border-0"
-                                  >
-                                    Rate & Review
-                                  </button>
-                                )}
-                              </div>
-                            )}
+                            <span className="text-sm text-ink font-bold shrink-0">{formatINR(item.unit_price_paise * item.quantity, true)}</span>
                           </div>
                         ))}
 
                         {/* Rejection / Return Reason Display */}
                         {(o.status === "rejected" || o.status === "returned") && o.payment_status !== "refunded" && (
-                          <div className="mt-6 p-4 bg-danger/5 border border-danger/30 rounded-md text-xs space-y-2.5">
-                            <div className="space-y-1">
-                              <p className="font-bold text-danger uppercase text-[9px] tracking-wider">
-                                {o.status === "rejected" ? "Order Rejected" : "Order Returned"}
-                              </p>
-                              {o.rejection_reason && <p className="text-ink">{o.rejection_reason}</p>}
-                            </div>
-                            <div className="border-t border-danger/20 pt-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-ink">
-                              <p className="text-taupe leading-relaxed">
-                                Refund will be issued within 24hrs or else contact customer service.
-                              </p>
+                          <div className="mt-5 p-4 bg-red-50 border border-red-200 rounded-xl text-sm space-y-3">
+                            <p className="text-red-600 uppercase text-xs tracking-wide">
+                              {o.status === "rejected" ? "⚠ Order Rejected" : "⚠ Order Returned"}
+                            </p>
+                            {o.rejection_reason && <p className="text-ink">{o.rejection_reason}</p>}
+                            <div className="border-t border-red-200 pt-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                              <p className="text-taupe leading-relaxed text-xs">Refund will be issued within 24hrs. Contact us if needed.</p>
                               <a
                                 href={`https://wa.me/918608386872?text=${encodeURIComponent(
                                   `Hi, my order ${o.order_number} has been ${o.status === "rejected" ? "rejected" : "returned"}. Details:\n` +
@@ -1002,12 +875,10 @@ export default function AccountPage() {
                                 )}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-[#25D366] hover:bg-[#128C7E] text-white font-medium rounded text-[11px] transition-colors whitespace-nowrap self-start sm:self-auto shadow-sm cursor-pointer"
+                                className="inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-[#25D366] hover:bg-[#128C7E] text-white rounded-xl text-xs transition-all whitespace-nowrap shadow-sm cursor-pointer"
                               >
-                                <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
-                                  <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.517 2.266 2.27 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.5-5.739-1.453L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.825 1.451 5.436 0 9.86-4.413 9.863-9.83.001-2.624-1.013-5.092-2.859-6.937C16.643 1.98 14.184.962 11.56.962 6.119.962 1.694 5.375 1.691 10.793c-.001 1.782.469 3.52 1.358 5.071l-.951 3.474 3.559-.933zM18.23 15.25c-.34-.17-2.01-.99-2.32-1.1-.31-.11-.54-.17-.77.17-.23.34-.89 1.1-.1.17-.23.11-.46.06-.92-.17-1.8-1.6-2.5-2.22-.62-.55-1.03-1.22-1.14-1.42-.11-.2-.01-.31.09-.41.09-.09.2-.23.3-.34.1-.11.14-.19.21-.31.07-.12.03-.23-.02-.34-.05-.12-.46-1.11-.63-1.52-.17-.4-.36-.34-.5-.34-.13 0-.28 0-.43 0-.15 0-.4.06-.61.28-.21.22-.8.78-.8 1.9 0 1.12.82 2.2 1.05 2.5.23.3 1.62 2.48 3.93 3.48.55.24.98.38 1.32.49.56.18 1.07.15 1.47.09.45-.07 1.39-.57 1.59-1.12.2-.55.2-1.02.14-1.12-.06-.1-.23-.2-.57-.37z"/>
-                                </svg>
-                                Chat now
+                                <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.517 2.266 2.27 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.5-5.739-1.453L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.825 1.451 5.436 0 9.86-4.413 9.863-9.83.001-2.624-1.013-5.092-2.859-6.937C16.643 1.98 14.184.962 11.56.962 6.119.962 1.694 5.375 1.691 10.793c-.001 1.782.469 3.52 1.358 5.071l-.951 3.474 3.559-.933zM18.23 15.25c-.34-.17-2.01-.99-2.32-1.1-.31-.11-.54-.17-.77.17-.23.34-.89 1.1-.1.17-.23.11-.46.06-.92-.17-1.8-1.6-2.5-2.22-.62-.55-1.03-1.22-1.14-1.42-.11-.2-.01-.31.09-.41.09-.09.2-.23.3-.34.1-.11.14-.19.21-.31.07-.12.03-.23-.02-.34-.05-.12-.46-1.11-.63-1.52-.17-.4-.36-.34-.5-.34-.13 0-.28 0-.43 0-.15 0-.4.06-.61.28-.21.22-.8.78-.8 1.9 0 1.12.82 2.2 1.05 2.5.23.3 1.62 2.48 3.93 3.48.55.24.98.38 1.32.49.56.18 1.07.15 1.47.09.45-.07 1.39-.57 1.59-1.12.2-.55.2-1.02.14-1.12-.06-.1-.23-.2-.57-.37z"/></svg>
+                                Chat on WhatsApp
                               </a>
                             </div>
                           </div>
@@ -1015,19 +886,17 @@ export default function AccountPage() {
 
                         {/* Refund Details Display */}
                         {o.payment_status === "refunded" && o.refund_amount_paise && (
-                          <div className="mt-6 p-4 bg-success/5 border border-success/30 rounded-md text-xs space-y-2">
-                            <p className="font-bold text-success uppercase text-[9px] tracking-wider">Refund Processed</p>
+                          <div className="mt-5 p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-sm space-y-2">
+                            <p className="text-emerald-700 uppercase text-xs tracking-wide font-bold">✓ Refund Processed</p>
                             <div className="text-ink space-y-1.5">
-                              <p>Amount Refunded: <strong>{formatINR(o.refund_amount_paise, true)}</strong></p>
-                              {o.refund_transaction_id && <p>Transaction ID: <strong className="font-mono">{o.refund_transaction_id}</strong></p>}
-                              {o.refunded_at && <p>Refund Date: <strong>{new Date(o.refunded_at).toLocaleDateString()}</strong></p>}
-                              {o.refund_note && <p>Note: <em>{o.refund_note}</em></p>}
+                              <p>Amount Refunded: <strong className="text-emerald-700 font-bold">{formatINR(o.refund_amount_paise, true)}</strong></p>
+                              {o.refund_transaction_id && <p>Transaction ID: <strong className="font-mono italic select-all bg-white px-1.5 py-0.5 rounded border border-emerald-200 cursor-pointer hover:text-emerald-800" title="Double click to copy">{o.refund_transaction_id}</strong></p>}
+                              {o.refunded_at && <p>Refund Date: <strong className="font-bold">{new Date(o.refunded_at).toLocaleDateString()}</strong></p>}
+                              {o.refund_note && <p>Note: <strong className="italic font-bold">{o.refund_note}</strong></p>}
                               {o.refund_screenshot_url && (
-                                <p className="mt-1">
-                                  <a href={o.refund_screenshot_url} target="_blank" rel="noopener noreferrer" className="text-zari hover:underline font-bold inline-flex items-center gap-1 cursor-pointer">
-                                    View Refund Proof ↗
-                                  </a>
-                                </p>
+                                <a href={o.refund_screenshot_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-emerald-700 hover:underline cursor-pointer font-bold">
+                                  View Refund Proof ↗
+                                </a>
                               )}
                             </div>
                           </div>
@@ -1035,15 +904,15 @@ export default function AccountPage() {
 
                         {/* Tracking Details Display */}
                         {(o.tracking_id || o.courier_tracking_url) ? (
-                          <div className="mt-6 p-4 bg-zari-tint/20 border border-zari rounded-md text-xs space-y-2">
-                            <p className="font-bold text-zari-deep uppercase text-[9px] tracking-wider flex items-center gap-1.5">
-                              🚚 Shipping & Carrier Details
+                          <div className="mt-5 p-4 bg-blue-50 border border-blue-200 rounded-xl text-sm space-y-2">
+                            <p className="text-blue-700 uppercase text-xs tracking-wide flex items-center gap-1.5">
+                              🚚 Shipping &amp; Carrier Details
                             </p>
                             <div className="text-ink space-y-1.5">
                               {o.tracking_id && (
                                 <p className="flex items-center gap-2">
                                   Tracking Number:{" "}
-                                  <strong className="font-mono bg-white px-1.5 py-0.5 rounded border border-line inline-flex items-center gap-1.5 select-all">
+                                  <strong className="font-mono italic select-all bg-white px-2 py-0.5 rounded-lg border border-blue-200 inline-flex items-center gap-1.5 cursor-pointer hover:text-blue-800" title="Double click to copy">
                                     {o.tracking_id}
                                     <button
                                       onClick={() => {
@@ -1051,7 +920,7 @@ export default function AccountPage() {
                                         setCopiedId(o.id);
                                         setTimeout(() => setCopiedId(""), 2000);
                                       }}
-                                      className="text-taupe hover:text-ink cursor-pointer focus:outline-none transition-colors border-l border-line pl-1.5"
+                                      className="text-taupe hover:text-ink cursor-pointer focus:outline-none transition-colors border-l border-blue-200 pl-1.5"
                                       title="Copy Tracking ID"
                                       type="button"
                                     >
@@ -1066,7 +935,7 @@ export default function AccountPage() {
                               )}
                               {o.courier_tracking_url && (
                                 <p className="pt-0.5">
-                                  <a href={o.courier_tracking_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-zari-deep font-bold hover:underline">
+                                  <a href={o.courier_tracking_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-blue-700 hover:underline">
                                     Track Shipment Live &rarr;
                                   </a>
                                 </p>
@@ -1074,55 +943,57 @@ export default function AccountPage() {
                             </div>
                           </div>
                         ) : (
-                          <div className="mt-6 p-4 bg-cream/10 border border-line/40 border-dashed rounded-md text-xs text-taupe italic">
-                            Awaiting shipment dispatch. Once dispatch starts, courier details and live tracking links will be updated here.
+                          <div className="mt-5 p-4 bg-cream/30 border border-dashed border-line/50 rounded-xl text-sm text-taupe italic">
+                            Awaiting shipment dispatch. Courier details and live tracking links will be updated here once dispatched.
                           </div>
                         )}
                       </div>
 
                       {/* Pricing list and delivery detail */}
-                      <div className="md:col-span-5 bg-cream/15 p-4 rounded-md border border-line text-xs space-y-3">
+                      <div className="md:col-span-5 bg-cream/25 p-5 rounded-2xl border border-line/60 text-sm space-y-4">
                         <div>
-                          <p className="font-bold text-taupe uppercase text-[9px] tracking-wider">Shipment Destination</p>
-                          <p className="text-ink font-semibold mt-1">{o.shipping_address.recipient}</p>
-                          <p className="text-taupe mt-0.5">
-                            {o.shipping_address.line1}, 
-                            {o.shipping_address.line2 ? " " + o.shipping_address.line2 + "," : ""} 
-                            {o.shipping_address.city}, 
-                            {o.shipping_address.district ? " " + o.shipping_address.district + "," : ""} 
-                            {o.shipping_address.state} - {o.shipping_address.pincode}
+                          <p className="text-zari-deep uppercase text-xs tracking-wide flex items-center gap-1.5 mb-2">
+                            <MapPin size={13} /> Shipment Destination
+                          </p>
+                          <p className="text-ink text-sm">{o.shipping_address.recipient}</p>
+                          <p className="text-taupe mt-1 leading-relaxed text-xs">
+                            {o.shipping_address.line1},{" "}
+                            {o.shipping_address.line2 ? o.shipping_address.line2 + ", " : ""}
+                            {o.shipping_address.city},{" "}
+                            {o.shipping_address.district ? o.shipping_address.district + ", " : ""}
+                            {o.shipping_address.state} &ndash; {o.shipping_address.pincode}
                           </p>
                           {o.shipping_address.phone && (
-                            <p className="text-[10px] text-ink font-semibold mt-1">
-                              📞 Mobile: {o.shipping_address.phone} {o.shipping_address.alternate_phone ? `/ ${o.shipping_address.alternate_phone}` : ""}
+                            <p className="text-xs text-zari-deep mt-2 flex items-center gap-1.5">
+                              📞 {o.shipping_address.phone}{o.shipping_address.alternate_phone ? ` / ${o.shipping_address.alternate_phone}` : ""}
                             </p>
                           )}
                         </div>
-                        
-                        <div className="border-t border-line/50 pt-2 space-y-1 text-[11px]">
+
+                        <div className="border-t border-line/60 pt-3 space-y-2 text-xs">
                           <div className="flex justify-between text-taupe">
-                            <span>Subtotal:</span>
-                            <span>{formatINR(o.subtotal_paise, true)}</span>
+                            <span className="font-bold">Subtotal</span>
+                            <span className="text-ink font-bold">{formatINR(o.subtotal_paise, true)}</span>
                           </div>
                           {o.discount_paise > 0 && (
-                            <div className="flex justify-between text-danger font-semibold">
-                              <span>Coupon Discount:</span>
-                              <span>-{formatINR(o.discount_paise, true)}</span>
+                            <div className="flex justify-between text-danger">
+                              <span className="font-bold">Coupon Discount</span>
+                              <span className="font-bold">-{formatINR(o.discount_paise, true)}</span>
                             </div>
                           )}
                           {o.wallet_used_paise > 0 && (
-                            <div className="flex justify-between text-danger font-semibold">
-                              <span>Wallet balance used:</span>
-                              <span>-{formatINR(o.wallet_used_paise, true)}</span>
+                            <div className="flex justify-between text-danger">
+                              <span className="font-bold">Wallet Used</span>
+                              <span className="font-bold">-{formatINR(o.wallet_used_paise, true)}</span>
                             </div>
                           )}
                           <div className="flex justify-between text-taupe">
-                            <span>Shipping fee:</span>
-                            <span>{o.shipping_paise === 0 ? "FREE" : formatINR(o.shipping_paise, true)}</span>
+                            <span className="font-bold">Shipping</span>
+                            <span className="text-ink font-bold">{o.shipping_paise === 0 ? "FREE" : formatINR(o.shipping_paise, true)}</span>
                           </div>
-                          <div className="flex justify-between text-ink font-bold border-t border-line/50 pt-1 text-xs">
-                            <span>Total Paid:</span>
-                            <span className="text-zari-deep">{formatINR(o.total_paise, true)}</span>
+                          <div className="flex justify-between text-ink border-t border-line/60 pt-2 text-sm font-bold">
+                            <span className="font-bold">Total Paid</span>
+                            <span className="text-zari-deep font-bold">{formatINR(o.total_paise, true)}</span>
                           </div>
                         </div>
                       </div>
@@ -1140,31 +1011,31 @@ export default function AccountPage() {
             <h2 className="font-display text-xl text-ink">Cashback Balance Ledger</h2>
 
             {/* Total Balance Card */}
-            <div className="bg-ink text-ivory rounded-card p-6 border border-zari flex justify-between items-center relative overflow-hidden shadow-lift">
+            <div className="relative overflow-hidden bg-gradient-to-br from-white via-[#fffdf7] to-[#fdfbf0] border border-zari/20 rounded-2xl p-6 flex justify-between items-center shadow-soft">
               <div className="space-y-1.5 z-10">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-zari">Available Balance</span>
-                <p className="text-4xl font-display text-zari">{formatINR(walletBalance, true)}</p>
-                <p className="text-[10px] text-muted">Cashback credits automatically apply at checkout up to 20% of order totals.</p>
+                <span className="text-xs font-bold uppercase tracking-wide text-zari-deep">Available Balance</span>
+                <p className="text-4xl font-display text-ink">{formatINR(walletBalance, true)}</p>
+                <p className="text-xs text-taupe">Cashback credits automatically apply at checkout up to 20% of order totals.</p>
               </div>
-              <Wallet className="w-16 h-16 text-zari/15 absolute right-6 top-6 flex-shrink-0" />
+              <Wallet className="w-16 h-16 text-zari/30 absolute right-6 top-6 flex-shrink-0" />
             </div>
 
             {/* Audit Logs Table */}
             <div className="bg-white border border-line rounded-card overflow-hidden shadow-soft">
               <div className="p-4 bg-cream/15 border-b border-line">
-                <h3 className="font-semibold text-sm flex items-center gap-2 text-ink">
+                <h3 className="font-bold text-base flex items-center gap-2 text-ink">
                   <History className="w-4 h-4 text-zari" /> Wallet Transaction Logs
                 </h3>
               </div>
               {walletHistory.length === 0 ? (
-                <div className="p-8 text-center text-xs text-taupe italic">
+                <div className="p-8 text-center text-sm text-taupe italic">
                   No cashback transactions logged yet. Credits are earned automatically after order shipments deliver.
                 </div>
               ) : (
-                <div className="overflow-x-auto text-xs sm:text-sm">
+                <div className="overflow-x-auto text-sm">
                   <table className="w-full text-left">
                     <thead>
-                      <tr className="bg-cream/45 border-b border-line text-taupe font-medium">
+                      <tr className="bg-cream/45 border-b border-line text-ink font-bold text-xs uppercase tracking-wide">
                         <th className="p-3">Reference / Note</th>
                         <th className="p-3 text-center">Type</th>
                         <th className="p-3 text-right">Credit / Debit</th>
@@ -1177,7 +1048,7 @@ export default function AccountPage() {
                           <td className="p-3 text-ink">
                             <span className="font-semibold">{t.note}</span>
                             {t.type === "cashback_credit" && t.expires_at && (
-                              <span className="block text-[10px] text-taupe mt-0.5">
+                              <span className="block text-xs text-taupe mt-0.5">
                                 {new Date(t.expires_at) < new Date() ? (
                                   <span className="text-danger font-semibold">Expired</span>
                                 ) : (
@@ -1186,14 +1057,14 @@ export default function AccountPage() {
                               </span>
                             )}
                           </td>
-                          <td className="p-3 text-center uppercase font-bold text-[10px]">
-                            <span className={`px-2 py-0.5 rounded ${
+                          <td className="p-3 text-center uppercase font-bold text-xs">
+                            <span className={`px-2.5 py-1 rounded-full ${
                               t.amount_paise > 0 ? "bg-success/10 text-success" : "bg-danger/10 text-danger"
                             }`}>
                               {t.type.replace("_", " ")}
                             </span>
                           </td>
-                          <td className={`p-3 text-right font-mono font-bold ${
+                          <td className={`p-3 text-right font-bold text-base ${
                             t.amount_paise > 0 ? "text-success" : "text-danger"
                           }`}>
                             {t.amount_paise > 0 ? "+" : ""}{formatINR(t.amount_paise, true)}
@@ -1217,7 +1088,15 @@ export default function AccountPage() {
             <div className="flex justify-between items-center gap-4 border-b border-line/45 pb-3">
               <h2 className="font-display text-base sm:text-xl text-ink">Saved Delivery Addresses</h2>
               {!showAddressForm && (
-                <Button size="sm" variant="gold" onClick={() => setShowAddressForm(true)} className="whitespace-nowrap shrink-0 text-xs">
+                <Button 
+                  size="sm" 
+                  variant="gold" 
+                  onClick={() => {
+                    resetAddressForm();
+                    setShowAddressForm(true);
+                  }} 
+                  className="whitespace-nowrap shrink-0 text-xs"
+                >
                   <Plus className="w-3.5 h-3.5 mr-1" /> Add Address
                 </Button>
               )}
@@ -1225,16 +1104,20 @@ export default function AccountPage() {
 
             {/* Address Addition Form */}
             {showAddressForm && (
-              <form onSubmit={handleAddAddress} className="bg-white border-2 border-zari p-5 rounded-card shadow-lift space-y-4">
-                <h3 className="font-semibold text-sm border-b border-line pb-2">Add New Location</h3>
+              <form onSubmit={handleAddAddress} className="bg-white border-t-[3px] border-t-zari border-x border-b border-line shadow-soft p-6 sm:p-8 rounded-card space-y-5 animate-fade-up">
+                <h3 className="font-display text-base text-ink pb-3 border-b border-line/45 tracking-wide">
+                  {editingAddressId ? "Edit Location" : "Add New Location"}
+                </h3>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="flex flex-col gap-1">
-                    <label className="text-[10px] font-bold text-taupe uppercase">Address Label *</label>
+                    <label className="text-[10px] font-bold text-taupe/90 uppercase tracking-[0.12em] block mb-1">
+                      Address Label *
+                    </label>
                     <select
                       value={addrLabel}
                       onChange={(e) => setAddrLabel(e.target.value)}
-                      className="rounded border border-line bg-ivory px-3 py-1.5 text-xs outline-none focus:border-zari"
+                      className="w-full rounded-lg border border-line bg-white px-4 py-2.5 text-sm text-ink outline-none transition-all duration-300 focus:border-zari focus:ring-1 focus:ring-zari/35 cursor-pointer shadow-sm"
                     >
                       <option value="Home">Home</option>
                       <option value="Office">Office</option>
@@ -1242,118 +1125,136 @@ export default function AccountPage() {
                     </select>
                   </div>
                   <div className="flex flex-col gap-1">
-                    <label className="text-[10px] font-bold text-taupe uppercase">Recipient Name *</label>
+                    <label className="text-[10px] font-bold text-taupe/90 uppercase tracking-[0.12em] block mb-1">
+                      Recipient Name *
+                    </label>
                     <input
                       type="text"
                       required
                       placeholder="Recipient full name"
                       value={addrRecipient}
                       onChange={(e) => setAddrRecipient(e.target.value)}
-                      className="rounded border border-line bg-ivory px-3 py-1.5 text-xs outline-none focus:border-zari"
+                      className="w-full rounded-lg border border-line bg-white px-4 py-2.5 text-sm text-ink outline-none transition-all duration-300 placeholder:text-muted/60 focus:border-zari focus:ring-1 focus:ring-zari/35 shadow-sm"
                     />
                   </div>
                 </div>
 
                 <div className="flex flex-col gap-1">
-                  <label className="text-[10px] font-bold text-taupe uppercase">Street Details Line 1 *</label>
+                  <label className="text-[10px] font-bold text-taupe/90 uppercase tracking-[0.12em] block mb-1">
+                    Street Details Line 1 *
+                  </label>
                   <input
                     type="text"
                     required
                     placeholder="House/Apt No, street details"
                     value={addrLine1}
                     onChange={(e) => setAddrLine1(e.target.value)}
-                    className="rounded border border-line bg-ivory px-3 py-1.5 text-xs outline-none focus:border-zari"
+                    className="w-full rounded-lg border border-line bg-white px-4 py-2.5 text-sm text-ink outline-none transition-all duration-300 placeholder:text-muted/60 focus:border-zari focus:ring-1 focus:ring-zari/35 shadow-sm"
                   />
                 </div>
 
                 <div className="flex flex-col gap-1">
-                  <label className="text-[10px] font-bold text-taupe uppercase">Area / Landmark</label>
+                  <label className="text-[10px] font-bold text-taupe/90 uppercase tracking-[0.12em] block mb-1">
+                    Area / Landmark
+                  </label>
                   <input
                     type="text"
                     placeholder="Area, apartment block, landmark (optional)"
                     value={addrLine2}
                     onChange={(e) => setAddrLine2(e.target.value)}
-                    className="rounded border border-line bg-ivory px-3 py-1.5 text-xs outline-none focus:border-zari"
+                    className="w-full rounded-lg border border-line bg-white px-4 py-2.5 text-sm text-ink outline-none transition-all duration-300 placeholder:text-muted/60 focus:border-zari focus:ring-1 focus:ring-zari/35 shadow-sm"
                   />
                 </div>
 
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="flex flex-col gap-1">
-                    <label className="text-[10px] font-bold text-taupe uppercase">City *</label>
+                    <label className="text-[10px] font-bold text-taupe/90 uppercase tracking-[0.12em] block mb-1">
+                      City *
+                    </label>
                     <input
                       type="text"
                       required
                       placeholder="City"
                       value={addrCity}
                       onChange={(e) => setAddrCity(e.target.value)}
-                      className="rounded border border-line bg-ivory px-3 py-1.5 text-xs outline-none focus:border-zari"
+                      className="w-full rounded-lg border border-line bg-white px-4 py-2.5 text-sm text-ink outline-none transition-all duration-300 placeholder:text-muted/60 focus:border-zari focus:ring-1 focus:ring-zari/35 shadow-sm"
                     />
                   </div>
                   <div className="flex flex-col gap-1">
-                    <label className="text-[10px] font-bold text-taupe uppercase">District *</label>
+                    <label className="text-[10px] font-bold text-taupe/90 uppercase tracking-[0.12em] block mb-1">
+                      District *
+                    </label>
                     <input
                       type="text"
                       required
                       placeholder="District"
                       value={addrDistrict}
                       onChange={(e) => setAddrDistrict(e.target.value)}
-                      className="rounded border border-line bg-ivory px-3 py-1.5 text-xs outline-none focus:border-zari"
+                      className="w-full rounded-lg border border-line bg-white px-4 py-2.5 text-sm text-ink outline-none transition-all duration-300 placeholder:text-muted/60 focus:border-zari focus:ring-1 focus:ring-zari/35 shadow-sm"
                     />
                   </div>
                   <div className="flex flex-col gap-1">
-                    <label className="text-[10px] font-bold text-taupe uppercase">State *</label>
+                    <label className="text-[10px] font-bold text-taupe/90 uppercase tracking-[0.12em] block mb-1">
+                      State *
+                    </label>
                     <input
                       type="text"
                       required
                       placeholder="State"
                       value={addrState}
                       onChange={(e) => setAddrState(e.target.value)}
-                      className="rounded border border-line bg-ivory px-3 py-1.5 text-xs outline-none focus:border-zari"
+                      className="w-full rounded-lg border border-line bg-white px-4 py-2.5 text-sm text-ink outline-none transition-all duration-300 placeholder:text-muted/60 focus:border-zari focus:ring-1 focus:ring-zari/35 shadow-sm"
                     />
                   </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="flex flex-col gap-1">
-                    <label className="text-[10px] font-bold text-taupe uppercase">Pincode *</label>
+                    <label className="text-[10px] font-bold text-taupe/90 uppercase tracking-[0.12em] block mb-1">
+                      Pincode *
+                    </label>
                     <input
                       type="text"
                       required
-                      placeholder="6 digits ZIP"
+                      placeholder="6 digits PIN"
                       value={addrPincode}
                       onChange={(e) => setAddrPincode(e.target.value)}
-                      className="rounded border border-line bg-ivory px-3 py-1.5 text-xs outline-none focus:border-zari"
+                      className="w-full rounded-lg border border-line bg-white px-4 py-2.5 text-sm text-ink outline-none transition-all duration-300 placeholder:text-muted/60 focus:border-zari focus:ring-1 focus:ring-zari/35 shadow-sm"
                     />
                   </div>
                   <div className="flex flex-col gap-1">
-                    <label className="text-[10px] font-bold text-taupe uppercase">Mobile Number *</label>
+                    <label className="text-[10px] font-bold text-taupe/90 uppercase tracking-[0.12em] block mb-1">
+                      Mobile Number *
+                    </label>
                     <input
                       type="tel"
                       required
                       placeholder="10 digit mobile"
                       value={addrPhone}
                       onChange={(e) => setAddrPhone(e.target.value)}
-                      className="rounded border border-line bg-ivory px-3 py-1.5 text-xs outline-none focus:border-zari"
+                      className="w-full rounded-lg border border-line bg-white px-4 py-2.5 text-sm text-ink outline-none transition-all duration-300 placeholder:text-muted/60 focus:border-zari focus:ring-1 focus:ring-zari/35 shadow-sm"
                     />
                   </div>
                   <div className="flex flex-col gap-1">
-                    <label className="text-[10px] font-bold text-taupe uppercase">Alternate Mobile</label>
+                    <label className="text-[10px] font-bold text-taupe/90 uppercase tracking-[0.12em] block mb-1">
+                      Alternate Mobile
+                    </label>
                     <input
                       type="tel"
                       placeholder="Alt mobile number"
                       value={addrAltPhone}
                       onChange={(e) => setAddrAltPhone(e.target.value)}
-                      className="rounded border border-line bg-ivory px-3 py-1.5 text-xs outline-none focus:border-zari"
+                      className="w-full rounded-lg border border-line bg-white px-4 py-2.5 text-sm text-ink outline-none transition-all duration-300 placeholder:text-muted/60 focus:border-zari focus:ring-1 focus:ring-zari/35 shadow-sm"
                     />
                   </div>
                 </div>
 
-                <div className="flex justify-end gap-2 pt-2 border-t border-line">
-                  <Button type="button" variant="outline" size="sm" onClick={() => setShowAddressForm(false)}>
+                <div className="flex justify-end gap-2.5 pt-3 border-t border-line/45">
+                  <Button type="button" variant="outline" size="sm" onClick={resetAddressForm}>
                     Cancel
                   </Button>
                   <Button type="submit" variant="gold" size="sm" disabled={addrIsSubmitting}>
-                    {addrIsSubmitting ? "Saving..." : "Save Address"}
+                    {addrIsSubmitting ? "Saving..." : editingAddressId ? "Update Address" : "Save Address"}
                   </Button>
                 </div>
               </form>
@@ -1368,39 +1269,51 @@ export default function AccountPage() {
             ) : (
               <div className="grid gap-4 sm:grid-cols-2">
                 {addresses.map((addr) => (
-                   <div key={addr.id} className="bg-white border border-line rounded-card p-5 shadow-soft group">
-                     <div className="flex justify-between items-center border-b border-line pb-2 mb-2">
-                       <div className="flex items-center gap-2">
-                         <span className="bg-zari/15 text-zari-deep px-2 py-0.5 rounded font-bold text-[10px] uppercase">
-                           {addr.label}
-                         </span>
-                         {addr.is_default && (
-                           <span className="text-[9px] font-semibold text-success uppercase border border-success/35 px-1.5 py-0.2 rounded bg-success/5">
-                             Default
+                   <div key={addr.id} className="bg-white border border-line rounded-card p-5 shadow-soft hover:shadow-lift hover:border-zari/25 transition-all duration-300 ease-silk flex flex-col justify-between group">
+                     <div>
+                       <div className="flex justify-between items-center border-b border-line/50 pb-2.5 mb-3">
+                         <div className="flex items-center gap-2">
+                           <span className="bg-zari/10 text-zari-deep px-2.5 py-0.5 rounded-pill font-bold text-[9px] tracking-wider uppercase">
+                             {addr.label}
                            </span>
-                         )}
+                           {addr.is_default && (
+                             <span className="text-[9px] font-bold text-success uppercase border border-success/35 px-2 py-0.5 rounded-pill bg-success/5 tracking-wider">
+                               Default
+                             </span>
+                           )}
+                         </div>
+                         <div className="flex items-center gap-1">
+                           <button
+                             onClick={() => startEditAddress(addr)}
+                             className="text-taupe hover:text-zari-deep p-1.5 hover:bg-zari/10 rounded-full transition-colors duration-300"
+                             title="Edit address"
+                           >
+                             <Pencil size={13} />
+                           </button>
+                           <button
+                             onClick={() => handleDeleteAddress(addr.id)}
+                             className="text-taupe hover:text-danger p-1.5 hover:bg-danger/5 rounded-full transition-colors duration-300"
+                             title="Delete address"
+                           >
+                             <Trash2 size={14} />
+                           </button>
+                         </div>
                        </div>
-                       <button
-                         onClick={() => handleDeleteAddress(addr.id)}
-                         className="text-taupe hover:text-danger p-1 hover:bg-danger/5 rounded transition-colors"
-                         title="Delete address"
-                       >
-                         <Trash2 size={14} />
-                       </button>
-                     </div>
-                     <div className="text-xs text-taupe space-y-0.5">
-                       <strong className="text-sm font-bold text-ink">{addr.recipient}</strong>
-                       <p>{addr.line1}</p>
-                       {addr.line2 && <p>{addr.line2}</p>}
-                       <p>
-                         {addr.city}, {addr.district ? addr.district + ", " : ""}{addr.state} - <strong>{addr.pincode}</strong>
-                       </p>
-                       {addr.phone && (
-                         <p className="pt-1.5 text-[10px] text-ink font-semibold">
-                           📞 Mobile: {addr.phone} {addr.alternate_phone ? `/ ${addr.alternate_phone}` : ""}
+                       <div className="text-xs text-taupe space-y-1">
+                         <strong className="text-sm font-bold text-ink block mb-0.5">{addr.recipient}</strong>
+                         <p>{addr.line1}</p>
+                         {addr.line2 && <p>{addr.line2}</p>}
+                         <p>
+                           {addr.city}, {addr.district ? addr.district + ", " : ""}{addr.state} - <strong>{addr.pincode}</strong>
                          </p>
-                       )}
+                       </div>
                      </div>
+                     {addr.phone && (
+                       <div className="mt-3 pt-3 border-t border-line/35 text-[10px] text-ink font-semibold flex items-center gap-1">
+                         <span>📞</span>
+                         <span>Mobile: {addr.phone} {addr.alternate_phone ? `/ ${addr.alternate_phone}` : ""}</span>
+                       </div>
+                     )}
                   </div>
                 ))}
               </div>
@@ -1754,48 +1667,48 @@ export default function AccountPage() {
         {/* TAB 6: EDIT ACCOUNT DETAILS */}
         {activeTab === "profile" && (
           <div className="space-y-6 animate-fade-up">
-            <h2 className="font-display text-xl text-ink">Account & Personal Details</h2>
-            
-            <div className="bg-white border border-line rounded-card p-6 shadow-soft max-w-xl">
-              <form onSubmit={handleUpdateProfile} className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <h2 className="font-sans text-2xl font-bold text-ink">Account & Personal Details</h2>
+
+            <div className="bg-white border border-line rounded-2xl p-6 sm:p-7 shadow-soft max-w-xl">
+              <form onSubmit={handleUpdateProfile} className="space-y-5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-bold text-taupe uppercase">Full Name *</label>
+                    <label className="text-xs font-bold text-taupe uppercase tracking-wide">Full Name *</label>
                     <input
                       type="text"
                       required
                       placeholder="Enter your full name"
                       value={profileName}
                       onChange={(e) => setProfileName(e.target.value)}
-                      className="rounded border border-line bg-ivory px-3 py-1.5 text-xs outline-none focus:border-zari font-sans"
+                      className="rounded-lg border border-line bg-ivory px-3.5 py-2.5 text-sm text-ink outline-none transition-colors focus:border-zari"
                     />
                   </div>
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-bold text-taupe uppercase">Mobile Number *</label>
+                    <label className="text-xs font-bold text-taupe uppercase tracking-wide">Mobile Number *</label>
                     <input
                       type="text"
                       required
                       placeholder="e.g. +919876543210"
                       value={profilePhone}
                       onChange={(e) => setProfilePhone(e.target.value)}
-                      className="rounded border border-line bg-ivory px-3 py-1.5 text-xs outline-none focus:border-zari font-mono"
+                      className="rounded-lg border border-line bg-ivory px-3.5 py-2.5 text-sm text-ink outline-none transition-colors focus:border-zari"
                     />
                   </div>
                 </div>
 
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold text-taupe uppercase">Email Address (Read-Only)</label>
+                  <label className="text-xs font-bold text-taupe uppercase tracking-wide">Email Address (Read-Only)</label>
                   <input
                     type="email"
                     disabled
                     value={user?.email || ""}
-                    className="rounded border border-line bg-cream/35 px-3 py-1.5 text-xs text-taupe outline-none font-mono"
+                    className="rounded-lg border border-line bg-cream/35 px-3.5 py-2.5 text-sm text-taupe outline-none"
                   />
-                  <p className="text-[10px] text-taupe font-sans">Sign-in credentials and order receipts are tied to this email address.</p>
+                  <p className="text-xs text-taupe">Sign-in credentials and order receipts are tied to this email address.</p>
                 </div>
 
-                {profileError && <p className="text-xs text-danger font-semibold font-sans">{profileError}</p>}
-                
+                {profileError && <p className="text-xs text-danger font-semibold">{profileError}</p>}
+
                 <div className="pt-2 flex justify-end">
                   <Button
                     type="submit"

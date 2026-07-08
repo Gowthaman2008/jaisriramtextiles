@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { jsPDF } from "jspdf";
+import { drawInvoicePdf } from "@/lib/invoice-generator";
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
 import {
@@ -1229,7 +1230,6 @@ export default function AdminDashboardPage() {
           const repliesData = await repliesRes.json();
           setActiveReplies(repliesData.replies || []);
         }
-        alert("Reply sent successfully!");
       } else {
         alert("Ticket closed successfully!");
         setSelectedSupportId(null);
@@ -1637,198 +1637,9 @@ export default function AdminDashboardPage() {
   async function printInvoice(order: any) {
     // Dynamic import to avoid SSR issues
     const { jsPDF } = await import("jspdf");
-    
     const doc = new jsPDF();
-    const orderNumber = order.order_number;
-    const name = order.shipping_address?.recipient || order.profiles?.full_name || order.profiles?.email || "Customer";
-    const items = order.order_items || [];
-    const shippingAddress = order.shipping_address || {};
-    const subtotalPaise = order.subtotal_paise;
-    const discountPaise = order.discount_paise;
-    const shippingPaise = order.shipping_paise;
-    const walletUsedPaise = order.wallet_used_paise;
-    const totalPaise = order.total_paise;
-    const cashbackEarnedPaise = order.cashback_earned_paise || 0;
-
-    // Color Palette
-    const zariGold = [176, 141, 76]; // #B08D4C
-    const inkDark = [42, 38, 34]; // #2A2622
-    const taupeGray = [110, 101, 90]; // #6E655A
-    const lineLight = [229, 223, 210]; // #E5DFD2
-
-    // 1. Header Banner
-    doc.setFillColor(inkDark[0], inkDark[1], inkDark[2]);
-    doc.rect(0, 0, 210, 40, "F");
-
-    // Title Text
-    doc.setTextColor(zariGold[0], zariGold[1], zariGold[2]);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(22);
-    doc.text("JAI SRI RAM TEXTILES", 20, 25);
-
-    // Subtitle
-    doc.setTextColor(255, 255, 255);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
-    doc.text("PREMIUM WEAVERS  |  JAISRIRAMTEXTILES.IN", 20, 32);
-
-    // Invoice label
-    doc.setTextColor(zariGold[0], zariGold[1], zariGold[2]);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(16);
-    doc.text("INVOICE", 155, 26);
-
-    // 2. Metadata Columns
-    doc.setTextColor(inkDark[0], inkDark[1], inkDark[2]);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(10);
-    doc.text("Order Information", 20, 52);
-    doc.text("Shipping To", 120, 52);
-
-    doc.setDrawColor(zariGold[0], zariGold[1], zariGold[2]);
-    doc.setLineWidth(0.5);
-    doc.line(20, 55, 90, 55);
-    doc.line(120, 55, 190, 55);
-
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9.5);
-    doc.setTextColor(taupeGray[0], taupeGray[1], taupeGray[2]);
-
-    // Order Info text
-    doc.text(`Order Number: ${orderNumber}`, 20, 62);
-    doc.text(`Date: ${new Date(order.placed_at || order.created_at || new Date()).toLocaleDateString("en-IN", { dateStyle: "long" })}`, 20, 68);
-    doc.text(`Customer: ${name}`, 20, 74);
-    if (order.profiles?.user_id) {
-      doc.setFont("helvetica", "bold");
-      doc.text(`User ID: ${order.profiles.user_id}`, 20, 80);
-      doc.setFont("helvetica", "normal");
-    }
-
-    // Shipping Address text
-    doc.text(shippingAddress.recipient || "", 120, 62);
-    doc.text(shippingAddress.line1 || "", 120, 68);
-    if (shippingAddress.line2) {
-      doc.text(shippingAddress.line2, 120, 74);
-      doc.text(`${shippingAddress.city}, ${shippingAddress.state} - ${shippingAddress.pincode}`, 120, 80);
-      if (shippingAddress.phone) {
-        doc.text(`Phone: ${shippingAddress.phone}`, 120, 86);
-      }
-    } else {
-      doc.text(`${shippingAddress.city}, ${shippingAddress.state} - ${shippingAddress.pincode}`, 120, 74);
-      if (shippingAddress.phone) {
-        doc.text(`Phone: ${shippingAddress.phone}`, 120, 80);
-      }
-    }
-
-    // 3. Items Table Header
-    let y = 100;
-    doc.setFillColor(inkDark[0], inkDark[1], inkDark[2]);
-    doc.rect(20, y, 170, 8, "F");
-
-    doc.setTextColor(255, 255, 255);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(9);
-    doc.text("Item Details", 24, y + 5.5);
-    doc.text("Qty", 125, y + 5.5);
-    doc.text("Total Price", 165, y + 5.5);
-
-    // 4. Table Items List
-    y += 8;
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(inkDark[0], inkDark[1], inkDark[2]);
-
-    const itemNameMaxWidth = 95; // keeps text inside the Item Details column, clear of Qty/Total
-
-    items.forEach((item: any) => {
-      const nameText = `${item.name}${item.variant ? ` (${item.variant})` : ""}`;
-      const nameLines: string[] = doc.splitTextToSize(nameText, itemNameMaxWidth);
-      const lineHeight = 4.5;
-      const nameBlockHeight = nameLines.length * lineHeight;
-      const rowHeight = nameBlockHeight + (item.sku ? 4.5 : 0) + 3.5;
-
-      // line border
-      doc.setDrawColor(lineLight[0], lineLight[1], lineLight[2]);
-      doc.setLineWidth(0.3);
-      doc.line(20, y + rowHeight, 190, y + rowHeight);
-
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(9.5);
-      doc.setTextColor(inkDark[0], inkDark[1], inkDark[2]);
-      doc.text(nameLines, 24, y + 5);
-
-      if (item.sku) {
-        doc.setFontSize(8);
-        doc.setTextColor(taupeGray[0], taupeGray[1], taupeGray[2]);
-        doc.text(`SKU: ${item.sku}`, 24, y + 5 + nameBlockHeight);
-      }
-
-      doc.setFontSize(9.5);
-      doc.setTextColor(inkDark[0], inkDark[1], inkDark[2]);
-      doc.text(`${item.quantity}`, 127, y + 5);
-      doc.text(`INR ${(item.unit_price_paise * item.quantity / 100).toFixed(2)}`, 165, y + 5);
-
-      y += rowHeight;
-    });
-
-    // 5. Totals Right Column
-    y += 10;
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9.5);
-    doc.setTextColor(taupeGray[0], taupeGray[1], taupeGray[2]);
-
-    doc.text("Subtotal:", 125, y);
-    doc.text(`INR ${(subtotalPaise / 100).toFixed(2)}`, 165, y);
-    y += 6;
-
-    if (discountPaise > 0) {
-      doc.text("Discount:", 125, y);
-      doc.text(`-INR ${(discountPaise / 100).toFixed(2)}`, 165, y);
-      y += 6;
-    }
-
-    if (walletUsedPaise > 0) {
-      doc.text("Wallet Credits Used:", 125, y);
-      doc.text(`-INR ${(walletUsedPaise / 100).toFixed(2)}`, 165, y);
-      y += 6;
-    }
-
-    doc.text("Shipping:", 125, y);
-    doc.text(shippingPaise === 0 ? "FREE" : `INR ${(shippingPaise / 100).toFixed(2)}`, 165, y);
-    y += 8;
-
-    // Total Paid
-    doc.setDrawColor(zariGold[0], zariGold[1], zariGold[2]);
-    doc.setLineWidth(0.5);
-    doc.line(120, y - 5, 190, y - 5);
-
-    doc.setTextColor(zariGold[0], zariGold[1], zariGold[2]);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(11);
-    doc.text("Total Paid:", 125, y);
-    doc.text(`INR ${(totalPaise / 100).toFixed(2)}`, 165, y);
-
-    if (cashbackEarnedPaise > 0) {
-      y += 6;
-      doc.setTextColor(75, 122, 82); // Green
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(9.5);
-      doc.text("Cashback Earned:", 125, y);
-      doc.text(`INR ${(cashbackEarnedPaise / 100).toFixed(2)}`, 165, y);
-    }
-
-    // 6. Footer Disclaimer
-    y = 265;
-    doc.setDrawColor(lineLight[0], lineLight[1], lineLight[2]);
-    doc.setLineWidth(0.5);
-    doc.line(20, y, 190, y);
-
-    doc.setFont("helvetica", "italic");
-    doc.setFontSize(8);
-    doc.setTextColor(taupeGray[0], taupeGray[1], taupeGray[2]);
-    doc.text("This is an electronically generated invoice document for your purchase.", 20, y + 5);
-    doc.text("Thank you for shopping with JAI SRI RAM TEXTILES!", 20, y + 9);
-
-    doc.save(`Invoice-${orderNumber}.pdf`);
+    drawInvoicePdf(doc, order);
+    doc.save(`Invoice-${order.order_number}.pdf`);
   }
 
   function printPackingSlip(order: any) {
@@ -2975,20 +2786,23 @@ export default function AdminDashboardPage() {
 
             {/* Refunds Management Module */}
             {activeTab === "refunds" && (
-              <div className="space-y-6 animate-fade-up font-sans text-xs">
-                <div>
-                  <h2 className="font-display text-2xl text-ink">Refund Management</h2>
-                  <p className="text-xs text-taupe mt-1">Manage refunds for returned or rejected orders. Upload payment screenshots and transaction details.</p>
+              <div className="space-y-6 animate-fade-up font-sans text-sm">
+                <div className="pb-4 border-b border-line/40">
+                  <h2 className="font-display text-3xl text-ink font-bold tracking-tight">Refund Management</h2>
+                  <p className="text-sm text-taupe mt-1.5">Process refunds for returned &amp; rejected orders. Track transaction IDs and upload proof screenshots.</p>
                 </div>
 
                 <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
                   {/* Left list of returned/rejected orders */}
                   <div className="xl:col-span-2 space-y-4">
-                    <div className="bg-white border border-line rounded-card shadow-soft p-4">
-                      <h3 className="font-semibold text-sm mb-3">Returned & Rejected Orders</h3>
+                    <div className="bg-white border border-line rounded-card shadow-soft p-5 sm:p-6">
+                      <div className="flex items-center gap-2 mb-5">
+                        <RefreshCw className="w-4 h-4 text-zari" />
+                        <h3 className="font-display text-base text-ink font-bold">Returned &amp; Rejected Orders</h3>
+                      </div>
                       
                       {orders.filter(o => o.status === "returned" || o.status === "rejected").length === 0 ? (
-                        <div className="py-8 text-center text-xs text-taupe">
+                        <div className="py-12 text-center text-sm text-taupe italic">
                           No returned or rejected orders found in the registry.
                         </div>
                       ) : (
@@ -3000,39 +2814,44 @@ export default function AdminDashboardPage() {
                               return (
                                 <div 
                                   key={order.id} 
-                                  className={`p-4 border rounded-lg transition-all ${
+                                  className={`rounded-2xl border-2 transition-all duration-300 overflow-hidden ${
                                     selectedRefundOrder?.id === order.id 
-                                      ? "border-zari bg-cream/10" 
-                                      : "border-line/60 bg-ivory/5 hover:border-line"
+                                      ? "border-zari shadow-[0_0_0_3px_rgba(176,141,76,0.12)] bg-gradient-to-br from-zari/5 to-cream/30" 
+                                      : "border-line/40 bg-white hover:border-zari/40 hover:shadow-md"
                                   }`}
                                 >
-                                  <div className="flex justify-between items-start gap-4">
-                                    <div className="space-y-1">
-                                      <p className="font-mono text-xs font-bold text-ink">{order.order_number}</p>
-                                      <p className="text-[11px] text-taupe">
-                                        Placed: {new Date(order.placed_at).toLocaleDateString()} | Customer: {order.profiles?.full_name || order.profiles?.email || "Guest"}
-                                      </p>
-                                      <p className="text-xs font-semibold text-ink">
-                                        Amount: {formatRupees(order.total_paise)}
-                                      </p>
-                                      {order.rejection_reason && (
-                                        <p className="text-[11px] bg-danger/5 text-danger px-2 py-1 rounded inline-block">
-                                          Reason: {order.rejection_reason}
+                                  <div className="p-4 sm:p-5">
+                                    <div className="flex justify-between items-start gap-3">
+                                      <div className="space-y-2 flex-1 min-w-0">
+                                        <div className="flex flex-wrap items-center gap-2">
+                                          <p className="font-mono text-sm font-extrabold text-ink tracking-wide">{order.order_number}</p>
+                                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide border ${
+                                            order.status === "returned"
+                                              ? "bg-amber-50 text-amber-700 border-amber-200"
+                                              : "bg-red-50 text-red-600 border-red-200"
+                                          }`}>
+                                            {order.status}
+                                          </span>
+                                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide border ${
+                                            isRefunded
+                                              ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                              : "bg-slate-50 text-slate-500 border-slate-200"
+                                          }`}>
+                                            {isRefunded ? "✓ Refunded" : "Pending"}
+                                          </span>
+                                        </div>
+                                        <p className="text-xs text-taupe">
+                                          {new Date(order.placed_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })} · {order.profiles?.full_name || order.profiles?.email || "Guest"}
                                         </p>
-                                      )}
-                                    </div>
-                                    <div className="flex flex-col items-end gap-2">
-                                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-                                        order.status === "returned" ? "bg-warning/10 text-warning" : "bg-danger/10 text-danger"
-                                      }`}>
-                                        {order.status}
-                                      </span>
-                                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-                                        isRefunded ? "bg-success/10 text-success" : "bg-muted text-taupe"
-                                      }`}>
-                                        {order.payment_status}
-                                      </span>
-                                      
+                                        <p className="text-base font-bold text-ink">
+                                          {formatRupees(order.total_paise)}
+                                        </p>
+                                        {order.rejection_reason && (
+                                          <p className="text-xs bg-red-50 text-red-600 px-2.5 py-1.5 rounded-lg inline-block border border-red-100 font-medium">
+                                            ⚠ {order.rejection_reason}
+                                          </p>
+                                        )}
+                                      </div>
                                       <button
                                         onClick={() => {
                                           setSelectedRefundOrder(order);
@@ -3042,10 +2861,14 @@ export default function AdminDashboardPage() {
                                           setRefundNoteText(order.refund_note || "");
                                           setRefundScreenshotUrl(order.refund_screenshot_url || "");
                                         }}
-                                        className="mt-2 text-xs text-zari hover:underline font-semibold flex items-center gap-1 cursor-pointer focus:outline-none"
+                                        className={`shrink-0 mt-1 px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all duration-300 ${
+                                          isRefunded
+                                            ? "bg-zari/10 text-zari border border-zari/25 hover:bg-zari hover:text-white hover:border-zari"
+                                            : "bg-ink text-ivory border border-ink hover:bg-zari hover:border-zari"
+                                        }`}
                                       >
-                                        {isRefunded ? <Edit2 className="w-3.5 h-3.5" /> : <RefreshCw className="w-3.5 h-3.5" />}
-                                        {isRefunded ? "Edit Refund Info" : "Process Refund"}
+                                        {isRefunded ? <Edit2 className="w-3 h-3" /> : <DollarSign className="w-3 h-3" />}
+                                        {isRefunded ? "Edit" : "Refund"}
                                       </button>
                                     </div>
                                   </div>
@@ -3060,18 +2883,24 @@ export default function AdminDashboardPage() {
                   {/* Right refund form pane */}
                   <div className="xl:col-span-1">
                     {selectedRefundOrder ? (
-                      <div className="bg-white border border-line rounded-card shadow-soft p-4 space-y-4 sticky top-6">
-                        <div className="flex justify-between items-center pb-2 border-b border-line">
-                          <h3 className="font-semibold text-sm text-ink">
-                            Process Refund: {selectedRefundOrder.order_number}
-                          </h3>
+                      <div className="bg-white rounded-2xl shadow-md border border-line/60 overflow-hidden sticky top-6">
+                        {/* Gold header bar */}
+                        <div className="bg-gradient-to-r from-zari to-zari-deep px-5 py-4 flex justify-between items-center">
+                          <div>
+                            <p className="text-xs text-white/90 uppercase tracking-wide font-bold">Refund Processing</p>
+                            <h3 className="font-display text-lg text-white font-bold mt-0.5">
+                              {selectedRefundOrder.order_number}
+                            </h3>
+                          </div>
                           <button 
                             onClick={() => setSelectedRefundOrder(null)} 
-                            className="text-taupe hover:text-ink text-xs cursor-pointer focus:outline-none"
+                            className="p-1.5 rounded-lg bg-white/15 text-white hover:bg-white/30 cursor-pointer focus:outline-none transition-all duration-200"
+                            title="Close"
                           >
-                            Close
+                            <X className="w-4 h-4" />
                           </button>
                         </div>
+                        <div className="p-5 sm:p-6 space-y-5">
 
                         <form 
                           onSubmit={async (e) => {
@@ -3110,74 +2939,76 @@ export default function AdminDashboardPage() {
                               alert("Error updating refund: " + err.message);
                             }
                           }} 
-                          className="space-y-4 text-xs"
+                          className="space-y-4 text-sm"
                         >
-                          <div className="flex flex-col gap-1">
-                            <label className="font-semibold text-ink">Payment Status</label>
+                          <div className="flex flex-col gap-1.5">
+                            <label className="text-xs font-bold text-ink/85 uppercase tracking-wide">Payment Status</label>
                             <select 
                               value={refundPaymentStatus} 
                               onChange={(e) => setRefundPaymentStatus(e.target.value)}
-                              className="rounded border border-line bg-white px-3 py-2 outline-none cursor-pointer"
+                              className="w-full rounded-lg border border-line bg-white px-3.5 py-2.5 text-sm text-ink outline-none transition-all duration-300 focus:border-zari focus:ring-1 focus:ring-zari/30 cursor-pointer shadow-sm"
                             >
                               <option value="paid">Paid (Not Refunded)</option>
                               <option value="refunded">Refunded (Processed)</option>
                             </select>
                           </div>
 
-                          <div className="flex flex-col gap-1">
-                            <label className="font-semibold text-ink">Refund Amount (₹)</label>
+                          <div className="flex flex-col gap-1.5">
+                            <label className="text-xs font-bold text-ink/85 uppercase tracking-wide">Refund Amount (₹)</label>
                             <input 
                               type="number" 
                               required
                               value={refundAmountRupees} 
                               onChange={(e) => setRefundAmountRupees(e.target.value)}
-                              className="rounded border border-line bg-white px-3 py-2 outline-none"
+                              className="w-full rounded-lg border border-line bg-white px-3.5 py-2.5 text-sm text-ink outline-none transition-all duration-300 placeholder:text-taupe/40 focus:border-zari focus:ring-1 focus:ring-zari/30 shadow-sm"
                               placeholder="e.g. 498"
                             />
                           </div>
 
-                          <div className="flex flex-col gap-1">
-                            <label className="font-semibold text-ink">Transaction ID / Reference</label>
+                          <div className="flex flex-col gap-1.5">
+                            <label className="text-xs font-bold text-ink/85 uppercase tracking-wide">Transaction ID / Reference</label>
                             <input 
                               type="text" 
                               value={refundTransactionId} 
                               onChange={(e) => setRefundTransactionId(e.target.value)}
-                              className="rounded border border-line bg-white px-3 py-2 outline-none"
+                              className="w-full rounded-lg border border-line bg-white px-3.5 py-2.5 text-sm text-ink outline-none transition-all duration-300 placeholder:text-taupe/40 focus:border-zari focus:ring-1 focus:ring-zari/30 shadow-sm"
                               placeholder="e.g. TXN18283921"
                             />
                           </div>
 
-                          <div className="flex flex-col gap-1">
-                            <label className="font-semibold text-ink">Internal Notes</label>
+                          <div className="flex flex-col gap-1.5">
+                            <label className="text-xs font-bold text-ink/85 uppercase tracking-wide">Internal Notes</label>
                             <textarea 
                               value={refundNoteText} 
                               onChange={(e) => setRefundNoteText(e.target.value)}
                               rows={3}
-                              className="rounded border border-line bg-white px-3 py-2 outline-none resize-none"
+                              className="w-full rounded-lg border border-line bg-white px-3.5 py-2.5 text-sm text-ink outline-none transition-all duration-300 placeholder:text-taupe/40 focus:border-zari focus:ring-1 focus:ring-zari/30 resize-none shadow-sm"
                               placeholder="Refund notes..."
                             />
                           </div>
 
                           {/* Screenshot Proof Uploader (Cloudinary) */}
-                          <div className="border-t border-line/60 pt-3 flex flex-col gap-2">
-                            <label className="font-semibold text-ink">Refund Receipt / Screenshot</label>
+                          <div className="border-t border-line/40 pt-4 flex flex-col gap-2">
+                            <label className="text-xs font-bold text-ink/85 uppercase tracking-wide">Refund Receipt / Screenshot</label>
                             
                             {refundScreenshotUrl ? (
-                              <div className="relative aspect-[4/3] border border-line rounded bg-cream overflow-hidden group">
+                              <div className="relative aspect-[4/3] border border-line rounded-xl bg-cream/20 overflow-hidden group shadow-sm">
                                 <Image src={refundScreenshotUrl} alt="Refund Screenshot" fill className="object-contain" />
                                 <button 
                                   type="button" 
                                   onClick={() => setRefundScreenshotUrl("")} 
-                                  className="absolute top-1.5 right-1.5 bg-danger text-white rounded-full p-1 shadow hover:bg-danger-hover cursor-pointer"
+                                  className="absolute top-2 right-2 bg-danger text-white rounded-full p-2 shadow-md hover:bg-danger-hover transition-colors duration-300 cursor-pointer"
+                                  title="Remove screenshot"
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
                                 </button>
                               </div>
                             ) : (
                               <div className="flex flex-col gap-1.5">
-                                <label className={`cursor-pointer inline-flex items-center justify-center gap-2 px-3 py-2 border border-dashed border-line rounded bg-cream/10 text-[11px] font-medium hover:bg-cream transition-colors text-taupe ${uploadingScreenshot ? "opacity-50 pointer-events-none" : ""}`}>
-                                  <ImageIcon className="w-4 h-4 text-zari" />
-                                  {uploadingScreenshot ? "Uploading screenshot..." : "Upload Screenshot Proof"}
+                                <label className={`cursor-pointer flex flex-col items-center justify-center gap-2.5 p-6 border-2 border-dashed border-zari/25 rounded-xl bg-cream/10 text-center transition-all duration-300 hover:bg-cream/30 hover:border-zari text-taupe hover:text-ink shadow-sm ${uploadingScreenshot ? "opacity-50 pointer-events-none" : ""}`}>
+                                  <ImageIcon className="w-7 h-7 text-zari" />
+                                  <span className="text-xs font-semibold">{uploadingScreenshot ? "Uploading screenshot..." : "Upload Screenshot Proof"}</span>
+                                  <span className="text-[10px] text-taupe/60">Click to select an image file</span>
                                   <input 
                                     type="file" 
                                     accept="image/*" 
@@ -3215,20 +3046,26 @@ export default function AdminDashboardPage() {
                             )}
                           </div>
 
-                          <Button 
-                            type="submit" 
-                            variant="gold" 
-                            size="md" 
-                            className="w-full mt-2"
+                          <button 
+                            type="submit"
                             disabled={uploadingScreenshot}
+                            className="w-full mt-2 py-3 px-6 rounded-xl bg-gradient-to-r from-zari to-zari-deep text-white font-bold text-sm tracking-wide flex items-center justify-center gap-2 hover:opacity-90 active:scale-[0.98] transition-all duration-200 disabled:opacity-50 disabled:pointer-events-none shadow-md cursor-pointer"
                           >
+                            <CheckCircle className="w-4 h-4" />
                             Save Refund Details
-                          </Button>
+                          </button>
                         </form>
+                        </div>
                       </div>
                     ) : (
-                      <div className="bg-cream/15 border border-dashed border-line rounded-card p-6 text-center text-xs text-taupe">
-                        Select an order from the list to process and issue its refund.
+                      <div className="bg-gradient-to-br from-cream/40 to-ivory/60 border-2 border-dashed border-zari/20 rounded-2xl p-10 text-center flex flex-col items-center justify-center gap-4">
+                        <div className="w-16 h-16 rounded-full bg-zari/10 flex items-center justify-center">
+                          <DollarSign className="w-8 h-8 text-zari" />
+                        </div>
+                        <div>
+                          <p className="font-display text-sm font-bold text-ink">No Order Selected</p>
+                          <p className="text-xs text-taupe leading-relaxed mt-1 max-w-[180px] mx-auto">Select a returned or rejected order from the list to begin processing.</p>
+                        </div>
                       </div>
                     )}
                   </div>

@@ -142,25 +142,25 @@ export function ProductActions({ product }: ProductActionsProps) {
       )}
 
       {/* Quantity & Actions Grid */}
-      <div className="flex flex-col sm:flex-row gap-4 items-center mt-2">
+      <div className="flex flex-row gap-2.5 sm:gap-3 items-stretch mt-2">
         {/* Quantity selector counter */}
         {!isOutOfStock && (
-          <div className="flex items-center border border-line rounded-full bg-white h-11 px-2">
+          <div className="flex items-center border border-line rounded-full bg-white h-[52px] px-1.5 shrink-0">
             <button
               onClick={() => adjustQuantity(-1)}
               disabled={quantity <= 1}
-              className="p-2 text-taupe hover:text-ink disabled:opacity-30"
+              className="p-2.5 text-taupe hover:text-ink disabled:opacity-30"
               aria-label="Decrease quantity"
             >
               <Minus size={15} />
             </button>
-            <span className="w-8 text-center text-sm font-semibold select-none">
+            <span className="w-7 text-center text-sm font-bold select-none">
               {quantity}
             </span>
             <button
               onClick={() => adjustQuantity(1)}
               disabled={quantity >= maxStock}
-              className="p-2 text-taupe hover:text-ink disabled:opacity-30"
+              className="p-2.5 text-taupe hover:text-ink disabled:opacity-30"
               aria-label="Increase quantity"
             >
               <Plus size={15} />
@@ -174,7 +174,7 @@ export function ProductActions({ product }: ProductActionsProps) {
           size="lg"
           disabled={isOutOfStock}
           onClick={handleAddToBag}
-          className="w-full sm:w-auto min-w-[200px]"
+          className="flex-1 justify-center shadow-glow font-bold tracking-wide"
         >
           {isOutOfStock ? (
             "Out of stock"
@@ -195,9 +195,9 @@ export function ProductActions({ product }: ProductActionsProps) {
         <button
           onClick={() => toggleWishlist(product as any)}
           className={cn(
-            "h-11 w-11 rounded-full border grid place-items-center transition-all duration-200 cursor-pointer shadow-soft shrink-0",
-            wished 
-              ? "border-danger bg-danger/5 text-danger" 
+            "h-[52px] w-[52px] rounded-full border grid place-items-center transition-all duration-200 cursor-pointer shadow-soft shrink-0",
+            wished
+              ? "border-danger bg-danger/5 text-danger"
               : "border-line bg-white text-taupe hover:border-danger hover:text-danger"
           )}
           title={wished ? "Remove from wishlist" : "Add to wishlist"}

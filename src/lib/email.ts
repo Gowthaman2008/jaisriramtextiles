@@ -1,5 +1,6 @@
 import { formatINR } from "@/lib/utils";
 import { jsPDF } from "jspdf";
+import { drawInvoicePdf } from "@/lib/invoice-generator";
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const FROM_ADDRESS = process.env.RESEND_FROM_EMAIL || "Jai Sri Ram Textiles <onboarding@resend.dev>";
@@ -515,182 +516,25 @@ export function generateInvoicePdfBase64({
   userId?: string | number;
 }): string {
   const doc = new jsPDF();
+  
+  // Reconstruct order object for shared drawInvoicePdf call
+  const orderObj = {
+    order_number: orderNumber,
+    placed_at: new Date(),
+    shipping_address: {
+      recipient: name || shippingAddress.recipient || "Customer",
+      ...shippingAddress,
+    },
+    order_items: items,
+    subtotal_paise: subtotalPaise,
+    discount_paise: discountPaise,
+    shipping_paise: shippingPaise,
+    wallet_used_paise: walletUsedPaise,
+    total_paise: totalPaise,
+    cashback_earned_paise: cashbackEarnedPaise,
+  };
 
-  // Color Palette
-  const zariGold = [176, 141, 76]; // #B08D4C
-  const inkDark = [42, 38, 34]; // #2A2622
-  const taupeGray = [110, 101, 90]; // #6E655A
-  const lineLight = [229, 223, 210]; // #E5DFD2
-
-  // 1. Header Banner
-  doc.setFillColor(inkDark[0], inkDark[1], inkDark[2]);
-  doc.rect(0, 0, 210, 40, "F");
-
-  // Title Text
-  doc.setTextColor(zariGold[0], zariGold[1], zariGold[2]);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(22);
-  doc.text("JAI SRI RAM TEXTILES", 20, 25);
-
-  // Subtitle
-  doc.setTextColor(255, 255, 255);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(9);
-  doc.text("PREMIUM WEAVERS  |  JAISRIRAMTEXTILES.IN", 20, 32);
-
-  // Invoice label
-  doc.setTextColor(zariGold[0], zariGold[1], zariGold[2]);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(16);
-  doc.text("INVOICE", 155, 26);
-
-  // 2. Metadata Columns
-  doc.setTextColor(inkDark[0], inkDark[1], inkDark[2]);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(10);
-  doc.text("Order Information", 20, 52);
-  doc.text("Shipping To", 120, 52);
-
-  doc.setDrawColor(zariGold[0], zariGold[1], zariGold[2]);
-  doc.setLineWidth(0.5);
-  doc.line(20, 55, 90, 55);
-  doc.line(120, 55, 190, 55);
-
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(9.5);
-  doc.setTextColor(taupeGray[0], taupeGray[1], taupeGray[2]);
-
-  // Order Info text
-  doc.text(`Order Number: ${orderNumber}`, 20, 62);
-  doc.text(`Date: ${new Date().toLocaleDateString("en-IN", { dateStyle: "long" })}`, 20, 68);
-  doc.text(`Customer: ${name || "Guest User"}`, 20, 74);
-  if (userId) {
-    doc.text(`User ID: ${userId}`, 20, 80);
-  }
-
-  // Shipping Address text
-  doc.text(shippingAddress.recipient || "", 120, 62);
-  doc.text(shippingAddress.line1 || "", 120, 68);
-  if (shippingAddress.line2) {
-    doc.text(shippingAddress.line2, 120, 74);
-    doc.text(`${shippingAddress.city}, ${shippingAddress.state} - ${shippingAddress.pincode}`, 120, 80);
-    if (shippingAddress.phone) {
-      doc.text(`Phone: ${shippingAddress.phone}`, 120, 86);
-    }
-  } else {
-    doc.text(`${shippingAddress.city}, ${shippingAddress.state} - ${shippingAddress.pincode}`, 120, 74);
-    if (shippingAddress.phone) {
-      doc.text(`Phone: ${shippingAddress.phone}`, 120, 80);
-    }
-  }
-
-  // 3. Items Table Header
-  let y = 100;
-  doc.setFillColor(inkDark[0], inkDark[1], inkDark[2]);
-  doc.rect(20, y, 170, 8, "F");
-
-  doc.setTextColor(255, 255, 255);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(9);
-  doc.text("Item Details", 24, y + 5.5);
-  doc.text("Qty", 125, y + 5.5);
-  doc.text("Total Price", 165, y + 5.5);
-
-  // 4. Table Items List
-  y += 8;
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(inkDark[0], inkDark[1], inkDark[2]);
-
-  const itemNameMaxWidth = 95; // keeps text inside the Item Details column, clear of Qty/Total
-
-  items.forEach((item) => {
-    const nameText = `${item.name}${item.variant ? ` (${item.variant})` : ""}`;
-    const nameLines: string[] = doc.splitTextToSize(nameText, itemNameMaxWidth);
-    const lineHeight = 4.5;
-    const nameBlockHeight = nameLines.length * lineHeight;
-    const rowHeight = nameBlockHeight + (item.sku ? 4.5 : 0) + 3.5;
-
-    // line border
-    doc.setDrawColor(lineLight[0], lineLight[1], lineLight[2]);
-    doc.setLineWidth(0.3);
-    doc.line(20, y + rowHeight, 190, y + rowHeight);
-
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9.5);
-    doc.setTextColor(inkDark[0], inkDark[1], inkDark[2]);
-    doc.text(nameLines, 24, y + 5);
-
-    if (item.sku) {
-      doc.setFontSize(8);
-      doc.setTextColor(taupeGray[0], taupeGray[1], taupeGray[2]);
-      doc.text(`SKU: ${item.sku}`, 24, y + 5 + nameBlockHeight);
-    }
-
-    doc.setFontSize(9.5);
-    doc.setTextColor(inkDark[0], inkDark[1], inkDark[2]);
-    doc.text(`${item.quantity}`, 127, y + 5);
-    doc.text(`INR ${(item.unit_price_paise * item.quantity / 100).toFixed(2)}`, 165, y + 5);
-
-    y += rowHeight;
-  });
-
-  // 5. Totals Right Column
-  y += 10;
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(9.5);
-  doc.setTextColor(taupeGray[0], taupeGray[1], taupeGray[2]);
-
-  doc.text("Subtotal:", 125, y);
-  doc.text(`INR ${(subtotalPaise / 100).toFixed(2)}`, 165, y);
-  y += 6;
-
-  if (discountPaise > 0) {
-    doc.text("Discount:", 125, y);
-    doc.text(`-INR ${(discountPaise / 100).toFixed(2)}`, 165, y);
-    y += 6;
-  }
-
-  if (walletUsedPaise > 0) {
-    doc.text("Wallet Credits Used:", 125, y);
-    doc.text(`-INR ${(walletUsedPaise / 100).toFixed(2)}`, 165, y);
-    y += 6;
-  }
-
-  doc.text("Shipping:", 125, y);
-  doc.text(shippingPaise === 0 ? "FREE" : `INR ${(shippingPaise / 100).toFixed(2)}`, 165, y);
-  y += 8;
-
-  // Total Paid
-  doc.setDrawColor(zariGold[0], zariGold[1], zariGold[2]);
-  doc.setLineWidth(0.5);
-  doc.line(120, y - 5, 190, y - 5);
-
-  doc.setTextColor(zariGold[0], zariGold[1], zariGold[2]);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(11);
-  doc.text("Total Paid:", 125, y);
-  doc.text(`INR ${(totalPaise / 100).toFixed(2)}`, 165, y);
-
-  if (cashbackEarnedPaise > 0) {
-    y += 6;
-    doc.setTextColor(75, 122, 82); // Green
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9.5);
-    doc.text("Cashback Earned:", 125, y);
-    doc.text(`INR ${(cashbackEarnedPaise / 100).toFixed(2)}`, 165, y);
-  }
-
-  // 6. Footer Disclaimer
-  y = 265;
-  doc.setDrawColor(lineLight[0], lineLight[1], lineLight[2]);
-  doc.setLineWidth(0.5);
-  doc.line(20, y, 190, y);
-
-  doc.setFont("helvetica", "italic");
-  doc.setFontSize(8);
-  doc.setTextColor(taupeGray[0], taupeGray[1], taupeGray[2]);
-  doc.text("This is an electronically generated invoice document for your purchase.", 20, y + 5);
-  doc.text("Thank you for shopping with JAI SRI RAM TEXTILES!", 20, y + 9);
+  drawInvoicePdf(doc, orderObj, userId);
 
   return doc.output("datauristring").split(",")[1];
 }

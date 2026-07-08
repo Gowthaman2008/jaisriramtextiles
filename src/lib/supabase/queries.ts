@@ -66,6 +66,7 @@ function toCardProduct(row: DbProduct): Product {
     id: row.id,
     slug: row.slug,
     name: row.name,
+    description: row.description,
     category: row.categories?.slug ?? "",
     categoryLabel: row.categories?.name ?? "",
     pricePaise: row.price_paise,

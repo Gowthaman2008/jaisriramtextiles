@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useCart } from "@/components/providers/cart-provider";
@@ -15,6 +15,9 @@ export default function CheckoutPage() {
   const router = useRouter();
   const { cart, clearCart, cartSubtotalPaise } = useCart();
   const supabase = createClient();
+  // Prevents the empty-cart redirect below from racing against and hijacking
+  // the navigation to /checkout/success once clearCart() empties the cart.
+  const orderPlacedRef = useRef(false);
 
   // Authentication states
   const [user, setUser] = useState<any>(null);
@@ -122,9 +125,11 @@ export default function CheckoutPage() {
     loadCheckoutData();
   }, []);
 
-  // Redirect to shop if cart is empty (run only after auth completes)
+  // Redirect to shop if cart is empty (run only after auth completes).
+  // Skipped once an order has actually been placed — otherwise clearCart()
+  // empties the cart and this fires, hijacking the navigation to the success page.
   useEffect(() => {
-    if (!loading && cart.length === 0) {
+    if (!loading && cart.length === 0 && !orderPlacedRef.current) {
       router.replace("/shop");
     }
   }, [cart, loading]);
@@ -313,7 +318,8 @@ export default function CheckoutPage() {
     if (appliedCoupon.type === "flat") {
       discountPaise = Math.min(appliedCoupon.value, cartSubtotalPaise);
     } else {
-      let calc = Math.round((cartSubtotalPaise * appliedCoupon.value) / 100);
+      // Round to the nearest whole rupee so every on-site transaction is a whole number
+      let calc = Math.round((cartSubtotalPaise * appliedCoupon.value) / 100 / 100) * 100;
       if (appliedCoupon.max_discount_paise) {
         calc = Math.min(calc, appliedCoupon.max_discount_paise);
       }
@@ -321,8 +327,9 @@ export default function CheckoutPage() {
     }
   }
 
-  // Capped at 20% of subtotal order value as per store rules
-  const walletCap = Math.floor(cartSubtotalPaise / 5);
+  // Capped at 20% of subtotal order value as per store rules — rounded down to
+  // the nearest whole rupee so every on-site transaction is a whole number.
+  const walletCap = Math.floor(cartSubtotalPaise / 5 / 100) * 100;
   const maxRedeemableWallet = Math.min(walletBalance, walletCap);
   const walletUsedPaise = useWallet ? Math.min(maxRedeemableWallet, cartSubtotalPaise - discountPaise) : 0;
 
@@ -373,8 +380,9 @@ export default function CheckoutPage() {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "Order placement failed");
 
+        orderPlacedRef.current = true;
         clearCart();
-        router.push(`/checkout/success?order_number=${data.orderNumber}`);
+        router.push(`/checkout/success?order_number=${data.orderNumber}&cashback=${data.cashbackEarnedPaise || 0}`);
       } catch (err: any) {
         setCheckoutError(err.message || "Failed to process test checkout");
         setIsSubmitting(false);
@@ -427,8 +435,9 @@ export default function CheckoutPage() {
             const apiData = await apiRes.json();
             if (!apiRes.ok) throw new Error(apiData.error || "Order post-processing failed");
 
+            orderPlacedRef.current = true;
             clearCart();
-            router.push(`/checkout/success?order_number=${apiData.orderNumber}`);
+            router.push(`/checkout/success?order_number=${apiData.orderNumber}&cashback=${apiData.cashbackEarnedPaise || 0}`);
           } catch (apiErr: any) {
             setCheckoutError("Payment recorded, but database update failed: " + apiErr.message);
             setIsSubmitting(false);

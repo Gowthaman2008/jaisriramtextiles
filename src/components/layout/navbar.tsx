@@ -90,50 +90,51 @@ export function Navbar() {
             exit={{ opacity: 0 }}
           >
             {/* Glassmorphism backdrop */}
-            <div className="absolute inset-0 bg-ink/40 backdrop-blur-md" onClick={() => setMobileOpen(false)} />
+            <div className="absolute inset-0 bg-ink/25 backdrop-blur-md" onClick={() => setMobileOpen(false)} />
             
             <motion.nav
-              className="absolute right-0 top-0 h-full w-[85%] max-w-sm bg-ivory flex flex-col shadow-lift border-l border-zari/20 overflow-hidden"
+              className="absolute right-0 top-0 h-full w-[85%] max-w-sm bg-ivory bg-weave flex flex-col shadow-lift border-l border-zari/15 overflow-hidden"
               initial={{ x: "100%" }}
               animate={{ x: 0 }}
               exit={{ x: "100%" }}
               transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
             >
               {/* Header inside drawer */}
-              <div className="p-6 border-b border-line flex items-center justify-between bg-cream/25">
-                <div>
-                  <span className="block font-display text-base leading-none tracking-tight text-ink">
+              <div className="p-6 border-b border-line/50 flex items-center justify-between bg-cream/10">
+                <div className="flex flex-col">
+                  <span className="block font-display text-lg leading-none tracking-tight text-ink">
                     JAI SRI RAM
                   </span>
-                  <span className="mt-1 block text-[9px] font-bold uppercase tracking-eyebrow text-zari-deep">
+                  <span className="mt-1.5 block text-[9px] font-extrabold uppercase tracking-eyebrow text-zari-deep">
                     Textiles
                   </span>
                 </div>
                 <button
                   onClick={() => setMobileOpen(false)}
                   aria-label="Close menu"
-                  className="rounded-full p-2 text-ink hover:bg-cream/70 transition-colors"
+                  className="rounded-full p-2 text-taupe hover:text-ink hover:bg-cream/60 transition-colors"
                 >
-                  <X size={20} />
+                  <X size={18} />
                 </button>
               </div>
 
               {/* Promo Banner inside drawer */}
-              <div className="bg-zari/10 border-b border-zari/20 px-6 py-2">
-                <p className="text-[10px] font-bold text-zari-deep tracking-wider uppercase text-center">
-                  ✨ Free shipping above ₹699
+              <div className="bg-zari/5 px-6 py-2.5 text-center border-b border-line/45 flex items-center justify-center gap-1.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-zari animate-pulse" />
+                <p className="text-[10px] font-bold text-zari-deep tracking-widest uppercase">
+                  Free shipping above ₹699
                 </p>
               </div>
 
               {/* Main Content Area */}
-              <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6">
+              <div className="flex-1 overflow-y-auto px-5 py-6 space-y-7">
                 {/* Categories */}
-                <div className="space-y-2">
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-taupe px-3">
+                <div className="space-y-3">
+                  <span className="text-[9px] font-bold uppercase tracking-[0.25em] text-muted px-2 block">
                     Categories
                   </span>
                   <motion.div
-                    className="flex flex-col gap-1.5 mt-2"
+                    className="flex flex-col divide-y divide-line/35 mt-1"
                     initial="hidden"
                     animate="show"
                     variants={{
@@ -141,7 +142,7 @@ export function Navbar() {
                       show: {
                         opacity: 1,
                         transition: {
-                          staggerChildren: 0.05
+                          staggerChildren: 0.04
                         }
                       }
                     }}
@@ -154,31 +155,38 @@ export function Navbar() {
                         <motion.div
                           key={c.slug}
                           variants={{
-                            hidden: { opacity: 0, x: 15 },
-                            show: { opacity: 1, x: 0 }
+                            hidden: { opacity: 0, x: 12 },
+                            show: { 
+                              opacity: 1, 
+                              x: 0,
+                              transition: { type: "spring", stiffness: 100, damping: 15 }
+                            }
                           }}
                         >
                           <Link
                             href={c.slug === "bulk-orders" ? "/bulk-orders" : c.slug === "all" ? "/shop" : `/shop/${c.slug}`}
                             onClick={() => setMobileOpen(false)}
                             className={cn(
-                              "flex items-center justify-between rounded-xl px-4 py-3.5 text-sm font-semibold transition-all duration-200 group border border-transparent",
-                              isSale
-                                ? "bg-danger/5 border-danger/10 text-danger hover:bg-danger/10"
-                                : isBulk
-                                ? "bg-zari/5 border-zari/15 text-zari-deep hover:bg-zari/10"
-                                : "text-ink hover:bg-cream/55 hover:border-line/45"
+                              "group flex items-center justify-between py-3.5 px-2 text-sm font-medium transition-all duration-300 ease-silk",
+                              isSale ? "text-danger" : isBulk ? "text-zari-deep" : "text-ink hover:text-zari-deep"
                             )}
                           >
-                            <span className="flex items-center gap-2">
-                              {isSale && <span className="h-2 w-2 rounded-full bg-danger animate-pulse" />}
-                              {c.label}
+                            <span className="relative flex items-center gap-2.5 transition-transform duration-300 ease-silk group-hover:translate-x-1.5">
+                              {isSale && (
+                                <span className="h-1.5 w-1.5 rounded-full bg-danger animate-pulse" />
+                              )}
+                              {isBulk && (
+                                <span className="h-1.5 w-1.5 rounded-full bg-zari animate-pulse" />
+                              )}
+                              <span className="tracking-wide">{c.label}</span>
                             </span>
-                            <ChevronRight size={15} className={cn(
-                              "text-muted group-hover:text-ink transition-transform duration-200 group-hover:translate-x-1",
-                              isSale && "text-danger/70 group-hover:text-danger",
-                              isBulk && "text-zari group-hover:text-zari-deep"
-                            )} />
+                            <ChevronRight 
+                              size={15} 
+                              className={cn(
+                                "text-muted/40 transform -translate-x-1 opacity-0 transition-all duration-300 ease-silk group-hover:opacity-100 group-hover:translate-x-0",
+                                isSale ? "group-hover:text-danger" : isBulk ? "group-hover:text-zari-deep" : "group-hover:text-zari"
+                              )} 
+                            />
                           </Link>
                         </motion.div>
                       );
@@ -186,33 +194,76 @@ export function Navbar() {
                   </motion.div>
                 </div>
 
-                {/* Quick links grid */}
-                <div className="space-y-2 pt-4 border-t border-line/60">
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-taupe px-3">
-                    Quick Links
+                {/* Quick Links Section */}
+                <div className="space-y-3 pt-6 border-t border-line/45">
+                  <span className="text-[9px] font-bold uppercase tracking-[0.25em] text-muted px-2 block">
+                    Personal Space
                   </span>
-                  <div className="grid grid-cols-2 gap-2 mt-2">
-                    <QuickLink href="/account" label="My Profile" icon={<User size={16} className="text-zari-deep" />} onClick={() => setMobileOpen(false)} />
-                    <QuickLink href="/cart" label="Shopping Cart" icon={<ShoppingBag size={16} className="text-zari-deep" />} count={cartCount} onClick={() => setMobileOpen(false)} />
-                    <QuickLink href="/account/wishlist" label="My Wishlist" icon={<Heart size={16} className="text-zari-deep" />} count={wishlistCount} onClick={() => setMobileOpen(false)} />
-                    <QuickLink href="/search" label="Search Catalog" icon={<Search size={16} className="text-zari-deep" />} onClick={() => setMobileOpen(false)} />
-                  </div>
+                  <motion.div
+                    className="flex flex-col gap-0.5 mt-1"
+                    initial="hidden"
+                    animate="show"
+                    variants={{
+                      hidden: { opacity: 0 },
+                      show: {
+                        opacity: 1,
+                        transition: {
+                          staggerChildren: 0.04,
+                          delayChildren: 0.15
+                        }
+                      }
+                    }}
+                  >
+                    {[
+                      { href: "/search", label: "Search Catalog", icon: <Search size={16} /> },
+                      { href: "/account/wishlist", label: "My Wishlist", icon: <Heart size={16} />, count: wishlistCount },
+                      { href: "/account", label: "My Profile", icon: <User size={16} /> },
+                      { href: "/cart", label: "Shopping Cart", icon: <ShoppingBag size={16} />, count: cartCount }
+                    ].map((link) => (
+                      <motion.div
+                        key={link.href}
+                        variants={{
+                          hidden: { opacity: 0, x: 12 },
+                          show: { 
+                            opacity: 1, 
+                            x: 0,
+                            transition: { type: "spring", stiffness: 100, damping: 15 }
+                          }
+                        }}
+                      >
+                        <Link
+                          href={link.href}
+                          onClick={() => setMobileOpen(false)}
+                          className="group flex items-center justify-between rounded-xl py-3 px-3.5 text-sm font-medium text-ink transition-all duration-300 hover:bg-cream/50 hover:text-zari-deep"
+                        >
+                          <span className="flex items-center gap-3 transition-transform duration-300 ease-silk group-hover:translate-x-1">
+                            <span className="text-muted group-hover:text-zari transition-colors duration-300">
+                              {link.icon}
+                            </span>
+                            <span className="tracking-wide text-ink/80 group-hover:text-ink">{link.label}</span>
+                          </span>
+                          <div className="flex items-center gap-1.5">
+                            {link.count !== undefined && link.count > 0 && (
+                              <span className="text-[9px] font-bold h-4 min-w-4 px-1 grid place-items-center rounded-full bg-zari text-ivory shadow-sm">
+                                {link.count}
+                              </span>
+                            )}
+                            <ChevronRight
+                              size={14}
+                              className="text-muted/40 opacity-0 transform -translate-x-1 transition-all duration-300 ease-silk group-hover:opacity-100 group-hover:translate-x-0 group-hover:text-zari"
+                            />
+                          </div>
+                        </Link>
+                      </motion.div>
+                    ))}
+                  </motion.div>
                 </div>
               </div>
 
               {/* Footer Area inside drawer */}
-              <div className="p-6 bg-cream/25 border-t border-line space-y-4">
-                <div className="space-y-1 text-xs text-taupe">
-                  <p className="font-bold text-ink text-[10px] uppercase tracking-wider">Contact Details</p>
-                  <p className="flex items-center gap-1.5 mt-1.5 font-medium select-all">
-                    📧 {BUSINESS.email}
-                  </p>
-                  <p className="text-[10.5px] leading-relaxed mt-1 text-taupe/90">
-                    📍 {BUSINESS.address.line1}, {BUSINESS.address.city}, {BUSINESS.address.state} - {BUSINESS.address.pincode}
-                  </p>
-                </div>
-                <div className="text-[9px] text-muted text-center pt-2 border-t border-line/40">
-                  © 2026 {BUSINESS.name}. All Rights Reserved.
+              <div className="p-6 bg-cream/15 border-t border-line/40 flex flex-col items-center justify-center">
+                <div className="text-[9px] font-medium tracking-widest text-muted/65 text-center">
+                  © 2026 {BUSINESS.name}. ALL RIGHTS RESERVED.
                 </div>
               </div>
             </motion.nav>
@@ -283,22 +334,3 @@ function CartButton({ count }: { count: number }) {
   );
 }
 
-function QuickLink({ href, label, icon, count, onClick }: { href: string; label: string; icon: React.ReactNode; count?: number; onClick: () => void }) {
-  return (
-    <Link
-      href={href}
-      onClick={onClick}
-      className="flex flex-col items-start gap-1.5 p-3 rounded-xl border border-line/60 bg-white hover:bg-cream/40 transition-all duration-200 group text-left shadow-soft w-full"
-    >
-      <div className="flex items-center justify-between w-full">
-        <span className="p-1.5 rounded-lg bg-cream/75 text-ink transition-colors group-hover:bg-zari/15">{icon}</span>
-        {count !== undefined && count > 0 && (
-          <span className="text-[9px] font-bold h-4 min-w-4 px-1 grid place-items-center rounded-full bg-zari text-ivory shadow-sm">
-            {count}
-          </span>
-        )}
-      </div>
-      <span className="text-xs font-bold text-ink/95 mt-1 tracking-tight group-hover:text-zari-deep transition-colors">{label}</span>
-    </Link>
-  );
-}

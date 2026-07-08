@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from "react";
+import { CheckCircle2, X } from "lucide-react";
 
 export type CartItem = {
   id: string;
@@ -161,9 +162,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
       {/* Premium Toast Popup Notification */}
       {toast.show && (
-        <div className="fixed bottom-24 left-4 right-4 z-50 animate-fade-in sm:left-auto sm:right-6 sm:max-w-sm w-auto bg-white border border-zari rounded-card shadow-lift p-4 flex items-center gap-3">
+        <div className="fixed bottom-24 left-4 right-4 z-50 animate-fade-in sm:left-auto sm:right-6 sm:max-w-sm w-auto bg-white border border-line rounded-2xl shadow-lift p-4 flex items-start gap-3">
           {toast.productImage ? (
-            <div className="relative h-12 w-12 rounded bg-cream overflow-hidden border border-line flex-shrink-0">
+            <div className="relative h-14 w-14 rounded-lg bg-cream overflow-hidden border border-line flex-shrink-0">
               <img
                 src={toast.productImage}
                 alt={toast.productName}
@@ -171,31 +172,29 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
               />
             </div>
           ) : (
-            <div className="h-12 w-12 rounded bg-cream flex items-center justify-center border border-line flex-shrink-0">
+            <div className="h-14 w-14 rounded-lg bg-cream flex items-center justify-center border border-line flex-shrink-0 text-xl">
               🛍️
             </div>
           )}
-          <div className="flex-1 min-w-0">
-            <p className="text-[10px] font-bold text-success uppercase tracking-wider flex items-center gap-1">
-              ✨ Added to Cart
+          <div className="flex-1 min-w-0 pt-0.5">
+            <p className="text-xs font-bold text-success uppercase tracking-wide flex items-center gap-1.5">
+              <CheckCircle2 size={14} /> Added to Cart
             </p>
-            <p className="text-xs font-bold text-ink truncate mt-0.5">{toast.productName}</p>
-            <div className="flex items-center gap-3 mt-1.5">
-              <a
-                href="/cart"
-                className="text-[11px] font-bold text-zari-deep hover:underline uppercase tracking-wider"
-              >
-                View Cart
-              </a>
-              <span className="text-line text-xs">|</span>
-              <button
-                onClick={() => setToast((prev) => ({ ...prev, show: false }))}
-                className="text-[11px] text-taupe hover:text-ink font-bold uppercase tracking-wider"
-              >
-                Dismiss
-              </button>
-            </div>
+            <p className="text-sm font-bold text-ink truncate mt-1">{toast.productName}</p>
+            <a
+              href="/cart"
+              className="inline-flex items-center mt-2.5 px-3.5 py-1.5 rounded-full bg-ink text-ivory text-xs font-bold hover:bg-zari transition-colors"
+            >
+              View Cart
+            </a>
           </div>
+          <button
+            onClick={() => setToast((prev) => ({ ...prev, show: false }))}
+            className="shrink-0 -mt-1 -mr-1 p-1.5 rounded-full text-taupe hover:text-ink hover:bg-cream transition-colors"
+            aria-label="Dismiss"
+          >
+            <X size={16} />
+          </button>
         </div>
       )}
     </CartContext.Provider>
