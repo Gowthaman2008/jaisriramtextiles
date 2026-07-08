@@ -265,7 +265,7 @@ export default function CartPage() {
                                   key={c.id}
                                   className="text-[10px] font-bold bg-cream text-taupe px-2 py-0.5 rounded border border-line"
                                 >
-                                  {c.product?.name}
+                                  {c.display_name || c.product?.name}
                                 </span>
                               ))}
                             </div>
@@ -321,7 +321,7 @@ export default function CartPage() {
                                     <div className="flex-1 min-w-0 flex flex-col justify-between">
                                       <div className="space-y-0.5">
                                         <h3 className="text-xs font-bold text-ink truncate">
-                                          {c.product?.name}
+                                          {c.display_name || c.product?.name}
                                         </h3>
                                         {details && (
                                           <p className="text-[10px] text-taupe font-medium">

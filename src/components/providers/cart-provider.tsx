@@ -159,7 +159,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       const giftItem: CartItem = {
         id: product.id,
         slug: product.slug,
-        name: `${product.name} (Free Gift)`,
+        name: `${campaign.display_name || product.name} (Free Gift)`,
         pricePaise: 0,
         cashbackPaise: 0,
         image: product.image || (product.product_images?.[0]?.url) || "",

@@ -2,6 +2,7 @@
 CREATE TABLE IF NOT EXISTS free_product_campaigns (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   title text NOT NULL,
+  display_name text,
   product_id uuid NOT NULL REFERENCES products(id) ON DELETE CASCADE,
   variant_id uuid REFERENCES product_variants(id) ON DELETE CASCADE,
   target_amount_paise integer NOT NULL CHECK (target_amount_paise >= 0),

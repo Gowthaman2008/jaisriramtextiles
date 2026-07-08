@@ -374,6 +374,7 @@ export default function AdminDashboardPage() {
   const [showCampaignForm, setShowCampaignForm] = useState(false);
   const [editingCampaign, setEditingCampaign] = useState<any>(null);
   const [campTitle, setCampTitle] = useState("");
+  const [campDisplayName, setCampDisplayName] = useState("");
   const [campProductId, setCampProductId] = useState("");
   const [campVariantId, setCampVariantId] = useState("");
   const [campTargetRupees, setCampTargetRupees] = useState<number | "">("");
@@ -1910,6 +1911,7 @@ export default function AdminDashboardPage() {
   function handleEditCampaign(c: any) {
     setEditingCampaign(c);
     setCampTitle(c.title);
+    setCampDisplayName(c.display_name || "");
     setCampProductId(c.product_id);
     setCampVariantId(c.variant_id || "");
     setCampTargetRupees(c.target_amount_paise / 100);
@@ -1924,6 +1926,7 @@ export default function AdminDashboardPage() {
   const isCampaignModified = () => {
     if (!editingCampaign) return true;
     if (campTitle !== editingCampaign.title) return true;
+    if (campDisplayName !== (editingCampaign.display_name || "")) return true;
     if (campProductId !== editingCampaign.product_id) return true;
     if (campVariantId !== (editingCampaign.variant_id || "")) return true;
     if (Number(campTargetRupees) !== editingCampaign.target_amount_paise / 100) return true;
@@ -1955,6 +1958,7 @@ export default function AdminDashboardPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title: campTitle.trim(),
+          display_name: campDisplayName.trim() || null,
           product_id: campProductId,
           variant_id: campVariantId || null,
           target_amount_paise: Math.round(Number(campTargetRupees) * 100),
@@ -1973,6 +1977,7 @@ export default function AdminDashboardPage() {
 
       notify("Free product campaign created successfully!");
       setCampTitle("");
+      setCampDisplayName("");
       setCampProductId("");
       setCampVariantId("");
       setCampTargetRupees("");
@@ -2005,6 +2010,7 @@ export default function AdminDashboardPage() {
         body: JSON.stringify({
           id: editingCampaign.id,
           title: campTitle.trim(),
+          display_name: campDisplayName.trim() || null,
           product_id: campProductId,
           variant_id: campVariantId || null,
           target_amount_paise: Math.round(Number(campTargetRupees) * 100),
@@ -2024,6 +2030,7 @@ export default function AdminDashboardPage() {
       notify("Free product campaign updated successfully!");
       setEditingCampaign(null);
       setCampTitle("");
+      setCampDisplayName("");
       setCampProductId("");
       setCampVariantId("");
       setCampTargetRupees("");
@@ -5666,7 +5673,7 @@ $$ language plpgsql;`}
                   <Button size="sm" variant="gold" onClick={() => {
                     if (showCampaignForm && editingCampaign) {
                       setEditingCampaign(null);
-                      setCampTitle(""); setCampProductId(""); setCampVariantId("");
+                      setCampTitle(""); setCampDisplayName(""); setCampProductId(""); setCampVariantId("");
                       setCampTargetRupees(""); setCampStartsAt(""); setCampExpiresAt("");
                       setCampEnableAnnouncement(true); setCampCustomAnnouncement(""); setCampIsActive(true);
                       setShowCampaignForm(false);
@@ -5685,7 +5692,7 @@ $$ language plpgsql;`}
                       {editingCampaign ? `✏️ Editing Campaign: ${editingCampaign.title}` : "🎁 New Free Gift Campaign details"}
                     </h3>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       {/* Campaign Title */}
                       <div className="flex flex-col gap-1.5">
                         <label className="text-xs font-bold text-taupe uppercase">Campaign Title *</label>
@@ -5695,6 +5702,19 @@ $$ language plpgsql;`}
                           placeholder="e.g. Free Towel Campaign"
                           value={campTitle}
                           onChange={(e) => setCampTitle(e.target.value)}
+                          className="rounded border border-line bg-white px-3 py-2.5 text-sm outline-none focus:border-zari"
+                        />
+                      </div>
+
+                      {/* Gift Display Name */}
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-xs font-bold text-taupe uppercase">Gift Display Name *</label>
+                        <input
+                          type="text"
+                          required
+                          placeholder="e.g. Premium White Towel"
+                          value={campDisplayName}
+                          onChange={(e) => setCampDisplayName(e.target.value)}
                           className="rounded border border-line bg-white px-3 py-2.5 text-sm outline-none focus:border-zari"
                         />
                       </div>
@@ -5804,7 +5824,7 @@ $$ language plpgsql;`}
                           <label className="text-xs font-bold text-taupe uppercase">Custom Announcement message (Optional)</label>
                           {(() => {
                             const selectedProd = products.find(p => p.id === campProductId);
-                            const prodName = selectedProd?.name || "Product Name";
+                            const prodName = campDisplayName || selectedProd?.name || "Product Name";
                             const targetVal = campTargetRupees || "999";
                             return (
                               <>
@@ -5852,7 +5872,7 @@ $$ language plpgsql;`}
                         type="button"
                         onClick={() => {
                           setEditingCampaign(null);
-                          setCampTitle(""); setCampProductId(""); setCampVariantId("");
+                          setCampTitle(""); setCampDisplayName(""); setCampProductId(""); setCampVariantId("");
                           setCampTargetRupees(""); setCampStartsAt(""); setCampExpiresAt("");
                           setCampEnableAnnouncement(true); setCampCustomAnnouncement(""); setCampIsActive(true);
                           setShowCampaignForm(false);

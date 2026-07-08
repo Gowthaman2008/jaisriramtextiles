@@ -48,7 +48,7 @@ export function AnnouncementBar() {
                 finalMessages.push(c.custom_announcement_message.trim());
               } else {
                 const threshold = c.target_amount_paise / 100;
-                let details = c.product?.name || "";
+                let details = c.display_name || c.product?.name || "";
                 if (c.variant) {
                   const parts = [c.variant.size, c.variant.color].filter(Boolean);
                   if (parts.length > 0) {

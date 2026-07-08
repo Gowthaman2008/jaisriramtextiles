@@ -59,6 +59,7 @@ export async function POST(request: Request) {
   try {
     const {
       title,
+      display_name,
       product_id,
       variant_id,
       target_amount_paise,
@@ -78,6 +79,7 @@ export async function POST(request: Request) {
       .from("free_product_campaigns")
       .insert({
         title: title.trim(),
+        display_name: display_name ? display_name.trim() : null,
         product_id,
         variant_id: variant_id || null,
         target_amount_paise: Number(target_amount_paise),
@@ -109,6 +111,7 @@ export async function PUT(request: Request) {
     const {
       id,
       title,
+      display_name,
       product_id,
       variant_id,
       target_amount_paise,
@@ -126,6 +129,7 @@ export async function PUT(request: Request) {
     const supabase = createServiceClient();
     const updatePayload: any = {};
     if (title !== undefined) updatePayload.title = title.trim();
+    if (display_name !== undefined) updatePayload.display_name = display_name ? display_name.trim() : null;
     if (product_id !== undefined) updatePayload.product_id = product_id;
     if (variant_id !== undefined) updatePayload.variant_id = variant_id || null;
     if (target_amount_paise !== undefined) updatePayload.target_amount_paise = Number(target_amount_paise);
