@@ -126,7 +126,10 @@ export function drawInvoicePdf(doc: jsPDF, order: any, profileUserId?: string | 
   const cleanOrderNumber = String(orderNumber || "").startsWith("JSRT") ? String(orderNumber) : `JSRT-${orderNumber}`;
   const placedDate = new Date(order.placed_at || order.created_at || new Date()).toLocaleDateString("en-IN", { dateStyle: "long" });
   const recipientName = order.shipping_address?.recipient || order.profiles?.full_name || order.profiles?.email || "Customer";
-  const items = order.order_items || [];
+  const items = (order.order_items || []).filter((item: any) => {
+    const isFree = item.unit_price_paise === 0 || (item.name || "").toLowerCase().includes("free gift");
+    return !isFree;
+  });
   const shippingAddress = order.shipping_address || {};
   const subtotalPaise = order.subtotal_paise || 0;
   const discountPaise = order.discount_paise || 0;
