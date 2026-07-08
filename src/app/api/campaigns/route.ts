@@ -4,7 +4,34 @@ import { createServiceClient } from "@/lib/supabase/admin";
 export async function GET() {
   try {
     const supabase = createServiceClient();
-    const now = new Date().toISOString();
+
+    // Check if user is logged in
+    let userId: string | null = null;
+    try {
+      const { createClient } = await import("@/lib/supabase/server");
+      const userClient = await createClient();
+      const { data: { user } } = await userClient.auth.getUser();
+      if (user) {
+        userId = user.id;
+      }
+    } catch (e) {
+      // Ignore if not logged in
+    }
+
+    let claimedCampaignIds: string[] = [];
+    if (userId) {
+      const { data: pastItems } = await supabase
+        .from("order_items")
+        .select("campaign_id, orders!inner(status, user_id)")
+        .eq("orders.user_id", userId)
+        .neq("orders.status", "rejected");
+
+      if (pastItems) {
+        claimedCampaignIds = pastItems
+          .map((item: any) => item.campaign_id)
+          .filter(Boolean);
+      }
+    }
 
     // Query active campaigns
     const { data: campaigns, error } = await supabase
@@ -20,6 +47,11 @@ export async function GET() {
 
     // Filter campaigns by start/expiration timestamps in memory for reliability
     const activeCampaigns = (campaigns || []).filter((c: any) => {
+      // If user already claimed it, filter it out
+      if (userId && claimedCampaignIds.includes(c.id)) {
+        return false;
+      }
+
       // If product itself is inactive or out of stock, ignore the campaign
       if (!c.product || !c.product.is_active || c.product.stock <= 0) {
         return false;
@@ -41,7 +73,7 @@ export async function GET() {
 
     return NextResponse.json(activeCampaigns, {
       headers: {
-        "Cache-Control": "s-maxage=10, stale-while-revalidate=60",
+        "Cache-Control": "no-store, max-age=0", // disable caching since response is user-specific now
       },
     });
   } catch (error: any) {

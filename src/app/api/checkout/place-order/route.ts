@@ -123,6 +123,22 @@ export async function POST(request: Request) {
           return NextResponse.json({ error: "Free gift variant does not match campaign" }, { status: 400 });
         }
 
+        // Validate that this campaign has not already been used by this user (once-per-user constraint)
+        const { data: pastUsage, error: usageErr } = await supabase
+          .from("order_items")
+          .select("id, orders!inner(status, user_id)")
+          .eq("campaign_id", campaign.id)
+          .eq("orders.user_id", user.id)
+          .neq("orders.status", "rejected")
+          .limit(1);
+
+        if (usageErr) throw usageErr;
+        if (pastUsage && pastUsage.length > 0) {
+          return NextResponse.json({ 
+            error: `You have already claimed this free gift reward (${campaign.display_name || dbProduct.name}) in a past order.` 
+          }, { status: 400 });
+        }
+
         // Override price and cashback rewards to 0 for free gifts
         itemPrice = 0;
         itemCashback = 0;
@@ -147,6 +163,7 @@ export async function POST(request: Request) {
         unit_price_paise: itemPrice,
         quantity: item.quantity,
         cashback_paise: itemCashback,
+        campaign_id: item.isFreeGift ? item.campaignId : null,
       });
 
       stockUpdates.push({
