@@ -9,6 +9,17 @@ import { createClient } from "@/lib/supabase/client";
 type Message = {
   role: "user" | "assistant";
   content: string;
+  products?: {
+    id: string;
+    slug: string;
+    name: string;
+    price: number;
+    imageUrl: string;
+  }[];
+  categorySlug?: string;
+  trackingUrl?: string;
+  orderNumber?: string;
+  orderImageUrl?: string;
 };
 
 /** Short, light two-tone notification chime — synthesized so no audio asset is needed. */
@@ -39,17 +50,79 @@ function playReplyChime() {
   }
 }
 
+
+
 export function AIChatbot() {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "assistant",
       content: "Vanakkam! I am your **JAI SRI RAM TEXTILES** AI assistant. How can I help you explore our premium handloom veshtis, towels, or custom bulk loom orders today?",
-    },
+    }
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [userContext, setUserContext] = useState<any>(null);
+
+  function getDynamicOptions(m: Message) {
+    const text = m.content.toLowerCase();
+    
+    if (text.includes("vanakkam! i am your")) {
+      return [
+        { label: "🛍️ Explore Products", action: "explore_products" },
+        { label: "📦 Track Orders", action: "track_orders" },
+        { label: "💰 Wallet Balance", action: "wallet_balance" },
+        { label: "🛡️ Return Policy", query: "What is your return and replacement policy?" },
+        { label: "💬 Contact Support", action: "support" },
+        { label: "❓ Other", action: "other" }
+      ];
+    }
+    
+    if (text.includes("select a category to explore")) {
+      return [
+        { label: "⬜ White Dhoti", categorySlug: "white-dhoti", labelText: "White Dhoti" },
+        { label: "🎨 Colour Dhoti", categorySlug: "colour-dhoti", labelText: "Colour Dhoti" },
+        { label: "🧣 Towels", categorySlug: "towels", labelText: "Towels" },
+        { label: "🧣 Scarfs", categorySlug: "scarfs", labelText: "Scarfs" },
+        { label: "🛍️ Jute Bags", categorySlug: "jute-bags", labelText: "Jute Bags" },
+        { label: "🏠 Main Menu", action: "main_menu" }
+      ];
+    }
+
+    if (text.includes("please select an order to track or click")) {
+      const last5 = (userContext?.orders || []).slice(0, 5);
+      const orderOpts = last5.map((o: any) => ({
+        label: `📦 #${o.order_number.replace("JSRT-", "")}`,
+        orderNumber: o.order_number
+      }));
+      return [
+        ...orderOpts,
+        { label: "📂 View All Orders", action: "view_all_orders" },
+        { label: "🏠 Main Menu", action: "main_menu" }
+      ];
+    }
+
+    if (m.orderNumber) {
+      const opts = [];
+      if (m.trackingUrl) {
+        opts.push({ label: "🌐 Track Courier", action: "track_courier", trackingUrl: m.trackingUrl });
+      }
+      opts.push({ label: "📂 View All Orders", action: "view_all_orders" });
+      opts.push({ label: "🏠 Main Menu", action: "main_menu" });
+      return opts;
+    }
+
+    if (m.categorySlug) {
+      return [
+        { label: "🔗 Explore More", action: "explore_more", categorySlug: m.categorySlug },
+        { label: "🏠 Main Menu", action: "main_menu" }
+      ];
+    }
+    
+    return [
+      { label: "🏠 Main Menu", action: "main_menu" }
+    ];
+  }
 
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -59,6 +132,24 @@ export function AIChatbot() {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages, loading]);
+
+  // Prevent Lenis / external scroll hijack on the chat body
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+
+    const preventScrollHijack = (e: any) => {
+      e.stopPropagation();
+    };
+
+    el.addEventListener("wheel", preventScrollHijack, { passive: true });
+    el.addEventListener("touchmove", preventScrollHijack, { passive: true });
+
+    return () => {
+      el.removeEventListener("wheel", preventScrollHijack);
+      el.removeEventListener("touchmove", preventScrollHijack);
+    };
+  }, []);
 
   // Fetch authenticated user context from browser when chat opens
   useEffect(() => {
@@ -141,14 +232,198 @@ export function AIChatbot() {
   }
 
   function handleChatNow() {
-    const profile = userContext?.profile;
-    const lines = ["Hi, I need help with my JAI SRI RAM TEXTILES account."];
-    if (profile?.full_name) lines.push(`Name: ${profile.full_name}`);
-    if (profile?.email) lines.push(`Email: ${profile.email}`);
-    if (profile?.phone) lines.push(`Phone: ${profile.phone}`);
+    window.location.href = "/account?tab=contact";
+  }
 
-    const url = `https://wa.me/918072719603?text=${encodeURIComponent(lines.join("\n"))}`;
-    window.open(url, "_blank", "noopener,noreferrer");
+  async function handleOptionClick(opt: any) {
+    if (opt.action === "support") {
+      handleChatNow();
+    } else if (opt.action === "wallet_balance") {
+      if (!userContext) {
+        setMessages((prev) => [
+          ...prev,
+          { role: "user", content: "Wallet Balance" },
+          { role: "assistant", content: "Please sign in to view your cashback wallet balance." }
+        ]);
+        return;
+      }
+      
+      const balanceRupees = (userContext.walletBalance || 0) / 100;
+      const formattedBalance = `₹${balanceRupees.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      
+      setMessages((prev) => [
+        ...prev,
+        { role: "user", content: "Wallet Balance" },
+        {
+          role: "assistant",
+          content: `💰 **Cashback Wallet Balance**: ${formattedBalance}\n\n⏰ **Expiry**: 15 days from last delivery date\n📅 **Last Updated**: ${new Date().toLocaleDateString()}`
+        }
+      ]);
+    } else if (opt.action === "explore_products") {
+      setMessages((prev) => [
+        ...prev,
+        { role: "user", content: "Explore Products" },
+        { role: "assistant", content: "Please select a category to explore our premium handloom catalog:" }
+      ]);
+    } else if (opt.action === "explore_more" && opt.categorySlug) {
+      window.location.href = `/shop/${opt.categorySlug}`;
+    } else if (opt.action === "view_all_orders") {
+      window.location.href = "/account?tab=orders";
+    } else if (opt.action === "track_courier" && opt.trackingUrl) {
+      window.open(opt.trackingUrl, "_blank");
+    } else if (opt.action === "track_orders") {
+      if (!userContext) {
+        setMessages((prev) => [
+          ...prev,
+          { role: "user", content: "Track Orders" },
+          { role: "assistant", content: "Please sign in to track your orders." }
+        ]);
+        return;
+      }
+      
+      const orders = userContext.orders || [];
+      if (orders.length === 0) {
+        setMessages((prev) => [
+          ...prev,
+          { role: "user", content: "Track Orders" },
+          { role: "assistant", content: "You don't have any placed orders yet." }
+        ]);
+        return;
+      }
+      
+      setMessages((prev) => [
+        ...prev,
+        { role: "user", content: "Track Orders" },
+        { role: "assistant", content: "Please select an order to track or click \"View All Orders\" to see your complete history:" }
+      ]);
+    } else if (opt.orderNumber) {
+      const order = (userContext?.orders || []).find((o: any) => o.order_number === opt.orderNumber);
+      if (!order) {
+        setMessages((prev) => [
+          ...prev,
+          { role: "user", content: `Track #${opt.orderNumber}` },
+          { role: "assistant", content: `Sorry, I couldn't find the details for order **#${opt.orderNumber}**.` }
+        ]);
+        return;
+      }
+      
+      const status = order.status || "Pending";
+      const courierPartner = order.shipping_address?.courier_name || order.shipping_address?.carrier_name || "Not assigned yet";
+      const trackingId = order.tracking_id || "Not assigned yet";
+      const placedDate = order.placed_at ? new Date(order.placed_at).toLocaleDateString() : "Unknown";
+      const totalAmount = order.total_paise ? `₹${order.total_paise / 100}` : "Unknown";
+      
+      const itemsList = (order.order_items || []).map((oi: any) => `- ${oi.name} x ${oi.quantity}`).join("\n");
+      const orderImageUrl = (order.order_items || []).find((oi: any) => oi.image_url)?.image_url || undefined;
+
+      const responseContent = `Here are the tracking details for Order **#${order.order_number}**:
+
+📦 **Status**: ${status.toUpperCase()}
+🚚 **Courier Partner**: ${courierPartner}
+🎟️ **Tracking ID**: ${trackingId}
+📅 **Placed At**: ${placedDate}
+💰 **Total Paid**: ${totalAmount}
+
+**Items Ordered**:
+${itemsList || "- No items listed"}`;
+
+      setMessages((prev) => [
+        ...prev,
+        { role: "user", content: `Track #${order.order_number}` },
+        {
+          role: "assistant",
+          content: responseContent,
+          trackingUrl: order.courier_tracking_url || undefined,
+          orderNumber: order.order_number,
+          orderImageUrl
+        }
+      ]);
+      playReplyChime();
+    } else if (opt.categorySlug) {
+      setLoading(true);
+      try {
+        const supabase = createClient();
+        
+        // 1. Fetch category id
+        const { data: category } = await supabase
+          .from("categories")
+          .select("id, name, slug")
+          .eq("slug", opt.categorySlug)
+          .maybeSingle();
+
+        if (!category) {
+          setMessages((prev) => [
+            ...prev,
+            { role: "user", content: opt.labelText || opt.label },
+            { role: "assistant", content: "I'm sorry, I couldn't find details for that category right now." }
+          ]);
+          return;
+        }
+
+        // 2. Fetch 3 active products with their first image
+        const { data: dbProducts } = await supabase
+          .from("products")
+          .select(`
+            id,
+            slug,
+            name,
+            price_paise,
+            product_images (
+              url,
+              sort_order
+            )
+          `)
+          .eq("category_id", category.id)
+          .eq("is_active", true)
+          .limit(3);
+
+        const products = (dbProducts || []).map((p: any) => {
+          const images = [...(p.product_images || [])].sort((a, b) => a.sort_order - b.sort_order);
+          const imageUrl = images[0]?.url || "/placeholder-product.jpg";
+          return {
+            id: p.id,
+            slug: p.slug,
+            name: p.name,
+            price: p.price_paise / 100,
+            imageUrl
+          };
+        });
+
+        setMessages((prev) => [
+          ...prev,
+          { role: "user", content: opt.labelText || opt.label },
+          {
+            role: "assistant",
+            content: `Here are 3 of our premium handloom products from the **${category.name}** catalog. Tap any product to view details or click "Explore More" below to view the entire collection.`,
+            products,
+            categorySlug: category.slug
+          }
+        ]);
+        playReplyChime();
+      } catch (err) {
+        console.error("Failed to fetch products for category:", err);
+        setMessages((prev) => [
+          ...prev,
+          { role: "user", content: opt.labelText || opt.label },
+          { role: "assistant", content: "Sorry, I had trouble retrieving the products. Please try again." }
+        ]);
+      } finally {
+        setLoading(false);
+      }
+    } else if (opt.action === "other") {
+      setMessages((prev) => [
+        ...prev,
+        { role: "user", content: "Other" },
+        { role: "assistant", content: "Please write your issue or question below and hit send. I will reply to help you right away." }
+      ]);
+    } else if (opt.action === "main_menu") {
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", content: "Vanakkam! I am your **JAI SRI RAM TEXTILES** AI assistant. How can I help you explore our premium handloom dhotis, towels, or custom bulk orders today?" }
+      ]);
+    } else if (opt.query) {
+      await handleQuickOption(opt.query);
+    }
   }
 
   async function sendMessage(text: string) {
@@ -190,7 +465,7 @@ export function AIChatbot() {
   }
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 font-sans">
+    <div className="fixed bottom-6 right-6 z-50 font-sans flex flex-col items-end">
       <AnimatePresence>
         {isOpen && (
           <motion.div
@@ -212,7 +487,7 @@ export function AIChatbot() {
                     <Sparkles className="w-3.5 h-3.5 text-zari" />
                     Loom Assistant
                   </h3>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">Online &bull; Powered by Groq AI</p>
+                  <p className="text-[10px] text-zari mt-0.5 font-bold">Online &bull; Ready to help</p>
                 </div>
               </div>
               <button
@@ -224,10 +499,9 @@ export function AIChatbot() {
               </button>
             </div>
 
-            {/* Messages Area */}
             <div
               ref={scrollRef}
-              className="flex-1 flex flex-col overflow-y-auto overscroll-contain p-4 space-y-4 scrollbar-none"
+              className="flex-1 flex flex-col overflow-y-auto overscroll-contain p-4 space-y-4 chatbot-scrollbar"
               data-lenis-prevent
             >
               {messages.map((m, idx) => {
@@ -252,7 +526,18 @@ export function AIChatbot() {
                             : "bg-ink text-ivory border-ink rounded-tr-none font-medium"
                         )}
                       >
-                        <div className="space-y-1">{parseMarkdown(m.content)}</div>
+                        {isAI && m.orderImageUrl ? (
+                          <div className="flex gap-3 items-start min-w-[200px]">
+                            <div className="flex-1 space-y-1">{parseMarkdown(m.content)}</div>
+                            <img
+                              src={m.orderImageUrl}
+                              alt="Order Item"
+                              className="w-12 h-12 object-cover rounded-lg border border-line bg-white shrink-0 shadow-sm"
+                            />
+                          </div>
+                        ) : (
+                          <div className="space-y-1">{parseMarkdown(m.content)}</div>
+                        )}
                       </div>
                     </div>
 
@@ -261,10 +546,47 @@ export function AIChatbot() {
                       <button
                         type="button"
                         onClick={handleChatNow}
-                        className="ml-9 flex items-center gap-1.5 px-3 py-1.5 bg-ink border border-ink rounded-full text-[11px] font-bold text-ivory hover:bg-zari-deep transition cursor-pointer w-fit"
+                        className="ml-9 flex items-center gap-1.5 px-3 py-1.5 bg-ink border border-ink rounded-full text-[11px] font-bold text-ivory hover:bg-zari-deep transition cursor-pointer w-fit shadow-sm"
                       >
                         💬 Chat Now
                       </button>
+                    )}
+
+                    {isAI && m.products && m.products.length > 0 && (
+                      <div className="ml-9 mt-1.5 grid grid-cols-3 gap-2 pb-1">
+                        {m.products.map((p) => (
+                          <a
+                            key={p.id}
+                            href={`/product/${p.slug}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="bg-white border border-line rounded-xl p-1.5 flex flex-col hover:border-zari transition shadow-sm hover:shadow active:scale-98"
+                          >
+                            <img
+                              src={p.imageUrl}
+                              alt={p.name}
+                              className="w-full h-12 object-cover rounded-lg bg-cream/35"
+                            />
+                            <p className="mt-1 text-[9px] font-bold text-ink truncate leading-tight">{p.name}</p>
+                            <p className="text-[8px] font-bold text-zari-deep mt-0.5">₹{p.price}</p>
+                          </a>
+                        ))}
+                      </div>
+                    )}
+
+                    {isAI && idx === messages.length - 1 && (
+                      <div className="ml-9 flex flex-wrap gap-1.5 mt-1 pb-1">
+                        {getDynamicOptions(m).map((opt, optIdx) => (
+                          <button
+                            key={optIdx}
+                            type="button"
+                            onClick={() => handleOptionClick(opt)}
+                            className="px-2.5 py-1 bg-white border border-zari/35 rounded-full text-[10px] font-bold text-zari-deep hover:border-zari hover:bg-cream transition cursor-pointer shadow-sm active:scale-95"
+                          >
+                            {opt.label}
+                          </button>
+                        ))}
+                      </div>
                     )}
                   </div>
                 );
@@ -285,58 +607,7 @@ export function AIChatbot() {
               )}
             </div>
 
-            {/* Quick Option Menu */}
-            <div className="px-4 py-2 border-t border-line bg-cream/35 flex gap-2 overflow-x-auto scrollbar-none whitespace-nowrap shrink-0">
-              <button
-                type="button"
-                onClick={() => handleQuickOption("Track my active orders")}
-                className="px-3 py-1.5 bg-white border border-line rounded-full text-[11px] font-medium text-ink hover:border-zari hover:bg-zari-tint transition cursor-pointer"
-              >
-                📦 Track Orders
-              </button>
-              <button
-                type="button"
-                onClick={() => handleQuickOption("Show my cashback wallet balance")}
-                className="px-3 py-1.5 bg-white border border-line rounded-full text-[11px] font-medium text-ink hover:border-zari hover:bg-zari-tint transition cursor-pointer"
-              >
-                💰 Wallet Balance
-              </button>
-              <button
-                type="button"
-                onClick={() => handleQuickOption("Show my saved shipping addresses")}
-                className="px-3 py-1.5 bg-white border border-line rounded-full text-[11px] font-medium text-ink hover:border-zari hover:bg-zari-tint transition cursor-pointer"
-              >
-                📍 My Addresses
-              </button>
-              <button
-                type="button"
-                onClick={() => handleQuickOption("What is your return and replacement policy?")}
-                className="px-3 py-1.5 bg-white border border-line rounded-full text-[11px] font-medium text-ink hover:border-zari hover:bg-zari-tint transition cursor-pointer"
-              >
-                🛡️ Return Policy
-              </button>
-              <button
-                type="button"
-                onClick={() => handleQuickOption("Are there any discount offers or promo coupon codes?")}
-                className="px-3 py-1.5 bg-white border border-line rounded-full text-[11px] font-medium text-ink hover:border-zari hover:bg-zari-tint transition cursor-pointer"
-              >
-                🎟️ Promo Offers
-              </button>
-              <button
-                type="button"
-                onClick={() => handleQuickOption("Tell me about JAI SRI RAM TEXTILES handloom heritage")}
-                className="px-3 py-1.5 bg-white border border-line rounded-full text-[11px] font-medium text-ink hover:border-zari hover:bg-zari-tint transition cursor-pointer"
-              >
-                🏭 Craftsmanship
-              </button>
-              <button
-                type="button"
-                onClick={handleChatNow}
-                className="px-3 py-1.5 bg-ink border border-ink rounded-full text-[11px] font-bold text-ivory hover:bg-zari-deep transition cursor-pointer shrink-0"
-              >
-                💬 Chat Now
-              </button>
-            </div>
+
 
             {/* Input Bar */}
             <form onSubmit={handleSend} className="p-3 border-t border-line bg-white flex gap-2">
@@ -367,7 +638,11 @@ export function AIChatbot() {
         aria-label="Toggle AI Chatbot"
       >
         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-zari/20 opacity-75"></span>
-        <MessageSquare size={24} className="group-hover:scale-110 transition-transform duration-300" />
+        {isOpen ? (
+          <X size={24} className="group-hover:scale-110 transition-transform duration-300" />
+        ) : (
+          <Bot size={24} className="group-hover:scale-110 transition-transform duration-300" />
+        )}
       </button>
     </div>
   );

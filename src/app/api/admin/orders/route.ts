@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/admin";
 import { sendEmail, orderDeliveredEmailHtml, orderShippedEmailHtml, refundProcessedEmailHtml, orderRejectedEmailHtml, generateInvoicePdfBase64 } from "@/lib/email";
-import { sendWhatsApp } from "@/lib/whatsapp";
 
 async function checkAdminAuth() {
   try {
@@ -89,7 +88,7 @@ export async function PUT(request: Request) {
     // Load original order to compare status (and enough detail to email on delivery)
     const { data: originalOrder } = await supabase
       .from("orders")
-      .select("status, payment_status, order_number, total_paise, subtotal_paise, discount_paise, shipping_paise, wallet_used_paise, cashback_earned_paise, shipping_address, tracking_id, courier_tracking_url, profiles(email, full_name, user_id, phone), order_items(name, variant, unit_price_paise, quantity, image_url, products(pieces_per_pack))")
+      .select("status, payment_status, order_number, total_paise, subtotal_paise, discount_paise, shipping_paise, wallet_used_paise, cashback_earned_paise, shipping_address, tracking_id, courier_tracking_url, profiles(email, full_name, user_id), order_items(name, variant, unit_price_paise, quantity, image_url, products(pieces_per_pack))")
       .eq("id", id)
       .single();
 
@@ -219,38 +218,6 @@ export async function PUT(request: Request) {
           }).catch((err) => console.error("Rejection email failed:", err));
         }
       }
-
-      // Send WhatsApp Notification for status change
-      const shippingAddr = (shipping_address || originalOrder.shipping_address) as any;
-      const recipientPhone = shippingAddr?.phone || (originalOrder.profiles as any)?.phone;
-
-      if (recipientPhone) {
-        let whatsappMessage = "";
-
-        if (status === "shipped") {
-          const finalTrackingId = tracking_id || originalOrder.tracking_id || "N/A";
-          const finalCourierName = shipping_address?.courier_name || originalOrder.shipping_address?.courier_name || "Courier";
-          const trackingUrlMsg = courier_tracking_url || originalOrder.courier_tracking_url 
-            ? `Track here: ${courier_tracking_url || originalOrder.courier_tracking_url}` 
-            : "";
-          whatsappMessage = `Vanakkam! 🌸\n\nGood news! Your order *${originalOrder.order_number}* has been shipped.\n\nCourier: ${finalCourierName}\nTracking ID: ${finalTrackingId}\n${trackingUrlMsg}\n\nEstimated Delivery: ${shippingAddr?.delivery_date || "4-7 business days"}`;
-        } else if (status === "delivered") {
-          whatsappMessage = `Vanakkam! 🌸\n\nYour order *${originalOrder.order_number}* has been delivered successfully!\n\nWe hope you love your handloom products. Thank you for choosing JAI SRI RAM TEXTILES! 🌾`;
-        } else if (status === "rejected") {
-          const reason = rejection_reason?.trim() || "Not specified";
-          whatsappMessage = `Vanakkam! 🌸\n\nYour order *${originalOrder.order_number}* has been cancelled/rejected.\n\nReason: ${reason}\n\nIf you have already paid, your refund will be initiated shortly.`;
-        } else {
-          // Other statuses (confirmed, packed, out_for_delivery, returned, etc.)
-          whatsappMessage = `Vanakkam! 🌸\n\nYour order *${originalOrder.order_number}* status has been updated to *${status.toUpperCase()}*.\n\nNote: ${status === "rejected" ? (rejection_reason || "") : (note || `Order status updated to '${status}'`)}`;
-        }
-
-        if (whatsappMessage) {
-          await sendWhatsApp({
-            phone: recipientPhone,
-            message: whatsappMessage,
-          }).catch((err) => console.error("WhatsApp status notification failed:", err));
-        }
-      }
     }
 
     // 5. Send refund confirmation email if payment_status transitions to refunded
@@ -303,20 +270,6 @@ export async function PUT(request: Request) {
           }),
           attachments: attachments.length > 0 ? attachments : undefined,
         }).catch((err) => console.error("Refund email failed:", err));
-      }
-
-      // Send WhatsApp Notification for refund
-      const recipientPhone = (originalOrder.shipping_address as any)?.phone || (originalOrder.profiles as any)?.phone;
-      if (recipientPhone) {
-        const refundAmount = refund_amount_paise || originalOrder.total_paise || 0;
-        const formattedRefund = (refundAmount / 100).toFixed(0);
-        const txnIdMsg = refund_transaction_id ? `Transaction ID: ${refund_transaction_id}` : "N/A";
-        const refundMessage = `Vanakkam! 🌸\n\nYour refund of ₹${formattedRefund} for order *${originalOrder.order_number}* has been processed.\n\n${txnIdMsg}\n\nIt will reflect in your account soon.`;
-
-        await sendWhatsApp({
-          phone: recipientPhone,
-          message: refundMessage,
-        }).catch((err) => console.error("WhatsApp refund notification failed:", err));
       }
     }
 

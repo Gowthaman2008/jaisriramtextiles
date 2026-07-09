@@ -2,7 +2,6 @@ import { NextResponse, after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/admin";
 import { sendEmail, orderConfirmationEmailHtml, generateInvoicePdfBase64 } from "@/lib/email";
-import { sendWhatsApp } from "@/lib/whatsapp";
 
 export async function POST(request: Request) {
   try {
@@ -531,17 +530,6 @@ export async function POST(request: Request) {
             ]
           } : {})
         }).catch((err) => console.error("Order confirmation email failed:", err));
-      }
-
-      if (shippingAddress?.phone) {
-        const formattedTotal = (totalPaise / 100).toFixed(0);
-        const deliveryDateMsg = shippingAddress.delivery_date ? `${shippingAddress.delivery_date}` : "4-7 business days";
-        const whatsappMessage = `Vanakkam! 🌸\n\nThank you for shopping with JAI SRI RAM TEXTILES. Your order *${orderNumber}* has been placed successfully!\n\nTotal Amount: ₹${formattedTotal}\nEstimated Delivery: ${deliveryDateMsg}\n\nWe will update you once it's shipped.`;
-
-        await sendWhatsApp({
-          phone: shippingAddress.phone,
-          message: whatsappMessage,
-        }).catch((err) => console.error("WhatsApp notification failed:", err));
       }
     });
 

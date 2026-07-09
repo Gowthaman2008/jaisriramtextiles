@@ -136,8 +136,20 @@ export default function AccountPage() {
   // Profile Edit States
   const [profileName, setProfileName] = useState("");
   const [profilePhone, setProfilePhone] = useState("");
+  const [profileGstin, setProfileGstin] = useState("");
+  const [profileBusinessName, setProfileBusinessName] = useState("");
+  const [profileAltPhone, setProfileAltPhone] = useState("");
+  const [profileGender, setProfileGender] = useState("");
+  const [profileDob, setProfileDob] = useState("");
+
   const [savedProfileName, setSavedProfileName] = useState("");
   const [savedProfilePhone, setSavedProfilePhone] = useState("");
+  const [savedProfileGstin, setSavedProfileGstin] = useState("");
+  const [savedProfileBusinessName, setSavedProfileBusinessName] = useState("");
+  const [savedProfileAltPhone, setSavedProfileAltPhone] = useState("");
+  const [savedProfileGender, setSavedProfileGender] = useState("");
+  const [savedProfileDob, setSavedProfileDob] = useState("");
+
   const [profileSubmitting, setProfileSubmitting] = useState(false);
   const [profileError, setProfileError] = useState("");
   const [profileUserId, setProfileUserId] = useState("");
@@ -174,10 +186,29 @@ export default function AccountPage() {
         if (profile) {
           const loadedName = profile.full_name || authUser.user_metadata?.full_name || authUser.user_metadata?.name || "";
           const loadedPhone = profile.phone || authUser.user_metadata?.phone || "";
+          const loadedGstin = authUser.user_metadata?.gstin || "";
+          const loadedBusinessName = authUser.user_metadata?.business_name || "";
+          const loadedAltPhone = authUser.user_metadata?.alt_phone || "";
+          const loadedGender = authUser.user_metadata?.gender || "";
+          const loadedDob = authUser.user_metadata?.dob || "";
+
           setProfileName(loadedName);
           setProfilePhone(loadedPhone);
           setSavedProfileName(loadedName);
           setSavedProfilePhone(loadedPhone);
+
+          setProfileGstin(loadedGstin);
+          setProfileBusinessName(loadedBusinessName);
+          setProfileAltPhone(loadedAltPhone);
+          setProfileGender(loadedGender);
+          setProfileDob(loadedDob);
+
+          setSavedProfileGstin(loadedGstin);
+          setSavedProfileBusinessName(loadedBusinessName);
+          setSavedProfileAltPhone(loadedAltPhone);
+          setSavedProfileGender(loadedGender);
+          setSavedProfileDob(loadedDob);
+
           setProfileUserId(profile.user_id ? String(profile.user_id) : "");
         }
 
@@ -544,7 +575,6 @@ export default function AccountPage() {
     setProfileSubmitting(true);
     setProfileError("");
     try {
-      // 1. Update profiles table
       const { error: profileErr } = await supabase
         .from("profiles")
         .update({
@@ -559,7 +589,12 @@ export default function AccountPage() {
       const { error: authErr } = await supabase.auth.updateUser({
         data: {
           full_name: profileName.trim(),
-          phone: profilePhone.trim() || null
+          phone: profilePhone.trim() || null,
+          gstin: profileGstin.trim() || null,
+          business_name: profileBusinessName.trim() || null,
+          alt_phone: profileAltPhone.trim() || null,
+          gender: profileGender || null,
+          dob: profileDob || null
         }
       });
 
@@ -571,12 +606,22 @@ export default function AccountPage() {
         user_metadata: {
           ...prev?.user_metadata,
           full_name: profileName.trim(),
-          phone: profilePhone.trim() || null
+          phone: profilePhone.trim() || null,
+          gstin: profileGstin.trim() || null,
+          business_name: profileBusinessName.trim() || null,
+          alt_phone: profileAltPhone.trim() || null,
+          gender: profileGender || null,
+          dob: profileDob || null
         }
       }));
 
       setSavedProfileName(profileName.trim());
       setSavedProfilePhone(profilePhone.trim());
+      setSavedProfileGstin(profileGstin.trim());
+      setSavedProfileBusinessName(profileBusinessName.trim());
+      setSavedProfileAltPhone(profileAltPhone.trim());
+      setSavedProfileGender(profileGender);
+      setSavedProfileDob(profileDob);
       notify("Personal details updated successfully!");
     } catch (err: any) {
       setProfileError(err.message || "Failed to update profile details");
@@ -652,48 +697,50 @@ export default function AccountPage() {
         )}
 
         {/* Dashboard Header */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-white via-[#fffdf7] to-[#fdfbf0] border border-zari/20 rounded-2xl p-6 shadow-soft mb-8">
-          {/* Decorative top bar */}
-          <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-zari to-transparent" />
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-5">
-            <div className="flex items-center gap-4">
-              <div className="relative">
-                <span className="grid h-16 w-16 shrink-0 place-items-center rounded-full bg-gradient-to-br from-zari/40 to-zari/15 text-zari-deep border-2 border-zari/50 shadow-md">
-                  <User size={26} />
-                </span>
-                <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-success rounded-full border-2 border-white" />
+        {activeTab === "overview" && (
+          <div className="relative overflow-hidden bg-gradient-to-br from-white via-[#fffdf7] to-[#fdfbf0] border border-zari/20 rounded-2xl p-6 shadow-soft mb-8">
+            {/* Decorative top bar */}
+            <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-zari to-transparent" />
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-5">
+              <div className="flex items-center gap-4">
+                <div className="relative">
+                  <span className="grid h-16 w-16 shrink-0 place-items-center rounded-full bg-gradient-to-br from-zari/40 to-zari/15 text-zari-deep border-2 border-zari/50 shadow-md">
+                    <User size={26} />
+                  </span>
+                  <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-success rounded-full border-2 border-white" />
+                </div>
+                <div>
+                  <h1 className="font-display text-2xl text-ink leading-tight">{displayName}</h1>
+                  <p className="text-xs text-taupe mt-0.5">{user?.email}</p>
+                  {profileUserId && (
+                    <div className="mt-2 flex items-center">
+                      <span className="text-[10px] font-sans font-bold tracking-wider text-zari-deep bg-white/70 px-2.5 py-1 rounded-full border border-zari/30 uppercase">
+                        User ID: {profileUserId}
+                      </span>
+                    </div>
+                  )}
+                </div>
               </div>
-              <div>
-                <h1 className="font-display text-2xl text-ink leading-tight">{displayName}</h1>
-                <p className="text-xs text-taupe mt-0.5">{user?.email}</p>
-                {profileUserId && (
-                  <div className="mt-2 flex items-center">
-                    <span className="text-[10px] font-sans font-bold tracking-wider text-zari-deep bg-white/70 px-2.5 py-1 rounded-full border border-zari/30 uppercase">
-                      User ID: {profileUserId}
-                    </span>
-                  </div>
-                )}
+              <div className="flex items-center gap-2.5">
+                <button
+                  onClick={() => fetchAccountData(user.id)}
+                  disabled={refreshing}
+                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white/60 hover:bg-white/90 text-ink text-xs font-semibold border border-zari/30 transition-all duration-200 cursor-pointer disabled:opacity-50 shadow-sm"
+                  title="Refresh"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 text-zari-deep ${refreshing ? "animate-spin" : ""}`} />
+                  Refresh
+                </button>
+                <button
+                  onClick={handleSignOut}
+                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-danger/10 hover:bg-danger/20 text-danger text-xs font-semibold border border-danger/20 transition-all duration-200 cursor-pointer"
+                >
+                  Sign out
+                </button>
               </div>
-            </div>
-            <div className="flex items-center gap-2.5">
-              <button
-                onClick={() => fetchAccountData(user.id)}
-                disabled={refreshing}
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white/60 hover:bg-white/90 text-ink text-xs font-semibold border border-zari/30 transition-all duration-200 cursor-pointer disabled:opacity-50 shadow-sm"
-                title="Refresh"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 text-zari-deep ${refreshing ? "animate-spin" : ""}`} />
-                Refresh
-              </button>
-              <button
-                onClick={handleSignOut}
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-danger/10 hover:bg-danger/20 text-danger text-xs font-semibold border border-danger/20 transition-all duration-200 cursor-pointer"
-              >
-                Sign out
-              </button>
             </div>
           </div>
-        </div>
+        )}
 
         {/* TAB 1: OVERVIEW INDEX GRID */}
         {activeTab === "overview" && (
@@ -1809,7 +1856,7 @@ export default function AccountPage() {
           <div className="space-y-6 animate-fade-up">
             <h2 className="font-sans text-2xl font-bold text-ink">Account &amp; Personal Details</h2>
 
-            <div className="bg-white border border-line rounded-2xl p-6 sm:p-7 shadow-soft max-w-xl">
+            <div className="bg-white border border-line rounded-2xl p-6 sm:p-7 shadow-soft max-w-2xl">
               <form onSubmit={handleUpdateProfile} className="space-y-5">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                   <div className="flex flex-col gap-1.5">
@@ -1836,6 +1883,65 @@ export default function AccountPage() {
                   </div>
                 </div>
 
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-bold text-taupe uppercase tracking-wide">Business / Shop Name (Optional)</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Sri Ram Garments"
+                      value={profileBusinessName}
+                      onChange={(e) => setProfileBusinessName(e.target.value)}
+                      className="rounded-lg border border-line bg-ivory px-3.5 py-2.5 text-sm text-ink outline-none transition-colors focus:border-zari"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-bold text-taupe uppercase tracking-wide">GSTIN (Optional)</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. 33AAAAA1111A1Z1"
+                      value={profileGstin}
+                      onChange={(e) => setProfileGstin(e.target.value)}
+                      className="rounded-lg border border-line bg-ivory px-3.5 py-2.5 text-sm text-ink outline-none transition-colors focus:border-zari"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-bold text-taupe uppercase tracking-wide">Gender</label>
+                    <select
+                      value={profileGender}
+                      onChange={(e) => setProfileGender(e.target.value)}
+                      className="rounded-lg border border-line bg-ivory px-3.5 py-2.5 text-sm text-ink outline-none transition-colors focus:border-zari"
+                    >
+                      <option value="">Select Gender</option>
+                      <option value="Male">Male</option>
+                      <option value="Female">Female</option>
+                      <option value="Other">Other</option>
+                      <option value="Prefer not to say">Prefer not to say</option>
+                    </select>
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-bold text-taupe uppercase tracking-wide">Date of Birth</label>
+                    <input
+                      type="date"
+                      value={profileDob}
+                      onChange={(e) => setProfileDob(e.target.value)}
+                      className="rounded-lg border border-line bg-ivory px-3.5 py-2.5 text-sm text-ink outline-none transition-colors focus:border-zari"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-bold text-taupe uppercase tracking-wide">Alt Mobile (Optional)</label>
+                    <input
+                      type="text"
+                      placeholder="Alternative mobile number"
+                      value={profileAltPhone}
+                      onChange={(e) => setProfileAltPhone(e.target.value)}
+                      className="rounded-lg border border-line bg-ivory px-3.5 py-2.5 text-sm text-ink outline-none transition-colors focus:border-zari"
+                    />
+                  </div>
+                </div>
+
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-bold text-taupe uppercase tracking-wide">Email Address (Read-Only)</label>
                   <input
@@ -1854,7 +1960,17 @@ export default function AccountPage() {
                     type="submit"
                     variant="gold"
                     size="sm"
-                    disabled={profileSubmitting || (profileName === savedProfileName && profilePhone === savedProfilePhone)}
+                    disabled={
+                      profileSubmitting || (
+                        profileName === savedProfileName &&
+                        profilePhone === savedProfilePhone &&
+                        profileGstin === savedProfileGstin &&
+                        profileBusinessName === savedProfileBusinessName &&
+                        profileAltPhone === savedProfileAltPhone &&
+                        profileGender === savedProfileGender &&
+                        profileDob === savedProfileDob
+                      )
+                    }
                   >
                     {profileSubmitting ? "Saving changes..." : "Save Account Details"}
                   </Button>

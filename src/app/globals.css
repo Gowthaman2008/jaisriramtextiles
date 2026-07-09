@@ -122,6 +122,25 @@
   .scrollbar-none::-webkit-scrollbar {
     display: none;
   }
+
+  .chatbot-scrollbar {
+    -ms-overflow-style: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(179, 154, 106, 0.4) transparent;
+  }
+  .chatbot-scrollbar::-webkit-scrollbar {
+    width: 4px;
+  }
+  .chatbot-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .chatbot-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(179, 154, 106, 0.35);
+    border-radius: 4px;
+  }
+  .chatbot-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(179, 154, 106, 0.6);
+  }
 }
 
 /* Respect users who prefer reduced motion — hard accessibility requirement */

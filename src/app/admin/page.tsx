@@ -245,6 +245,85 @@ const DEFAULT_PRODUCTS = [
 export default function AdminDashboardPage() {
   const { notify, confirm } = useNotification();
   const [activeTab, setActiveTab] = useState("overview");
+
+  // --- WhatsApp notification helpers (Option 2) ---
+  function openWhatsAppChat(phone: string, message: string) {
+    if (!phone) {
+      notify("No phone number found for this customer.");
+      return;
+    }
+    let cleaned = phone.replace(/\D/g, "");
+    if (cleaned.length === 11 && cleaned.startsWith("0")) {
+      cleaned = cleaned.substring(1);
+    }
+    if (cleaned.length === 10) {
+      cleaned = `91${cleaned}`;
+    }
+    // Use api.whatsapp.com instead of wa.me to prevent redirect emoji corruption
+    const url = `https://api.whatsapp.com/send?phone=${cleaned}&text=${encodeURIComponent(message)}`;
+    window.open(url, "_blank");
+  }
+
+  function triggerOrderWhatsApp(order: any, currentStatus: string, courierName: string, trackingId: string, deliveryDate: string, rejectionReason: string) {
+    const phone = order.shipping_address?.phone || order.profiles?.phone;
+    if (!phone) {
+      notify("Customer phone number not available.");
+      return;
+    }
+
+    const firstItemName = order.order_items?.[0]?.name || "Products";
+    const extraCount = order.order_items && order.order_items.length > 1 ? order.order_items.length - 1 : 0;
+    const itemDisplayName = extraCount > 0 ? `${firstItemName} & ${extraCount} more` : firstItemName;
+    const siteUrl = window.location.origin;
+
+    // Use Unicode escape codes to prevent encoding corruption in Windows/ANSI environments
+    const EMOJI_FINGER = "\u{1F447}";
+    const EMOJI_TRUCK = "\u{1F69A}";
+    const EMOJI_CALENDAR = "\u{1F4C5}";
+    const EMOJI_PARTY = "\u{1F389}";
+    const EMOJI_RICE = "\u{1F33E}";
+    const EMOJI_CROSS = "\u274C";
+    const EMOJI_CHECK = "\u2705";
+    const EMOJI_PACKAGE = "\u{1F4E6}";
+    const EMOJI_TAG = "\u{1F3F7}";
+
+    let msg = "";
+    if (currentStatus === "shipped") {
+      const finalTrackingId = trackingId || order.tracking_id || "N/A";
+      const finalCourierName = courierName || order.shipping_address?.courier_name || "Courier";
+      const finalTrackingUrl = order.courier_tracking_url || "Check details in account";
+      const finalDeliveryDate = deliveryDate || order.shipping_address?.delivery_date || "4-7 business days";
+      
+      msg = `🌸 *JAI SRI RAM TEXTILES* 🌸\n\n*Order Shipped: ${itemDisplayName}*\n\nYour order has been shipped successfully.\n${EMOJI_TRUCK}\n\nIt has been handed over to *${finalCourierName}* with Tracking ID: *${finalTrackingId}*\n\nEstimated Delivery Date: *${finalDeliveryDate}* ${EMOJI_CALENDAR}\n\nYou can track your package details here:\n${finalTrackingUrl}\n\nTo pause important order updates via WhatsApp, type STOP.`;
+    } else if (currentStatus === "delivered") {
+      msg = `🌸 *JAI SRI RAM TEXTILES* 🌸\n\n*Order Delivered: ${itemDisplayName}*\n\nYour order has been delivered successfully.\n${EMOJI_PARTY}\n\nWe hope you love your handloom products. Thank you for choosing JAI SRI RAM TEXTILES! ${EMOJI_RICE}\n\nTo pause important order updates via WhatsApp, type STOP.`;
+    } else if (currentStatus === "rejected") {
+      const reason = rejectionReason?.trim() || "Not specified";
+      msg = `🌸 *JAI SRI RAM TEXTILES* 🌸\n\n*Order Rejected: ${itemDisplayName}*\n\nYour order has been cancelled and rejected.\n${EMOJI_CROSS}\n\nReason for cancellation: *${reason}*\nAny prepaid payments will be refunded to your original source of payment within 24 hours.\n\nTo pause important order updates via WhatsApp, type STOP.`;
+    } else if (currentStatus === "returned") {
+      msg = `🌸 *JAI SRI RAM TEXTILES* 🌸\n\n*Check Return Update: ${itemDisplayName}*\n\nReturn request for your product has been accepted\n${EMOJI_CHECK}\n\nInitially delivered item will be picked and the replacement item handed over to you by ${deliveryDate || order.shipping_address?.delivery_date || "Wednesday, Jun 24, 2026"} ${EMOJI_CALENDAR}\n\nFor a smooth pickup, please ensure the item is in the condition it was delivered, which includes:\n\n•  The original packaging ${EMOJI_PACKAGE}\n•  Accessories and tags applicable ${EMOJI_TAG}\n•  Tags on the product as applicable\n\nTo pause important order updates via WhatsApp, type STOP.`;
+    } else {
+      msg = `🌸 *JAI SRI RAM TEXTILES* 🌸\n\n*Order Successful: ${itemDisplayName}*\n\nYour order has been placed successfully.\n\nTap below to see the shipping dates for your items ${EMOJI_FINGER}\n${siteUrl}/account\n\nTo pause important order updates via WhatsApp, send STOP.`;
+    }
+
+    openWhatsAppChat(phone, msg);
+  }
+
+  function triggerRefundWhatsApp(order: any, refundAmtRupees: string, transactionId: string) {
+    const phone = order.shipping_address?.phone || order.profiles?.phone;
+    if (!phone) {
+      notify("Customer phone number not available.");
+      return;
+    }
+
+    const cleanOrderNumber = String(order.order_number || "").startsWith("JSRT") ? String(order.order_number) : `JSRT-${order.order_number}`;
+    const formattedRefund = Number(refundAmtRupees || 0).toFixed(0);
+    const txnIdMsg = transactionId ? transactionId : "N/A";
+
+    const msg = `🌸 *JAI SRI RAM TEXTILES* 🌸\n\n*Refund credited*\n\nRefund of ₹${formattedRefund} against your order number ${cleanOrderNumber} has been credited to your bank account / credit card linked to your UPI handle.\n\nThis should reflect in your statement. Please reach out to your bank in case you are unable to see the credit. You can quote the refund reference number: ${txnIdMsg}.\n\nPlease note this will not reflect in your UPI app.\n\njaisriramtextiles.in\nPlease reply with 'STOP' to opt-out.`;
+
+    openWhatsAppChat(phone, msg);
+  }
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
@@ -3304,6 +3383,16 @@ export default function AdminDashboardPage() {
                         <button onClick={() => printPackingSlip({ ...selectedOrder, shipping_address: { ...orderAddress, courier_name: orderCourierName, delivery_date: orderDeliveryDate }, tracking_id: orderTrackingId, courier_tracking_url: orderTrackingUrl })} className="flex-1 sm:flex-none p-2 border border-line rounded bg-cream hover:bg-beige text-ink flex items-center justify-center gap-1.5 text-xs font-semibold cursor-pointer" title="Print Packing Slip">
                           <Printer className="w-4 h-4" /> Packing Slip
                         </button>
+                        <button 
+                          type="button" 
+                          onClick={() => triggerOrderWhatsApp(selectedOrder, orderStatus, orderCourierName, orderTrackingId, orderDeliveryDate, orderRejectionReason)} 
+                          className="flex-1 sm:flex-none p-2 border border-line rounded bg-emerald-50 hover:bg-emerald-100 text-emerald-800 flex items-center justify-center gap-1.5 text-xs font-semibold cursor-pointer" 
+                          title="Send WhatsApp Update"
+                        >
+                          <svg className="w-4 h-4 fill-emerald-600" viewBox="0 0 24 24">
+                            <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.003 5.324 5.328 0 11.859 0c3.166.001 6.141 1.233 8.375 3.469 2.235 2.237 3.464 5.214 3.461 8.381-.005 6.533-5.33 11.857-11.86 11.857-2.001-.002-3.968-.512-5.713-1.488L0 24zm6.758-4.262c1.666.989 3.32 1.48 4.966 1.482 5.385.002 9.774-4.382 9.778-9.768.002-2.607-1.013-5.059-2.859-6.908C16.855 2.695 14.41 1.68 11.857 1.679 6.472 1.68 2.083 6.066 2.079 11.452c-.001 1.8.487 3.56 1.41 5.124L2.52 21.07l4.295-1.128z" />
+                          </svg> WhatsApp
+                        </button>
                         <button onClick={() => setSelectedOrder(null)} className="flex-1 sm:flex-none flex items-center justify-center gap-1 text-xs font-semibold text-taupe hover:text-ink px-2.5 py-2 border border-line rounded bg-white transition-colors cursor-pointer">
                           <ChevronLeft className="w-4 h-4" /> Back
                         </button>
@@ -3984,6 +4073,19 @@ export default function AdminDashboardPage() {
                             <CheckCircle className="w-4 h-4" />
                             Save Refund Details
                           </button>
+
+                          {(selectedRefundOrder.payment_status === "refunded" || refundPaymentStatus === "refunded") && (
+                            <button 
+                              type="button"
+                              onClick={() => triggerRefundWhatsApp(selectedRefundOrder, refundAmountRupees, refundTransactionId)}
+                              className="w-full mt-2 py-2.5 px-6 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold text-xs tracking-wide flex items-center justify-center gap-2 border border-emerald-200 transition-all duration-200 shadow-sm cursor-pointer"
+                            >
+                              <svg className="w-4 h-4 fill-emerald-600" viewBox="0 0 24 24">
+                                <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.003 5.324 5.328 0 11.859 0c3.166.001 6.141 1.233 8.375 3.469 2.235 2.237 3.464 5.214 3.461 8.381-.005 6.533-5.33 11.857-11.86 11.857-2.001-.002-3.968-.512-5.713-1.488L0 24zm6.758-4.262c1.666.989 3.32 1.48 4.966 1.482 5.385.002 9.774-4.382 9.778-9.768.002-2.607-1.013-5.059-2.859-6.908C16.855 2.695 14.41 1.68 11.857 1.679 6.472 1.68 2.083 6.066 2.079 11.452c-.001 1.8.487 3.56 1.41 5.124L2.52 21.07l4.295-1.128z" />
+                              </svg>
+                              WhatsApp Notify Customer
+                            </button>
+                          )}
                         </form>
                         </div>
                       </div>
