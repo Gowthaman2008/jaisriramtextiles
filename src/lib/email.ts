@@ -42,6 +42,134 @@ function wrapEmailHtml(bodyContent: string) {
         color: #B08D4C !important;
       }
     }
+
+    /* Gmail app Dark Mode overrides to prevent automatic background/text inversion */
+    [data-ogsb] body, [data-ogsb] .email-bg {
+      background-color: #F5F2EB !important;
+      background-image: linear-gradient(#F5F2EB, #F5F2EB) !important;
+    }
+    [data-ogsb] .email-card {
+      background-color: #FBF9F4 !important;
+      background-image: linear-gradient(#FBF9F4, #FBF9F4) !important;
+    }
+    [data-ogsb] .mobile-header {
+      background-color: #F3ECDD !important;
+      background-image: linear-gradient(#F3ECDD, #F3ECDD) !important;
+    }
+    [data-ogsb] .light-card {
+      background-color: #FFFFFF !important;
+      background-image: linear-gradient(#FFFFFF, #FFFFFF) !important;
+    }
+    [data-ogsb] .light-card-header {
+      background-color: #F7F5EE !important;
+      background-image: linear-gradient(#F7F5EE, #F7F5EE) !important;
+    }
+    [data-ogsb] .mobile-disclaimer {
+      background-color: #F7F5EE !important;
+      background-image: linear-gradient(#F7F5EE, #F7F5EE) !important;
+    }
+    [data-ogsb] .timeline-reply-admin {
+      background-color: #FDFBF7 !important;
+      background-image: linear-gradient(#FDFBF7, #FDFBF7) !important;
+    }
+    [data-ogsb] .timeline-reply-customer {
+      background-color: #FFFFFF !important;
+      background-image: linear-gradient(#FFFFFF, #FFFFFF) !important;
+    }
+    [data-ogsb] .trust-badge-bar {
+      background-color: #1A1612 !important;
+      background-image: linear-gradient(#1A1612, #1A1612) !important;
+    }
+
+    [data-ogsc] body, [data-ogsc] .email-bg, [data-ogsc] .email-card {
+      color: #2A2622 !important;
+    }
+    [data-ogsc] .email-title, 
+    [data-ogsc] h1, 
+    [data-ogsc] h2, 
+    [data-ogsc] h3, 
+    [data-ogsc] h4, 
+    [data-ogsc] p, 
+    [data-ogsc] span, 
+    [data-ogsc] td, 
+    [data-ogsc] table, 
+    [data-ogsc] strong, 
+    [data-ogsc] div, 
+    [data-ogsc] b {
+      color: #2A2622 !important;
+    }
+    [data-ogsc] .text-gold, [data-ogsc] a {
+      color: #B08D4C !important;
+    }
+    [data-ogsc] .text-brand-gold {
+      color: #8A6D33 !important;
+    }
+    [data-ogsc] .text-red {
+      color: #A24B3E !important;
+    }
+    [data-ogsc] .text-green {
+      color: #4B7A52 !important;
+    }
+    [data-ogsc] .trust-badge-bar td {
+      color: #E5DFD2 !important;
+    }
+    [data-ogsc] .trust-badge-bar span {
+      color: #9A9084 !important;
+    }
+
+    @media only screen and (min-width: 481px) {
+      .email-bg {
+        padding: 40px 16px !important;
+      }
+      .mobile-header {
+        padding: 22px 24px !important;
+      }
+      .mobile-logo {
+        font-size: 20px !important;
+      }
+      .mobile-logo-sub {
+        font-size: 8px !important;
+      }
+      .mobile-header-title {
+        font-size: 13px !important;
+      }
+      .mobile-header-sub {
+        font-size: 10px !important;
+      }
+      .mobile-body-welcome {
+        padding: 32px 32px 24px 32px !important;
+        font-size: 14px !important;
+      }
+      .mobile-body-order {
+        padding: 28px 24px !important;
+        font-size: 14px !important;
+      }
+      .email-heading {
+        font-size: 16px !important;
+      }
+      .mobile-button {
+        padding: 12px 32px !important;
+        font-size: 12px !important;
+      }
+      .mobile-text-sm {
+        font-size: 13px !important;
+        line-height: 1.4 !important;
+      }
+      .mobile-text-xs {
+        font-size: 11px !important;
+        line-height: 1.4 !important;
+      }
+      .mobile-disclaimer {
+        padding: 24px 28px !important;
+        font-size: 11.5px !important;
+      }
+      .mobile-badge-bar {
+        padding: 18px 20px !important;
+      }
+      .mobile-badge-text-cell {
+        font-size: 10.5px !important;
+      }
+    }
   </style>
 </head>
 <body style="margin: 0; padding: 0; background-color: #F5F2EB; background-image: linear-gradient(#F5F2EB, #F5F2EB); font-family: Georgia, 'Times New Roman', serif; -webkit-font-smoothing: antialiased; color: #2A2622;">
@@ -90,15 +218,15 @@ export async function sendEmail({
 function renderEmailHeader(title: string, subtitle?: string) {
   return `
     <!-- Header Block -->
-    <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #1A1612; padding: 22px 24px; border-bottom: 4px solid #B08D4C;">
+    <table class="mobile-header" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #F3ECDD; padding: 14px 12px; border-bottom: 4px solid #B08D4C;">
       <tr>
-        <td style="vertical-align: middle;">
-          <div style="color: #B08D4C; font-family: 'Times New Roman', Georgia, serif; font-size: 20px; font-weight: bold; letter-spacing: 1.5px; text-transform: uppercase;">JAI SRI RAM</div>
-          <div style="color: #FFFFFF; font-family: Arial, sans-serif; font-size: 8px; font-weight: bold; letter-spacing: 2px; text-transform: uppercase; margin-top: 2px; opacity: 0.85;">Premium Handlooms</div>
+        <td style="vertical-align: middle; white-space: nowrap;">
+          <div class="mobile-logo text-brand-gold" style="color: #8A6D33; font-family: 'Times New Roman', Georgia, serif; font-size: 15px; font-weight: bold; letter-spacing: 1.5px; text-transform: uppercase; white-space: nowrap;">JAI SRI RAM</div>
+          <div class="mobile-logo-sub" style="color: #6E655A; font-family: Arial, sans-serif; font-size: 7px; font-weight: bold; letter-spacing: 2px; text-transform: uppercase; margin-top: 2px; white-space: nowrap;">Premium Handlooms</div>
         </td>
-        <td align="right" style="vertical-align: middle; font-family: Arial, sans-serif; text-align: right;">
-          <div style="color: #FFFFFF; font-size: 13px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px;">${title}</div>
-          ${subtitle ? `<div style="color: #B08D4C; font-size: 10px; font-weight: bold; margin-top: 3px; font-family: monospace;">${subtitle}</div>` : ""}
+        <td align="right" style="vertical-align: middle; font-family: Arial, sans-serif; text-align: right; white-space: nowrap;">
+          <div class="mobile-header-title" style="color: #2A2622; font-size: 9px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap;">${title}</div>
+          ${subtitle ? `<div class="mobile-header-sub text-brand-gold" style="color: #8A6D33; font-size: 7.5px; font-weight: bold; margin-top: 3px; font-family: monospace; white-space: nowrap;">${subtitle}</div>` : ""}
         </td>
       </tr>
     </table>
@@ -109,26 +237,26 @@ function renderEmailHeader(title: string, subtitle?: string) {
 function renderEmailFooter() {
   return `
     <!-- Please Note Disclaimer -->
-    <div style="padding: 24px 28px; background-color: #F7F5EE; border-top: 1px solid #E5DFD2; font-family: Arial, sans-serif; font-size: 11.5px; color: #6E655A; line-height: 1.6;">
-      <p style="margin: 0 0 8px 0; font-weight: bold; color: #2A2622; text-transform: uppercase; letter-spacing: 0.5px; font-size: 11px;">Please Note:</p>
+    <div class="mobile-disclaimer" style="padding: 18px 16px; background-color: #F7F5EE; border-top: 1px solid #E5DFD2; font-family: Arial, sans-serif; font-size: 10px; color: #6E655A; line-height: 1.6;">
+      <p style="margin: 0 0 8px 0; font-weight: bold; color: #2A2622; text-transform: uppercase; letter-spacing: 0.5px; font-size: 10px;">Please Note:</p>
       <p style="margin: 0 0 10px 0;">We never request payment details, OTPs, or wallet passwords over the phone or email. Please do not share security credentials with anyone claiming to represent Jai Sri Ram Textiles.</p>
-      <p style="margin: 0;">Have questions or feedback? Reply directly to this email or reach us at <a href="mailto:support@jaisriramtextiles.in" style="color: #B08D4C; text-decoration: none; font-weight: bold;">support@jaisriramtextiles.in</a>.</p>
+      <p style="margin: 0;">Have questions or feedback? Reply directly to this email or reach us at <a href="mailto:jaisriramtextilekpm@gmail.com" style="color: #B08D4C; text-decoration: none; font-weight: bold;">jaisriramtextilekpm@gmail.com</a>.</p>
     </div>
 
     <!-- Trust Badges Footer Bar -->
-    <table class="trust-badge-bar" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #1A1612; padding: 18px 20px; text-align: center; border-radius: 0 0 12px 12px;">
+    <table class="trust-badge-bar mobile-badge-bar" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #1A1612; padding: 14px 10px; text-align: center; border-radius: 0 0 12px 12px;">
       <tr>
-        <td style="color: #E5DFD2; font-family: Arial, sans-serif; font-size: 10.5px; width: 33%;">
+        <td class="mobile-text-xs mobile-badge-text-cell" style="color: #E5DFD2; font-family: Arial, sans-serif; font-size: 9px; width: 33%;">
           <div style="font-size: 14px; margin-bottom: 2px;">🌟</div>
-          <b>Assured Quality</b><br/><span style="color: #9A9084; font-size: 9px;">100% Handloom Woven</span>
+          <b>Assured Quality</b><br/><span style="color: #9A9084; font-size: 8px;">100% Handloom Woven</span>
         </td>
-        <td style="color: #E5DFD2; font-family: Arial, sans-serif; font-size: 10.5px; width: 33%; border-left: 1px solid #2A2622; border-right: 1px solid #2A2622;">
+        <td class="mobile-text-xs mobile-badge-text-cell" style="color: #E5DFD2; font-family: Arial, sans-serif; font-size: 9px; width: 33%; border-left: 1px solid #2A2622; border-right: 1px solid #2A2622;">
           <div style="font-size: 14px; margin-bottom: 2px;">📦</div>
-          <b>Hand-Picked & Packed</b><br/><span style="color: #9A9084; font-size: 9px;">Inspected Combed Cotton</span>
+          <b>Hand-Picked & Packed</b><br/><span style="color: #9A9084; font-size: 8px;">Inspected Combed Cotton</span>
         </td>
-        <td style="color: #E5DFD2; font-family: Arial, sans-serif; font-size: 10.5px; width: 33%;">
+        <td class="mobile-text-xs mobile-badge-text-cell" style="color: #E5DFD2; font-family: Arial, sans-serif; font-size: 9px; width: 33%;">
           <div style="font-size: 14px; margin-bottom: 2px;">🔄</div>
-          <b>Easy Exchange</b><br/><span style="color: #9A9084; font-size: 9px;">Friendly Customer Care</span>
+          <b>Easy Exchange</b><br/><span style="color: #9A9084; font-size: 8px;">Friendly Customer Care</span>
         </td>
       </tr>
     </table>
@@ -165,13 +293,13 @@ function itemRowsHtml(items: OrderItemLine[]) {
         <tr style="border-bottom: 1px solid #E5DFD2;">
           ${imgHtml}
           <td style="padding: 12px 8px; vertical-align: top; font-family: Arial, sans-serif;">
-            <div style="font-weight: bold; color: #2A2622; font-size: 13px; line-height: 1.4;">${item.name}</div>
-            <div style="color: #6E655A; font-size: 11px; margin-top: 4px;">
+            <div class="mobile-text-sm" style="font-weight: bold; color: #2A2622; font-size: 11px; line-height: 1.3;">${item.name}</div>
+            <div class="mobile-text-xs" style="color: #6E655A; font-size: 9px; margin-top: 4px; line-height: 1.2;">
               ${item.variant ? `<b>Variant:</b> ${item.variant} &nbsp;|&nbsp; ` : ""}
               <b>Qty:</b> ${item.quantity}
             </div>
           </td>
-          <td style="padding: 12px 12px 12px 8px; text-align: right; vertical-align: top; font-family: Arial, sans-serif; font-weight: bold; color: #2A2622; font-size: 13px;">
+          <td class="mobile-text-sm" style="padding: 12px 12px 12px 8px; text-align: right; vertical-align: top; font-family: Arial, sans-serif; font-weight: bold; color: #2A2622; font-size: 11px; white-space: nowrap;">
             ${formatINR(item.unit_price_paise * item.quantity, true)}
           </td>
         </tr>
@@ -181,19 +309,20 @@ function itemRowsHtml(items: OrderItemLine[]) {
 }
 
 export function welcomeEmailHtml({ name, email, provider }: { name?: string; email: string; provider: string }) {
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://jaisriramtextiles.in";
   return `
-    <div class="email-bg" style="background-color: #F5F2EB; padding: 40px 16px; font-family: Georgia, 'Times New Roman', serif;">
-      <div class="email-card" style="max-width: 560px; margin: 0 auto; background-color: #FBF9F4; border: 1px solid #E5DFD2; border-radius: 12px; box-shadow: 0 4px 15px rgba(42, 38, 34, 0.05); overflow: hidden;">
-        ${renderEmailHeader("Welcome Abroad", "Account Created")}
+    <div class="email-bg" style="background-color: #F5F2EB; padding: 24px 10px; font-family: Georgia, 'Times New Roman', serif;">
+      <div class="email-card" style="width: 100%; max-width: 560px; margin: 0 auto; background-color: #FBF9F4; border: 1px solid #E5DFD2; border-radius: 12px; box-shadow: 0 4px 15px rgba(42, 38, 34, 0.05); overflow: hidden;">
+        ${renderEmailHeader("Welcome Aboard", "Account Created")}
         
-        <div style="padding: 32px 32px 24px 32px; color: #2A2622; font-size: 14px; line-height: 1.6;">
-          <p style="font-size: 16px; margin: 0 0 16px 0;">Hi <b>${name || "there"}</b>,</p>
+        <div class="mobile-body mobile-body-welcome" style="padding: 20px 12px; color: #2A2622; font-size: 12px; line-height: 1.6;">
+          <p class="email-heading" style="font-size: 13px; font-weight: bold; margin: 0 0 16px 0;">Hi <b>${name || "there"}</b>,</p>
           <p style="margin: 0 0 20px 0;">
-            Welcome to JAI SRI RAM TEXTILES! Your customer account has been created successfully. You are now ready to explore our premium collection of handloom garments.
+            Welcome to the JAI SRI RAM TEXTILES family! We are thrilled to have you with us. Your customer account has been created successfully, and you are now ready to explore our premium collections.
           </p>
 
           <!-- Details Card -->
-          <div style="padding: 16px 20px; background-color: #FFFFFF; border: 1px solid #E5DFD2; border-radius: 8px; margin: 24px 0;">
+          <div class="light-card" style="padding: 16px 20px; background-color: #FFFFFF; border: 1px solid #E5DFD2; border-radius: 8px; margin: 24px 0;">
             <div style="font-weight: bold; font-size: 12px; text-transform: uppercase; color: #6E655A; letter-spacing: 1px; margin-bottom: 12px; border-bottom: 1px solid #E5DFD2; padding-bottom: 6px;">
               Your Account Details
             </div>
@@ -213,9 +342,15 @@ export function welcomeEmailHtml({ name, email, provider }: { name?: string; ema
             </table>
           </div>
 
-          <p style="margin: 20px 0 0 0;">
-            We manufacture and curate only the finest dhotis, absorbent handloom towels, and sustainable jute bags directly from our looms in Komarapalayam, Namakkal district, Tamil Nadu.
+          <p style="margin: 20px 0 20px 0;">
+            At Jai Sri Ram Textiles, we take pride in our heritage of handloom weaving. Based in Komarapalayam, Tamil Nadu, we manufacture and curate only the finest dhotis, absorbent handloom towels, and sustainable jute bags directly from our looms. Every piece is crafted by skilled weavers, combining traditional methods with premium comfort.
           </p>
+
+          <div style="margin: 28px 0; text-align: center;">
+            <a href="${siteUrl}/shop" class="mobile-button" style="display: inline-block; padding: 12px 32px; background-color: #F3ECDD; color: #2A2622; text-decoration: none; border-radius: 4px; font-weight: bold; font-size: 12px; text-transform: uppercase; letter-spacing: 1.5px; border: 1px solid #B08D4C; font-family: Arial, sans-serif; box-shadow: 0 2px 8px rgba(176, 141, 76, 0.15);">
+              Explore Collection
+            </a>
+          </div>
         </div>
 
         ${renderEmailFooter()}
@@ -226,24 +361,141 @@ export function welcomeEmailHtml({ name, email, provider }: { name?: string; ema
 
 export function passwordResetEmailHtml({ name, resetLink }: { name?: string; resetLink: string }) {
   return `
-    <div class="email-bg" style="background-color: #F5F2EB; padding: 40px 16px; font-family: Georgia, 'Times New Roman', serif;">
-      <div class="email-card" style="max-width: 560px; margin: 0 auto; background-color: #FBF9F4; border: 1px solid #E5DFD2; border-radius: 12px; box-shadow: 0 4px 15px rgba(42, 38, 34, 0.05); overflow: hidden;">
+    <div class="email-bg" style="background-color: #F5F2EB; padding: 24px 10px; font-family: Georgia, 'Times New Roman', serif;">
+      <div class="email-card" style="width: 100%; max-width: 560px; margin: 0 auto; background-color: #FBF9F4; border: 1px solid #E5DFD2; border-radius: 12px; box-shadow: 0 4px 15px rgba(42, 38, 34, 0.05); overflow: hidden;">
         ${renderEmailHeader("Security", "Password Reset")}
         
-        <div style="padding: 32px 32px 24px 32px; color: #2A2622; font-size: 14px; line-height: 1.6;">
-          <p style="font-size: 16px; margin: 0 0 16px 0;">Hi <b>${name || "there"}</b>,</p>
+        <div class="mobile-body mobile-body-welcome" style="padding: 20px 12px; color: #2A2622; font-size: 12px; line-height: 1.6;">
+          <p class="email-heading" style="font-size: 13px; font-weight: bold; margin: 0 0 16px 0;">Hi <b>${name || "there"}</b>,</p>
           <p style="margin: 0 0 24px 0;">
             We received a request to reset your password. Click the action button below to select a new secure password.
           </p>
 
           <div style="margin: 28px 0; text-align: center;">
-            <a href="${resetLink}" style="display: inline-block; padding: 12px 32px; background-color: #1A1612; color: #B08D4C; text-decoration: none; border-radius: 4px; font-weight: bold; font-size: 12px; text-transform: uppercase; letter-spacing: 1.5px; border: 1px solid #B08D4C; font-family: Arial, sans-serif; box-shadow: 0 2px 8px rgba(26, 22, 18, 0.25);">
+            <a href="${resetLink}" class="mobile-button" style="display: inline-block; padding: 12px 32px; background-color: #F3ECDD; color: #2A2622; text-decoration: none; border-radius: 4px; font-weight: bold; font-size: 12px; text-transform: uppercase; letter-spacing: 1.5px; border: 1px solid #B08D4C; font-family: Arial, sans-serif; box-shadow: 0 2px 8px rgba(176, 141, 76, 0.15);">
               Reset Password
             </a>
           </div>
 
           <p style="color: #6E655A; font-size: 12.5px; margin: 24px 0 0 0; line-height: 1.5; font-family: Arial, sans-serif;">
             If you did not request a password change, you can safely ignore this email. This link is single-use and will automatically expire in 2 hours.
+          </p>
+        </div>
+
+        ${renderEmailFooter()}
+      </div>
+    </div>
+  `;
+}
+
+export function signUpConfirmationEmailHtml({ name, confirmationLink }: { name?: string; confirmationLink: string }) {
+  return `
+    <div class="email-bg" style="background-color: #F5F2EB; padding: 24px 10px; font-family: Georgia, 'Times New Roman', serif;">
+      <div class="email-card" style="width: 100%; max-width: 560px; margin: 0 auto; background-color: #FBF9F4; border: 1px solid #E5DFD2; border-radius: 12px; box-shadow: 0 4px 15px rgba(42, 38, 34, 0.05); overflow: hidden;">
+        ${renderEmailHeader("Verification", "Confirm Email")}
+        
+        <div class="mobile-body mobile-body-welcome" style="padding: 20px 12px; color: #2A2622; font-size: 12px; line-height: 1.6;">
+          <p class="email-heading" style="font-size: 13px; font-weight: bold; margin: 0 0 16px 0;">Hi <b>${name || "there"}</b>,</p>
+          <p style="margin: 0 0 24px 0;">
+            Thank you for signing up with JAI SRI RAM TEXTILES! Please confirm your email address to finish setting up your account.
+          </p>
+
+          <div style="margin: 28px 0; text-align: center;">
+            <a href="${confirmationLink}" class="mobile-button" style="display: inline-block; padding: 12px 32px; background-color: #F3ECDD; color: #2A2622; text-decoration: none; border-radius: 4px; font-weight: bold; font-size: 12px; text-transform: uppercase; letter-spacing: 1.5px; border: 1px solid #B08D4C; font-family: Arial, sans-serif; box-shadow: 0 2px 8px rgba(176, 141, 76, 0.15);">
+              Confirm Email Address
+            </a>
+          </div>
+
+          <p style="color: #6E655A; font-size: 12.5px; margin: 24px 0 0 0; line-height: 1.5; font-family: Arial, sans-serif;">
+            If you did not create an account with us, you can safely ignore this email.
+          </p>
+        </div>
+
+        ${renderEmailFooter()}
+      </div>
+    </div>
+  `;
+}
+
+export function ticketClosedEmailHtml({
+  ticketId,
+  name,
+  subject,
+  originalMessage,
+  replies,
+}: {
+  ticketId: string;
+  name: string;
+  subject: string;
+  originalMessage: string;
+  replies: Array<{ sender_type: string; message: string; created_at: string }>;
+}) {
+  const shortenId = (id: string) => {
+    if (!id) return "";
+    return id.substring(0, 8).toUpperCase() + "..." + id.substring(id.length - 6).toUpperCase();
+  };
+
+  // Build the conversation history HTML
+  let conversationHtml = `
+    <!-- Original Message -->
+    <div class="light-card timeline-reply-customer" style="margin-bottom: 20px; padding: 16px; background-color: #FFFFFF; border: 1px solid #E5DFD2; border-radius: 8px;">
+      <div style="font-size: 11px; font-weight: bold; color: #6E655A; text-transform: uppercase; margin-bottom: 6px; font-family: Arial, sans-serif;">
+        Customer (You) &bull; ${new Date().toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}
+      </div>
+      <div style="font-size: 13.5px; color: #2A2622; white-space: pre-line; line-height: 1.5;">${originalMessage}</div>
+    </div>
+  `;
+
+  // Append replies
+  if (replies && replies.length > 0) {
+    replies.forEach((rep) => {
+      const isAdmin = rep.sender_type === "admin";
+      const senderLabel = isAdmin ? "Support Desk" : "Customer (You)";
+      const bg = isAdmin ? "#FDFBF7" : "#FFFFFF";
+      const border = isAdmin ? "1px solid #C9AE78" : "1px solid #E5DFD2";
+      const labelColor = isAdmin ? "#8A6D33" : "#6E655A";
+      const dateStr = new Date(rep.created_at).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" });
+
+      conversationHtml += `
+        <!-- Reply -->
+        <div class="timeline-reply-${rep.sender_type}" style="margin-bottom: 20px; padding: 16px; background-color: ${bg}; border: ${border}; border-radius: 8px; ${isAdmin ? "border-left: 4px solid #B08D4C;" : ""}">
+          <div class="${isAdmin ? "text-brand-gold" : "text-muted"}" style="font-size: 11px; font-weight: bold; color: ${labelColor}; text-transform: uppercase; margin-bottom: 6px; font-family: Arial, sans-serif;">
+            ${senderLabel} &bull; ${dateStr}
+          </div>
+          <div style="font-size: 13.5px; color: #2A2622; white-space: pre-line; line-height: 1.5;">${rep.message}</div>
+        </div>
+      `;
+    });
+  }
+
+  return `
+    <div class="email-bg" style="background-color: #F5F2EB; padding: 24px 10px; font-family: Georgia, 'Times New Roman', serif;">
+      <div class="email-card" style="width: 100%; max-width: 560px; margin: 0 auto; background-color: #FBF9F4; border: 1px solid #E5DFD2; border-radius: 12px; box-shadow: 0 4px 15px rgba(42, 38, 34, 0.05); overflow: hidden;">
+        ${renderEmailHeader("Support Desk", "Ticket Closed")}
+        
+        <div class="mobile-body mobile-body-welcome" style="padding: 20px 12px; color: #2A2622; font-size: 12px; line-height: 1.6;">
+          <p class="email-heading" style="font-size: 13px; font-weight: bold; margin: 0 0 16px 0;">Hi <b>${name}</b>,</p>
+          <p style="margin: 0 0 20px 0;">
+            This email is to notify you that your support ticket has been marked as <b>Closed</b> by our Support Desk. Below is a full transcript of your conversation.
+          </p>
+
+          <!-- Ticket Info -->
+          <div style="margin: 20px 0; font-family: Arial, sans-serif; font-size: 12.5px; color: #6E655A; border-bottom: 1px solid #E5DFD2; padding-bottom: 12px;">
+            <b>Ticket ID:</b> <span style="font-family: monospace; font-weight: bold; color: #2A2622;">${shortenId(ticketId)}</span><br/>
+            <b>Subject:</b> <span style="color: #2A2622;">${subject}</span><br/>
+            <b>Status:</b> <span class="text-red" style="color: #A24B3E; font-weight: bold; text-transform: uppercase;">CLOSED</span>
+          </div>
+
+          <!-- Chat History -->
+          <div style="margin-top: 24px;">
+            <div style="font-weight: bold; font-size: 12px; text-transform: uppercase; color: #6E655A; letter-spacing: 1px; margin-bottom: 16px;">
+              Conversation Transcript
+            </div>
+            ${conversationHtml}
+          </div>
+
+          <p style="margin: 24px 0 0 0; font-size: 13px; color: #6E655A; line-height: 1.5; font-family: Arial, sans-serif;">
+            If you have any further questions or if your issue is not fully resolved, feel free to reply directly to this email or open a new ticket from your customer dashboard.
           </p>
         </div>
 
@@ -281,36 +533,36 @@ export function orderConfirmationEmailHtml({
   const cleanOrderNumber = String(orderNumber || "").startsWith("JSRT") ? String(orderNumber) : `JSRT-${orderNumber}`;
   
   return `
-    <div class="email-bg" style="background-color: #F5F2EB; padding: 40px 16px; font-family: Georgia, 'Times New Roman', serif;">
-      <div class="email-card" style="max-width: 560px; margin: 0 auto; background-color: #FBF9F4; border: 1px solid #E5DFD2; border-radius: 12px; box-shadow: 0 4px 15px rgba(42, 38, 34, 0.05); overflow: hidden;">
+    <div class="email-bg" style="background-color: #F5F2EB; padding: 24px 10px; font-family: Georgia, 'Times New Roman', serif;">
+      <div class="email-card" style="width: 100%; max-width: 560px; margin: 0 auto; background-color: #FBF9F4; border: 1px solid #E5DFD2; border-radius: 12px; box-shadow: 0 4px 15px rgba(42, 38, 34, 0.05); overflow: hidden;">
         ${renderEmailHeader("Order Confirmed", cleanOrderNumber)}
         
-        <div style="padding: 28px 24px; color: #2A2622; font-size: 14px; line-height: 1.6;">
-          <p style="font-size: 16px; margin: 0 0 12px 0;">Hi <b>${name || "Customer"}</b>,</p>
+        <div class="mobile-body mobile-body-order" style="padding: 20px 12px; color: #2A2622; font-size: 12px; line-height: 1.6;">
+          <p class="email-heading" style="font-size: 13px; font-weight: bold; margin: 0 0 12px 0;">Hi <b>${name || "Customer"}</b>,</p>
           <p style="margin: 0 0 20px 0;">Your order has been placed and is now being processed. Thank you for shopping with us! Here is your purchase invoice summary.</p>
           
           <!-- Order details Strip (AJIO box style) -->
-          <div style="background-color: #FFFFFF; border: 1px solid #E5DFD2; border-radius: 8px; padding: 18px 20px; margin-bottom: 24px;">
+          <div class="light-card" style="background-color: #FFFFFF; border: 1px solid #E5DFD2; border-radius: 8px; padding: 18px 20px; margin-bottom: 24px;">
             <table style="width: 100%; border-collapse: collapse; font-family: Arial, sans-serif; font-size: 12px;">
               <tr>
-                <td style="padding: 4px 0; color: #6E655A; width: 60%;">Order ID</td>
-                <td style="padding: 4px 0; font-weight: bold; color: #B08D4C; text-align: right;">${cleanOrderNumber}</td>
+                <td style="padding: 4px 0; color: #6E655A;">Order ID</td>
+                <td class="text-gold" style="padding: 4px 0; font-weight: bold; color: #B08D4C; text-align: right; white-space: nowrap;">${cleanOrderNumber}</td>
               </tr>
               <tr>
                 <td style="padding: 4px 0; color: #6E655A;">Order Placed</td>
-                <td style="padding: 4px 0; font-weight: bold; color: #2A2622; text-align: right;">${new Date().toLocaleDateString("en-IN", { dateStyle: "medium" })}</td>
+                <td style="padding: 4px 0; font-weight: bold; color: #2A2622; text-align: right; white-space: nowrap;">${new Date().toLocaleDateString("en-IN", { dateStyle: "medium" })}</td>
               </tr>
               ${userId ? `
               <tr>
                 <td style="padding: 4px 0; color: #6E655A;">Customer Registry ID</td>
-                <td style="padding: 4px 0; font-weight: bold; color: #2A2622; text-align: right; font-family: monospace;">${userId}</td>
+                <td style="padding: 4px 0; font-weight: bold; color: #2A2622; text-align: right; font-family: monospace; white-space: nowrap;">${userId}</td>
               </tr>` : ""}
             </table>
           </div>
 
           <!-- Items delivered box (AJIO style) -->
-          <div style="background-color: #FFFFFF; border: 1px solid #E5DFD2; border-radius: 8px; overflow: hidden; margin-bottom: 24px;">
-            <div style="background-color: #F7F5EE; padding: 10px 16px; font-weight: bold; font-size: 12px; color: #2A2622; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #E5DFD2;">
+          <div class="light-card" style="background-color: #FFFFFF; border: 1px solid #E5DFD2; border-radius: 8px; overflow: hidden; margin-bottom: 24px;">
+            <div class="light-card-header" style="background-color: #F7F5EE; padding: 10px 16px; font-weight: bold; font-size: 12px; color: #2A2622; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #E5DFD2;">
               Item(s) Ordered
             </div>
             <table cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse: collapse;">
@@ -327,13 +579,13 @@ export function orderConfirmationEmailHtml({
               </tr>
               ${discountPaise > 0 ? `
               <tr>
-                <td style="color: #A24B3E;">Coupon Discount</td>
-                <td align="right" style="font-weight: bold; color: #A24B3E;">-${formatINR(discountPaise, true)}</td>
+                <td class="text-red" style="color: #A24B3E;">Coupon Discount</td>
+                <td align="right" class="text-red" style="font-weight: bold; color: #A24B3E;">-${formatINR(discountPaise, true)}</td>
               </tr>` : ""}
               ${walletUsedPaise > 0 ? `
               <tr>
-                <td style="color: #A24B3E;">Wallet Redemption</td>
-                <td align="right" style="font-weight: bold; color: #A24B3E;">-${formatINR(walletUsedPaise, true)}</td>
+                <td class="text-red" style="color: #A24B3E;">Wallet Redemption</td>
+                <td align="right" class="text-red" style="font-weight: bold; color: #A24B3E;">-${formatINR(walletUsedPaise, true)}</td>
               </tr>` : ""}
               <tr>
                 <td style="color: #6E655A;">Standard Delivery</td>
@@ -345,14 +597,14 @@ export function orderConfirmationEmailHtml({
               </tr>
               ${cashbackEarnedPaise > 0 ? `
               <tr>
-                <td style="color: #4B7A52; font-size: 11.5px; padding-top: 2px;">Cashback Credited</td>
-                <td align="right" style="font-weight: bold; color: #4B7A52; font-size: 11.5px; padding-top: 2px;">+${formatINR(cashbackEarnedPaise, true)}</td>
+                <td class="text-green" style="color: #4B7A52; font-size: 11.5px; padding-top: 2px;">Cashback Credited</td>
+                <td align="right" class="text-green" style="font-weight: bold; color: #4B7A52; font-size: 11.5px; padding-top: 2px;">+${formatINR(cashbackEarnedPaise, true)}</td>
               </tr>` : ""}
             </table>
           </div>
 
           <!-- Billing address and Mode of Payment (stacked for mobile compatibility) -->
-          <div style="background-color: #FFFFFF; border: 1px solid #E5DFD2; border-radius: 8px; padding: 16px; font-family: Arial, sans-serif; font-size: 12.5px; margin-bottom: 16px;">
+          <div class="light-card" style="background-color: #FFFFFF; border: 1px solid #E5DFD2; border-radius: 8px; padding: 16px; font-family: Arial, sans-serif; font-size: 12.5px; margin-bottom: 16px;">
             <div style="font-weight: bold; text-transform: uppercase; font-size: 10px; letter-spacing: 0.5px; color: #6E655A; margin-bottom: 8px; border-bottom: 1px solid #F5F2EB; padding-bottom: 4px;">Delivery Address</div>
             <div style="font-weight: bold; font-size: 13.5px; color: #2A2622; margin-bottom: 4px;">${shippingAddress.recipient}</div>
             <div style="color: #2A2622; line-height: 1.5;">
@@ -362,7 +614,7 @@ export function orderConfirmationEmailHtml({
             </div>
           </div>
 
-          <div style="background-color: #FFFFFF; border: 1px solid #E5DFD2; border-radius: 8px; padding: 16px; font-family: Arial, sans-serif; font-size: 12.5px; margin-bottom: 16px;">
+          <div class="light-card" style="background-color: #FFFFFF; border: 1px solid #E5DFD2; border-radius: 8px; padding: 16px; font-family: Arial, sans-serif; font-size: 12.5px; margin-bottom: 16px;">
             <div style="font-weight: bold; text-transform: uppercase; font-size: 10px; letter-spacing: 0.5px; color: #6E655A; margin-bottom: 8px; border-bottom: 1px solid #F5F2EB; padding-bottom: 4px;">Mode of Payment</div>
             <div style="font-weight: bold; font-size: 13.5px; color: #B08D4C; margin-bottom: 4px;">PREPAID</div>
             <div style="color: #6E655A; line-height: 1.5;">
@@ -397,40 +649,40 @@ export function orderDeliveredEmailHtml({
   const cleanOrderNumber = String(orderNumber || "").startsWith("JSRT") ? String(orderNumber) : `JSRT-${orderNumber}`;
 
   return `
-    <div class="email-bg" style="background-color: #F5F2EB; padding: 40px 16px; font-family: Georgia, 'Times New Roman', serif;">
-      <div class="email-card" style="max-width: 560px; margin: 0 auto; background-color: #FBF9F4; border: 1px solid #E5DFD2; border-radius: 12px; box-shadow: 0 4px 15px rgba(42, 38, 34, 0.05); overflow: hidden;">
+    <div class="email-bg" style="background-color: #F5F2EB; padding: 24px 10px; font-family: Georgia, 'Times New Roman', serif;">
+      <div class="email-card" style="width: 100%; max-width: 560px; margin: 0 auto; background-color: #FBF9F4; border: 1px solid #E5DFD2; border-radius: 12px; box-shadow: 0 4px 15px rgba(42, 38, 34, 0.05); overflow: hidden;">
         ${renderEmailHeader("Order Delivered", cleanOrderNumber)}
         
-        <div style="padding: 28px 24px; color: #2A2622; font-size: 14px; line-height: 1.6;">
-          <p style="font-size: 16px; margin: 0 0 12px 0;">Hi <b>${name || "Customer"}</b>,</p>
+        <div class="mobile-body mobile-body-order" style="padding: 20px 12px; color: #2A2622; font-size: 12px; line-height: 1.6;">
+          <p class="email-heading" style="font-size: 13px; font-weight: bold; margin: 0 0 12px 0;">Hi <b>${name || "Customer"}</b>,</p>
           <p style="margin: 0 0 20px 0;">Great news — your order has been successfully delivered at the given address. We hope you enjoy your new handloom garments!</p>
 
           <!-- Order details Strip (AJIO box style) -->
-          <div style="background-color: #FFFFFF; border: 1px solid #E5DFD2; border-radius: 8px; padding: 18px 20px; margin-bottom: 24px;">
+          <div class="light-card" style="background-color: #FFFFFF; border: 1px solid #E5DFD2; border-radius: 8px; padding: 18px 20px; margin-bottom: 24px;">
             <table style="width: 100%; border-collapse: collapse; font-family: Arial, sans-serif; font-size: 12px;">
               <tr>
-                <td style="padding: 4px 0; color: #6E655A; width: 60%;">Order ID</td>
-                <td style="padding: 4px 0; font-weight: bold; color: #B08D4C; text-align: right;">${cleanOrderNumber}</td>
+                <td style="padding: 4px 0; color: #6E655A;">Order ID</td>
+                <td class="text-gold" style="padding: 4px 0; font-weight: bold; color: #B08D4C; text-align: right; white-space: nowrap;">${cleanOrderNumber}</td>
               </tr>
               <tr>
                 <td style="padding: 4px 0; color: #6E655A;">Delivery Date</td>
-                <td style="padding: 4px 0; font-weight: bold; color: #2A2622; text-align: right;">${new Date().toLocaleDateString("en-IN", { dateStyle: "medium" })}</td>
+                <td style="padding: 4px 0; font-weight: bold; color: #2A2622; text-align: right; white-space: nowrap;">${new Date().toLocaleDateString("en-IN", { dateStyle: "medium" })}</td>
               </tr>
               <tr>
                 <td style="padding: 4px 0; color: #6E655A;">Courier Partner</td>
-                <td style="padding: 4px 0; font-weight: bold; color: #2A2622; text-align: right;">SHADOWFAX</td>
+                <td style="padding: 4px 0; font-weight: bold; color: #2A2622; text-align: right; white-space: nowrap;">SHADOWFAX</td>
               </tr>
               ${trackingId ? `
               <tr>
                 <td style="padding: 4px 0; color: #6E655A;">Tracking ID</td>
-                <td style="padding: 4px 0; font-weight: bold; color: #B08D4C; text-align: right; font-family: monospace;">${trackingId}</td>
+                <td style="padding: 4px 0; font-weight: bold; color: #B08D4C; text-align: right; font-family: monospace; white-space: nowrap;">${trackingId}</td>
               </tr>` : ""}
             </table>
           </div>
 
           <!-- Items delivered box (AJIO style) -->
-          <div style="background-color: #FFFFFF; border: 1px solid #E5DFD2; border-radius: 8px; overflow: hidden; margin-bottom: 24px;">
-            <div style="background-color: #F7F5EE; padding: 10px 16px; font-weight: bold; font-size: 12px; color: #2A2622; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #E5DFD2;">
+          <div class="light-card" style="background-color: #FFFFFF; border: 1px solid #E5DFD2; border-radius: 8px; overflow: hidden; margin-bottom: 24px;">
+            <div class="light-card-header" style="background-color: #F7F5EE; padding: 10px 16px; font-weight: bold; font-size: 12px; color: #2A2622; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #E5DFD2;">
               Item(s) Delivered
             </div>
             <table cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse: collapse;">
@@ -481,16 +733,16 @@ export function refundProcessedEmailHtml({
   const cleanOrderNumber = String(orderNumber || "").startsWith("JSRT") ? String(orderNumber) : `JSRT-${orderNumber}`;
 
   return `
-    <div class="email-bg" style="background-color: #F5F2EB; padding: 40px 16px; font-family: Georgia, 'Times New Roman', serif;">
-      <div class="email-card" style="max-width: 560px; margin: 0 auto; background-color: #FBF9F4; border: 1px solid #E5DFD2; border-radius: 12px; box-shadow: 0 4px 15px rgba(42, 38, 34, 0.05); overflow: hidden;">
+    <div class="email-bg" style="background-color: #F5F2EB; padding: 24px 10px; font-family: Georgia, 'Times New Roman', serif;">
+      <div class="email-card" style="width: 100%; max-width: 560px; margin: 0 auto; background-color: #FBF9F4; border: 1px solid #E5DFD2; border-radius: 12px; box-shadow: 0 4px 15px rgba(42, 38, 34, 0.05); overflow: hidden;">
         ${renderEmailHeader("Refund Processed", cleanOrderNumber)}
         
-        <div style="padding: 28px 24px; color: #2A2622; font-size: 14px; line-height: 1.6;">
-          <p style="font-size: 16px; margin: 0 0 12px 0;">Hi <b>${name || "Customer"}</b>,</p>
+        <div class="mobile-body mobile-body-order" style="padding: 20px 12px; color: #2A2622; font-size: 12px; line-height: 1.6;">
+          <p class="email-heading" style="font-size: 13px; font-weight: bold; margin: 0 0 12px 0;">Hi <b>${name || "Customer"}</b>,</p>
           <p style="margin: 0 0 20px 0;">We have successfully processed a refund for your order. Here is your transaction summary.</p>
 
           <!-- Refund Summary Box (AJIO styled table) -->
-          <div style="background-color: #FFFFFF; border: 1px solid #E5DFD2; border-radius: 8px; padding: 18px 20px; margin-bottom: 24px;">
+          <div class="light-card" style="background-color: #FFFFFF; border: 1px solid #E5DFD2; border-radius: 8px; padding: 18px 20px; margin-bottom: 24px;">
             <div style="font-weight: bold; font-size: 12px; text-transform: uppercase; color: #6E655A; letter-spacing: 1px; margin-bottom: 12px; border-bottom: 1px solid #E5DFD2; padding-bottom: 6px; font-family: Arial, sans-serif;">
               Refund Transaction Summary
             </div>
@@ -501,11 +753,11 @@ export function refundProcessedEmailHtml({
               </colgroup>
               <tr>
                 <td style="color: #6E655A; border-bottom: 1px solid #F5F2EB; padding: 4px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Original Paid Amount</td>
-                <td style="font-weight: bold; text-align: right; color: #2A2622; border-bottom: 1px solid #F5F2EB; padding: 4px 0;">${formatINR(totalPaidPaise, true)}</td>
+                <td style="font-weight: bold; text-align: right; color: #2A2622; border-bottom: 1px solid #F5F2EB; padding: 4px 0; white-space: nowrap;">${formatINR(totalPaidPaise, true)}</td>
               </tr>
               <tr>
-                <td style="font-weight: bold; color: #4B7A52; border-bottom: 1px solid #F5F2EB; font-size: 13px; padding: 4px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Refunded Value</td>
-                <td style="font-weight: bold; color: #4B7A52; text-align: right; border-bottom: 1px solid #F5F2EB; font-size: 13px; padding: 4px 0;">${formatINR(refundAmountPaise, true)}</td>
+                <td class="text-green" style="font-weight: bold; color: #4B7A52; border-bottom: 1px solid #F5F2EB; font-size: 13px; padding: 4px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Refunded Value</td>
+                <td class="text-green" style="font-weight: bold; color: #4B7A52; text-align: right; border-bottom: 1px solid #F5F2EB; font-size: 13px; padding: 4px 0; white-space: nowrap;">${formatINR(refundAmountPaise, true)}</td>
               </tr>
               ${transactionId ? `
               <tr>
@@ -514,7 +766,7 @@ export function refundProcessedEmailHtml({
               </tr>` : ""}
               <tr>
                 <td style="color: #6E655A; border-bottom: 1px solid #F5F2EB; padding: 4px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Refund Date</td>
-                <td style="font-weight: bold; text-align: right; color: #2A2622; border-bottom: 1px solid #F5F2EB; padding: 4px 0;">${new Date().toLocaleDateString("en-IN", { dateStyle: "medium" })}</td>
+                <td style="font-weight: bold; text-align: right; color: #2A2622; border-bottom: 1px solid #F5F2EB; padding: 4px 0; white-space: nowrap;">${new Date().toLocaleDateString("en-IN", { dateStyle: "medium" })}</td>
               </tr>
               ${note ? `
               <tr>
@@ -537,8 +789,8 @@ export function refundProcessedEmailHtml({
           </div>
 
           <!-- Items delivered box (AJIO style) -->
-          <div style="background-color: #FFFFFF; border: 1px solid #E5DFD2; border-radius: 8px; overflow: hidden; margin-bottom: 24px;">
-            <div style="background-color: #F7F5EE; padding: 10px 16px; font-weight: bold; font-size: 12px; color: #2A2622; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #E5DFD2;">
+          <div class="light-card" style="background-color: #FFFFFF; border: 1px solid #E5DFD2; border-radius: 8px; overflow: hidden; margin-bottom: 24px;">
+            <div class="light-card-header" style="background-color: #F7F5EE; padding: 10px 16px; font-weight: bold; font-size: 12px; color: #2A2622; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #E5DFD2;">
               Itemized Order details
             </div>
             <table cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse: collapse;">
@@ -575,30 +827,30 @@ export function orderRejectedEmailHtml({
   const cleanOrderNumber = String(orderNumber || "").startsWith("JSRT") ? String(orderNumber) : `JSRT-${orderNumber}`;
 
   return `
-    <div class="email-bg" style="background-color: #F5F2EB; padding: 40px 16px; font-family: Georgia, 'Times New Roman', serif;">
-      <div class="email-card" style="max-width: 560px; margin: 0 auto; background-color: #FBF9F4; border: 1px solid #E5DFD2; border-radius: 12px; box-shadow: 0 4px 15px rgba(42, 38, 34, 0.05); overflow: hidden;">
+    <div class="email-bg" style="background-color: #F5F2EB; padding: 24px 10px; font-family: Georgia, 'Times New Roman', serif;">
+      <div class="email-card" style="width: 100%; max-width: 560px; margin: 0 auto; background-color: #FBF9F4; border: 1px solid #E5DFD2; border-radius: 12px; box-shadow: 0 4px 15px rgba(42, 38, 34, 0.05); overflow: hidden;">
         ${renderEmailHeader("Order Cancelled", cleanOrderNumber)}
         
-        <div style="padding: 28px 24px; color: #2A2622; font-size: 14px; line-height: 1.6;">
-          <p style="font-size: 16px; margin: 0 0 12px 0;">Hi <b>${name || "Customer"}</b>,</p>
+        <div class="mobile-body mobile-body-order" style="padding: 20px 12px; color: #2A2622; font-size: 12px; line-height: 1.6;">
+          <p class="email-heading" style="font-size: 13px; font-weight: bold; margin: 0 0 12px 0;">Hi <b>${name || "Customer"}</b>,</p>
           <p style="margin: 0 0 20px 0;">We regret to inform you that your order has been cancelled and rejected by our team.</p>
 
           ${rejectionReason ? `
           <!-- Rejection Message Box -->
-          <div style="padding: 14px 18px; background-color: #FDF2F2; border: 1px solid #F8D7DA; border-radius: 6px; color: #721C24; font-size: 12.5px; font-family: Arial, sans-serif; margin-bottom: 20px; line-height: 1.5;">
+          <div class="light-card text-red" style="padding: 14px 18px; background-color: #FDF2F2; border: 1px solid #F8D7DA; border-radius: 6px; color: #721C24; font-size: 12.5px; font-family: Arial, sans-serif; margin-bottom: 20px; line-height: 1.5;">
             <strong>Reason for cancellation:</strong> ${rejectionReason}
           </div>
           ` : ""}
 
           <!-- Refund Notice Card -->
-          <div style="padding: 16px; background-color: #FFFFFF; border: 1px solid #E5DFD2; border-radius: 8px; margin-bottom: 24px; border-left: 4px solid #B08D4C; font-family: Arial, sans-serif; font-size: 12.5px; line-height: 1.5;">
-            <div style="font-weight: bold; color: #B08D4C; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; font-size: 11.5px;">Refund Policy Notice</div>
+          <div class="light-card" style="padding: 16px; background-color: #FFFFFF; border: 1px solid #E5DFD2; border-radius: 8px; margin-bottom: 24px; border-left: 4px solid #B08D4C; font-family: Arial, sans-serif; font-size: 12.5px; line-height: 1.5;">
+            <div class="text-gold" style="font-weight: bold; color: #B08D4C; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; font-size: 11.5px;">Refund Policy Notice</div>
             <div style="color: #6E655A;">Any prepaid payment will be automatically refunded back to the original source in 24 hours. A transaction notification email will follow.</div>
           </div>
 
           <!-- Items delivered box (AJIO style) -->
-          <div style="background-color: #FFFFFF; border: 1px solid #E5DFD2; border-radius: 8px; overflow: hidden; margin-bottom: 24px;">
-            <div style="background-color: #F7F5EE; padding: 10px 16px; font-weight: bold; font-size: 12px; color: #2A2622; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #E5DFD2;">
+          <div class="light-card" style="background-color: #FFFFFF; border: 1px solid #E5DFD2; border-radius: 8px; overflow: hidden; margin-bottom: 24px;">
+            <div class="light-card-header" style="background-color: #F7F5EE; padding: 10px 16px; font-weight: bold; font-size: 12px; color: #2A2622; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #E5DFD2;">
               Cancelled Item details
             </div>
             <table cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse: collapse;">
@@ -639,6 +891,7 @@ export function generateInvoicePdfBase64({
   totalPaise,
   cashbackEarnedPaise,
   userId,
+  trackingId,
 }: {
   orderNumber: string;
   name?: string;
@@ -651,6 +904,7 @@ export function generateInvoicePdfBase64({
   totalPaise: number;
   cashbackEarnedPaise: number;
   userId?: string | number;
+  trackingId?: string | null;
 }): string {
   const doc = new jsPDF();
   
@@ -669,6 +923,7 @@ export function generateInvoicePdfBase64({
     wallet_used_paise: walletUsedPaise,
     total_paise: totalPaise,
     cashback_earned_paise: cashbackEarnedPaise,
+    tracking_id: trackingId || null,
   };
 
   drawInvoicePdf(doc, orderObj, userId);

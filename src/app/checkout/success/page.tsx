@@ -35,6 +35,128 @@ const PARCEL_JUMPS = [0, 1, 2].map((i) => ({
   delay: 0.15 + i * 0.24,
 }));
 
+let sharedAudioCtx: any = null;
+
+function getSharedCtx() {
+  if (typeof window === "undefined") return null;
+  if (!sharedAudioCtx) {
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    if (AudioContextClass) {
+      sharedAudioCtx = new AudioContextClass();
+    }
+  }
+  return sharedAudioCtx;
+}
+
+function initAudio() {
+  const ctx = getSharedCtx();
+  if (!ctx) return;
+  if (ctx.state === "suspended") {
+    ctx.resume().catch((e: any) => console.error("Error resuming AudioContext:", e));
+  }
+  // Play a silent oscillator to prime the context immediately
+  try {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0, ctx.currentTime);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(0);
+    osc.stop(0.05);
+  } catch (e) {
+    // Ignore
+  }
+}
+
+function playSuccessChime() {
+  const ctx = getSharedCtx();
+  if (!ctx) return;
+  try {
+    if (ctx.state === "suspended") {
+      ctx.resume();
+    }
+    
+    const playNote = (freq: number, start: number, dur: number) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(freq, start);
+      
+      gain.gain.setValueAtTime(0.12, start);
+      gain.gain.exponentialRampToValueAtTime(0.001, start + dur);
+      
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      
+      osc.start(start);
+      osc.stop(start + dur);
+    };
+    
+    const now = ctx.currentTime;
+    playNote(523.25, now, 0.35);         // C5
+    playNote(659.25, now + 0.1, 0.4);    // E5
+    playNote(783.99, now + 0.2, 0.45);   // G5
+    playNote(1046.50, now + 0.3, 0.85);  // C6
+  } catch (err) {
+    console.error("Failed to play success chime sound:", err);
+  }
+}
+
+function playVanZoomSound() {
+  const ctx = getSharedCtx();
+  if (!ctx) return;
+  try {
+    if (ctx.state === "suspended") {
+      ctx.resume();
+    }
+    
+    const now = ctx.currentTime;
+    const duration = 1.6;
+    
+    const osc = ctx.createOscillator();
+    const mod = ctx.createOscillator();
+    const modGain = ctx.createGain();
+    const filter = ctx.createBiquadFilter();
+    const mainGain = ctx.createGain();
+    
+    osc.type = "triangle";
+    osc.frequency.setValueAtTime(80, now);
+    osc.frequency.exponentialRampToValueAtTime(450, now + duration);
+    
+    mod.type = "sawtooth";
+    mod.frequency.setValueAtTime(25, now);
+    mod.frequency.linearRampToValueAtTime(60, now + duration);
+    
+    modGain.gain.setValueAtTime(15, now);
+    modGain.gain.linearRampToValueAtTime(40, now + duration);
+    
+    filter.type = "lowpass";
+    filter.Q.setValueAtTime(3, now);
+    filter.frequency.setValueAtTime(200, now);
+    filter.frequency.exponentialRampToValueAtTime(1000, now + duration);
+    
+    mainGain.gain.setValueAtTime(0.01, now);
+    mainGain.gain.linearRampToValueAtTime(0.18, now + 0.4); 
+    mainGain.gain.linearRampToValueAtTime(0.12, now + 0.9); 
+    mainGain.gain.exponentialRampToValueAtTime(0.001, now + duration); 
+    
+    mod.connect(modGain);
+    modGain.connect(osc.frequency);
+    
+    osc.connect(filter);
+    filter.connect(mainGain);
+    mainGain.connect(ctx.destination);
+    
+    osc.start(now);
+    mod.start(now);
+    osc.stop(now + duration);
+    mod.stop(now + duration);
+  } catch (err) {
+    console.error("Failed to play van zoom sound:", err);
+  }
+}
+
 function OrderSuccessPageContent() {
   const searchParams = useSearchParams();
   const orderNumber = searchParams.get("order_number") || "JSRT-2026-UNKNOWN";
@@ -43,6 +165,23 @@ function OrderSuccessPageContent() {
   const [stage, setStage] = useState<Stage>(0);
 
   useEffect(() => {
+    if (stage === 2) {
+      playVanZoomSound();
+    } else if (stage === 4) {
+      playSuccessChime();
+    }
+  }, [stage]);
+
+  useEffect(() => {
+    // Prime the audio context immediately on mount using checkout active user gesture token
+    initAudio();
+
+    const unlock = () => {
+      initAudio();
+    };
+    window.addEventListener("click", unlock, { once: true });
+    window.addEventListener("touchstart", unlock, { once: true });
+
     const t1 = setTimeout(() => setStage(1), 2000); // finished driving in, stopped at center
     const t2 = setTimeout(() => setStage(2), 3300); // door opened, parcel dropped
     const t3 = setTimeout(() => setStage(3), 4400); // done wheel-spinning
@@ -52,6 +191,8 @@ function OrderSuccessPageContent() {
       clearTimeout(t2);
       clearTimeout(t3);
       clearTimeout(t4);
+      window.removeEventListener("click", unlock);
+      window.removeEventListener("touchstart", unlock);
     };
   }, []);
 
@@ -66,7 +207,14 @@ function OrderSuccessPageContent() {
   });
 
   return (
-    <div className="relative py-16 sm:py-24 bg-ivory min-h-[75vh] flex items-center overflow-hidden">
+    <div 
+      onClick={() => {
+        if (stage < 4) {
+          setStage(4);
+        }
+      }}
+      className={`relative py-16 sm:py-24 bg-ivory min-h-[75vh] flex items-center overflow-hidden ${stage < 4 ? "cursor-pointer select-none" : ""}`}
+    >
       {/* Animation overlay: van drives in slowly, stops & unloads a parcel, wheel-spins, then speeds off */}
       {stage < 4 && (
         <div className="absolute inset-0 flex items-center justify-center overflow-hidden pointer-events-none">

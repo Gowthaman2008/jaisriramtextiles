@@ -12,17 +12,14 @@ export async function GET(request: Request) {
     const { data } = await supabase.auth.exchangeCodeForSession(code);
     const user = data?.user;
 
-    // First sign-in for a brand-new OAuth account: created_at and last_sign_in_at
-    // land within moments of each other. Returning users' last_sign_in_at is far newer.
     if (user?.email) {
-      const createdAt = new Date(user.created_at).getTime();
-      const lastSignIn = new Date(user.last_sign_in_at || user.created_at).getTime();
-      const isFirstSignIn = Math.abs(lastSignIn - createdAt) < 10_000;
+      // Robust check: check if welcome email was already sent using user metadata
+      const welcomeEmailSent = user.user_metadata?.welcome_email_sent === true;
 
-      if (isFirstSignIn) {
-        const provider = user.app_metadata?.provider || "google";
-        // Awaited (not fire-and-forget): Vercel can freeze the function the instant
-        // the redirect response is returned, killing any still-pending promise.
+      if (!welcomeEmailSent) {
+        const provider = user.app_metadata?.provider || "email";
+
+        // 1. Send the welcome email
         await sendEmail({
           to: user.email,
           subject: "Welcome to JAI SRI RAM TEXTILES!",
@@ -32,6 +29,13 @@ export async function GET(request: Request) {
             provider,
           }),
         }).catch((err) => console.error("Welcome email failed:", err));
+
+        // 2. Mark as sent in user metadata to prevent duplicate emails
+        await supabase.auth.updateUser({
+          data: {
+            welcome_email_sent: true,
+          },
+        }).catch((err) => console.error("Failed to update welcome email metadata:", err));
       }
     }
   }

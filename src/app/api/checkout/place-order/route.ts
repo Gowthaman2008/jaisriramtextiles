@@ -47,7 +47,7 @@ export async function POST(request: Request) {
     for (const item of cart) {
       const { data: dbProduct, error: prodErr } = await supabase
         .from("products")
-        .select("id, name, price_paise, compare_at_paise, cashback_paise, stock, is_active, product_images(url, sort_order)")
+        .select("id, name, price_paise, compare_at_paise, cashback_paise, stock, is_active, pieces_per_pack, product_images(url, sort_order)")
         .eq("id", item.id)
         .single();
 
@@ -162,7 +162,9 @@ export async function POST(request: Request) {
 
       validatedItems.push({
         product_id: dbProduct.id,
-        name: dbProduct.name + (item.isFreeGift ? " (Free Gift)" : ""),
+        name: dbProduct.name + 
+              (dbProduct.pieces_per_pack && dbProduct.pieces_per_pack > 1 ? ` (${dbProduct.pieces_per_pack} piece in 1 Pack)` : "") + 
+              (item.isFreeGift ? " (Free Gift)" : ""),
         variant: matchedVar ? `${matchedVar.size || ""} ${matchedVar.color || ""}`.trim() : null,
         sku: matchedVar?.sku || null,
         size: matchedVar?.size || null,
@@ -343,6 +345,15 @@ export async function POST(request: Request) {
     // 8. Place order (Atomic operations)
     // 8a. Insert the main order record
     const mockPaymentId = razorpayPaymentId || `pay_mock_${Math.random().toString(36).slice(2, 11)}`;
+    
+    // Calculate default delivery date (current date + 4 days)
+    const defaultDeliveryDate = new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toLocaleDateString("en-IN", {
+      weekday: "long",
+      day: "numeric",
+      month: "short",
+      year: "numeric"
+    });
+
     const { data: newOrder, error: orderInsertError } = await supabase
       .from("orders")
       .insert({
@@ -358,7 +369,10 @@ export async function POST(request: Request) {
         total_paise: totalPaise,
         cashback_earned_paise: totalCashbackEarned,
         coupon_id: couponId,
-        shipping_address: shippingAddress,
+        shipping_address: {
+          ...shippingAddress,
+          delivery_date: defaultDeliveryDate
+        },
         razorpay_order_id: isRazorpay ? `order_rzp_${randomDigits}` : null,
         razorpay_payment_id: mockPaymentId,
         placed_at: new Date().toISOString(),

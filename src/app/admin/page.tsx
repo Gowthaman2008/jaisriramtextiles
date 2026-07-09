@@ -415,7 +415,7 @@ export default function AdminDashboardPage() {
     return () => clearInterval(interval);
   }, [selectedSupportId]);
 
-  const chatEndRef = useRef<HTMLDivElement>(null);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
 
   const shortenId = (id: string) => {
     if (!id || id.length < 12) return id;
@@ -426,13 +426,18 @@ export default function AdminDashboardPage() {
     if (selectedSupportId) {
       // Small timeout to allow render completion
       setTimeout(() => {
-        chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        chatContainerRef.current?.scrollTo({
+          top: chatContainerRef.current.scrollHeight,
+          behavior: "smooth"
+        });
       }, 80);
     }
   }, [activeReplies, selectedSupportId]);
   const [orderStatus, setOrderStatus] = useState("");
   const [orderTrackingId, setOrderTrackingId] = useState("");
   const [orderTrackingUrl, setOrderTrackingUrl] = useState("");
+  const [orderCourierName, setOrderCourierName] = useState("");
+  const [orderDeliveryDate, setOrderDeliveryDate] = useState("");
   const [orderNote, setOrderNote] = useState("");
   const [orderRejectionReason, setOrderRejectionReason] = useState("");
   const [orderAddress, setOrderAddress] = useState<any>({});
@@ -1584,6 +1589,8 @@ export default function AdminDashboardPage() {
     setOrderStatus(order.status);
     setOrderTrackingId(order.tracking_id || "");
     setOrderTrackingUrl(order.courier_tracking_url || "");
+    setOrderCourierName(order.shipping_address?.courier_name || order.shipping_address?.carrier_name || "");
+    setOrderDeliveryDate(order.shipping_address?.delivery_date || "");
     setOrderAddress({ ...order.shipping_address });
     setOrderNote("");
     setOrderRejectionReason(order.rejection_reason || "");
@@ -1594,6 +1601,8 @@ export default function AdminDashboardPage() {
     if (orderStatus !== selectedOrder.status) return true;
     if (orderTrackingId !== (selectedOrder.tracking_id || "")) return true;
     if (orderTrackingUrl !== (selectedOrder.courier_tracking_url || "")) return true;
+    if (orderCourierName !== (selectedOrder.shipping_address?.courier_name || selectedOrder.shipping_address?.carrier_name || "")) return true;
+    if (orderDeliveryDate !== (selectedOrder.shipping_address?.delivery_date || "")) return true;
     if (orderNote.trim() !== "") return true; // a fresh audit note always counts as a change
     if (orderRejectionReason !== (selectedOrder.rejection_reason || "")) return true;
     if (JSON.stringify(orderAddress) !== JSON.stringify(selectedOrder.shipping_address || {})) return true;
@@ -1618,7 +1627,11 @@ export default function AdminDashboardPage() {
           status: orderStatus,
           tracking_id: orderTrackingId,
           courier_tracking_url: orderTrackingUrl,
-          shipping_address: orderAddress,
+          shipping_address: {
+            ...orderAddress,
+            courier_name: orderCourierName.trim() || null,
+            delivery_date: orderDeliveryDate.trim() || null
+          },
           rejection_reason: orderStatus === "rejected" ? orderRejectionReason.trim() : null,
           note: orderNote.trim() || undefined
         })
@@ -3139,10 +3152,10 @@ export default function AdminDashboardPage() {
                         <p className="text-xs text-taupe mt-0.5">Placed on: {new Date(selectedOrder.placed_at).toLocaleString("en-IN")}</p>
                       </div>
                       <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-                        <button onClick={() => printInvoice({ ...selectedOrder, shipping_address: orderAddress, tracking_id: orderTrackingId, courier_tracking_url: orderTrackingUrl })} className="flex-1 sm:flex-none p-2 border border-line rounded bg-cream hover:bg-beige text-ink flex items-center justify-center gap-1.5 text-xs font-semibold cursor-pointer" title="Print Invoice">
+                        <button onClick={() => printInvoice({ ...selectedOrder, shipping_address: { ...orderAddress, courier_name: orderCourierName, delivery_date: orderDeliveryDate }, tracking_id: orderTrackingId, courier_tracking_url: orderTrackingUrl })} className="flex-1 sm:flex-none p-2 border border-line rounded bg-cream hover:bg-beige text-ink flex items-center justify-center gap-1.5 text-xs font-semibold cursor-pointer" title="Print Invoice">
                           <Printer className="w-4 h-4" /> Invoice
                         </button>
-                        <button onClick={() => printPackingSlip({ ...selectedOrder, shipping_address: orderAddress, tracking_id: orderTrackingId, courier_tracking_url: orderTrackingUrl })} className="flex-1 sm:flex-none p-2 border border-line rounded bg-cream hover:bg-beige text-ink flex items-center justify-center gap-1.5 text-xs font-semibold cursor-pointer" title="Print Packing Slip">
+                        <button onClick={() => printPackingSlip({ ...selectedOrder, shipping_address: { ...orderAddress, courier_name: orderCourierName, delivery_date: orderDeliveryDate }, tracking_id: orderTrackingId, courier_tracking_url: orderTrackingUrl })} className="flex-1 sm:flex-none p-2 border border-line rounded bg-cream hover:bg-beige text-ink flex items-center justify-center gap-1.5 text-xs font-semibold cursor-pointer" title="Print Packing Slip">
                           <Printer className="w-4 h-4" /> Packing Slip
                         </button>
                         <button onClick={() => setSelectedOrder(null)} className="flex-1 sm:flex-none flex items-center justify-center gap-1 text-xs font-semibold text-taupe hover:text-ink px-2.5 py-2 border border-line rounded bg-white transition-colors cursor-pointer">
@@ -3183,6 +3196,16 @@ export default function AdminDashboardPage() {
                             />
                           </div>
                         )}
+
+                        <div className="flex flex-col gap-1.5">
+                          <label className="text-xs font-bold text-taupe">Courier Partner Name</label>
+                          <input type="text" placeholder="e.g. Delhivery, Blue Dart, Shadowfax..." value={orderCourierName} onChange={(e) => setOrderCourierName(e.target.value)} className="rounded border border-line bg-white px-3 py-1.5 text-sm outline-none" />
+                        </div>
+
+                        <div className="flex flex-col gap-1.5">
+                          <label className="text-xs font-bold text-taupe">Delivery Date</label>
+                          <input type="text" placeholder="e.g. Monday, 13 Jul 2026" value={orderDeliveryDate} onChange={(e) => setOrderDeliveryDate(e.target.value)} className="rounded border border-line bg-white px-3 py-1.5 text-sm outline-none" />
+                        </div>
 
                         <div className="flex flex-col gap-1.5">
                           <label className="text-xs font-bold text-taupe">Courier Tracking ID</label>
@@ -3288,6 +3311,11 @@ export default function AdminDashboardPage() {
                                       <span className="text-[10px] font-bold bg-ink/5 text-ink px-1.5 py-0.5 rounded">SKU: {item.sku}</span>
                                     )}
                                   </div>
+                                  {item.products?.pieces_per_pack && item.products.pieces_per_pack > 1 && !item.name.includes("piece in 1 Pack") && (
+                                    <p className="text-[10px] font-bold text-zari mt-1">
+                                      {item.products.pieces_per_pack} piece in 1 Pack
+                                    </p>
+                                  )}
                                 </div>
                               </div>
                               <span className="font-medium flex-shrink-0">{formatRupees(item.unit_price_paise * item.quantity)}</span>
@@ -3982,7 +4010,14 @@ export default function AdminDashboardPage() {
                                     <tbody>
                                       {order.order_items?.map((item: any) => (
                                         <tr key={item.id} className="border-b border-line/30 text-ink">
-                                          <td className="py-1.5">{item.name} {item.variant && <span className="text-[10px] text-taupe">({item.variant})</span>}</td>
+                                          <td className="py-1.5">
+                                            <div>{item.name} {item.variant && <span className="text-[10px] text-taupe">({item.variant})</span>}</div>
+                                            {item.products?.pieces_per_pack && item.products.pieces_per_pack > 1 && !item.name.includes("piece in 1 Pack") && (
+                                              <div className="text-[10px] font-bold text-zari mt-0.5">
+                                                {item.products.pieces_per_pack} piece in 1 Pack
+                                              </div>
+                                            )}
+                                          </td>
                                           <td className="py-1.5 text-center">{item.quantity}</td>
                                           <td className="py-1.5 text-right">{formatRupees(item.unit_price_paise * item.quantity)}</td>
                                         </tr>
@@ -5296,7 +5331,7 @@ $$ language plpgsql;`}
                                         </div>
 
                                         {/* Chat Messages */}
-                                        <div className="p-4 space-y-4 max-h-[300px] overflow-y-auto bg-ivory/10" data-lenis-prevent>
+                                        <div ref={chatContainerRef} className="p-4 space-y-4 max-h-[300px] overflow-y-auto bg-ivory/10" data-lenis-prevent>
                                           {/* Message 1: Original User Message (Left/Customer align) */}
                                           <div className="flex flex-col items-start space-y-1 w-full">
                                             <div className="flex items-center gap-1.5">
@@ -5345,8 +5380,6 @@ $$ language plpgsql;`}
                                                   </div>
                                                 );
                                               })}
-                                              {/* Auto-scroll anchor */}
-                                              <div ref={chatEndRef} />
                                             </>
                                           )}
                                         </div>

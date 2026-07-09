@@ -75,7 +75,7 @@ export function AnnouncementBar() {
 
   return (
     <div className="bg-ink text-ivory">
-      <div className="flex h-9 items-center justify-center overflow-hidden text-center text-xs tracking-wide">
+      <div className="flex min-h-[2.25rem] py-1.5 px-4 items-center justify-center overflow-hidden text-center text-[10.5px] sm:text-xs tracking-wide leading-normal">
         <AnimatePresence mode="wait">
           <motion.span
             key={i}
@@ -83,6 +83,7 @@ export function AnnouncementBar() {
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: -12, opacity: 0 }}
             transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+            className="w-full"
           >
             {messages[i]}
           </motion.span>

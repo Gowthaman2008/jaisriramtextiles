@@ -61,21 +61,26 @@ export default function SignUpPage() {
       return;
     }
 
-    const supabase = createClient();
-    const { error: authError } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { data: { full_name: name, phone: cleanPhone } },
-    });
+    try {
+      const signupRes = await fetch("/api/auth/sign-up", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password, name, phone: cleanPhone }),
+      });
 
-    if (authError) {
-      setError(authError.message);
+      if (!signupRes.ok) {
+        const errorData = await signupRes.json();
+        setError(errorData.error || "An error occurred during account creation.");
+        setLoading(false);
+        return;
+      }
+
+      setDone(true);
       setLoading(false);
-      return;
+    } catch (err: any) {
+      setError("Failed to register. Please check your network and try again.");
+      setLoading(false);
     }
-
-    setDone(true);
-    setLoading(false);
   }
 
   if (done) {

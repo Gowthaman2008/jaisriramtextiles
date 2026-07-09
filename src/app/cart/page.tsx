@@ -108,13 +108,16 @@ export default function CartPage() {
                 className="zari-frame bg-white rounded-card p-4 sm:p-5 flex gap-4 sm:gap-6 shadow-soft items-center border border-line"
               >
                 {/* Thumbnail */}
-                <div className="relative w-20 h-20 sm:w-24 sm:h-24 border border-line rounded-md overflow-hidden bg-cream flex-shrink-0">
+                <Link
+                  href={`/product/${item.slug}`}
+                  className="relative w-20 h-20 sm:w-24 sm:h-24 border border-line rounded-md overflow-hidden bg-cream flex-shrink-0 hover:opacity-95 transition-opacity block cursor-pointer"
+                >
                   {item.image ? (
                     <Image src={item.image} alt={item.name} fill className="object-cover" />
                   ) : (
                     <ShoppingBag className="w-8 h-8 m-8 text-muted" />
                   )}
-                </div>
+                </Link>
 
                 {/* Details */}
                 <div className="flex-1 min-w-0">
@@ -137,6 +140,11 @@ export default function CartPage() {
                               Color: {item.variant.color}
                             </span>
                           )}
+                        </div>
+                      )}
+                      {item.piecesPerPack && item.piecesPerPack > 1 && (
+                        <div className="text-[10px] font-bold text-zari mt-1.5">
+                          {item.piecesPerPack} piece in 1 Pack
                         </div>
                       )}
                     </div>
@@ -365,68 +373,71 @@ export default function CartPage() {
                                 return (
                                   <div
                                     key={c.id}
-                                    className={`rounded-2xl border p-4 flex flex-col sm:flex-row items-center gap-5 transition-all duration-300 relative ${
+                                    className={`rounded-2xl border p-4 flex gap-4 items-center transition-all duration-300 relative ${
                                       isSelected
                                         ? "bg-white border-[#B08D4C] ring-2 ring-[#B08D4C]/15 shadow-md shadow-[#B08D4C]/5"
                                         : "bg-white border-line hover:border-[#B08D4C]/45 hover:shadow-xs"
                                     }`}
                                   >
                                     {/* Left: Product Image */}
-                                    <div className="relative w-18 h-18 sm:w-20 sm:h-20 rounded-xl overflow-hidden bg-cream border border-line flex-shrink-0 shadow-inner">
+                                    <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden bg-cream border border-line flex-shrink-0 shadow-inner flex items-center justify-center">
                                       {img ? (
                                         <Image src={img} alt={c.display_name || c.product?.name || ""} fill className="object-cover transition-transform duration-500 hover:scale-105" />
                                       ) : (
-                                        <ShoppingBag className="w-6 h-6 m-6 text-muted" />
+                                        <ShoppingBag className="w-7 h-7 text-taupe/40" />
                                       )}
                                     </div>
 
-                                    {/* Middle: Content Details */}
-                                    <div className="flex-1 text-center sm:text-left min-w-0">
-                                      <h3 className="text-sm sm:text-base font-bold text-ink leading-tight">
-                                        {c.display_name || c.product?.name}
-                                      </h3>
-                                      
-                                      {details && (
-                                        <div className="mt-1 flex flex-wrap justify-center sm:justify-start gap-1">
-                                          <span className="inline-block bg-[#FAF6EC] border border-[#E9DBB7]/40 text-[#8C6D2D] text-[10px] font-bold px-2 py-0.5 rounded">
-                                            Variant: {details}
-                                          </span>
-                                        </div>
-                                      )}
-
-                                      {productVal && (
-                                        <div className="mt-2 text-[10px] font-bold text-[#8C6D2D] bg-[#FAF6EC] border border-[#E9DBB7]/30 px-2.5 py-0.5 rounded-full inline-flex items-center gap-1.5">
-                                          <span>🎁 FREE GIFT</span>
-                                          <span className="text-[9px] text-taupe/80 line-through font-normal">
-                                            (Worth {productVal})
-                                          </span>
-                                        </div>
-                                      )}
-                                    </div>
-
-                                    {/* Right: CTA Selection Button */}
-                                    <div className="flex-shrink-0 w-full sm:w-auto pt-2 sm:pt-0">
-                                      <button
-                                        type="button"
-                                        onClick={() => addFreeGift(c)}
-                                        className={`w-full sm:w-auto px-5 py-2 rounded-xl text-[10px] font-bold tracking-widest uppercase transition-all duration-300 flex items-center justify-center gap-1.5 cursor-pointer ${
-                                          isSelected
-                                            ? "bg-[#FAF6EC] border-2 border-[#B08D4C] text-[#8C6D2D] shadow-inner"
-                                            : "bg-gradient-to-r from-[#D9BE85] to-[#B08D4C] text-[#553C0C] hover:brightness-[1.05] shadow-[0_4px_12px_rgba(176,141,76,0.2)] hover:scale-[1.02] active:scale-[0.98] border-0"
-                                        }`}
-                                      >
-                                        {isSelected ? (
-                                          <>
-                                            <CheckCircle2 size={11} className="stroke-[3]" />
-                                            Claimed
-                                          </>
-                                        ) : (
-                                          <>
-                                            <Gift size={11} />
-                                            Claim Gift
-                                          </>
+                                    {/* Right Content Column */}
+                                    <div className="flex-1 min-w-0 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                                      {/* Content Details */}
+                                      <div className="text-left min-w-0">
+                                        <h3 className="text-xs sm:text-sm font-bold text-ink leading-tight">
+                                          {c.display_name || c.product?.name}
+                                        </h3>
+                                        
+                                        {details && (
+                                          <div className="mt-1 flex flex-wrap gap-1">
+                                            <span className="inline-block bg-[#FAF6EC] border border-[#E9DBB7]/40 text-[#8C6D2D] text-[9px] font-bold px-1.5 py-0.5 rounded">
+                                              Variant: {details}
+                                            </span>
+                                          </div>
                                         )}
-                                      </button>
+
+                                        {productVal && (
+                                          <div className="mt-1.5 text-[9px] font-bold text-[#8C6D2D] bg-[#FAF6EC] border border-[#E9DBB7]/30 px-2 py-0.5 rounded-full inline-flex items-center gap-1.5">
+                                            <span>🎁 FREE GIFT</span>
+                                            <span className="text-[8px] text-taupe/80 line-through font-normal">
+                                              (Worth {productVal})
+                                            </span>
+                                          </div>
+                                        )}
+                                      </div>
+
+                                      {/* CTA Selection Button */}
+                                      <div className="flex-shrink-0">
+                                        <button
+                                          type="button"
+                                          onClick={() => addFreeGift(c)}
+                                          className={`px-4 py-2 rounded-lg text-[9px] font-bold tracking-widest uppercase transition-all duration-300 flex items-center justify-center gap-1.5 cursor-pointer ${
+                                            isSelected
+                                              ? "bg-[#FAF6EC] border border-[#B08D4C] text-[#8C6D2D] shadow-inner"
+                                              : "bg-gradient-to-r from-[#D9BE85] to-[#B08D4C] text-[#553C0C] hover:brightness-[1.05] shadow-[0_3px_8px_rgba(176,141,76,0.15)] hover:scale-[1.02] active:scale-[0.98] border-0"
+                                          }`}
+                                        >
+                                          {isSelected ? (
+                                            <>
+                                              <CheckCircle2 size={10} className="stroke-[3]" />
+                                              Claimed
+                                            </>
+                                          ) : (
+                                            <>
+                                              <Gift size={10} />
+                                              Claim Gift
+                                            </>
+                                          )}
+                                        </button>
+                                      </div>
                                     </div>
                                   </div>
                                 );
@@ -478,6 +489,10 @@ export default function CartPage() {
                   <span className="text-ink font-medium">
                     {shippingPaise === 0 ? "FREE" : formatINR(shippingPaise, true)}
                   </span>
+                </div>
+                <div className="flex justify-between items-center text-xs text-taupe mt-1">
+                  <span>Estimated Delivery:</span>
+                  <span className="text-success font-bold text-right">{new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "short", year: "numeric" })}</span>
                 </div>
                 
                 <div className="border-t border-line pt-3 flex justify-between font-display text-lg text-ink font-bold">

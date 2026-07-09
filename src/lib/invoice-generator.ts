@@ -136,7 +136,7 @@ export function drawInvoicePdf(doc: jsPDF, order: any, profileUserId?: string | 
   const shippingPaise = order.shipping_paise || 0;
   const walletUsedPaise = order.wallet_used_paise || 0;
   const totalPaise = order.total_paise || 0;
-  const carrierName = "SHADOWFAX";
+  const carrierName = shippingAddress.courier_name || shippingAddress.carrier_name || order.carrier_name || "";
   const awbNumber = order.tracking_id || "AWAITING DISPATCH";
 
   // Seller Details
@@ -144,7 +144,7 @@ export function drawInvoicePdf(doc: jsPDF, order: any, profileUserId?: string | 
   const shopAddressLine1 = "Survey No. 437/4, Sasti Nagar, Kallangattuvalasu";
   const shopAddressLine2 = "Komarapalayam, Namakkal, Tamil Nadu, PIN: 638183";
   const shopGSTIN = "33BTFPR7051F1ZP";
-  const shopEmail = "support@jaisriramtextiles.in";
+  const shopEmail = "jaisriramtextilekpm@gmail.com";
   const shopPhone = "+91 8608386872";
 
   // State Code / Place of Supply Calculation
@@ -290,7 +290,9 @@ export function drawInvoicePdf(doc: jsPDF, order: any, profileUserId?: string | 
   doc.text(`ORDER NUMBER: ${cleanOrderNumber}`, ml + 4, mt + 89);
   doc.text(`PAYMENT MODE: ${totalPaise === 0 ? "ONLINE/WALLET" : "PREPAID"}`, ml + 100, mt + 89);
   // Row 2
-  doc.text(`CARRIER NAME: ${carrierName}`, ml + 4, mt + 95);
+  if (carrierName && carrierName.trim() !== "") {
+    doc.text(`CARRIER NAME: ${carrierName.toUpperCase()}`, ml + 4, mt + 95);
+  }
   doc.text(`AWB NUMBER: ${awbNumber}`, ml + 100, mt + 95);
 
   // --- SECTION 4: ITEMS TABLE HEADERS ---

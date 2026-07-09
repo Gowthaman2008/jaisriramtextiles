@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, Heart, ShoppingBag, User, Menu, X, ChevronRight } from "lucide-react";
+import { Search, Heart, ShoppingBag, User, Menu, X, ChevronRight, Package } from "lucide-react";
 import { Container } from "@/components/ui/container";
 import { CATEGORIES, BUSINESS } from "@/lib/constants";
 import { cn } from "@/lib/utils";
@@ -85,7 +85,7 @@ export function Navbar() {
               <Search size={19} />
             </button>
             <WishlistButton count={wishlistCount} className="hidden lg:inline-flex" />
-            <IconLink href="/account" label="Account" className="hidden lg:inline-flex"><User size={19} /></IconLink>
+            <IconLink href="/account" label="Account"><User size={19} /></IconLink>
             <CartButton count={cartCount} />
             <button
               onClick={() => setMobileOpen(true)}
@@ -112,7 +112,7 @@ export function Navbar() {
             <div className="absolute inset-0 bg-ink/25 backdrop-blur-md" onClick={() => setMobileOpen(false)} />
             
             <motion.nav
-              className="absolute right-0 top-0 h-full w-[85%] max-w-sm bg-ivory bg-weave flex flex-col shadow-lift border-l border-zari/15 overflow-hidden"
+              className="absolute right-0 top-0 h-full w-[85%] max-w-sm bg-ivory flex flex-col shadow-lift border-l border-zari/15 overflow-hidden"
               initial={{ x: "100%" }}
               animate={{ x: 0 }}
               exit={{ x: "100%" }}
@@ -237,6 +237,7 @@ export function Navbar() {
                       { href: "/search", label: "Search Catalog", icon: <Search size={16} />, action: () => { setMobileOpen(false); setSearchOpen(true); } },
                       { href: "/account/wishlist", label: "My Wishlist", icon: <Heart size={16} />, count: wishlistCount },
                       { href: "/account", label: "My Profile", icon: <User size={16} /> },
+                      { href: "/account?tab=orders", label: "My Orders", icon: <Package size={16} /> },
                       { href: "/cart", label: "Shopping Cart", icon: <ShoppingBag size={16} />, count: cartCount }
                     ].map((link) => (
                       <motion.div

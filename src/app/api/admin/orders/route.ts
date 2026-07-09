@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/admin";
-import { sendEmail, orderDeliveredEmailHtml, refundProcessedEmailHtml, orderRejectedEmailHtml } from "@/lib/email";
+import { sendEmail, orderDeliveredEmailHtml, refundProcessedEmailHtml, orderRejectedEmailHtml, generateInvoicePdfBase64 } from "@/lib/email";
 
 async function checkAdminAuth() {
   try {
@@ -38,7 +38,7 @@ export async function GET() {
       .select(`
         *,
         profiles (user_id, full_name, email, phone),
-        order_items (*, products(description)),
+        order_items (*, products(description, pieces_per_pack)),
         order_events (*),
         coupons (code, type, value)
       `)
@@ -88,7 +88,7 @@ export async function PUT(request: Request) {
     // Load original order to compare status (and enough detail to email on delivery)
     const { data: originalOrder } = await supabase
       .from("orders")
-      .select("status, payment_status, order_number, total_paise, tracking_id, profiles(email, full_name), order_items(name, variant, unit_price_paise, quantity, image_url)")
+      .select("status, payment_status, order_number, total_paise, subtotal_paise, discount_paise, shipping_paise, wallet_used_paise, cashback_earned_paise, shipping_address, tracking_id, profiles(email, full_name, user_id), order_items(name, variant, unit_price_paise, quantity, image_url, products(pieces_per_pack))")
       .eq("id", id)
       .single();
 
@@ -130,6 +130,27 @@ export async function PUT(request: Request) {
       if (status === "delivered") {
         const profile = originalOrder.profiles as any;
         if (profile?.email) {
+          // Generate PDF Invoice
+          let pdfBase64 = "";
+          try {
+            pdfBase64 = generateInvoicePdfBase64({
+              orderNumber: originalOrder.order_number,
+              name: profile.full_name,
+              items: originalOrder.order_items || [],
+              shippingAddress: originalOrder.shipping_address,
+              subtotalPaise: originalOrder.subtotal_paise || 0,
+              discountPaise: originalOrder.discount_paise || 0,
+              shippingPaise: originalOrder.shipping_paise || 0,
+              walletUsedPaise: originalOrder.wallet_used_paise || 0,
+              totalPaise: originalOrder.total_paise || 0,
+              cashbackEarnedPaise: originalOrder.cashback_earned_paise || 0,
+              userId: profile.user_id,
+              trackingId: originalOrder.tracking_id || tracking_id,
+            });
+          } catch (pdfErr) {
+            console.error("PDF generation on delivery failed:", pdfErr);
+          }
+
           await sendEmail({
             to: profile.email,
             subject: `Order Delivered — ${originalOrder.order_number} | JAI SRI RAM TEXTILES`,
@@ -140,6 +161,14 @@ export async function PUT(request: Request) {
               totalPaise: originalOrder.total_paise,
               trackingId: originalOrder.tracking_id || tracking_id,
             }),
+            ...(pdfBase64 ? {
+              attachments: [
+                {
+                  filename: `invoice_${originalOrder.order_number}.pdf`,
+                  content: pdfBase64,
+                }
+              ]
+            } : {})
           }).catch((err) => console.error("Delivery email failed:", err));
         }
       }

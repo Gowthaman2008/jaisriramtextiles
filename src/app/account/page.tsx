@@ -110,12 +110,15 @@ export default function AccountPage() {
   const [userReplyText, setUserReplyText] = useState("");
   const [submittingUserReply, setSubmittingUserReply] = useState(false);
 
-  const userChatEndRef = useRef<HTMLDivElement>(null);
+  const userChatContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (trackedQuery) {
       setTimeout(() => {
-        userChatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        userChatContainerRef.current?.scrollTo({
+          top: userChatContainerRef.current.scrollHeight,
+          behavior: "smooth"
+        });
       }, 80);
     }
   }, [trackedQuery, trackedQuery?.replies]);
@@ -196,7 +199,7 @@ export default function AccountPage() {
       const [ordersRes, walletRes, addrRes, reviewsRes] = await Promise.all([
         supabase
           .from("orders")
-          .select("*, order_items(*, products(description, slug))")
+          .select("*, order_items(*, products(description, slug, pieces_per_pack))")
           .eq("user_id", userId)
           .order("placed_at", { ascending: false }),
         supabase
@@ -819,8 +822,17 @@ export default function AccountPage() {
                         <p className="text-xs text-taupe uppercase tracking-wide font-bold">Order</p>
                         <p className="font-mono text-base text-ink mt-0.5 font-bold italic select-all cursor-pointer hover:text-zari" title="Double-click to select / drag to copy">{o.order_number}</p>
                         <p className="text-xs text-taupe mt-1 flex items-center gap-1.5 font-bold">
-                          <Calendar size={12} /> {new Date(o.placed_at).toLocaleDateString("en-IN", { dateStyle: "long" })}
+                          <Calendar size={12} /> Placed: {new Date(o.placed_at).toLocaleDateString("en-IN", { dateStyle: "long" })}
                         </p>
+                        {o.shipping_address?.delivery_date ? (
+                          <p className="text-xs mt-1 flex items-center gap-1.5 font-semibold text-success">
+                            🚚 Delivery Date: <span className="font-bold">{o.shipping_address.delivery_date}</span>
+                          </p>
+                        ) : (
+                          <p className="text-xs mt-1 flex items-center gap-1.5 font-semibold text-success">
+                            🚚 Delivery Date: <span className="font-bold">{new Date(new Date(o.placed_at).getTime() + 4 * 24 * 60 * 60 * 1000).toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "short", year: "numeric" })}</span>
+                          </p>
+                        )}
                       </div>
                       <div className="flex items-center gap-2.5">
                         <span className={`px-3 py-1 rounded-full text-xs uppercase tracking-wide border ${
@@ -888,6 +900,11 @@ export default function AccountPage() {
                                     )}
                                   </div>
                                   {item.variant && <p className="text-xs text-taupe mt-1 bg-cream/60 inline-block px-1.5 py-0.5 rounded font-bold">{item.variant}</p>}
+                                  {item.products?.pieces_per_pack && item.products.pieces_per_pack > 1 && !item.name.includes("piece in 1 Pack") && (
+                                    <p className="text-[10px] font-bold text-zari mt-1">
+                                      {item.products.pieces_per_pack} piece in 1 Pack
+                                    </p>
+                                  )}
                                   <p className="text-xs text-taupe mt-1"><strong className="text-ink font-bold">{formatINR(item.unit_price_paise, true)}</strong> &times; <strong className="text-ink font-bold">{item.quantity}</strong></p>
                                 </div>
                               </div>
@@ -1534,7 +1551,7 @@ export default function AccountPage() {
                   </div>
 
                   {/* Chat Messages Body */}
-                  <div className="p-5 space-y-6 max-h-[400px] overflow-y-auto bg-ivory/20" data-lenis-prevent>
+                  <div ref={userChatContainerRef} className="p-5 space-y-6 max-h-[400px] overflow-y-auto bg-ivory/20" data-lenis-prevent>
                        {/* User's Original Message (Right align) */}
                     <div className="flex flex-col items-end space-y-1 w-full animate-fade-in">
                       <div className="flex items-center gap-2">
@@ -1621,8 +1638,6 @@ export default function AccountPage() {
                         </span>
                       </div>
                     )}
-                    {/* Auto-scroll anchor */}
-                    <div ref={userChatEndRef} />
                   </div>
 
                   {/* Customer Reply Input Form Footer */}

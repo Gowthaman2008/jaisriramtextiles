@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/admin";
+import { sendEmail, ticketClosedEmailHtml } from "@/lib/email";
 
 async function checkAdminAuth() {
   try {
@@ -69,6 +70,30 @@ export async function PUT(request: Request) {
       .single();
 
     if (error) throw error;
+
+    // Send ticket closure email if action was 'close'
+    if (action === "close") {
+      // 1. Fetch all replies
+      const { data: replies } = await supabase
+        .from("support_message_replies")
+        .select("*")
+        .eq("message_id", id)
+        .order("created_at", { ascending: true });
+
+      // 2. Dispatch email to customer
+      await sendEmail({
+        to: data.email,
+        subject: `[Closed Ticket #${id.substring(0, 8).toUpperCase()}] ${data.subject}`,
+        html: ticketClosedEmailHtml({
+          ticketId: data.id,
+          name: data.name,
+          subject: data.subject,
+          originalMessage: data.message,
+          replies: replies || [],
+        }),
+      }).catch((err) => console.error("Ticket close email dispatch failed:", err));
+    }
+
     return NextResponse.json({ success: true, message: data });
   } catch (error: any) {
     console.error("Support message reply error:", error);

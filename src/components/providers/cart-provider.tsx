@@ -21,6 +21,7 @@ export type CartItem = {
   isFreeGift?: boolean;
   campaignId?: string;
   targetAmountPaise?: number;
+  piecesPerPack?: number;
 };
 
 type CartContextType = {
@@ -113,6 +114,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
             image: product.image || (product.product_images?.[0]?.url) || "",
             quantity,
             variant: variant || null,
+            piecesPerPack: product.piecesPerPack || product.pieces_per_pack || 1,
           },
         ];
       }
@@ -167,7 +169,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         variant: variant || null,
         isFreeGift: true,
         campaignId: campaign.id,
-        targetAmountPaise: campaign.target_amount_paise
+        targetAmountPaise: campaign.target_amount_paise,
+        piecesPerPack: product.piecesPerPack || product.pieces_per_pack || 1,
       };
 
       return [...clean, giftItem];
