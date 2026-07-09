@@ -6,7 +6,6 @@ import Link from "next/link";
 import { useCart } from "@/components/providers/cart-provider";
 import { useNotification } from "@/components/providers/notification-provider";
 import { createClient } from "@/lib/supabase/client";
-import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
 import { formatINR } from "@/lib/utils";
 import { computeShipping } from "@/lib/constants";
@@ -712,14 +711,14 @@ export default function CheckoutPage() {
                     onChange={(e) => setCouponCode(e.target.value)}
                     className="flex-1 rounded border border-line bg-ivory/50 px-3 py-2 text-sm text-ink outline-none uppercase focus:border-zari"
                   />
-                  <Button
-                    size="sm"
-                    variant="gold"
+                  <button
+                    type="button"
                     onClick={handleApplyCoupon}
                     disabled={checkingCoupon || !couponCode.trim()}
+                    className="h-9 px-4 rounded-pill text-sm font-bold text-ivory bg-zari hover:bg-zari-deep transition-colors disabled:opacity-50 disabled:pointer-events-none cursor-pointer shrink-0"
                   >
                     {checkingCoupon ? "Checking..." : "Apply"}
-                  </Button>
+                  </button>
                 </div>
               )}
               {couponError && <p className="text-xs text-danger font-semibold">{couponError}</p>}
@@ -821,24 +820,23 @@ export default function CheckoutPage() {
 
             {/* Action Checkout Button */}
             <div className="space-y-3 pt-2">
-              <Button
-                variant="gold"
-                size="lg"
+              <button
+                type="button"
                 onClick={handlePlaceOrder}
                 disabled={isSubmitting}
-                className="w-full justify-center text-sm"
+                className="w-full h-[52px] px-8 rounded-pill text-sm font-bold text-ivory bg-zari hover:bg-zari-deep transition-colors disabled:opacity-50 disabled:pointer-events-none cursor-pointer inline-flex items-center justify-center gap-2"
               >
                 {isSubmitting ? (
                   <>
-                    <RefreshCw className="animate-spin w-4 h-4 mr-2" /> Processing Order...
+                    <RefreshCw className="animate-spin w-4 h-4" /> Processing Order...
                   </>
                 ) : (
                   <>
-                    <CreditCard className="w-4 h-4 mr-2" />
+                    <CreditCard className="w-4 h-4" />
                     {process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID ? "Pay & Place Order" : "Place Order (Sandbox Mode)"}
                   </>
                 )}
-              </Button>
+              </button>
               <div className="flex items-center justify-center gap-2 text-[10px] text-muted">
                 <ShieldCheck size={14} className="text-success" />
                 Payments are securely encrypted.
@@ -966,24 +964,20 @@ export default function CheckoutPage() {
               </div>
 
               <div className="flex gap-3 pt-3 border-t border-line mt-4">
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  size="sm" 
+                <button
+                  type="button"
                   onClick={() => setEditingAddress(null)}
-                  className="flex-1 cursor-pointer justify-center"
+                  className="flex-1 h-9 px-4 rounded-pill text-sm font-bold text-ink border border-line bg-transparent hover:border-zari hover:text-zari-deep transition-colors cursor-pointer inline-flex items-center justify-center"
                 >
                   Cancel
-                </Button>
-                <Button 
-                  type="submit" 
-                  variant="gold" 
-                  size="sm" 
+                </button>
+                <button
+                  type="submit"
                   disabled={savingEdit}
-                  className="flex-1 cursor-pointer justify-center"
+                  className="flex-1 h-9 px-4 rounded-pill text-sm font-bold text-ivory bg-zari hover:bg-zari-deep transition-colors disabled:opacity-50 disabled:pointer-events-none cursor-pointer inline-flex items-center justify-center"
                 >
                   {savingEdit ? "Saving..." : "Save Address"}
-                </Button>
+                </button>
               </div>
             </form>
           </div>

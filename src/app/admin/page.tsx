@@ -2379,7 +2379,7 @@ export default function AdminDashboardPage() {
               <div style="display: flex; justify-content: space-between; border-top: 1px solid #E5DFD2; padding-top: 8px; font-size: 9px; color: #6E655A; margin-top: 10px;">
                 <div>
                   <b>SENDER DETAILS:</b><br/>
-                  JAI SRI RAM TEXTILES, Komarapalayam, Tamil Nadu - 638183
+                  JAI SRI RAM TEXTILES, Kumarapalayam, Tamil Nadu - 638183
                 </div>
                 <div style="text-align: right; line-height: 1.3;">
                   Order ID: <b>${order.order_number}</b><br/>

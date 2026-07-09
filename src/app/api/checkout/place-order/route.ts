@@ -1,7 +1,8 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/admin";
 import { sendEmail, orderConfirmationEmailHtml, generateInvoicePdfBase64 } from "@/lib/email";
+import { sendWhatsApp } from "@/lib/whatsapp";
 
 export async function POST(request: Request) {
   try {
@@ -23,56 +24,62 @@ export async function POST(request: Request) {
 
     const supabase = createServiceClient(); // bypass RLS to perform orders writes & stock decs
 
-    // 2. Pre-calculate regular subtotal (excluding free gifts) for threshold validations
+    // 2. Batch-fetch every product/variant referenced in the cart in two round
+    // trips total (instead of one round trip per item, twice over) — this was
+    // the single biggest contributor to slow checkout on multi-item carts.
+    const uniqueProductIds = [...new Set(cart.map((item: any) => item.id))];
+    const { data: productsData } = await supabase
+      .from("products")
+      .select("id, name, price_paise, compare_at_paise, cashback_paise, stock, is_active, pieces_per_pack, product_images(url, sort_order)")
+      .in("id", uniqueProductIds);
+    const productsMap = new Map((productsData || []).map((p: any) => [p.id, p]));
+
+    const uniqueVariantIds = [...new Set(cart.filter((item: any) => item.variant).map((item: any) => item.variant.id))];
+    let variantsMap = new Map<string, any>();
+    if (uniqueVariantIds.length > 0) {
+      const { data: variantsData } = await supabase
+        .from("product_variants")
+        .select("id, size, color, sku, stock")
+        .in("id", uniqueVariantIds);
+      variantsMap = new Map((variantsData || []).map((v: any) => [v.id, v]));
+    }
+
+    // 2a. Pre-calculate regular subtotal (excluding free gifts) for threshold validations
     let regularSubtotalPaise = 0;
     for (const item of cart) {
       if (!item.isFreeGift) {
-        const { data: dbProduct } = await supabase
-          .from("products")
-          .select("price_paise")
-          .eq("id", item.id)
-          .single();
+        const dbProduct = productsMap.get(item.id);
         if (dbProduct) {
           regularSubtotalPaise += dbProduct.price_paise * item.quantity;
         }
       }
     }
 
-    // 2b. Load products from DB to validate prices, stock, and cashback values
+    // 2b. Validate prices, stock, and cashback values using the batched data above
     let subtotalPaise = 0;
     let totalCashbackEarned = 0;
     const validatedItems: any[] = [];
     const stockUpdates: any[] = []; // to run after validation succeeds
 
     for (const item of cart) {
-      const { data: dbProduct, error: prodErr } = await supabase
-        .from("products")
-        .select("id, name, price_paise, compare_at_paise, cashback_paise, stock, is_active, pieces_per_pack, product_images(url, sort_order)")
-        .eq("id", item.id)
-        .single();
+      const dbProduct = productsMap.get(item.id);
 
-      if (prodErr || !dbProduct || !dbProduct.is_active) {
+      if (!dbProduct || !dbProduct.is_active) {
         return NextResponse.json({ error: `Product '${item.name}' is no longer available` }, { status: 400 });
       }
 
-      let currentStock = dbProduct.stock;
       let matchedVar: any = null;
 
       // Validate Variant if selected
       if (item.variant) {
-        const { data: dbVariant, error: varErr } = await supabase
-          .from("product_variants")
-          .select("id, size, color, sku, stock")
-          .eq("id", item.variant.id)
-          .single();
+        const dbVariant = variantsMap.get(item.variant.id);
 
-        if (varErr || !dbVariant) {
+        if (!dbVariant) {
           return NextResponse.json({ error: `Variant for '${item.name}' is not valid` }, { status: 400 });
         }
         if (dbVariant.stock < item.quantity) {
           return NextResponse.json({ error: `Insufficient stock for variant '${dbVariant.size || ""}-${dbVariant.color || ""}' of '${item.name}'` }, { status: 400 });
         }
-        currentStock = dbVariant.stock;
         matchedVar = dbVariant;
       } else {
         if (dbProduct.stock < item.quantity) {
@@ -142,8 +149,8 @@ export async function POST(request: Request) {
         });
 
         if (hasClaimed) {
-          return NextResponse.json({ 
-            error: `You have already claimed this free gift reward (${campaign.display_name || dbProduct.name}) in a past order.` 
+          return NextResponse.json({
+            error: `You have already claimed this free gift reward (${campaign.display_name || dbProduct.name}) in a past order.`
           }, { status: 400 });
         }
 
@@ -162,8 +169,8 @@ export async function POST(request: Request) {
 
       validatedItems.push({
         product_id: dbProduct.id,
-        name: dbProduct.name + 
-              (dbProduct.pieces_per_pack && dbProduct.pieces_per_pack > 1 ? ` (${dbProduct.pieces_per_pack} piece in 1 Pack)` : "") + 
+        name: dbProduct.name +
+              (dbProduct.pieces_per_pack && dbProduct.pieces_per_pack > 1 ? ` (${dbProduct.pieces_per_pack} piece in 1 Pack)` : "") +
               (item.isFreeGift ? " (Free Gift)" : ""),
         variant: matchedVar ? `${matchedVar.size || ""} ${matchedVar.color || ""}`.trim() : null,
         sku: matchedVar?.sku || null,
@@ -345,7 +352,7 @@ export async function POST(request: Request) {
     // 8. Place order (Atomic operations)
     // 8a. Insert the main order record
     const mockPaymentId = razorpayPaymentId || `pay_mock_${Math.random().toString(36).slice(2, 11)}`;
-    
+
     // Calculate default delivery date (current date + 4 days)
     const defaultDeliveryDate = new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toLocaleDateString("en-IN", {
       weekday: "long",
@@ -400,58 +407,55 @@ export async function POST(request: Request) {
     }
     if (itemsInsertErr) throw itemsInsertErr;
 
-    // 8c. Insert order placement tracking event
-    await supabase.from("order_events").insert({
-      order_id: orderId,
-      status: "pending",
-      note: "Order placed successfully (prepaid checkout completed)",
-    });
+    // 8c. Insert order placement tracking event, decrement stock, bump coupon usage, and
+    // deduct wallet balance concurrently — these are all independent writes with no
+    // interdependency, so running them in parallel instead of one-by-one cuts this whole
+    // block down to the latency of the single slowest write instead of the sum of all of them.
+    const postInsertWrites: any[] = [
+      supabase.from("order_events").insert({
+        order_id: orderId,
+        status: "pending",
+        note: "Order placed successfully (prepaid checkout completed)",
+      }),
+    ];
 
-    // 8d. Decrement stock levels
     for (const update of stockUpdates) {
-      // Decrement product base stock
-      const { error: prodStockErr } = await supabase
-        .from("products")
-        .update({ stock: Math.max(0, update.prodStock - update.qty) })
-        .eq("id", update.productId);
-      if (prodStockErr) throw prodStockErr;
-
-      // Decrement variant stock if variant matches
+      postInsertWrites.push(
+        supabase.from("products").update({ stock: Math.max(0, update.prodStock - update.qty) }).eq("id", update.productId)
+      );
       if (update.variantId) {
-        const { error: varStockErr } = await supabase
-          .from("product_variants")
-          .update({ stock: Math.max(0, update.varStock - update.qty) })
-          .eq("id", update.variantId);
-        if (varStockErr) throw varStockErr;
+        postInsertWrites.push(
+          supabase.from("product_variants").update({ stock: Math.max(0, update.varStock - update.qty) }).eq("id", update.variantId)
+        );
       }
     }
 
-    // 8e. Increment Coupon usage count
     if (couponId) {
       const { data: currentCoupon } = await supabase.from("coupons").select("used_count").eq("id", couponId).single();
       const nextUsed = (currentCoupon?.used_count || 0) + 1;
-      await supabase.from("coupons").update({ used_count: nextUsed }).eq("id", couponId);
+      postInsertWrites.push(supabase.from("coupons").update({ used_count: nextUsed }).eq("id", couponId));
     }
 
-    // 8f. Deduct wallet balance if redeemed
     if (walletUsedPaise > 0) {
-      // Create a debit transaction log
-      const { error: txnErr } = await supabase.from("wallet_transactions").insert({
-        user_id: user.id,
-        type: "redeem",
-        amount_paise: -walletUsedPaise,
-        order_id: orderId,
-        note: `Redeemed for order ${orderNumber}`,
-      });
-      if (txnErr) throw txnErr;
-
-      // Deduct from wallet record dynamically
       const finalBal = Math.max(0, activeBalance - walletUsedPaise);
-      await supabase
-        .from("wallets")
-        .update({ balance_paise: finalBal, updated_at: new Date().toISOString() })
-        .eq("user_id", user.id);
+      postInsertWrites.push(
+        supabase.from("wallet_transactions").insert({
+          user_id: user.id,
+          type: "redeem",
+          amount_paise: -walletUsedPaise,
+          order_id: orderId,
+          note: `Redeemed for order ${orderNumber}`,
+        }),
+        supabase
+          .from("wallets")
+          .update({ balance_paise: finalBal, updated_at: new Date().toISOString() })
+          .eq("user_id", user.id)
+      );
     }
+
+    const writeResults = await Promise.all(postInsertWrites);
+    const failedWrite = writeResults.find((r: any) => r?.error);
+    if (failedWrite?.error) throw failedWrite.error;
 
     // Fetch user profile to get the 8-digit user_id, email, and name
     let dbUserId: string | number | undefined = undefined;
@@ -475,56 +479,71 @@ export async function POST(request: Request) {
     const recipientEmail = dbUserEmail || user.email;
     const recipientName = dbFullName || user.user_metadata?.full_name || user.user_metadata?.name;
 
-    // 9. Send order confirmation email (with embedded invoice) — awaited so Vercel
-    // doesn't freeze the function before the send completes. Failure here shouldn't
-    // fail the checkout, since the order is already placed.
-    if (recipientEmail) {
-      // Generate PDF Invoice
-      let pdfBase64 = "";
-      try {
-        pdfBase64 = generateInvoicePdfBase64({
-          orderNumber,
-          name: recipientName,
-          items: validatedItems,
-          shippingAddress,
-          subtotalPaise,
-          discountPaise,
-          shippingPaise,
-          walletUsedPaise,
-          totalPaise,
-          cashbackEarnedPaise: totalCashbackEarned,
-          userId: dbUserId,
-        });
-      } catch (pdfErr) {
-        console.error("PDF generation failed:", pdfErr);
+    // 9 & 10. Order confirmation email (with invoice PDF) and WhatsApp notification are
+    // both slow (PDF rendering + external API round trips) and don't affect what the
+    // customer sees next, so they're deferred via after() to run once the response has
+    // already been sent — this is what makes "Place Order" feel instant instead of
+    // making the customer wait through PDF generation + email + WhatsApp before the
+    // success animation can even start.
+    after(async () => {
+      if (recipientEmail) {
+        let pdfBase64 = "";
+        try {
+          pdfBase64 = generateInvoicePdfBase64({
+            orderNumber,
+            name: recipientName,
+            items: validatedItems,
+            shippingAddress,
+            subtotalPaise,
+            discountPaise,
+            shippingPaise,
+            walletUsedPaise,
+            totalPaise,
+            cashbackEarnedPaise: totalCashbackEarned,
+            userId: dbUserId,
+          });
+        } catch (pdfErr) {
+          console.error("PDF generation failed:", pdfErr);
+        }
+
+        await sendEmail({
+          to: recipientEmail,
+          subject: `Order Confirmed — ${orderNumber} | JAI SRI RAM TEXTILES`,
+          html: orderConfirmationEmailHtml({
+            orderNumber,
+            name: recipientName,
+            items: validatedItems,
+            shippingAddress,
+            subtotalPaise,
+            discountPaise,
+            shippingPaise,
+            walletUsedPaise,
+            totalPaise,
+            cashbackEarnedPaise: totalCashbackEarned,
+            userId: dbUserId,
+          }),
+          ...(pdfBase64 ? {
+            attachments: [
+              {
+                filename: `invoice_${orderNumber}.pdf`,
+                content: pdfBase64,
+              }
+            ]
+          } : {})
+        }).catch((err) => console.error("Order confirmation email failed:", err));
       }
 
-      await sendEmail({
-        to: recipientEmail,
-        subject: `Order Confirmed — ${orderNumber} | JAI SRI RAM TEXTILES`,
-        html: orderConfirmationEmailHtml({
-          orderNumber,
-          name: recipientName,
-          items: validatedItems,
-          shippingAddress,
-          subtotalPaise,
-          discountPaise,
-          shippingPaise,
-          walletUsedPaise,
-          totalPaise,
-          cashbackEarnedPaise: totalCashbackEarned,
-          userId: dbUserId,
-        }),
-        ...(pdfBase64 ? {
-          attachments: [
-            {
-              filename: `invoice_${orderNumber}.pdf`,
-              content: pdfBase64,
-            }
-          ]
-        } : {})
-      }).catch((err) => console.error("Order confirmation email failed:", err));
-    }
+      if (shippingAddress?.phone) {
+        const formattedTotal = (totalPaise / 100).toFixed(0);
+        const deliveryDateMsg = shippingAddress.delivery_date ? `${shippingAddress.delivery_date}` : "4-7 business days";
+        const whatsappMessage = `Vanakkam! 🌸\n\nThank you for shopping with JAI SRI RAM TEXTILES. Your order *${orderNumber}* has been placed successfully!\n\nTotal Amount: ₹${formattedTotal}\nEstimated Delivery: ${deliveryDateMsg}\n\nWe will update you once it's shipped.`;
+
+        await sendWhatsApp({
+          phone: shippingAddress.phone,
+          message: whatsappMessage,
+        }).catch((err) => console.error("WhatsApp notification failed:", err));
+      }
+    });
 
     return NextResponse.json({ success: true, orderId, orderNumber, cashbackEarnedPaise: totalCashbackEarned });
   } catch (error: any) {

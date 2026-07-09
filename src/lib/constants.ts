@@ -9,8 +9,8 @@ export const BUSINESS = {
   email: "jaisriramtextiles@gmail.com",
   // Deliberately no phone number anywhere on the public site.
   address: {
-    line1: "136/5, Sasti Nagar, Kallangattuvalasu",
-    city: "Komarapalayam",
+    line1: "5/136/5, Shasti Smart City, Kallankattuvalasu",
+    city: "Kumarapalayam",
     district: "Namakkal",
     state: "Tamil Nadu",
     pincode: "638183",

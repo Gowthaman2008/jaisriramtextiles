@@ -47,8 +47,8 @@ export default function AboutPage() {
                 <p className="font-bold text-ink uppercase tracking-wider text-xs">Mill & Registered Office</p>
                 <p>
                   <strong className="text-ink">JAI SRI RAM TEXTILES</strong><br />
-                  136/5, Sasti Nagar, Kallangattuvalasu,<br />
-                  Komarapalayam, Namakkal District,<br />
+                  5/136/5, Shasti Smart City, Kallankattuvalasu,<br />
+                  Kumarapalayam, Namakkal District,<br />
                   Tamil Nadu, India – 638183
                 </p>
               </div>

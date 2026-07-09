@@ -141,8 +141,8 @@ export function drawInvoicePdf(doc: jsPDF, order: any, profileUserId?: string | 
 
   // Seller Details
   const shopName = "JAI SRI RAM TEXTILES";
-  const shopAddressLine1 = "Survey No. 437/4, Sasti Nagar, Kallangattuvalasu";
-  const shopAddressLine2 = "Komarapalayam, Namakkal, Tamil Nadu, PIN: 638183";
+  const shopAddressLine1 = "5/136/5, Shasti Smart City, Kallankattuvalasu";
+  const shopAddressLine2 = "Kumarapalayam, Namakkal, Tamil Nadu, PIN: 638183";
   const shopGSTIN = "33BTFPR7051F1ZP";
   const shopEmail = "jaisriramtextilekpm@gmail.com";
   const shopPhone = "+91 8608386872";

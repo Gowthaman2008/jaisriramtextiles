@@ -1562,7 +1562,7 @@ export default function AccountPage() {
                 <div>
                   <p className="text-[10px] font-bold text-taupe uppercase tracking-widest mb-0.5">Our Mill</p>
                   <p className="text-xs text-ink font-bold leading-tight">JAI SRI RAM TEXTILES</p>
-                  <p className="text-[11px] text-taupe leading-snug mt-0.5">136/5, Sasti Nagar, Kallangattuvalasu, Komarapalayam, Namakkal – 638183</p>
+                  <p className="text-[11px] text-taupe leading-snug mt-0.5">5/136/5, Shasti Smart City, Kallankattuvalasu, Kumarapalayam, Namakkal – 638183</p>
                 </div>
               </div>
               <div className="flex items-start gap-3 p-3.5 bg-white border border-line/60 rounded-xl shadow-soft">
