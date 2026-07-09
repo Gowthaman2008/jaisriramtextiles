@@ -13,10 +13,16 @@ export async function GET(request: Request) {
     const user = data?.user;
 
     if (user?.email) {
-      // Robust check: check if welcome email was already sent using user metadata
-      const welcomeEmailSent = user.user_metadata?.welcome_email_sent === true;
+      // Check the profiles table (not user_metadata) for the sent flag — OAuth
+      // providers re-sync user_metadata on every login and can wipe custom keys,
+      // so relying on it caused Google users to be re-sent the welcome email.
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("welcome_email_sent")
+        .eq("id", user.id)
+        .maybeSingle();
 
-      if (!welcomeEmailSent) {
+      if (profile && profile.welcome_email_sent !== true) {
         const provider = user.app_metadata?.provider || "email";
 
         // 1. Send the welcome email
@@ -30,12 +36,14 @@ export async function GET(request: Request) {
           }),
         }).catch((err) => console.error("Welcome email failed:", err));
 
-        // 2. Mark as sent in user metadata to prevent duplicate emails
-        await supabase.auth.updateUser({
-          data: {
-            welcome_email_sent: true,
-          },
-        }).catch((err) => console.error("Failed to update welcome email metadata:", err));
+        // 2. Mark as sent on the profile row so re-logins never trigger it again
+        await supabase
+          .from("profiles")
+          .update({ welcome_email_sent: true })
+          .eq("id", user.id)
+          .then(({ error }) => {
+            if (error) console.error("Failed to update welcome_email_sent flag:", error);
+          });
       }
     }
   }

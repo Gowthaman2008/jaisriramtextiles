@@ -45,6 +45,7 @@ import {
   MessageSquareText,
   Gift
 } from "lucide-react";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 
 // Helper for formatting money — always whole rupees (no paise adjustments)
 function formatRupees(paise: number) {
@@ -362,6 +363,18 @@ export default function AdminDashboardPage() {
   const [newCannedText, setNewCannedText] = useState("");
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressTriggeredRef = useRef(false);
+
+  // Courier Presets state
+  const [courierPresets, setCourierPresets] = useState<any[]>([]);
+  const [courierPresetsIsDefault, setCourierPresetsIsDefault] = useState(false);
+  const [showCourierPopup, setShowCourierPopup] = useState(false);
+  const [editingCourierId, setEditingCourierId] = useState<string | null>(null);
+  const [editingCourierName, setEditingCourierName] = useState("");
+  const [editingCourierUrl, setEditingCourierUrl] = useState("");
+  const [newCourierName, setNewCourierName] = useState("");
+  const [newCourierUrl, setNewCourierUrl] = useState("");
+  const courierLongPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const courierLongPressTriggeredRef = useRef(false);
 
   // Shipping Settings state
   const [shippingSettings, setShippingSettings] = useState<{ free_shipping_threshold_paise: number; shipping_charge_paise: number } | null>(null);
@@ -1516,6 +1529,139 @@ export default function AdminDashboardPage() {
       setCannedResponses((prev) => [...prev, data]);
       setNewCannedText("");
       notify("Quick reply added!");
+    } catch (err: any) {
+      notify("Error: " + err.message);
+    }
+  }
+
+  // --- Courier Presets ---
+  async function handleToggleCourierPopup() {
+    if (!showCourierPopup && courierPresets.length === 0) {
+      try {
+        const res = await fetch("/api/admin/courier-presets");
+        const data = await res.json();
+        if (res.ok) {
+          setCourierPresets(data.presets || []);
+          setCourierPresetsIsDefault(!!data.isDefault);
+        }
+      } catch (err) {
+        console.error("Failed to load courier presets:", err);
+      }
+    }
+    setShowCourierPopup((prev) => !prev);
+  }
+
+  async function ensureCourierSeeded(): Promise<any[]> {
+    if (!courierPresetsIsDefault) return courierPresets;
+    try {
+      const res = await fetch("/api/admin/courier-presets", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ seedDefaults: true }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to initialize courier presets");
+      setCourierPresets(data.presets);
+      setCourierPresetsIsDefault(false);
+      return data.presets;
+    } catch (err: any) {
+      notify("Error: " + err.message);
+      return courierPresets;
+    }
+  }
+
+  function startCourierLongPress(c: any) {
+    courierLongPressTriggeredRef.current = false;
+    courierLongPressTimerRef.current = setTimeout(() => {
+      courierLongPressTriggeredRef.current = true;
+      setEditingCourierId(c.id);
+      setEditingCourierName(c.name);
+      setEditingCourierUrl(c.tracking_url);
+    }, 550);
+  }
+
+  function cancelCourierLongPress() {
+    if (courierLongPressTimerRef.current) {
+      clearTimeout(courierLongPressTimerRef.current);
+      courierLongPressTimerRef.current = null;
+    }
+  }
+
+  function handleCourierClick(c: any) {
+    if (courierLongPressTriggeredRef.current) {
+      courierLongPressTriggeredRef.current = false;
+      return;
+    }
+    setOrderCourierName(c.name);
+    setOrderTrackingUrl(c.tracking_url);
+    setShowCourierPopup(false);
+  }
+
+  async function handleSaveCourierEdit(c: any) {
+    if (!editingCourierName.trim() || !editingCourierUrl.trim()) return;
+    try {
+      let targetId = c.id;
+      if (courierPresetsIsDefault) {
+        const seeded = await ensureCourierSeeded();
+        const match = seeded.find((s: any) => s.name === c.name);
+        if (!match) throw new Error("Could not find courier preset to update");
+        targetId = match.id;
+      }
+      const res = await fetch("/api/admin/courier-presets", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: targetId, name: editingCourierName.trim(), tracking_url: editingCourierUrl.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to update courier preset");
+      setCourierPresets((prev) => prev.map((x) => (x.id === targetId ? data : x)));
+      setEditingCourierId(null);
+      notify("Courier preset updated!");
+    } catch (err: any) {
+      notify("Error: " + err.message);
+    }
+  }
+
+  async function handleDeleteCourier(c: any) {
+    if (!(await confirm("Delete this courier preset?", { danger: true }))) return;
+    try {
+      let targetId = c.id;
+      let list = courierPresets;
+      if (courierPresetsIsDefault) {
+        list = await ensureCourierSeeded();
+        const match = list.find((s: any) => s.name === c.name);
+        if (!match) throw new Error("Could not find courier preset to delete");
+        targetId = match.id;
+      }
+      const res = await fetch(`/api/admin/courier-presets?id=${targetId}`, { method: "DELETE" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to delete courier preset");
+      setCourierPresets((prev) => prev.filter((x) => x.id !== targetId));
+      setEditingCourierId(null);
+      notify("Courier preset deleted.");
+    } catch (err: any) {
+      notify("Error: " + err.message);
+    }
+  }
+
+  async function handleAddCourier() {
+    if (!newCourierName.trim() || !newCourierUrl.trim()) return;
+    try {
+      let currentList = courierPresets;
+      if (courierPresetsIsDefault) {
+        currentList = await ensureCourierSeeded();
+      }
+      const res = await fetch("/api/admin/courier-presets", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: newCourierName.trim(), tracking_url: newCourierUrl.trim(), sort_order: currentList.length }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to add courier preset");
+      setCourierPresets((prev) => [...prev, data]);
+      setNewCourierName("");
+      setNewCourierUrl("");
+      notify("Courier preset added!");
     } catch (err: any) {
       notify("Error: " + err.message);
     }
@@ -3197,9 +3343,105 @@ export default function AdminDashboardPage() {
                           </div>
                         )}
 
-                        <div className="flex flex-col gap-1.5">
-                          <label className="text-xs font-bold text-taupe">Courier Partner Name</label>
+                        <div className="flex flex-col gap-1.5 relative">
+                          <div className="flex items-center justify-between">
+                            <label className="text-xs font-bold text-taupe">Courier Partner Name</label>
+                            <button
+                              type="button"
+                              onClick={handleToggleCourierPopup}
+                              className="text-[10px] font-bold text-zari-deep hover:text-ink flex items-center gap-1 cursor-pointer"
+                              title="Choose from presaved courier partners"
+                            >
+                              <Truck size={11} /> Presets
+                            </button>
+                          </div>
                           <input type="text" placeholder="e.g. Delhivery, Blue Dart, Shadowfax..." value={orderCourierName} onChange={(e) => setOrderCourierName(e.target.value)} className="rounded border border-line bg-white px-3 py-1.5 text-sm outline-none" />
+
+                          {showCourierPopup && (
+                            <div className="absolute top-full left-0 mt-1 w-full sm:w-80 max-h-80 bg-white border border-line rounded-card shadow-lift overflow-hidden flex flex-col z-20">
+                              <div className="px-3 py-2 border-b border-line bg-cream/40 flex items-center justify-between shrink-0">
+                                <p className="text-[11px] font-bold text-ink uppercase tracking-wide">Courier Presets</p>
+                                <button
+                                  type="button"
+                                  onClick={() => { setShowCourierPopup(false); setEditingCourierId(null); }}
+                                  className="text-taupe hover:text-ink cursor-pointer"
+                                >
+                                  <X size={14} />
+                                </button>
+                              </div>
+                              <p className="text-[10px] text-taupe px-3 pt-2 font-sans">Tap to fill in name &amp; URL &middot; Long-press to edit/delete</p>
+                              <div className="flex-1 overflow-y-auto p-2 space-y-1" data-lenis-prevent>
+                                {courierPresets.map((c) => (
+                                  editingCourierId === c.id ? (
+                                    <div key={c.id} className="p-2 border border-zari/40 rounded-lg bg-zari-tint/30 space-y-1.5">
+                                      <input
+                                        type="text"
+                                        value={editingCourierName}
+                                        onChange={(e) => setEditingCourierName(e.target.value)}
+                                        placeholder="Courier name"
+                                        autoFocus
+                                        className="w-full text-xs rounded border border-line px-2 py-1.5 outline-none focus:border-zari font-sans"
+                                      />
+                                      <input
+                                        type="text"
+                                        value={editingCourierUrl}
+                                        onChange={(e) => setEditingCourierUrl(e.target.value)}
+                                        placeholder="Tracking URL"
+                                        className="w-full text-xs rounded border border-line px-2 py-1.5 outline-none focus:border-zari font-sans"
+                                      />
+                                      <div className="flex gap-1.5 justify-end">
+                                        <button type="button" onClick={() => setEditingCourierId(null)} className="text-[10px] font-bold text-taupe hover:text-ink px-2 py-1 cursor-pointer">Cancel</button>
+                                        <button type="button" onClick={() => handleDeleteCourier(c)} className="text-[10px] font-bold text-danger hover:bg-danger/10 px-2 py-1 rounded cursor-pointer">Delete</button>
+                                        <button type="button" onClick={() => handleSaveCourierEdit(c)} className="text-[10px] font-bold bg-zari hover:bg-zari-deep text-ink hover:text-white px-2.5 py-1 rounded cursor-pointer">Save</button>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <button
+                                      key={c.id}
+                                      type="button"
+                                      onMouseDown={() => startCourierLongPress(c)}
+                                      onMouseUp={cancelCourierLongPress}
+                                      onMouseLeave={cancelCourierLongPress}
+                                      onTouchStart={() => startCourierLongPress(c)}
+                                      onTouchEnd={cancelCourierLongPress}
+                                      onClick={() => handleCourierClick(c)}
+                                      className="w-full text-left px-2.5 py-2 rounded-lg hover:bg-cream/70 transition-colors cursor-pointer select-none font-sans"
+                                    >
+                                      <p className="text-xs font-bold text-ink leading-snug">{c.name}</p>
+                                      <p className="text-[10px] text-taupe truncate">{c.tracking_url}</p>
+                                    </button>
+                                  )
+                                ))}
+                              </div>
+                              <div className="border-t border-line p-2 space-y-1.5 shrink-0">
+                                <input
+                                  type="text"
+                                  value={newCourierName}
+                                  onChange={(e) => setNewCourierName(e.target.value)}
+                                  placeholder="New courier name..."
+                                  className="w-full text-xs rounded border border-line px-2 py-1.5 outline-none focus:border-zari font-sans"
+                                />
+                                <div className="flex gap-1.5">
+                                  <input
+                                    type="text"
+                                    value={newCourierUrl}
+                                    onChange={(e) => setNewCourierUrl(e.target.value)}
+                                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAddCourier(); } }}
+                                    placeholder="Tracking URL..."
+                                    className="flex-1 text-xs rounded border border-line px-2 py-1.5 outline-none focus:border-zari font-sans"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={handleAddCourier}
+                                    disabled={!newCourierName.trim() || !newCourierUrl.trim()}
+                                    className="shrink-0 text-[10px] font-bold bg-ink text-ivory px-2.5 rounded hover:bg-zari disabled:opacity-40 cursor-pointer"
+                                  >
+                                    Add
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          )}
                         </div>
 
                         <div className="flex flex-col gap-1.5">
@@ -3312,9 +3554,9 @@ export default function AdminDashboardPage() {
                                     )}
                                   </div>
                                   {item.products?.pieces_per_pack && item.products.pieces_per_pack > 1 && !item.name.includes("piece in 1 Pack") && (
-                                    <p className="text-[10px] font-bold text-zari mt-1">
-                                      {item.products.pieces_per_pack} piece in 1 Pack
-                                    </p>
+                                    <div className="inline-flex items-center gap-1 rounded bg-zari/10 border border-zari/25 px-1.5 py-0.5 text-[9px] font-bold text-zari-deep mt-1">
+                                      📦 {item.products.pieces_per_pack} Pieces in 1 Pack
+                                    </div>
                                   )}
                                 </div>
                               </div>
@@ -4013,8 +4255,8 @@ export default function AdminDashboardPage() {
                                           <td className="py-1.5">
                                             <div>{item.name} {item.variant && <span className="text-[10px] text-taupe">({item.variant})</span>}</div>
                                             {item.products?.pieces_per_pack && item.products.pieces_per_pack > 1 && !item.name.includes("piece in 1 Pack") && (
-                                              <div className="text-[10px] font-bold text-zari mt-0.5">
-                                                {item.products.pieces_per_pack} piece in 1 Pack
+                                              <div className="inline-flex items-center gap-1 rounded bg-zari/10 border border-zari/25 px-1.5 py-0.5 text-[9px] font-bold text-zari-deep mt-0.5">
+                                                📦 {item.products.pieces_per_pack} Pieces in 1 Pack
                                               </div>
                                             )}
                                           </td>
@@ -4277,11 +4519,11 @@ export default function AdminDashboardPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="flex flex-col gap-1.5">
                         <label className="text-xs font-bold text-taupe uppercase">Expiry Date & Time</label>
-                        <input
-                          type="datetime-local"
+                        <DateTimePicker
                           value={newCouponExpiry}
-                          onChange={(e) => setNewCouponExpiry(e.target.value)}
-                          className="rounded border border-line bg-white px-3 py-2 text-sm outline-none focus:border-zari"
+                          onChange={setNewCouponExpiry}
+                          placeholder="No expiry (never expires)"
+                          minDate={new Date()}
                         />
                       </div>
                       <div className="flex items-center gap-2 mt-6">
@@ -5826,22 +6068,20 @@ $$ language plpgsql;`}
                       {/* Starts At */}
                       <div className="flex flex-col gap-1.5">
                         <label className="text-xs font-bold text-taupe uppercase">Starts At (Optional)</label>
-                        <input
-                          type="datetime-local"
+                        <DateTimePicker
                           value={campStartsAt}
-                          onChange={(e) => setCampStartsAt(e.target.value)}
-                          className="rounded border border-line bg-white px-3 py-2.5 text-sm outline-none focus:border-zari"
+                          onChange={setCampStartsAt}
+                          placeholder="Immediately (no start date)"
                         />
                       </div>
 
                       {/* Expires At */}
                       <div className="flex flex-col gap-1.5">
                         <label className="text-xs font-bold text-taupe uppercase">Expires At (Optional)</label>
-                        <input
-                          type="datetime-local"
+                        <DateTimePicker
                           value={campExpiresAt}
-                          onChange={(e) => setCampExpiresAt(e.target.value)}
-                          className="rounded border border-line bg-white px-3 py-2.5 text-sm outline-none focus:border-zari"
+                          onChange={setCampExpiresAt}
+                          placeholder="Never expires"
                         />
                       </div>
                     </div>

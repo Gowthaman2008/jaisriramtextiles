@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/admin";
-import { sendEmail, orderDeliveredEmailHtml, refundProcessedEmailHtml, orderRejectedEmailHtml, generateInvoicePdfBase64 } from "@/lib/email";
+import { sendEmail, orderDeliveredEmailHtml, orderShippedEmailHtml, refundProcessedEmailHtml, orderRejectedEmailHtml, generateInvoicePdfBase64 } from "@/lib/email";
 
 async function checkAdminAuth() {
   try {
@@ -88,7 +88,7 @@ export async function PUT(request: Request) {
     // Load original order to compare status (and enough detail to email on delivery)
     const { data: originalOrder } = await supabase
       .from("orders")
-      .select("status, payment_status, order_number, total_paise, subtotal_paise, discount_paise, shipping_paise, wallet_used_paise, cashback_earned_paise, shipping_address, tracking_id, profiles(email, full_name, user_id), order_items(name, variant, unit_price_paise, quantity, image_url, products(pieces_per_pack))")
+      .select("status, payment_status, order_number, total_paise, subtotal_paise, discount_paise, shipping_paise, wallet_used_paise, cashback_earned_paise, shipping_address, tracking_id, courier_tracking_url, profiles(email, full_name, user_id), order_items(name, variant, unit_price_paise, quantity, image_url, products(pieces_per_pack))")
       .eq("id", id)
       .single();
 
@@ -127,10 +127,34 @@ export async function PUT(request: Request) {
         });
 
       // 4. Send delivery confirmation email on the pending -> delivered transition
+      // (no invoice attached here — the invoice already went out on the shipped email)
       if (status === "delivered") {
         const profile = originalOrder.profiles as any;
         if (profile?.email) {
-          // Generate PDF Invoice
+          await sendEmail({
+            to: profile.email,
+            subject: `Order Delivered — ${originalOrder.order_number} | JAI SRI RAM TEXTILES`,
+            html: orderDeliveredEmailHtml({
+              orderNumber: originalOrder.order_number,
+              name: profile.full_name,
+              items: originalOrder.order_items || [],
+              totalPaise: originalOrder.total_paise,
+              trackingId: originalOrder.tracking_id || tracking_id,
+            }),
+          }).catch((err) => console.error("Delivery email failed:", err));
+        }
+      }
+
+      // Send shipment notification (with tracking + invoice attached) on the -> shipped transition
+      if (status === "shipped") {
+        const profile = originalOrder.profiles as any;
+        if (profile?.email) {
+          const finalTrackingId = tracking_id || originalOrder.tracking_id || null;
+          const finalTrackingUrl = courier_tracking_url || originalOrder.courier_tracking_url || null;
+          const finalCourierName = shipping_address?.courier_name || originalOrder.shipping_address?.courier_name || null;
+          const finalDeliveryDate = shipping_address?.delivery_date || originalOrder.shipping_address?.delivery_date || null;
+
+          // Generate PDF Invoice with AWB number and courier name
           let pdfBase64 = "";
           try {
             pdfBase64 = generateInvoicePdfBase64({
@@ -145,21 +169,25 @@ export async function PUT(request: Request) {
               totalPaise: originalOrder.total_paise || 0,
               cashbackEarnedPaise: originalOrder.cashback_earned_paise || 0,
               userId: profile.user_id,
-              trackingId: originalOrder.tracking_id || tracking_id,
+              trackingId: finalTrackingId,
+              carrierName: finalCourierName,
             });
           } catch (pdfErr) {
-            console.error("PDF generation on delivery failed:", pdfErr);
+            console.error("PDF generation on shipment failed:", pdfErr);
           }
 
           await sendEmail({
             to: profile.email,
-            subject: `Order Delivered — ${originalOrder.order_number} | JAI SRI RAM TEXTILES`,
-            html: orderDeliveredEmailHtml({
+            subject: `Order Shipped — ${originalOrder.order_number} | JAI SRI RAM TEXTILES`,
+            html: orderShippedEmailHtml({
               orderNumber: originalOrder.order_number,
               name: profile.full_name,
               items: originalOrder.order_items || [],
               totalPaise: originalOrder.total_paise,
-              trackingId: originalOrder.tracking_id || tracking_id,
+              trackingId: finalTrackingId,
+              trackingUrl: finalTrackingUrl,
+              courierName: finalCourierName,
+              estimatedDeliveryDate: finalDeliveryDate,
             }),
             ...(pdfBase64 ? {
               attachments: [
@@ -169,7 +197,7 @@ export async function PUT(request: Request) {
                 }
               ]
             } : {})
-          }).catch((err) => console.error("Delivery email failed:", err));
+          }).catch((err) => console.error("Shipment email failed:", err));
         }
       }
 

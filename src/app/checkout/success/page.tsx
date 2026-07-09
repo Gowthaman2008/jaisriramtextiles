@@ -262,7 +262,7 @@ function OrderSuccessPageContent() {
             PARCEL_JUMPS.map((p, i) => (
               <motion.div
                 key={i}
-                className="absolute text-zari-deep"
+                className="absolute text-ink"
                 style={{ marginTop: 8 }}
                 initial={{ x: p.landX, y: 32, scale: 1, opacity: 1 }}
                 animate={{
@@ -274,7 +274,7 @@ function OrderSuccessPageContent() {
                 }}
                 transition={{ duration: 0.5, delay: p.delay, times: [0, 0.55, 1], ease: "easeIn" }}
               >
-                <Package size={20} strokeWidth={1.8} />
+                <Package size={22} strokeWidth={2} />
               </motion.div>
             ))}
 

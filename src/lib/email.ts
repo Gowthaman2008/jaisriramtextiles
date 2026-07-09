@@ -323,23 +323,23 @@ export function welcomeEmailHtml({ name, email, provider }: { name?: string; ema
 
           <!-- Details Card -->
           <div class="light-card" style="padding: 16px 20px; background-color: #FFFFFF; border: 1px solid #E5DFD2; border-radius: 8px; margin: 24px 0;">
-            <div style="font-weight: bold; font-size: 12px; text-transform: uppercase; color: #6E655A; letter-spacing: 1px; margin-bottom: 12px; border-bottom: 1px solid #E5DFD2; padding-bottom: 6px;">
+            <div style="font-weight: bold; font-size: 12px; text-transform: uppercase; color: #6E655A; letter-spacing: 1px; margin-bottom: 14px; border-bottom: 1px solid #E5DFD2; padding-bottom: 6px;">
               Your Account Details
             </div>
-            <table style="width: 100%; font-size: 13px; font-family: Arial, sans-serif; border-collapse: collapse;">
-              <tr>
-                <td style="padding: 6px 0; color: #6E655A; border-bottom: 1px solid #F5F2EB;">Email</td>
-                <td style="padding: 6px 0; font-weight: bold; text-align: right; color: #2A2622; border-bottom: 1px solid #F5F2EB;">${email}</td>
-              </tr>
-              <tr>
-                <td style="padding: 6px 0; color: #6E655A; border-bottom: 1px solid #F5F2EB;">Provider</td>
-                <td style="padding: 6px 0; font-weight: bold; text-transform: capitalize; text-align: right; color: #2A2622; border-bottom: 1px solid #F5F2EB;">${provider}</td>
-              </tr>
-              <tr>
-                <td style="padding: 6px 0; color: #6E655A;">Registered On</td>
-                <td style="padding: 6px 0; font-weight: bold; text-align: right; color: #2A2622;">${new Date().toLocaleString("en-IN", { dateStyle: "long" })}</td>
-              </tr>
-            </table>
+            <div style="font-family: Arial, sans-serif;">
+              <div style="padding: 8px 0; border-bottom: 1px solid #F5F2EB;">
+                <div style="font-size: 10px; color: #6E655A; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 3px;">Email</div>
+                <div style="font-size: 13px; font-weight: bold; color: #2A2622; word-break: break-all;">${email}</div>
+              </div>
+              <div style="padding: 8px 0; border-bottom: 1px solid #F5F2EB;">
+                <div style="font-size: 10px; color: #6E655A; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 3px;">Provider</div>
+                <div style="font-size: 13px; font-weight: bold; color: #2A2622; text-transform: capitalize;">${provider}</div>
+              </div>
+              <div style="padding: 8px 0 0 0;">
+                <div style="font-size: 10px; color: #6E655A; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 3px;">Registered On</div>
+                <div style="font-size: 13px; font-weight: bold; color: #2A2622;">${new Date().toLocaleString("en-IN", { dateStyle: "long" })}</div>
+              </div>
+            </div>
           </div>
 
           <p style="margin: 20px 0 20px 0;">
@@ -711,6 +711,107 @@ export function orderDeliveredEmailHtml({
   `;
 }
 
+export function orderShippedEmailHtml({
+  orderNumber,
+  name,
+  items,
+  totalPaise,
+  trackingId,
+  trackingUrl,
+  courierName,
+  estimatedDeliveryDate,
+}: {
+  orderNumber: string;
+  name?: string;
+  items: OrderItemLine[];
+  totalPaise: number;
+  trackingId?: string | null;
+  trackingUrl?: string | null;
+  courierName?: string | null;
+  estimatedDeliveryDate?: string | null;
+}) {
+  const cleanOrderNumber = String(orderNumber || "").startsWith("JSRT") ? String(orderNumber) : `JSRT-${orderNumber}`;
+
+  const deliveryDateLabel = estimatedDeliveryDate
+    ? new Date(estimatedDeliveryDate).toLocaleDateString("en-IN", { dateStyle: "long" })
+    : (() => {
+        const d = new Date();
+        d.setDate(d.getDate() + 4);
+        return d.toLocaleDateString("en-IN", { dateStyle: "long" });
+      })();
+
+  return `
+    <div class="email-bg" style="background-color: #F5F2EB; padding: 24px 10px; font-family: Georgia, 'Times New Roman', serif;">
+      <div class="email-card" style="width: 100%; max-width: 560px; margin: 0 auto; background-color: #FBF9F4; border: 1px solid #E5DFD2; border-radius: 12px; box-shadow: 0 4px 15px rgba(42, 38, 34, 0.05); overflow: hidden;">
+        ${renderEmailHeader("Order Shipped", cleanOrderNumber)}
+
+        <div class="mobile-body mobile-body-order" style="padding: 20px 12px; color: #2A2622; font-size: 12px; line-height: 1.6;">
+          <p class="email-heading" style="font-size: 13px; font-weight: bold; margin: 0 0 12px 0;">Hi <b>${name || "Customer"}</b>,</p>
+          <p style="margin: 0 0 20px 0;">Good news — your order has left our facility and is on its way to you! Here are your shipment details:</p>
+
+          <!-- Shipment details strip (AJIO box style) -->
+          <div class="light-card" style="background-color: #FFFFFF; border: 1px solid #E5DFD2; border-radius: 8px; padding: 18px 20px; margin-bottom: 20px;">
+            <table style="width: 100%; border-collapse: collapse; font-family: Arial, sans-serif; font-size: 12px;">
+              <tr>
+                <td style="padding: 4px 0; color: #6E655A;">Order ID</td>
+                <td class="text-gold" style="padding: 4px 0; font-weight: bold; color: #B08D4C; text-align: right; white-space: nowrap;">${cleanOrderNumber}</td>
+              </tr>
+              <tr>
+                <td style="padding: 4px 0; color: #6E655A;">Estimated Delivery</td>
+                <td style="padding: 4px 0; font-weight: bold; color: #2A2622; text-align: right; white-space: nowrap;">${deliveryDateLabel}</td>
+              </tr>
+              ${courierName ? `
+              <tr>
+                <td style="padding: 4px 0; color: #6E655A;">Courier Partner</td>
+                <td style="padding: 4px 0; font-weight: bold; color: #2A2622; text-align: right; white-space: nowrap;">${courierName}</td>
+              </tr>` : ""}
+              ${trackingId ? `
+              <tr>
+                <td style="padding: 4px 0; color: #6E655A;">Tracking / AWB Number</td>
+                <td style="padding: 4px 0; font-weight: bold; color: #B08D4C; text-align: right; font-family: monospace; white-space: nowrap;">${trackingId}</td>
+              </tr>` : ""}
+            </table>
+          </div>
+
+          ${trackingUrl ? `
+          <!-- Track Shipment button -->
+          <div style="text-align: center; margin: 0 0 24px 0;">
+            <a href="${trackingUrl}" class="mobile-button" style="display: inline-block; padding: 12px 32px; background-color: #B08D4C; color: #FFFFFF; text-decoration: none; border-radius: 24px; font-weight: bold; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; font-family: Arial, sans-serif;">
+              Track Shipment
+            </a>
+          </div>` : ""}
+
+          <!-- Items shipped box (AJIO style) -->
+          <div class="light-card" style="background-color: #FFFFFF; border: 1px solid #E5DFD2; border-radius: 8px; overflow: hidden; margin-bottom: 24px;">
+            <div class="light-card-header" style="background-color: #F7F5EE; padding: 10px 16px; font-weight: bold; font-size: 12px; color: #2A2622; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #E5DFD2;">
+              Item(s) Shipped
+            </div>
+            <table cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse: collapse;">
+              <tbody>
+                ${itemRowsHtml(items)}
+              </tbody>
+            </table>
+
+            <!-- Table Totals summary -->
+            <table cellpadding="0" cellspacing="0" border="0" width="240px" style="margin-left: auto; margin-right: 12px; font-size: 12.5px; font-family: Arial, sans-serif; margin-top: 14px; margin-bottom: 14px; line-height: 1.7;">
+              <tr style="border-top: 1px solid #B08D4C;">
+                <td style="padding-top: 6px; font-weight: bold; color: #B08D4C; font-size: 14.5px;">Total Paid</td>
+                <td align="right" style="padding-top: 6px; font-weight: bold; color: #B08D4C; font-size: 14.5px;">${formatINR(totalPaise, true)}</td>
+              </tr>
+            </table>
+          </div>
+
+          <p style="font-size: 13px; line-height: 1.6; margin: 24px 0 0 0;">
+            Your invoice is attached to this email for your records. Thank you for shopping with us!
+          </p>
+        </div>
+
+        ${renderEmailFooter()}
+      </div>
+    </div>
+  `;
+}
+
 export function refundProcessedEmailHtml({
   orderNumber,
   name,
@@ -892,6 +993,7 @@ export function generateInvoicePdfBase64({
   cashbackEarnedPaise,
   userId,
   trackingId,
+  carrierName,
 }: {
   orderNumber: string;
   name?: string;
@@ -905,9 +1007,10 @@ export function generateInvoicePdfBase64({
   cashbackEarnedPaise: number;
   userId?: string | number;
   trackingId?: string | null;
+  carrierName?: string | null;
 }): string {
   const doc = new jsPDF();
-  
+
   // Reconstruct order object for shared drawInvoicePdf call
   const orderObj = {
     order_number: orderNumber,
@@ -924,6 +1027,7 @@ export function generateInvoicePdfBase64({
     total_paise: totalPaise,
     cashback_earned_paise: cashbackEarnedPaise,
     tracking_id: trackingId || null,
+    carrier_name: carrierName || null,
   };
 
   drawInvoicePdf(doc, orderObj, userId);

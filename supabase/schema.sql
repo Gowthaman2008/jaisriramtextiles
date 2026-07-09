@@ -53,6 +53,7 @@ create table profiles (
   phone         text,
   role          user_role not null default 'customer',
   provider      auth_provider not null default 'email',
+  welcome_email_sent boolean not null default false,
   created_at    timestamptz not null default now()
 );
 
@@ -417,6 +418,16 @@ create table canned_responses (
   message     text not null,
   sort_order  int not null default 0,
   created_at  timestamptz not null default now()
+);
+
+-- Presaved courier partners (name + tracking page URL) admins can pick from
+-- when marking an order shipped
+create table courier_presets (
+  id            uuid primary key default gen_random_uuid(),
+  name          text not null,
+  tracking_url  text not null,
+  sort_order    int not null default 0,
+  created_at    timestamptz not null default now()
 );
 
 -- ============================================================================

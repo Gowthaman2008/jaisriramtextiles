@@ -133,3 +133,8 @@ create policy "support messages select own or staff" on support_messages
 alter table canned_responses enable row level security;
 create policy "canned responses staff only" on canned_responses
   for all using (is_staff()) with check (is_staff());
+
+-- ---- Courier Presets (admin/staff only) ----
+alter table courier_presets enable row level security;
+create policy "courier presets staff only" on courier_presets
+  for all using (is_staff()) with check (is_staff());

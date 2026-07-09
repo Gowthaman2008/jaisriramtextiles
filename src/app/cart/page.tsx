@@ -143,8 +143,8 @@ export default function CartPage() {
                         </div>
                       )}
                       {item.piecesPerPack && item.piecesPerPack > 1 && (
-                        <div className="text-[10px] font-bold text-zari mt-1.5">
-                          {item.piecesPerPack} piece in 1 Pack
+                        <div className="inline-flex items-center gap-1 rounded bg-zari/10 border border-zari/25 px-1.5 py-0.5 text-[9px] font-bold text-zari-deep mt-1.5">
+                          📦 {item.piecesPerPack} Pieces in 1 Pack
                         </div>
                       )}
                     </div>
@@ -195,6 +195,14 @@ export default function CartPage() {
                     >
                       <Trash2 size={16} />
                     </button>
+                  </div>
+
+                  {/* Estimated Delivery Date Seperate Box */}
+                  <div className="border-t border-line/45 mt-3 pt-2 flex items-center gap-1.5 text-[10px] font-bold text-taupe font-sans">
+                    <span>🚚 Delivery by:</span>
+                    <span className="bg-success/10 text-success px-2 py-0.5 rounded font-extrabold text-[9px] uppercase tracking-wide">
+                      {new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short", year: "numeric" })}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -489,10 +497,6 @@ export default function CartPage() {
                   <span className="text-ink font-medium">
                     {shippingPaise === 0 ? "FREE" : formatINR(shippingPaise, true)}
                   </span>
-                </div>
-                <div className="flex justify-between items-center text-xs text-taupe mt-1">
-                  <span>Estimated Delivery:</span>
-                  <span className="text-success font-bold text-right">{new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "short", year: "numeric" })}</span>
                 </div>
                 
                 <div className="border-t border-line pt-3 flex justify-between font-display text-lg text-ink font-bold">

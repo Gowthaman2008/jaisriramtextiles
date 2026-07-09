@@ -33,7 +33,8 @@ import {
   Copy,
   Star,
   X,
-  Pencil
+  Pencil,
+  HelpCircle
 } from "lucide-react";
 
 export default function AccountPage() {
@@ -525,7 +526,7 @@ export default function AccountPage() {
 
       setUserReplyText("");
       // Refresh details and history
-      fetchTrackedQuery(trackedQuery.id);
+      fetchTrackedQuery(trackedQuery.id, true);
       fetchSupportHistory();
     } catch (err: any) {
       notify("Error: " + err.message);
@@ -794,11 +795,20 @@ export default function AccountPage() {
         {/* TAB 2: MY ORDERS LIST */}
         {activeTab === "orders" && (
           <div className="space-y-6 animate-fade-up">
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
             <h2 className="font-sans text-2xl text-ink">My Order Registry</h2>
-            <span className="px-3 py-1 bg-zari/10 text-zari text-xs rounded-full border border-zari/20">
-              {orders.length} {orders.length === 1 ? "order" : "orders"}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="px-3 py-1 bg-zari/10 text-zari text-xs rounded-full border border-zari/20">
+                {orders.length} {orders.length === 1 ? "order" : "orders"}
+              </span>
+              <button
+                type="button"
+                onClick={() => setActiveTab("contact")}
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold text-taupe hover:text-zari-deep bg-white border border-line hover:border-zari/50 transition-colors cursor-pointer"
+              >
+                <HelpCircle className="w-3.5 h-3.5" /> Need Help?
+              </button>
+            </div>
           </div>
 
             {orders.length === 0 ? (
@@ -813,205 +823,235 @@ export default function AccountPage() {
                 </Link>
               </div>
             ) : (
-              <div className="space-y-6">
+              <div className="space-y-5">
                 {orders.map((o) => (
-                  <div key={o.id} className="bg-white border border-line/60 rounded-2xl shadow-soft overflow-hidden transition-all duration-300 hover:shadow-md">
-                    {/* Top bar info */}
-                    <div className="px-5 py-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-line/40 bg-gradient-to-r from-cream/30 to-transparent">
-                      <div>
-                        <p className="text-xs text-taupe uppercase tracking-wide font-bold">Order</p>
-                        <p className="font-mono text-base text-ink mt-0.5 font-bold italic select-all cursor-pointer hover:text-zari" title="Double-click to select / drag to copy">{o.order_number}</p>
-                        <p className="text-xs text-taupe mt-1 flex items-center gap-1.5 font-bold">
-                          <Calendar size={12} /> Placed: {new Date(o.placed_at).toLocaleDateString("en-IN", { dateStyle: "long" })}
-                        </p>
-                        {o.shipping_address?.delivery_date ? (
-                          <p className="text-xs mt-1 flex items-center gap-1.5 font-semibold text-success">
-                            🚚 Delivery Date: <span className="font-bold">{o.shipping_address.delivery_date}</span>
+                  <div key={o.id} className="bg-white border border-line/60 rounded-2xl shadow-soft overflow-hidden hover:shadow-md transition-shadow duration-200">
+
+                    {/* â”€â”€ ORDER HEADER â”€â”€ */}
+                    <div className="px-4 py-3.5 bg-gradient-to-r from-cream/50 to-transparent border-b border-line/40">
+                      {/* Row 1: Order number + status */}
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <p className="text-[10px] text-taupe uppercase tracking-widest font-bold">Order</p>
+                          <p className="font-mono text-sm text-ink font-bold italic select-all mt-0.5 hover:text-zari transition-colors">
+                            {o.order_number}
                           </p>
-                        ) : (
-                          <p className="text-xs mt-1 flex items-center gap-1.5 font-semibold text-success">
-                            🚚 Delivery Date: <span className="font-bold">{new Date(new Date(o.placed_at).getTime() + 4 * 24 * 60 * 60 * 1000).toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "short", year: "numeric" })}</span>
-                          </p>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2.5">
-                        <span className={`px-3 py-1 rounded-full text-xs uppercase tracking-wide border ${
+                        </div>
+                        <span className={`mt-1 shrink-0 px-2.5 py-1 rounded-full text-[10px] uppercase tracking-wide font-bold border ${
                           o.status === "delivered" ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
-                          o.status === "rejected" ? "bg-red-50 text-red-600 border-red-200" :
-                          o.status === "returned" ? "bg-amber-50 text-amber-700 border-amber-200" :
-                          o.status === "pending" ? "bg-amber-50 text-amber-800 border-amber-200" :
+                          o.status === "rejected"  ? "bg-red-50 text-red-600 border-red-200" :
+                          o.status === "returned"  ? "bg-amber-50 text-amber-700 border-amber-200" :
+                          o.status === "pending"   ? "bg-amber-50 text-amber-800 border-amber-200" :
                           "bg-blue-50 text-blue-700 border-blue-200"
                         }`}>
                           {o.status}
                         </span>
+                      </div>
+
+                      {/* Row 2: dates + invoice */}
+                      <div className="mt-2 flex items-end justify-between gap-2 flex-wrap">
+                        <div className="space-y-0.5">
+                          <p className="text-[11px] text-taupe flex items-center gap-1 font-semibold">
+                            <Calendar size={11} />
+                            {new Date(o.placed_at).toLocaleDateString("en-IN", { dateStyle: "long" })}
+                          </p>
+                          <p className={`text-[11px] flex items-center gap-1 font-bold ${o.status === "out_for_delivery" ? "text-orange-500" : "text-success"}`}>
+                            {o.status === "out_for_delivery" ? (
+                              <>
+                                ðŸ›µ{" "}
+                                <span className="inline-flex items-center gap-1">
+                                  <span className="relative flex h-2 w-2">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75" />
+                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-orange-500" />
+                                  </span>
+                                  Arriving Today!
+                                </span>
+                              </>
+                            ) : (
+                              <>
+                                ðŸšš{" "}
+                                {o.shipping_address?.delivery_date
+                                  ? o.shipping_address.delivery_date
+                                  : new Date(new Date(o.placed_at).getTime() + 4 * 24 * 60 * 60 * 1000).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short", year: "numeric" })}
+                              </>
+                            )}
+                          </p>
+                        </div>
                         <button
                           onClick={() => handlePrintInvoice(o)}
-                          className="flex items-center gap-1.5 px-3.5 py-1.5 bg-ink text-ivory rounded-lg text-xs transition-all hover:bg-zari cursor-pointer shadow-sm"
-                          title="Download Invoice"
+                          className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 bg-ink text-ivory rounded-lg text-[11px] font-bold hover:bg-zari transition-colors shadow-sm cursor-pointer"
                         >
-                          <Printer size={13} /> Invoice
+                          <Printer size={12} /> Invoice
                         </button>
                       </div>
                     </div>
 
-                    {/* Content details split */}
-                    <div className="p-5 grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
-                      {/* Products items checklist */}
-                      <div className="md:col-span-7 space-y-3">
-                        <p className="text-xs text-taupe uppercase tracking-wide flex items-center gap-1.5 font-bold">
-                          <ShoppingBag size={13} /> Ordered Items
+                    {/* â”€â”€ ORDER BODY â”€â”€ */}
+                    <div className="p-4 space-y-4">
+
+                      {/* ORDERED ITEMS */}
+                      <div>
+                        <p className="text-[10px] text-taupe uppercase tracking-widest flex items-center gap-1.5 font-bold mb-3">
+                          <ShoppingBag size={12} /> Ordered Items
                         </p>
-                        {o.order_items?.map((item: any) => {
-                          const productSlug = item.products?.slug;
-                          const thumb = item.image_url ? (
-                            <img
-                              src={item.image_url}
-                              alt={item.name}
-                              className="h-14 w-14 rounded-lg border border-line object-cover shrink-0 bg-cream"
-                            />
-                          ) : (
-                            <div className="h-14 w-14 rounded-lg border border-line bg-cream flex items-center justify-center shrink-0">
-                              <ShoppingBag size={18} className="text-taupe" />
-                            </div>
-                          );
-                          return (
-                            <div key={item.id} className="flex justify-between items-start gap-3 py-3 border-b border-line/25 last:border-0 last:pb-0">
-                              <div className="flex items-start gap-3 flex-1 min-w-0">
+                        <div className="space-y-3">
+                          {o.order_items?.map((item: any) => {
+                            const productSlug = item.products?.slug;
+                            const thumb = item.image_url ? (
+                              <img
+                                src={item.image_url}
+                                alt={item.name}
+                                className="h-14 w-14 rounded-xl border border-line object-cover shrink-0 bg-cream"
+                              />
+                            ) : (
+                              <div className="h-14 w-14 rounded-xl border border-line bg-cream flex items-center justify-center shrink-0">
+                                <ShoppingBag size={18} className="text-taupe" />
+                              </div>
+                            );
+                            return (
+                              <div key={item.id} className="flex items-start gap-3 py-3 border-b border-line/20 last:border-0 last:pb-0">
                                 {productSlug ? (
-                                  <Link href={`/product/${productSlug}`} className="shrink-0">
-                                    {thumb}
-                                  </Link>
-                                ) : (
-                                  thumb
-                                )}
+                                  <Link href={`/product/${productSlug}`} className="shrink-0">{thumb}</Link>
+                                ) : thumb}
                                 <div className="flex-1 min-w-0">
-                                  <div className="flex items-center gap-1.5 flex-wrap">
-                                    {productSlug ? (
-                                      <Link href={`/product/${productSlug}`} className="text-sm text-ink leading-snug font-bold hover:text-zari-deep hover:underline">
-                                        {item.name.replace(" (Free Gift)", "")}
-                                      </Link>
-                                    ) : (
-                                      <p className="text-sm text-ink leading-snug font-bold">{item.name.replace(" (Free Gift)", "")}</p>
-                                    )}
+                                  <div className="flex items-start justify-between gap-2">
+                                    <div className="flex-1 min-w-0">
+                                      {productSlug ? (
+                                        <Link href={`/product/${productSlug}`} className="text-sm text-ink font-bold leading-snug hover:text-zari-deep hover:underline line-clamp-2">
+                                          {item.name.replace(" (Free Gift)", "")}
+                                        </Link>
+                                      ) : (
+                                        <p className="text-sm text-ink font-bold leading-snug line-clamp-2">{item.name.replace(" (Free Gift)", "")}</p>
+                                      )}
+                                    </div>
+                                    <span className="text-sm text-ink font-bold shrink-0 whitespace-nowrap">
+                                      {formatINR(item.unit_price_paise * item.quantity, true)}
+                                    </span>
+                                  </div>
+                                  <div className="flex flex-wrap gap-1 mt-1.5">
                                     {item.name.toLowerCase().includes("free gift") && (
-                                      <span className="inline-flex items-center gap-1 bg-[#FAF6EC] border border-[#E9DBB7]/60 text-[#8C6D2D] text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded shadow-xs">
-                                        🎁 Free Gift
+                                      <span className="inline-flex items-center gap-0.5 bg-[#FAF6EC] border border-[#E9DBB7]/60 text-[#8C6D2D] text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded">
+                                        ðŸŽ Free Gift
+                                      </span>
+                                    )}
+                                    {item.variant && (
+                                      <span className="text-[10px] text-taupe bg-cream/70 inline-block px-1.5 py-0.5 rounded font-bold border border-line/40">
+                                        {item.variant}
+                                      </span>
+                                    )}
+                                    {item.products?.pieces_per_pack && item.products.pieces_per_pack > 1 && !item.name.includes("piece in 1 Pack") && (
+                                      <span className="inline-flex items-center gap-0.5 rounded bg-zari/10 border border-zari/25 px-1.5 py-0.5 text-[9px] font-bold text-zari-deep">
+                                        ðŸ“¦ {item.products.pieces_per_pack} Pieces in 1 Pack
                                       </span>
                                     )}
                                   </div>
-                                  {item.variant && <p className="text-xs text-taupe mt-1 bg-cream/60 inline-block px-1.5 py-0.5 rounded font-bold">{item.variant}</p>}
-                                  {item.products?.pieces_per_pack && item.products.pieces_per_pack > 1 && !item.name.includes("piece in 1 Pack") && (
-                                    <p className="text-[10px] font-bold text-zari mt-1">
-                                      {item.products.pieces_per_pack} piece in 1 Pack
-                                    </p>
-                                  )}
-                                  <p className="text-xs text-taupe mt-1"><strong className="text-ink font-bold">{formatINR(item.unit_price_paise, true)}</strong> &times; <strong className="text-ink font-bold">{item.quantity}</strong></p>
+                                  <p className="text-[11px] text-taupe mt-1 font-medium">
+                                    {formatINR(item.unit_price_paise, true)} Ã— {item.quantity}
+                                  </p>
                                 </div>
                               </div>
-                              <span className="text-sm text-ink font-bold shrink-0">{formatINR(item.unit_price_paise * item.quantity, true)}</span>
-                            </div>
-                          );
-                        })}
-
-                        {/* Rejection / Return Reason Display */}
-                        {(o.status === "rejected" || o.status === "returned") && o.payment_status !== "refunded" && (
-                          <div className="mt-5 p-4 bg-red-50 border border-red-200 rounded-xl text-sm space-y-3">
-                            <p className="text-red-600 uppercase text-xs tracking-wide">
-                              {o.status === "rejected" ? "⚠ Order Rejected" : "⚠ Order Returned"}
-                            </p>
-                            {o.rejection_reason && <p className="text-ink">{o.rejection_reason}</p>}
-                            <div className="border-t border-red-200 pt-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                              <p className="text-taupe leading-relaxed text-xs">Refund will be issued within 24hrs. Contact us if needed.</p>
-                              <a
-                                href={`https://wa.me/918608386872?text=${encodeURIComponent(
-                                  `Hi, my order ${o.order_number} has been ${o.status === "rejected" ? "rejected" : "returned"}. Details:\n` +
-                                  (o.order_items || []).map((item: any) => `- ${item.name} (Qty: ${item.quantity})`).join("\n") +
-                                  `\nTotal Paid: ${formatINR(o.total_paise, true)}.\nI want to inquire about my refund status.`
-                                )}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-[#25D366] hover:bg-[#128C7E] text-white rounded-xl text-xs transition-all whitespace-nowrap shadow-sm cursor-pointer"
-                              >
-                                <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.517 2.266 2.27 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.5-5.739-1.453L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.825 1.451 5.436 0 9.86-4.413 9.863-9.83.001-2.624-1.013-5.092-2.859-6.937C16.643 1.98 14.184.962 11.56.962 6.119.962 1.694 5.375 1.691 10.793c-.001 1.782.469 3.52 1.358 5.071l-.951 3.474 3.559-.933zM18.23 15.25c-.34-.17-2.01-.99-2.32-1.1-.31-.11-.54-.17-.77.17-.23.34-.89 1.1-.1.17-.23.11-.46.06-.92-.17-1.8-1.6-2.5-2.22-.62-.55-1.03-1.22-1.14-1.42-.11-.2-.01-.31.09-.41.09-.09.2-.23.3-.34.1-.11.14-.19.21-.31.07-.12.03-.23-.02-.34-.05-.12-.46-1.11-.63-1.52-.17-.4-.36-.34-.5-.34-.13 0-.28 0-.43 0-.15 0-.4.06-.61.28-.21.22-.8.78-.8 1.9 0 1.12.82 2.2 1.05 2.5.23.3 1.62 2.48 3.93 3.48.55.24.98.38 1.32.49.56.18 1.07.15 1.47.09.45-.07 1.39-.57 1.59-1.12.2-.55.2-1.02.14-1.12-.06-.1-.23-.2-.57-.37z"/></svg>
-                                Chat on WhatsApp
-                              </a>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Refund Details Display */}
-                        {o.payment_status === "refunded" && o.refund_amount_paise && (
-                          <div className="mt-5 p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-sm space-y-2">
-                            <p className="text-emerald-700 uppercase text-xs tracking-wide font-bold">✓ Refund Processed</p>
-                            <div className="text-ink space-y-1.5">
-                              <p>Amount Refunded: <strong className="text-emerald-700 font-bold">{formatINR(o.refund_amount_paise, true)}</strong></p>
-                              {o.refund_transaction_id && <p>Transaction ID: <strong className="font-mono italic select-all bg-white px-1.5 py-0.5 rounded border border-emerald-200 cursor-pointer hover:text-emerald-800" title="Double click to copy">{o.refund_transaction_id}</strong></p>}
-                              {o.refunded_at && <p>Refund Date: <strong className="font-bold">{new Date(o.refunded_at).toLocaleDateString()}</strong></p>}
-                              {o.refund_note && <p>Note: <strong className="italic font-bold">{o.refund_note}</strong></p>}
-                              {o.refund_screenshot_url && (
-                                <a href={o.refund_screenshot_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-emerald-700 hover:underline cursor-pointer font-bold">
-                                  View Refund Proof ↗
-                                </a>
-                              )}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Tracking Details Display */}
-                        {(o.tracking_id || o.courier_tracking_url) ? (
-                          <div className="mt-5 p-4 bg-blue-50 border border-blue-200 rounded-xl text-sm space-y-2">
-                            <p className="text-blue-700 uppercase text-xs tracking-wide flex items-center gap-1.5">
-                              🚚 Shipping &amp; Carrier Details
-                            </p>
-                            <div className="text-ink space-y-1.5">
-                              {o.tracking_id && (
-                                <p className="flex items-center gap-2">
-                                  Tracking Number:{" "}
-                                  <strong className="font-mono italic select-all bg-white px-2 py-0.5 rounded-lg border border-blue-200 inline-flex items-center gap-1.5 cursor-pointer hover:text-blue-800" title="Double click to copy">
-                                    {o.tracking_id}
-                                    <button
-                                      onClick={() => {
-                                        navigator.clipboard.writeText(o.tracking_id);
-                                        setCopiedId(o.id);
-                                        setTimeout(() => setCopiedId(""), 2000);
-                                      }}
-                                      className="text-taupe hover:text-ink cursor-pointer focus:outline-none transition-colors border-l border-blue-200 pl-1.5"
-                                      title="Copy Tracking ID"
-                                      type="button"
-                                    >
-                                      {copiedId === o.id ? (
-                                        <span className="text-[9px] text-success font-sans font-bold">Copied!</span>
-                                      ) : (
-                                        <Copy size={11} className="shrink-0 text-taupe/80" />
-                                      )}
-                                    </button>
-                                  </strong>
-                                </p>
-                              )}
-                              {o.courier_tracking_url && (
-                                <p className="pt-0.5">
-                                  <a href={o.courier_tracking_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-blue-700 hover:underline">
-                                    Track Shipment Live &rarr;
-                                  </a>
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="mt-5 p-4 bg-cream/30 border border-dashed border-line/50 rounded-xl text-sm text-taupe italic">
-                            Awaiting shipment dispatch. Courier details and live tracking links will be updated here once dispatched.
-                          </div>
-                        )}
+                            );
+                          })}
+                        </div>
                       </div>
 
-                      {/* Pricing list and delivery detail */}
-                      <div className="md:col-span-5 bg-cream/25 p-5 rounded-2xl border border-line/60 text-sm space-y-4">
-                        <div>
-                          <p className="text-zari-deep uppercase text-xs tracking-wide flex items-center gap-1.5 mb-2">
-                            <MapPin size={13} /> Shipment Destination
+                      {/* TRACKING */}
+                      {(o.tracking_id || o.courier_tracking_url) ? (
+                        <div className="p-3.5 bg-blue-50/70 border border-blue-100 rounded-xl space-y-2.5">
+                          <p className="text-[10px] text-blue-600 uppercase tracking-widest flex items-center gap-1.5 font-bold">
+                            ðŸšš Shipping &amp; Carrier Details
                           </p>
-                          <p className="text-ink text-sm">{o.shipping_address.recipient}</p>
-                          <p className="text-taupe mt-1 leading-relaxed text-xs">
+                          {o.tracking_id && (
+                            <div>
+                              <p className="text-[10px] text-taupe font-bold mb-1 uppercase tracking-wide">Tracking Number</p>
+                              <div className="flex items-center gap-2 bg-white border border-blue-100 rounded-lg px-2.5 py-2">
+                                <span className="font-mono text-xs text-ink font-bold flex-1 break-all select-all">
+                                  {o.tracking_id}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(o.tracking_id);
+                                    setCopiedId(o.id);
+                                    setTimeout(() => setCopiedId(""), 2000);
+                                  }}
+                                  className="shrink-0 text-taupe hover:text-ink transition-colors pl-2 border-l border-blue-100"
+                                  title="Copy"
+                                >
+                                  {copiedId === o.id ? (
+                                    <span className="text-[9px] text-success font-bold">Copied!</span>
+                                  ) : (
+                                    <Copy size={12} />
+                                  )}
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                          {o.courier_tracking_url && (
+                            <a href={o.courier_tracking_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-blue-600 text-xs font-bold hover:underline">
+                              Track Shipment Live →
+                            </a>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="p-3.5 bg-cream/30 border border-dashed border-line/50 rounded-xl text-xs text-taupe italic">
+                          Awaiting shipment dispatch. Courier details and live tracking will appear here once dispatched.
+                        </div>
+                      )}
+
+                      {/* REJECTION / RETURN */}
+                      {(o.status === "rejected" || o.status === "returned") && o.payment_status !== "refunded" && (
+                        <div className="p-3.5 bg-red-50 border border-red-200 rounded-xl text-sm space-y-3">
+                          <p className="text-red-600 uppercase text-[10px] tracking-wide font-bold">
+                            {o.status === "rejected" ? "âš  Order Rejected" : "âš  Order Returned"}
+                          </p>
+                          {o.rejection_reason && <p className="text-ink text-xs">{o.rejection_reason}</p>}
+                          <div className="border-t border-red-200 pt-3 flex flex-col gap-2.5">
+                            <p className="text-taupe leading-relaxed text-xs">Refund will be issued within 24hrs. Contact us if needed.</p>
+                            <a
+                              href={`https://wa.me/918608386872?text=${encodeURIComponent(
+                                `Hi, my order ${o.order_number} has been ${o.status === "rejected" ? "rejected" : "returned"}. Details:\n` +
+                                (o.order_items || []).map((item: any) => `- ${item.name} (Qty: ${item.quantity})`).join("\n") +
+                                `\nTotal Paid: ${formatINR(o.total_paise, true)}.\nI want to inquire about my refund status.`
+                              )}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="self-start inline-flex items-center gap-1.5 px-4 py-2 bg-[#25D366] hover:bg-[#128C7E] text-white rounded-xl text-xs transition-all shadow-sm cursor-pointer font-bold"
+                            >
+                              <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.517 2.266 2.27 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.5-5.739-1.453L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.825 1.451 5.436 0 9.86-4.413 9.863-9.83.001-2.624-1.013-5.092-2.859-6.937C16.643 1.98 14.184.962 11.56.962 6.119.962 1.694 5.375 1.691 10.793c-.001 1.782.469 3.52 1.358 5.071l-.951 3.474 3.559-.933zM18.23 15.25c-.34-.17-2.01-.99-2.32-1.1-.31-.11-.54-.17-.77.17-.23.34-.89 1.1-.1.17-.23.11-.46.06-.92-.17-1.8-1.6-2.5-2.22-.62-.55-1.03-1.22-1.14-1.42-.11-.2-.01-.31.09-.41.09-.09.2-.23.3-.34.1-.11.14-.19.21-.31.07-.12.03-.23-.02-.34-.05-.12-.46-1.11-.63-1.52-.17-.4-.36-.34-.5-.34-.13 0-.28 0-.43 0-.15 0-.4.06-.61.28-.21.22-.8.78-.8 1.9 0 1.12.82 2.2 1.05 2.5.23.3 1.62 2.48 3.93 3.48.55.24.98.38 1.32.49.56.18 1.07.15 1.47.09.45-.07 1.39-.57 1.59-1.12.2-.55.2-1.02.14-1.12-.06-.1-.23-.2-.57-.37z"/></svg>
+                              Chat on WhatsApp
+                            </a>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* REFUND */}
+                      {o.payment_status === "refunded" && o.refund_amount_paise && (
+                        <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl space-y-2">
+                          <p className="text-emerald-700 uppercase text-[10px] tracking-wide font-bold">âœ“ Refund Processed</p>
+                          <div className="text-ink space-y-1.5 text-xs">
+                            <p>Amount Refunded: <strong className="text-emerald-700 font-bold">{formatINR(o.refund_amount_paise, true)}</strong></p>
+                            {o.refund_transaction_id && <p>Transaction ID: <strong className="font-mono italic select-all bg-white px-1.5 py-0.5 rounded border border-emerald-200 cursor-pointer hover:text-emerald-800">{o.refund_transaction_id}</strong></p>}
+                            {o.refunded_at && <p>Refund Date: <strong>{new Date(o.refunded_at).toLocaleDateString()}</strong></p>}
+                            {o.refund_note && <p>Note: <em className="italic">{o.refund_note}</em></p>}
+                            {o.refund_screenshot_url && (
+                              <a href={o.refund_screenshot_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-emerald-700 hover:underline font-bold">
+                                View Refund Proof ↗
+                              </a>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* SHIPPING ADDRESS + PRICE SUMMARY */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {/* Destination */}
+                        <div className="p-3.5 bg-cream/30 rounded-xl border border-line/60 space-y-1">
+                          <p className="text-[10px] text-zari-deep uppercase tracking-widest flex items-center gap-1.5 font-bold mb-2">
+                            <MapPin size={11} /> Shipment Destination
+                          </p>
+                          <p className="text-sm text-ink font-bold">{o.shipping_address.recipient}</p>
+                          <p className="text-taupe leading-relaxed text-xs">
                             {o.shipping_address.line1},{" "}
                             {o.shipping_address.line2 ? o.shipping_address.line2 + ", " : ""}
                             {o.shipping_address.city},{" "}
@@ -1019,39 +1059,43 @@ export default function AccountPage() {
                             {o.shipping_address.state} &ndash; {o.shipping_address.pincode}
                           </p>
                           {o.shipping_address.phone && (
-                            <p className="text-xs text-zari-deep mt-2 flex items-center gap-1.5">
-                              📞 {o.shipping_address.phone}{o.shipping_address.alternate_phone ? ` / ${o.shipping_address.alternate_phone}` : ""}
+                            <p className="text-xs text-zari-deep flex items-center gap-1 font-semibold pt-0.5">
+                              ðŸ“ž {o.shipping_address.phone}
+                              {o.shipping_address.alternate_phone ? ` / ${o.shipping_address.alternate_phone}` : ""}
                             </p>
                           )}
                         </div>
 
-                        <div className="border-t border-line/60 pt-3 space-y-2 text-xs">
+                        {/* Pricing */}
+                        <div className="p-3.5 bg-cream/30 rounded-xl border border-line/60 space-y-2 text-xs">
+                          <p className="text-[10px] text-taupe uppercase tracking-widest font-bold mb-2">Order Summary</p>
                           <div className="flex justify-between text-taupe">
-                            <span className="font-bold">Subtotal</span>
+                            <span className="font-semibold">Subtotal</span>
                             <span className="text-ink font-bold">{formatINR(o.subtotal_paise, true)}</span>
                           </div>
                           {o.discount_paise > 0 && (
                             <div className="flex justify-between text-danger">
-                              <span className="font-bold">Coupon Discount</span>
+                              <span className="font-semibold">Coupon Discount</span>
                               <span className="font-bold">-{formatINR(o.discount_paise, true)}</span>
                             </div>
                           )}
                           {o.wallet_used_paise > 0 && (
                             <div className="flex justify-between text-danger">
-                              <span className="font-bold">Wallet Used</span>
+                              <span className="font-semibold">Wallet Used</span>
                               <span className="font-bold">-{formatINR(o.wallet_used_paise, true)}</span>
                             </div>
                           )}
                           <div className="flex justify-between text-taupe">
-                            <span className="font-bold">Shipping</span>
+                            <span className="font-semibold">Shipping</span>
                             <span className="text-ink font-bold">{o.shipping_paise === 0 ? "FREE" : formatINR(o.shipping_paise, true)}</span>
                           </div>
-                          <div className="flex justify-between text-ink border-t border-line/60 pt-2 text-sm font-bold">
-                            <span className="font-bold">Total Paid</span>
-                            <span className="text-zari-deep font-bold">{formatINR(o.total_paise, true)}</span>
+                          <div className="flex justify-between border-t border-line/50 pt-2 text-sm font-bold text-ink">
+                            <span>Total Paid</span>
+                            <span className="text-zari-deep">{formatINR(o.total_paise, true)}</span>
                           </div>
                         </div>
                       </div>
+
                     </div>
                   </div>
                 ))}
@@ -1365,7 +1409,7 @@ export default function AccountPage() {
                      </div>
                      {addr.phone && (
                        <div className="mt-3 pt-3 border-t border-line/35 text-[10px] text-ink font-semibold flex items-center gap-1">
-                         <span>📞</span>
+                         <span>ðŸ“ž</span>
                          <span>Mobile: {addr.phone} {addr.alternate_phone ? `/ ${addr.alternate_phone}` : ""}</span>
                        </div>
                      )}
@@ -1401,312 +1445,354 @@ export default function AccountPage() {
 
         {/* TAB 6: CONTACT SUPPORT */}
         {activeTab === "contact" && (
-          <div className="space-y-6 animate-fade-up">
-            <h2 className="font-display text-xl text-ink">Contact Support Desk</h2>
+          <div className="space-y-5 animate-fade-up">
 
-            <div className="grid gap-6 md:grid-cols-12 items-start">
-              {/* Left Form */}
-              <form onSubmit={handleSendSupport} className="md:col-span-7 bg-white border border-line rounded-card p-6 shadow-soft space-y-4">
-                <h3 className="font-semibold text-sm border-b border-line pb-2">Submit Support Inquiry</h3>
+            {/* — Hero Header — */}
+            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#FBF8F0] via-cream to-[#F5EDD8] px-5 py-6 border border-zari/20 shadow-sm">
+              {/* decorative circles */}
+              <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full bg-zari/8 blur-2xl pointer-events-none" />
+              <div className="absolute -bottom-6 -left-6 w-24 h-24 rounded-full bg-zari/6 blur-xl pointer-events-none" />
+              <div className="relative z-10 flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-zari/15 flex items-center justify-center border border-zari/25 shrink-0">
+                  <MessageSquare className="w-5 h-5 text-zari-deep" />
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-zari-deep/70">Support Desk</p>
+                  <h2 className="font-display text-xl text-ink leading-tight">How can we help you?</h2>
+                </div>
+              </div>
+              <p className="relative z-10 mt-3 text-xs text-taupe leading-relaxed">
+                Send us your query and our team will respond within <strong className="text-ink">24 hours</strong> on business days.
+              </p>
+              {/* Quick info pills */}
+              <div className="relative z-10 flex flex-wrap gap-2 mt-4">
+                <span className="inline-flex items-center gap-1 bg-white/70 border border-zari/20 rounded-full px-2.5 py-1 text-[10px] text-ink font-semibold">
+                  <ShieldCheck className="w-2.5 h-2.5 text-zari-deep" /> Mon-Sat, 9AM-6PM IST
+                </span>
+                <span className="inline-flex items-center gap-1 bg-white/70 border border-zari/20 rounded-full px-2.5 py-1 text-[10px] text-ink font-semibold">
+                  <Mail className="w-2.5 h-2.5 text-zari-deep" /> jaisriramtextiles@gmail.com
+                </span>
+              </div>
+            </div>
 
+            {/* — Submit Form — */}
+            <form onSubmit={handleSendSupport} className="bg-white border border-line/70 rounded-2xl shadow-soft overflow-hidden">
+              {/* form header */}
+              <div className="px-5 py-4 border-b border-line/50 bg-cream/30 flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-lg bg-zari/10 flex items-center justify-center">
+                  <Send className="w-3.5 h-3.5 text-zari-deep" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-ink">Submit a New Inquiry</p>
+                  <p className="text-[10px] text-taupe">Fill in the details below and hit send</p>
+                </div>
+              </div>
+
+              <div className="p-5 space-y-4">
                 {supportStatus && (
-                  <p className="text-xs text-danger font-semibold bg-danger/5 p-2 rounded">{supportStatus}</p>
+                  <div className="flex items-center gap-2 bg-danger/5 border border-danger/20 rounded-xl px-3.5 py-2.5">
+                    <span className="text-danger text-base leading-none">âš </span>
+                    <p className="text-xs text-danger font-semibold">{supportStatus}</p>
+                  </div>
                 )}
 
-                <div className="grid grid-cols-2 gap-4">
+                {/* Read-only sender info */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="flex flex-col gap-1">
-                    <label className="text-[10px] font-bold text-taupe uppercase">Sender Name</label>
-                    <input
-                      type="text"
-                      disabled
-                      value={displayName}
-                      className="rounded border border-line bg-cream/35 px-3 py-1.5 text-xs text-taupe outline-none"
-                    />
+                    <label className="text-[10px] font-bold text-taupe uppercase tracking-widest">Your Name</label>
+                    <div className="flex items-center gap-2 rounded-xl border border-line bg-cream/40 px-3.5 py-2.5">
+                      <span className="w-5 h-5 rounded-full bg-ink/10 flex items-center justify-center text-[9px] font-bold text-ink shrink-0">
+                        {(displayName || "U").charAt(0).toUpperCase()}
+                      </span>
+                      <span className="text-sm text-taupe truncate">{displayName}</span>
+                    </div>
                   </div>
                   <div className="flex flex-col gap-1">
-                    <label className="text-[10px] font-bold text-taupe uppercase">Email Address</label>
-                    <input
-                      type="text"
-                      disabled
-                      value={user?.email || ""}
-                      className="rounded border border-line bg-cream/35 px-3 py-1.5 text-xs text-taupe outline-none"
-                    />
+                    <label className="text-[10px] font-bold text-taupe uppercase tracking-widest">Email</label>
+                    <div className="flex items-center gap-2 rounded-xl border border-line bg-cream/40 px-3.5 py-2.5">
+                      <Mail className="w-3.5 h-3.5 text-taupe shrink-0" />
+                      <span className="text-sm text-taupe truncate">{user?.email || ""}</span>
+                    </div>
                   </div>
                 </div>
 
+                {/* Subject */}
                 <div className="flex flex-col gap-1">
-                  <label className="text-[10px] font-bold text-taupe uppercase">Inquiry Subject *</label>
+                  <label className="text-[10px] font-bold text-taupe uppercase tracking-widest">Inquiry Subject <span className="text-zari">*</span></label>
                   <input
                     type="text"
                     required
-                    placeholder="e.g. Bulk order pricing query, shipment issue"
+                    placeholder="e.g. Bulk order query, shipment issue, return request…"
                     value={supportSubject}
                     onChange={(e) => setSupportSubject(e.target.value)}
-                    className="rounded border border-line bg-ivory px-3 py-1.5 text-xs outline-none focus:border-zari"
+                    className="rounded-xl border border-line bg-ivory px-3.5 py-2.5 text-sm outline-none focus:border-zari focus:ring-2 focus:ring-zari/15 transition-all placeholder-taupe/40"
                   />
                 </div>
 
+                {/* Message */}
                 <div className="flex flex-col gap-1">
-                  <label className="text-[10px] font-bold text-taupe uppercase">Message Details *</label>
+                  <label className="text-[10px] font-bold text-taupe uppercase tracking-widest">Message <span className="text-zari">*</span></label>
                   <textarea
                     required
                     rows={4}
-                    placeholder="Type details of your request here..."
+                    placeholder="Describe your request in detail…"
                     value={supportMessage}
                     onChange={(e) => setSupportMessage(e.target.value)}
-                    className="rounded border border-line bg-ivory px-3 py-2 text-xs outline-none focus:border-zari resize-none"
+                    className="rounded-xl border border-line bg-ivory px-3.5 py-2.5 text-sm outline-none focus:border-zari focus:ring-2 focus:ring-zari/15 resize-none transition-all placeholder-taupe/40"
                   />
                 </div>
 
-                <div className="pt-2 flex justify-end">
-                  <Button type="submit" variant="gold" size="sm" disabled={supportIsSubmitting}>
-                    {supportIsSubmitting ? (
-                      "Sending..."
-                    ) : (
-                      <>
-                        <Send className="w-3.5 h-3.5 mr-1.5" /> Submit Inquiry
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </form>
+                <button
+                  type="submit"
+                  disabled={supportIsSubmitting}
+                  className="w-full flex items-center justify-center gap-2 bg-ink hover:bg-ink/90 disabled:opacity-60 text-ivory font-bold text-sm py-3 rounded-xl transition-all shadow-sm cursor-pointer"
+                >
+                  <Send className="w-4 h-4" />
+                  {supportIsSubmitting ? "Sending…" : "Send Inquiry"}
+                </button>
+              </div>
+            </form>
 
-              {/* Right Office Address card */}
-              <div className="md:col-span-5 bg-white border border-line rounded-card p-6 shadow-soft space-y-4">
-                <h3 className="font-semibold text-ink text-sm uppercase tracking-wider">Office Details</h3>
-                
-                <div className="space-y-3 text-xs text-taupe leading-relaxed">
-                  <div className="flex gap-2">
-                    <MapPin className="w-4 h-4 text-zari shrink-0 mt-0.5" />
-                    <p>
-                      <strong>JAI SRI RAM TEXTILES</strong><br/>
-                      136/5, Sasti Nagar, Kallangattuvalasu,<br/>
-                      Komarapalayam, Namakkal District,<br/>
-                      Tamil Nadu - 638183
-                    </p>
-                  </div>
-                  <div className="flex gap-2 border-t border-line/45 pt-3">
-                    <Mail className="w-4 h-4 text-zari shrink-0 mt-0.5" />
-                    <p>
-                      <strong>Support Email:</strong><br/>
-                      jaisriramtextiles@gmail.com
-                    </p>
-                  </div>
-                  <div className="flex gap-2 border-t border-line/45 pt-3">
-                    <ShieldCheck className="w-4 h-4 text-success shrink-0 mt-0.5" />
-                    <p>
-                      <strong>Customer Support hours:</strong><br/>
-                      Monday to Saturday (9:00 AM — 6:00 PM IST)
-                    </p>
-                  </div>
+            {/* — Office Info Strips — */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="flex items-start gap-3 p-3.5 bg-white border border-line/60 rounded-xl shadow-soft">
+                <div className="w-8 h-8 rounded-lg bg-zari/10 flex items-center justify-center shrink-0">
+                  <MapPin className="w-4 h-4 text-zari-deep" />
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold text-taupe uppercase tracking-widest mb-0.5">Our Mill</p>
+                  <p className="text-xs text-ink font-bold leading-tight">JAI SRI RAM TEXTILES</p>
+                  <p className="text-[11px] text-taupe leading-snug mt-0.5">136/5, Sasti Nagar, Kallangattuvalasu, Komarapalayam, Namakkal – 638183</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3 p-3.5 bg-white border border-line/60 rounded-xl shadow-soft">
+                <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
+                  <Mail className="w-4 h-4 text-blue-600" />
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold text-taupe uppercase tracking-widest mb-0.5">Email</p>
+                  <a href="mailto:jaisriramtextiles@gmail.com" className="text-xs text-blue-600 font-bold break-all hover:underline">
+                    jaisriramtextiles@gmail.com
+                  </a>
+                </div>
+              </div>
+              <div className="flex items-start gap-3 p-3.5 bg-white border border-line/60 rounded-xl shadow-soft">
+                <div className="w-8 h-8 rounded-lg bg-success/10 flex items-center justify-center shrink-0">
+                  <ShieldCheck className="w-4 h-4 text-success" />
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold text-taupe uppercase tracking-widest mb-0.5">Hours</p>
+                  <p className="text-xs text-ink font-bold">Mon - Sat</p>
+                  <p className="text-[11px] text-taupe">9:00 AM - 6:00 PM IST</p>
                 </div>
               </div>
             </div>
 
-            {/* Live Chat Panel (rendered when a ticket is loaded) */}
+            {/* — Live Chat Panel — */}
             {trackedQuery && (
-              <div className="mt-6 animate-fade-in">
-                <div className="border border-line rounded-card bg-[#FBF9F4]/40 overflow-hidden shadow-soft font-sans">
-                  {/* Chat Header */}
-                  <div className="bg-white border-b border-line px-5 py-4 flex flex-wrap items-center justify-between gap-3 shadow-xs">
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-full bg-zari-tint/15 flex items-center justify-center text-zari-deep">
-                        <MessageSquare className="w-4.5 h-4.5" />
-                      </div>
-                      <div>
-                        <h4 className="font-display font-semibold text-base text-ink leading-tight">{trackedQuery.subject}</h4>
-                        <div className="flex items-center gap-1.5 mt-1">
-                          <span className="text-[10px] text-taupe font-sans tracking-wide">Ticket ID: {shortenId(trackedQuery.id)}</span>
-                          <button
-                            onClick={() => {
-                              navigator.clipboard.writeText(trackedQuery.id);
-                              notify("Ticket ID copied to clipboard!");
-                            }}
-                            title="Copy full Ticket ID"
-                            className="text-zari-deep hover:text-ink transition-colors cursor-pointer p-0.5 hover:bg-cream/40 rounded"
-                          >
-                            <Copy className="w-3 h-3" />
-                          </button>
-                        </div>
-                      </div>
+              <div className="bg-white border border-line/70 rounded-2xl shadow-soft overflow-hidden">
+                {/* Chat Header */}
+                <div className="px-4 py-3.5 bg-gradient-to-r from-cream/60 to-transparent border-b border-line/50 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-8 h-8 rounded-full bg-zari/15 flex items-center justify-center shrink-0">
+                      <MessageSquare className="w-4 h-4 text-zari-deep" />
                     </div>
-                    <div className="flex items-center gap-3">
-                      <span className={`text-[9px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
-                        trackedQuery.status === "closed"
-                          ? "bg-line text-taupe border border-line"
-                          : trackedQuery.status === "replied"
-                          ? "bg-success/15 text-success border border-success/35"
-                          : "bg-zari/15 text-zari-deep border border-zari/45"
-                      }`}>
-                        {trackedQuery.status}
-                      </span>
-                      <button
-                        onClick={() => setTrackedQuery(null)}
-                        className="p-1.5 text-taupe hover:text-ink hover:bg-ivory/80 rounded transition-colors cursor-pointer flex items-center justify-center"
-                        title="Close Chat"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Chat Messages Body */}
-                  <div ref={userChatContainerRef} className="p-5 space-y-6 max-h-[400px] overflow-y-auto bg-ivory/20" data-lenis-prevent>
-                       {/* User's Original Message (Right align) */}
-                    <div className="flex flex-col items-end space-y-1 w-full animate-fade-in">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-bold text-taupe uppercase tracking-wide">You</span>
-                        <div className="w-5 h-5 rounded-full bg-ink/10 text-[9px] font-bold text-ink flex items-center justify-center font-sans">U</div>
-                      </div>
-                      <div className="max-w-[80%] sm:max-w-[65%] bg-ink text-ivory rounded-2xl rounded-tr-none px-4 py-2.5 shadow-sm text-[13px] whitespace-pre-wrap leading-relaxed tracking-wide font-sans">
-                        {trackedQuery.message}
-                      </div>
-                      <span className="text-[9px] text-taupe/80 pr-1 block">
-                        {new Date(trackedQuery.created_at).toLocaleString("en-IN", { dateStyle: "short", timeStyle: "short" })}
-                      </span>
-                    </div>
-
-                    {/* Replies conversation list thread */}
-                    {trackedQuery.replies && trackedQuery.replies.length > 0 ? (
-                      trackedQuery.replies.map((reply: any) => {
-                        const isUser = reply.sender_type === "user";
-                        return (
-                          <div key={reply.id} className={`flex flex-col space-y-1 w-full ${isUser ? "items-end" : "items-start"} animate-fade-in`}>
-                            <div className="flex items-center gap-2">
-                              {!isUser && <div className="w-5 h-5 rounded-full bg-zari/15 text-[9px] font-bold text-zari-deep flex items-center justify-center font-sans">SR</div>}
-                              <span className={`text-[10px] font-bold tracking-wide uppercase ${isUser ? "text-taupe" : "text-zari-deep"}`}>
-                                {isUser ? "You" : "Support Desk"}
-                              </span>
-                              {isUser && <div className="w-5 h-5 rounded-full bg-ink/10 text-[9px] font-bold text-ink flex items-center justify-center font-sans">U</div>}
-                            </div>
-                            <div className={`max-w-[80%] sm:max-w-[65%] rounded-2xl px-4 py-2.5 shadow-sm text-[13px] whitespace-pre-wrap leading-relaxed tracking-wide font-sans ${
-                              isUser
-                                ? "bg-ink text-ivory rounded-tr-none"
-                                : "bg-white border border-zari/35 text-ink rounded-tl-none font-medium"
-                            }`}>
-                              {reply.message}
-                            </div>
-                            <span className="text-[9px] text-taupe/80 px-1 block">
-                              {new Date(reply.created_at).toLocaleString("en-IN", { dateStyle: "short", timeStyle: "short" })}
-                            </span>
-                          </div>
-                        );
-                      })
-                    ) : (
-                      /* Backwards compatibility for single reply layout */
-                      trackedQuery.reply_message && (
-                        <div className="flex flex-col items-start space-y-1 w-full animate-fade-in font-sans">
-                          <div className="flex items-center gap-2">
-                            <div className="w-5 h-5 rounded-full bg-zari/15 text-[9px] font-bold text-zari-deep flex items-center justify-center font-sans">SR</div>
-                            <span className="text-[10px] font-bold text-zari-deep uppercase tracking-wide">Support Desk</span>
-                          </div>
-                          <div className="max-w-[80%] sm:max-w-[65%] bg-white border border-zari/35 text-ink rounded-2xl rounded-tl-none px-4 py-2.5 shadow-xs text-[13px] whitespace-pre-wrap leading-relaxed tracking-wide font-medium">
-                            {trackedQuery.reply_message}
-                          </div>
-                          {trackedQuery.replied_at && (
-                            <span className="text-[9px] text-taupe/80 pl-1 block">
-                              {new Date(trackedQuery.replied_at).toLocaleString("en-IN", { dateStyle: "short", timeStyle: "short" })}
-                            </span>
-                          )}
-                        </div>
-                      )
-                    )}
-
-                    {/* Live status indicator if no reply exists yet */}
-                    {(!trackedQuery.replies || trackedQuery.replies.length === 0) && !trackedQuery.reply_message && trackedQuery.status !== "closed" && (
-                      <div className="flex flex-col items-start space-y-1 w-full animate-pulse font-sans">
-                        <div className="flex items-center gap-2">
-                          <div className="w-5 h-5 rounded-full bg-taupe/10 text-[9px] font-bold text-taupe flex items-center justify-center animate-bounce font-sans">...</div>
-                          <span className="text-[10px] font-bold text-taupe uppercase tracking-wide">Support Desk</span>
-                        </div>
-                        <div className="max-w-[80%] sm:max-w-[65%] bg-white/80 border border-line border-dashed rounded-2xl rounded-tl-none px-4 py-3.5 text-[12px] text-taupe italic leading-relaxed">
-                          <p>Our support team is reviewing your message. We will reply within 24 hours.</p>
-                          <div className="flex items-center gap-1 mt-2">
-                            <span className="w-1.5 h-1.5 bg-zari rounded-full animate-bounce" style={{ animationDelay: "0ms" }}></span>
-                            <span className="w-1.5 h-1.5 bg-zari rounded-full animate-bounce" style={{ animationDelay: "150ms" }}></span>
-                            <span className="w-1.5 h-1.5 bg-zari rounded-full animate-bounce" style={{ animationDelay: "300ms" }}></span>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Ticket Closed System Announcement Banner */}
-                    {trackedQuery.status === "closed" && (
-                      <div className="text-center py-2 animate-fade-in">
-                        <span className="inline-block bg-line/30 border border-line text-taupe text-[10px] font-semibold px-3 py-1 rounded-full uppercase tracking-wider">
-                          🔒 Ticket Closed by Admin
-                        </span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Customer Reply Input Form Footer */}
-                  {trackedQuery.status !== "closed" && (
-                    <div className="border-t border-line p-4 bg-ivory/15">
-                      <form onSubmit={handleSendUserReply} className="flex gap-2 items-end">
-                        <textarea
-                          rows={2}
-                          value={userReplyText}
-                          onChange={(e) => setUserReplyText(e.target.value)}
-                          placeholder="Type your reply to the support desk..."
-                          className="flex-1 rounded-card border border-line bg-white px-4 py-3 text-xs outline-none focus:border-zari focus:ring-1 focus:ring-zari/30 resize-none text-ink placeholder-taupe/60 shadow-inner font-sans tracking-wide"
-                        />
+                    <div className="min-w-0">
+                      <h4 className="text-sm font-bold text-ink leading-tight truncate">{trackedQuery.subject}</h4>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <span className="text-[10px] text-taupe font-medium">#{shortenId(trackedQuery.id)}</span>
                         <button
-                          type="submit"
-                          disabled={submittingUserReply || !userReplyText.trim()}
-                          className="bg-zari hover:bg-zari-deep text-ink font-bold px-5 py-3 rounded-card text-xs transition-all flex items-center justify-center gap-1.5 shadow-soft hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none cursor-pointer shrink-0"
+                          onClick={() => { navigator.clipboard.writeText(trackedQuery.id); notify("Ticket ID copied!"); }}
+                          className="text-taupe hover:text-zari-deep transition-colors cursor-pointer"
                         >
-                          <Send className="w-3.5 h-3.5" />
-                          <span>{submittingUserReply ? "Sending..." : "Send"}</span>
+                          <Copy className="w-2.5 h-2.5" />
                         </button>
-                      </form>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider border ${
+                      trackedQuery.status === "closed"
+                        ? "bg-line text-taupe border-line"
+                        : trackedQuery.status === "replied"
+                        ? "bg-success/15 text-success border-success/35"
+                        : "bg-zari/15 text-zari-deep border-zari/45"
+                    }`}>
+                      {trackedQuery.status}
+                    </span>
+                    <button
+                      onClick={() => setTrackedQuery(null)}
+                      className="w-7 h-7 flex items-center justify-center text-taupe hover:text-ink hover:bg-cream rounded-lg transition-colors cursor-pointer"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Chat Messages */}
+                <div ref={userChatContainerRef} className="p-4 space-y-5 max-h-[420px] overflow-y-auto bg-[#F9F7F2]/50" data-lenis-prevent>
+                  {/* User original message */}
+                  <div className="flex flex-col items-end gap-1 w-full">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] font-bold text-taupe uppercase tracking-wide">You</span>
+                      <div className="w-5 h-5 rounded-full bg-ink/15 text-[9px] font-bold text-ink flex items-center justify-center">
+                        {(displayName || "U").charAt(0).toUpperCase()}
+                      </div>
+                    </div>
+                    <div className="max-w-[82%] bg-ink text-ivory rounded-2xl rounded-tr-sm px-4 py-2.5 text-[13px] whitespace-pre-wrap leading-relaxed shadow-sm">
+                      {trackedQuery.message}
+                    </div>
+                    <span className="text-[9px] text-taupe/70">
+                      {new Date(trackedQuery.created_at).toLocaleString("en-IN", { dateStyle: "short", timeStyle: "short" })}
+                    </span>
+                  </div>
+
+                  {/* Replies */}
+                  {trackedQuery.replies && trackedQuery.replies.length > 0 ? (
+                    trackedQuery.replies.map((reply: any) => {
+                      const isUser = reply.sender_type === "user";
+                      return (
+                        <div key={reply.id} className={`flex flex-col gap-1 w-full ${isUser ? "items-end" : "items-start"}`}>
+                          <div className="flex items-center gap-1.5">
+                            {!isUser && (
+                              <div className="w-5 h-5 rounded-full bg-zari/20 text-[9px] font-bold text-zari-deep flex items-center justify-center">SR</div>
+                            )}
+                            <span className={`text-[10px] font-bold uppercase tracking-wide ${isUser ? "text-taupe" : "text-zari-deep"}`}>
+                              {isUser ? "You" : "Support Desk"}
+                            </span>
+                            {isUser && (
+                              <div className="w-5 h-5 rounded-full bg-ink/15 text-[9px] font-bold text-ink flex items-center justify-center">
+                                {(displayName || "U").charAt(0).toUpperCase()}
+                              </div>
+                            )}
+                          </div>
+                          <div className={`max-w-[82%] rounded-2xl px-4 py-2.5 text-[13px] whitespace-pre-wrap leading-relaxed shadow-sm ${
+                            isUser
+                              ? "bg-ink text-ivory rounded-tr-sm"
+                              : "bg-white border border-zari/25 text-ink rounded-tl-sm"
+                          }`}>
+                            {reply.message}
+                          </div>
+                          <span className="text-[9px] text-taupe/70 px-0.5">
+                            {new Date(reply.created_at).toLocaleString("en-IN", { dateStyle: "short", timeStyle: "short" })}
+                          </span>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    trackedQuery.reply_message && (
+                      <div className="flex flex-col items-start gap-1 w-full">
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-5 h-5 rounded-full bg-zari/20 text-[9px] font-bold text-zari-deep flex items-center justify-center">SR</div>
+                          <span className="text-[10px] font-bold text-zari-deep uppercase tracking-wide">Support Desk</span>
+                        </div>
+                        <div className="max-w-[82%] bg-white border border-zari/25 text-ink rounded-2xl rounded-tl-sm px-4 py-2.5 text-[13px] whitespace-pre-wrap leading-relaxed shadow-sm">
+                          {trackedQuery.reply_message}
+                        </div>
+                        {trackedQuery.replied_at && (
+                          <span className="text-[9px] text-taupe/70 pl-0.5">
+                            {new Date(trackedQuery.replied_at).toLocaleString("en-IN", { dateStyle: "short", timeStyle: "short" })}
+                          </span>
+                        )}
+                      </div>
+                    )
+                  )}
+
+                  {/* Awaiting reply indicator */}
+                  {(!trackedQuery.replies || trackedQuery.replies.length === 0) && !trackedQuery.reply_message && trackedQuery.status !== "closed" && (
+                    <div className="flex flex-col items-start gap-1 w-full">
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-5 h-5 rounded-full bg-taupe/15 text-[9px] font-bold text-taupe flex items-center justify-center">SR</div>
+                        <span className="text-[10px] font-bold text-taupe uppercase tracking-wide">Support Desk</span>
+                      </div>
+                      <div className="max-w-[82%] bg-white/80 border border-dashed border-line rounded-2xl rounded-tl-sm px-4 py-3 text-[12px] text-taupe italic leading-relaxed">
+                        <p>Our team is reviewing your message. We'll reply within 24 hours.</p>
+                        <div className="flex items-center gap-1 mt-2">
+                          <span className="w-1.5 h-1.5 bg-zari rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                          <span className="w-1.5 h-1.5 bg-zari rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                          <span className="w-1.5 h-1.5 bg-zari rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Closed banner */}
+                  {trackedQuery.status === "closed" && (
+                    <div className="text-center py-1">
+                      <span className="inline-flex items-center gap-1.5 bg-line/30 border border-line text-taupe text-[10px] font-bold px-3 py-1.5 rounded-full uppercase tracking-wider">
+                        ðŸ”’ Ticket Closed
+                      </span>
                     </div>
                   )}
                 </div>
+
+                {/* Reply Input */}
+                {trackedQuery.status !== "closed" && (
+                  <div className="border-t border-line/50 p-3 bg-white">
+                    <form onSubmit={handleSendUserReply} className="flex gap-2 items-end">
+                      <textarea
+                        rows={2}
+                        value={userReplyText}
+                        onChange={(e) => setUserReplyText(e.target.value)}
+                        placeholder="Type your reply to the support desk…"
+                        className="flex-1 rounded-xl border border-line bg-cream/30 px-3.5 py-2.5 text-xs outline-none focus:border-zari focus:ring-2 focus:ring-zari/15 resize-none text-ink placeholder-taupe/50 transition-all"
+                      />
+                      <button
+                        type="submit"
+                        disabled={submittingUserReply || !userReplyText.trim()}
+                        className="bg-zari hover:bg-zari-deep disabled:opacity-40 disabled:cursor-not-allowed text-ink font-bold px-4 py-3 rounded-xl text-xs transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer shrink-0"
+                      >
+                        <Send className="w-3.5 h-3.5" />
+                        {submittingUserReply ? "…" : "Send"}
+                      </button>
+                    </form>
+                  </div>
+                )}
               </div>
             )}
 
-            {/* Recent inquiries history list */}
+            {/* â”€â”€ Support History â”€â”€ */}
             {supportHistory.length > 0 && (
-              <div className="bg-white border border-line rounded-card p-6 shadow-soft space-y-4 mt-6 animate-fade-in">
-                <div className="border-b border-line pb-3">
-                  <h3 className="font-display text-base text-ink">Your Support History</h3>
-                  <p className="text-[10px] text-taupe mt-0.5">Click any query below to load its full tracking details and admin response.</p>
+              <div className="bg-white border border-line/70 rounded-2xl shadow-soft overflow-hidden">
+                <div className="px-4 py-3.5 bg-cream/30 border-b border-line/50 flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-bold text-ink">Your Support History</h3>
+                    <p className="text-[10px] text-taupe mt-0.5">Tap any ticket to load its full conversation.</p>
+                  </div>
+                  <span className="text-[10px] font-bold text-taupe bg-cream border border-line rounded-full px-2.5 py-1">
+                    {supportHistory.length} ticket{supportHistory.length !== 1 ? "s" : ""}
+                  </span>
                 </div>
-
-                <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1 font-sans" data-lenis-prevent>
+                <div className="divide-y divide-line/40 max-h-[380px] overflow-y-auto" data-lenis-prevent>
                   {supportHistory.map((h) => (
                     <button
                       key={h.id}
-                      onClick={() => {
-                        setTrackQueryId(h.id);
-                        fetchTrackedQuery(h.id);
-                      }}
-                      className="w-full text-left bg-white hover:bg-cream/20 border border-line hover:border-zari/45 rounded-card p-4 transition-all duration-300 flex items-center justify-between gap-4 cursor-pointer shadow-xs hover:shadow-soft group"
+                      onClick={() => { setTrackQueryId(h.id); fetchTrackedQuery(h.id); }}
+                      className="w-full text-left px-4 py-3.5 hover:bg-cream/30 transition-colors flex items-center justify-between gap-3 group cursor-pointer"
                     >
-                      <div className="space-y-1">
-                        <span className="inline-block bg-ivory border border-line px-2 py-0.5 rounded text-[9px] text-taupe font-medium">
+                      <div className="min-w-0">
+                        <span className="inline-block bg-cream border border-line/60 px-2 py-0.5 rounded text-[9px] text-taupe font-mono mb-1">
                           #{shortenId(h.id)}
                         </span>
-                        <p className="text-[13px] font-display font-semibold text-ink group-hover:text-zari-deep transition-colors leading-tight mt-1">
+                        <p className="text-sm font-bold text-ink group-hover:text-zari-deep transition-colors leading-tight truncate">
                           {h.subject}
                         </p>
-                        <p className="text-[10px] text-taupe/90">
-                          Submitted: {new Date(h.created_at).toLocaleDateString("en-IN", { dateStyle: "medium" })}
+                        <p className="text-[10px] text-taupe mt-0.5">
+                          {new Date(h.created_at).toLocaleDateString("en-IN", { dateStyle: "medium" })}
                         </p>
                       </div>
-                      <div className="flex items-center gap-3 shrink-0">
-                        <span className={`text-[9px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide border ${
                           h.status === "closed"
-                            ? "bg-line text-taupe border border-line"
+                            ? "bg-line text-taupe border-line"
                             : h.status === "replied"
-                            ? "bg-success/15 text-success border border-success/35"
-                            : "bg-zari/15 text-zari-deep border border-zari/45"
+                            ? "bg-success/15 text-success border-success/35"
+                            : "bg-zari/15 text-zari-deep border-zari/45"
                         }`}>
                           {h.status || "new"}
                         </span>
-                        <span className="text-xs font-bold text-zari-deep hover:text-ink transition-colors flex items-center gap-1 group-hover:translate-x-0.5 transition-transform duration-200">
-                          Track →
+                        <span className="text-[10px] font-bold text-zari-deep group-hover:translate-x-0.5 transition-transform duration-150">
+                          →
                         </span>
                       </div>
                     </button>
@@ -1714,13 +1800,14 @@ export default function AccountPage() {
                 </div>
               </div>
             )}
+
           </div>
         )}
 
-        {/* TAB 6: EDIT ACCOUNT DETAILS */}
+        {/* TAB 7: EDIT ACCOUNT DETAILS */}
         {activeTab === "profile" && (
           <div className="space-y-6 animate-fade-up">
-            <h2 className="font-sans text-2xl font-bold text-ink">Account & Personal Details</h2>
+            <h2 className="font-sans text-2xl font-bold text-ink">Account &amp; Personal Details</h2>
 
             <div className="bg-white border border-line rounded-2xl p-6 sm:p-7 shadow-soft max-w-xl">
               <form onSubmit={handleUpdateProfile} className="space-y-5">
@@ -1852,7 +1939,7 @@ export default function AccountPage() {
                   <label className="text-xs font-semibold text-taupe">Upload Photos (Max 5)</label>
                   <div className="flex items-center gap-3">
                     <label className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 border border-line rounded bg-cream hover:bg-cream/70 text-xs font-semibold text-ink transition-colors">
-                      📸 Select Photos
+                      ðŸ“¸ Select Photos
                       <input 
                         type="file" 
                         accept="image/*" 

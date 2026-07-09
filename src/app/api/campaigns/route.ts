@@ -43,7 +43,7 @@ export async function GET() {
       .from("free_product_campaigns")
       .select(`
         *,
-        product:products(id, name, price_paise, slug, stock, is_active, image, product_images(url)),
+        product:products(id, name, price_paise, slug, stock, is_active, product_images(url)),
         variant:product_variants(id, size, color, sku, stock)
       `)
       .eq("is_active", true);
