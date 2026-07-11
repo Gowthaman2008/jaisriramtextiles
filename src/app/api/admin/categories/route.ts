@@ -23,7 +23,43 @@ async function checkAdminAuth() {
   }
 }
 
-// PUT: update category details (specifically image_url)
+// POST: create a new category
+export async function POST(request: Request) {
+  const auth = await checkAdminAuth();
+  if (!auth) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
+    const { name, slug, tagline, image_url, sort_order, is_active } = await request.json();
+
+    if (!name || !slug) {
+      return NextResponse.json({ error: "Name and Slug are required" }, { status: 400 });
+    }
+
+    const supabase = createServiceClient();
+    const { data, error } = await supabase
+      .from("categories")
+      .insert({
+        name,
+        slug,
+        tagline: tagline || null,
+        image_url: image_url || null,
+        sort_order: sort_order !== undefined ? Number(sort_order) : 0,
+        is_active: is_active !== undefined ? is_active : true
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return NextResponse.json({ success: true, category: data });
+  } catch (error: any) {
+    console.error("Create category error:", error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
+// PUT: update category details
 export async function PUT(request: Request) {
   const auth = await checkAdminAuth();
   if (!auth) {
@@ -31,16 +67,26 @@ export async function PUT(request: Request) {
   }
 
   try {
-    const { id, imageUrl } = await request.json();
+    const { id, name, slug, tagline, imageUrl, image_url, sort_order, is_active } = await request.json();
 
-    if (!id || imageUrl === undefined) {
-      return NextResponse.json({ error: "Category ID and Image URL are required" }, { status: 400 });
+    if (!id) {
+      return NextResponse.json({ error: "Category ID is required" }, { status: 400 });
     }
 
     const supabase = createServiceClient();
+    const updateData: any = {};
+    
+    if (name !== undefined) updateData.name = name;
+    if (slug !== undefined) updateData.slug = slug;
+    if (tagline !== undefined) updateData.tagline = tagline || null;
+    if (imageUrl !== undefined) updateData.image_url = imageUrl;
+    if (image_url !== undefined) updateData.image_url = image_url;
+    if (sort_order !== undefined) updateData.sort_order = Number(sort_order);
+    if (is_active !== undefined) updateData.is_active = is_active;
+
     const { data, error } = await supabase
       .from("categories")
-      .update({ image_url: imageUrl })
+      .update(updateData)
       .eq("id", id)
       .select()
       .single();
@@ -52,3 +98,33 @@ export async function PUT(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+
+// DELETE: delete a category
+export async function DELETE(request: Request) {
+  const auth = await checkAdminAuth();
+  if (!auth) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get("id");
+
+    if (!id) {
+      return NextResponse.json({ error: "Category ID is required" }, { status: 400 });
+    }
+
+    const supabase = createServiceClient();
+    const { error } = await supabase
+      .from("categories")
+      .delete()
+      .eq("id", id);
+
+    if (error) throw error;
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    console.error("Delete category error:", error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+

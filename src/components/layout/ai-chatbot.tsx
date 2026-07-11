@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { MessageSquare, X, Send, Bot, User, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
+import { usePathname } from "next/navigation";
 
 type Message = {
   role: "user" | "assistant";
@@ -53,7 +54,32 @@ function playReplyChime() {
 
 
 export function AIChatbot() {
+  const pathname = usePathname();
+  if (pathname?.startsWith("/admin")) return null;
+
   const [isOpen, setIsOpen] = useState(false);
+  const [dbCategories, setDbCategories] = useState<any[]>([]);
+
+  useEffect(() => {
+    async function loadChatbotCategories() {
+      try {
+        const supabase = createClient();
+        const { data } = await supabase
+          .from("categories")
+          .select("id, name, slug")
+          .eq("is_active", true)
+          .order("sort_order", { ascending: true });
+        if (data) {
+          setDbCategories(data);
+        }
+      } catch (err) {
+        console.error("Chatbot failed to load categories:", err);
+      }
+    }
+    if (isOpen) {
+      loadChatbotCategories();
+    }
+  }, [isOpen]);
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "assistant",
@@ -77,14 +103,48 @@ export function AIChatbot() {
         { label: "❓ Other", action: "other" }
       ];
     }
+
+    const isProfileUpdate = 
+      text.includes("personal details") || 
+      text.includes("personal info") || 
+      text.includes("contact details") || 
+      text.includes("contact email") ||
+      text.includes("update contact email") || 
+      text.includes("change contact mail") || 
+      text.includes("update profile") || 
+      text.includes("edit profile") ||
+      text.includes("update email") ||
+      text.includes("change email") ||
+      text.includes("update phone") ||
+      text.includes("change phone") ||
+      text.includes("update name") ||
+      text.includes("change name") ||
+      text.includes("profile details");
+
+    if (isProfileUpdate) {
+      return [
+        { label: "👤 Edit Profile / Account", action: "edit_profile" },
+        { label: "🏠 Main Menu", action: "main_menu" }
+      ];
+    }
     
     if (text.includes("select a category to explore")) {
-      return [
+      const liveOpts = dbCategories.map((c) => ({
+        label: c.name,
+        categorySlug: c.slug,
+        labelText: c.name
+      }));
+      
+      const fallbackOpts = liveOpts.length > 0 ? liveOpts : [
         { label: "⬜ White Dhoti", categorySlug: "white-dhoti", labelText: "White Dhoti" },
         { label: "🎨 Colour Dhoti", categorySlug: "colour-dhoti", labelText: "Colour Dhoti" },
         { label: "🧣 Towels", categorySlug: "towels", labelText: "Towels" },
         { label: "🧣 Scarfs", categorySlug: "scarfs", labelText: "Scarfs" },
-        { label: "🛍️ Jute Bags", categorySlug: "jute-bags", labelText: "Jute Bags" },
+        { label: "🛍️ Jute Bags", categorySlug: "jute-bags", labelText: "Jute Bags" }
+      ];
+
+      return [
+        ...fallbackOpts,
         { label: "🏠 Main Menu", action: "main_menu" }
       ];
     }
@@ -132,6 +192,18 @@ export function AIChatbot() {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages, loading]);
+
+  // Play chime automatically when assistant replies are received/updated
+  const prevMessagesCount = useRef(messages.length);
+  useEffect(() => {
+    if (messages.length > prevMessagesCount.current) {
+      const lastMessage = messages[messages.length - 1];
+      if (lastMessage.role === "assistant" && isOpen) {
+        playReplyChime();
+      }
+    }
+    prevMessagesCount.current = messages.length;
+  }, [messages, isOpen]);
 
   // Prevent Lenis / external scroll hijack on the chat body
   useEffect(() => {
@@ -259,6 +331,8 @@ export function AIChatbot() {
           content: `💰 **Cashback Wallet Balance**: ${formattedBalance}\n\n⏰ **Expiry**: 15 days from last delivery date\n📅 **Last Updated**: ${new Date().toLocaleDateString()}`
         }
       ]);
+    } else if (opt.action === "edit_profile") {
+      window.location.href = "/account?tab=overview";
     } else if (opt.action === "explore_products") {
       setMessages((prev) => [
         ...prev,
@@ -338,7 +412,6 @@ ${itemsList || "- No items listed"}`;
           orderImageUrl
         }
       ]);
-      playReplyChime();
     } else if (opt.categorySlug) {
       setLoading(true);
       try {
@@ -399,7 +472,6 @@ ${itemsList || "- No items listed"}`;
             categorySlug: category.slug
           }
         ]);
-        playReplyChime();
       } catch (err) {
         console.error("Failed to fetch products for category:", err);
         setMessages((prev) => [
@@ -449,7 +521,6 @@ ${itemsList || "- No items listed"}`;
       if (!res.ok) throw new Error(data.error || "Failed to complete message response");
 
       setMessages((prev) => [...prev, { role: "assistant", content: data.response }]);
-      playReplyChime();
     } catch (err: any) {
       setMessages((prev) => [
         ...prev,
@@ -458,7 +529,6 @@ ${itemsList || "- No items listed"}`;
           content: "I apologize, I am experiencing a temporary connection issue. Please verify your connection or try again shortly.",
         },
       ]);
-      playReplyChime();
     } finally {
       setLoading(false);
     }

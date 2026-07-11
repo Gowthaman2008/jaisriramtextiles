@@ -11,13 +11,40 @@ import { useCart } from "@/components/providers/cart-provider";
 import { useWishlist } from "@/components/providers/wishlist-provider";
 import { SearchOverlay } from "@/components/layout/search-overlay";
 
-const navCategories = CATEGORIES;
+import { createClient } from "@/lib/supabase/client";
 
 export function Navbar() {
+  const [navCategories, setNavCategories] = useState<any[]>(CATEGORIES);
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const { cart } = useCart();
+
+  useEffect(() => {
+    async function loadNavCategories() {
+      try {
+        const supabase = createClient();
+        const { data: dbCategories } = await supabase
+          .from("categories")
+          .select("slug, name")
+          .eq("is_active", true)
+          .order("sort_order", { ascending: true });
+        
+        if (dbCategories && dbCategories.length > 0) {
+          const finalCategories = [
+            { slug: "all", label: "All" },
+            ...dbCategories.map(c => ({ slug: c.slug, label: c.name })),
+            { slug: "sale", label: "Live On Sale" },
+            { slug: "bulk-orders", label: "Bulk Orders" }
+          ];
+          setNavCategories(finalCategories);
+        }
+      } catch (err) {
+        console.error("Failed to load nav categories:", err);
+      }
+    }
+    loadNavCategories();
+  }, []);
   const { wishlist } = useWishlist();
 
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);

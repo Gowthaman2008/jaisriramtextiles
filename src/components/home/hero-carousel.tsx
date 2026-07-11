@@ -83,39 +83,29 @@ const defaultSlides: Slide[] = [
 
 const AUTO_MS = 6000;
 
-export function HeroCarousel() {
-  const [slides, setSlides] = useState<Slide[]>(defaultSlides);
+export function HeroCarousel({ dbSlides }: { dbSlides?: any[] }) {
+  const formatDbSlides = useCallback((raw?: any[]): Slide[] => {
+    if (!raw || raw.length === 0) return defaultSlides;
+    return raw.map((item: any) => ({
+      eyebrow: item.eyebrow || "",
+      title: item.title,
+      subtitle: item.subtitle || "",
+      cta: { label: item.cta_label || "Shop Now", href: item.cta_href || "/shop" },
+      image: item.image_url || img("white-dhoti"),
+    }));
+  }, []);
+
+  const [slides, setSlides] = useState<Slide[]>(() => formatDbSlides(dbSlides));
   const reduce = useReducedMotion();
   const [[index, dir], setState] = useState<[number, number]>([0, 1]);
   const [paused, setPaused] = useState(false);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
-    async function fetchDbSlides() {
-      try {
-        const supabase = createClient();
-        const { data, error } = await supabase
-          .from("carousel_slides")
-          .select("*")
-          .eq("is_active", true)
-          .order("sort_order", { ascending: true });
-        
-        if (data && data.length > 0) {
-          const mapped = data.map((item: any) => ({
-            eyebrow: item.eyebrow || "",
-            title: item.title,
-            subtitle: item.subtitle || "",
-            cta: { label: item.cta_label || "Shop Now", href: item.cta_href || "/shop" },
-            image: item.image_url || img("white-dhoti"),
-          }));
-          setSlides(mapped);
-        }
-      } catch (err) {
-        console.error("Failed loading slides from database", err);
-      }
+    if (dbSlides) {
+      setSlides(formatDbSlides(dbSlides));
     }
-    fetchDbSlides();
-  }, []);
+  }, [dbSlides, formatDbSlides]);
 
   const go = useCallback((next: number, direction: number) => {
     setState([(next + slides.length) % slides.length, direction]);

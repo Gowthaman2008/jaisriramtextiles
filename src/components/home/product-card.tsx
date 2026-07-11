@@ -21,7 +21,7 @@ const badgeStyles: Record<string, string> = {
 export function ProductCard({ product, index = 0 }: { product: Product; index?: number }) {
   const [loaded, setLoaded] = useState(false);
   const { toggleWishlist, isWished } = useWishlist();
-  const { addToCart } = useCart();
+  const { addToCart, cart, updateQuantity } = useCart();
   const wished = isWished(product.id);
 
   const discount =
@@ -29,11 +29,17 @@ export function ProductCard({ product, index = 0 }: { product: Product; index?: 
       ? Math.round((1 - product.pricePaise / product.compareAtPaise) * 100)
       : 0;
 
+  const defaultVariant = product.variants && product.variants.length > 0
+    ? (product.variants.find(v => v.stock > 0) || product.variants[0])
+    : null;
+
+  const cartItem = cart.find(
+    (item) => item.id === product.id &&
+              ((!item.variant && !defaultVariant) || (item.variant?.sku === defaultVariant?.sku))
+  );
+
   const handleQuickAdd = () => {
-    const variant = product.variants && product.variants.length > 0
-      ? (product.variants.find(v => v.stock > 0) || product.variants[0])
-      : null;
-    addToCart(product, 1, variant);
+    addToCart(product, 1, defaultVariant);
   };
 
   return (
@@ -78,18 +84,53 @@ export function ProductCard({ product, index = 0 }: { product: Product; index?: 
             ))}
           </div>
 
-          {/* Quick add — slides up on hover */}
-          <div className="absolute inset-x-3 bottom-3 translate-y-4 opacity-0 transition-all duration-300 ease-silk group-hover:translate-y-0 group-hover:opacity-100">
-            <button 
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                handleQuickAdd();
-              }}
-              className="flex w-full items-center justify-center gap-2 rounded-pill bg-ink/90 py-2.5 text-sm font-semibold text-ivory backdrop-blur transition hover:bg-ink cursor-pointer"
-            >
-              <ShoppingBag size={15} /> Quick add
-            </button>
+          {/* Quick add / Quantity controller — slides up on hover or stays visible if in cart */}
+          <div className={cn(
+            "absolute inset-x-3 bottom-3 transition-all duration-300 ease-silk",
+            cartItem 
+              ? "translate-y-0 opacity-100" 
+              : "translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100"
+          )}>
+            {cartItem ? (
+              <div 
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
+                className="flex w-full items-center justify-between rounded-pill bg-ink/95 px-4 py-2 text-sm font-bold text-ivory backdrop-blur shadow-soft"
+              >
+                <button
+                  onClick={() => {
+                    updateQuantity(product.id, defaultVariant?.sku || null, cartItem.quantity - 1);
+                  }}
+                  className="grid h-8 w-8 place-items-center rounded-full text-lg hover:bg-white/10 hover:text-zari transition cursor-pointer font-semibold"
+                  title="Decrease quantity"
+                >
+                  −
+                </button>
+                <span className="font-mono text-sm select-none">{cartItem.quantity}</span>
+                <button
+                  onClick={() => {
+                    updateQuantity(product.id, defaultVariant?.sku || null, cartItem.quantity + 1);
+                  }}
+                  className="grid h-8 w-8 place-items-center rounded-full text-lg hover:bg-white/10 hover:text-zari transition cursor-pointer font-semibold"
+                  title="Increase quantity"
+                >
+                  +
+                </button>
+              </div>
+            ) : (
+              <button 
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleQuickAdd();
+                }}
+                className="flex w-full items-center justify-center gap-2 rounded-pill bg-ink/90 py-2.5 text-sm font-semibold text-ivory backdrop-blur transition hover:bg-ink cursor-pointer"
+              >
+                <ShoppingBag size={15} /> Quick add
+              </button>
+            )}
           </div>
         </div>
       </Link>

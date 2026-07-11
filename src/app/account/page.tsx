@@ -874,7 +874,7 @@ export default function AccountPage() {
                 {orders.map((o) => (
                   <div key={o.id} className="bg-white border border-line/60 rounded-2xl shadow-soft overflow-hidden hover:shadow-md transition-shadow duration-200">
 
-                    {/* â”€â”€ ORDER HEADER â”€â”€ */}
+                    {/* ── ORDER HEADER ── */}
                     <div className="px-4 py-3.5 bg-gradient-to-r from-cream/50 to-transparent border-b border-line/40">
                       {/* Row 1: Order number + status */}
                       <div className="flex items-start justify-between gap-2">
@@ -905,7 +905,7 @@ export default function AccountPage() {
                           <p className={`text-[11px] flex items-center gap-1 font-bold ${o.status === "out_for_delivery" ? "text-orange-500" : "text-success"}`}>
                             {o.status === "out_for_delivery" ? (
                               <>
-                                ðŸ›µ{" "}
+                                🛵{" "}
                                 <span className="inline-flex items-center gap-1">
                                   <span className="relative flex h-2 w-2">
                                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75" />
@@ -916,7 +916,7 @@ export default function AccountPage() {
                               </>
                             ) : (
                               <>
-                                ðŸšš{" "}
+                                🚚{" "}
                                 {o.shipping_address?.delivery_date
                                   ? o.shipping_address.delivery_date
                                   : new Date(new Date(o.placed_at).getTime() + 4 * 24 * 60 * 60 * 1000).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short", year: "numeric" })}
@@ -933,7 +933,7 @@ export default function AccountPage() {
                       </div>
                     </div>
 
-                    {/* â”€â”€ ORDER BODY â”€â”€ */}
+                    {/* ── ORDER BODY ── */}
                     <div className="p-4 space-y-4">
 
                       {/* ORDERED ITEMS */}
@@ -978,7 +978,7 @@ export default function AccountPage() {
                                   <div className="flex flex-wrap gap-1 mt-1.5">
                                     {item.name.toLowerCase().includes("free gift") && (
                                       <span className="inline-flex items-center gap-0.5 bg-[#FAF6EC] border border-[#E9DBB7]/60 text-[#8C6D2D] text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded">
-                                        ðŸŽ Free Gift
+                                        🎁 Free Gift
                                       </span>
                                     )}
                                     {item.variant && (
@@ -988,12 +988,12 @@ export default function AccountPage() {
                                     )}
                                     {item.products?.pieces_per_pack && item.products.pieces_per_pack > 1 && !item.name.includes("piece in 1 Pack") && (
                                       <span className="inline-flex items-center gap-0.5 rounded bg-zari/10 border border-zari/25 px-1.5 py-0.5 text-[9px] font-bold text-zari-deep">
-                                        ðŸ“¦ {item.products.pieces_per_pack} Pieces in 1 Pack
+                                        📦 {item.products.pieces_per_pack} Pieces in 1 Pack
                                       </span>
                                     )}
                                   </div>
                                   <p className="text-[11px] text-taupe mt-1 font-medium">
-                                    {formatINR(item.unit_price_paise, true)} Ã— {item.quantity}
+                                    {formatINR(item.unit_price_paise, true)} × {item.quantity}
                                   </p>
                                 </div>
                               </div>
@@ -1006,7 +1006,7 @@ export default function AccountPage() {
                       {(o.tracking_id || o.courier_tracking_url) ? (
                         <div className="p-3.5 bg-blue-50/70 border border-blue-100 rounded-xl space-y-2.5">
                           <p className="text-[10px] text-blue-600 uppercase tracking-widest flex items-center gap-1.5 font-bold">
-                            ðŸšš Shipping &amp; Carrier Details
+                            🚚 Shipping &amp; Carrier Details
                           </p>
                           {o.tracking_id && (
                             <div>
@@ -1050,7 +1050,7 @@ export default function AccountPage() {
                       {(o.status === "rejected" || o.status === "returned") && o.payment_status !== "refunded" && (
                         <div className="p-3.5 bg-red-50 border border-red-200 rounded-xl text-sm space-y-3">
                           <p className="text-red-600 uppercase text-[10px] tracking-wide font-bold">
-                            {o.status === "rejected" ? "âš  Order Rejected" : "âš  Order Returned"}
+                            {o.status === "rejected" ? "⚠️ Order Rejected" : "⚠️ Order Returned"}
                           </p>
                           {o.rejection_reason && <p className="text-ink text-xs">{o.rejection_reason}</p>}
                           <div className="border-t border-red-200 pt-3 flex flex-col gap-2.5">
@@ -1075,7 +1075,7 @@ export default function AccountPage() {
                       {/* REFUND */}
                       {o.payment_status === "refunded" && o.refund_amount_paise && (
                         <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl space-y-2">
-                          <p className="text-emerald-700 uppercase text-[10px] tracking-wide font-bold">âœ“ Refund Processed</p>
+                          <p className="text-emerald-700 uppercase text-[10px] tracking-wide font-bold">✓ Refund Processed</p>
                           <div className="text-ink space-y-1.5 text-xs">
                             <p>Amount Refunded: <strong className="text-emerald-700 font-bold">{formatINR(o.refund_amount_paise, true)}</strong></p>
                             {o.refund_transaction_id && <p>Transaction ID: <strong className="font-mono italic select-all bg-white px-1.5 py-0.5 rounded border border-emerald-200 cursor-pointer hover:text-emerald-800">{o.refund_transaction_id}</strong></p>}
@@ -1107,7 +1107,7 @@ export default function AccountPage() {
                           </p>
                           {o.shipping_address.phone && (
                             <p className="text-xs text-zari-deep flex items-center gap-1 font-semibold pt-0.5">
-                              ðŸ“ž {o.shipping_address.phone}
+                              📞 {o.shipping_address.phone}
                               {o.shipping_address.alternate_phone ? ` / ${o.shipping_address.alternate_phone}` : ""}
                             </p>
                           )}
@@ -1456,7 +1456,7 @@ export default function AccountPage() {
                      </div>
                      {addr.phone && (
                        <div className="mt-3 pt-3 border-t border-line/35 text-[10px] text-ink font-semibold flex items-center gap-1">
-                         <span>ðŸ“ž</span>
+                         <span>📞</span>
                          <span>Mobile: {addr.phone} {addr.alternate_phone ? `/ ${addr.alternate_phone}` : ""}</span>
                        </div>
                      )}
@@ -1538,7 +1538,7 @@ export default function AccountPage() {
               <div className="p-5 space-y-4">
                 {supportStatus && (
                   <div className="flex items-center gap-2 bg-danger/5 border border-danger/20 rounded-xl px-3.5 py-2.5">
-                    <span className="text-danger text-base leading-none">âš </span>
+                    <span className="text-danger text-base leading-none">⚠️</span>
                     <p className="text-xs text-danger font-semibold">{supportStatus}</p>
                   </div>
                 )}
@@ -1767,7 +1767,7 @@ export default function AccountPage() {
                   {trackedQuery.status === "closed" && (
                     <div className="text-center py-1">
                       <span className="inline-flex items-center gap-1.5 bg-line/30 border border-line text-taupe text-[10px] font-bold px-3 py-1.5 rounded-full uppercase tracking-wider">
-                        ðŸ”’ Ticket Closed
+                        🔒 Ticket Closed
                       </span>
                     </div>
                   )}
@@ -1798,7 +1798,7 @@ export default function AccountPage() {
               </div>
             )}
 
-            {/* â”€â”€ Support History â”€â”€ */}
+            {/* ── Support History ── */}
             {supportHistory.length > 0 && (
               <div className="bg-white border border-line/70 rounded-2xl shadow-soft overflow-hidden">
                 <div className="px-4 py-3.5 bg-cream/30 border-b border-line/50 flex items-center justify-between">
@@ -2055,7 +2055,7 @@ export default function AccountPage() {
                   <label className="text-xs font-semibold text-taupe">Upload Photos (Max 5)</label>
                   <div className="flex items-center gap-3">
                     <label className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 border border-line rounded bg-cream hover:bg-cream/70 text-xs font-semibold text-ink transition-colors">
-                      ðŸ“¸ Select Photos
+                      📸 Select Photos
                       <input 
                         type="file" 
                         accept="image/*" 

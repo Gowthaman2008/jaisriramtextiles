@@ -108,6 +108,8 @@ export async function POST(request: Request) {
       pieces_per_pack,
       images, // Array of strings or object {url, alt, sort_order}
       variants, // Array of {size, color, sku, stock}
+      rating_avg,
+      rating_count,
     } = await request.json();
 
     if (!name || !slug || price_paise === undefined) {
@@ -133,6 +135,8 @@ export async function POST(request: Request) {
       is_new: is_new || false,
       is_trending: is_trending || false,
       pieces_per_pack: pieces_per_pack || 1,
+      rating_avg: rating_avg !== undefined && rating_avg !== "" ? Number(rating_avg) : null,
+      rating_count: rating_count !== undefined && rating_count !== "" ? Number(rating_count) : null,
     };
 
     const hasShowSize = await checkShowSizeColumn(supabase);
@@ -219,6 +223,8 @@ export async function PUT(request: Request) {
       pieces_per_pack,
       images,
       variants,
+      rating_avg,
+      rating_count,
     } = await request.json();
 
     if (!id) {
@@ -244,6 +250,8 @@ export async function PUT(request: Request) {
       is_new: is_new || false,
       is_trending: is_trending || false,
       pieces_per_pack: pieces_per_pack !== undefined ? pieces_per_pack : 1,
+      rating_avg: rating_avg !== undefined && rating_avg !== "" ? Number(rating_avg) : null,
+      rating_count: rating_count !== undefined && rating_count !== "" ? Number(rating_count) : null,
     };
 
     const hasShowSize = await checkShowSizeColumn(supabase);

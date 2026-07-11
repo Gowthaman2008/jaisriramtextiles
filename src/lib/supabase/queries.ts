@@ -196,3 +196,18 @@ export async function getActiveCategories() {
     return [];
   }
 }
+
+export async function getActiveCarouselSlides() {
+  try {
+    const supabase = await createClient();
+    const { data } = await supabase
+      .from("carousel_slides")
+      .select("*")
+      .eq("is_active", true)
+      .order("sort_order", { ascending: true });
+    return data || [];
+  } catch (err) {
+    console.error("Failed to load active carousel slides:", err);
+    return [];
+  }
+}

@@ -8,17 +8,18 @@ import { BulkOrderBanner } from "@/components/home/bulk-order-banner";
 import { ReviewsMarquee } from "@/components/home/reviews-marquee";
 import { Faq } from "@/components/home/faq";
 import { Newsletter } from "@/components/home/newsletter";
-import { getAllProducts, getActiveCategories } from "@/lib/supabase/queries";
+import { getAllProducts, getActiveCategories, getActiveCarouselSlides } from "@/lib/supabase/queries";
 
 export default async function HomePage() {
-  const [products, dbCategories] = await Promise.all([
+  const [products, dbCategories, dbSlides] = await Promise.all([
     getAllProducts(),
     getActiveCategories(),
+    getActiveCarouselSlides(),
   ]);
 
   return (
     <>
-      <HeroCarousel />
+      <HeroCarousel dbSlides={dbSlides} />
       <FeaturedCategories dbCategories={dbCategories} products={products} />
       <FeaturedProducts products={products} />
       <WhyChooseUs />

@@ -63,9 +63,23 @@ export async function GET() {
       if (rpcError) throw rpcError;
       supabaseStorageStats = data;
     } catch (sError: any) {
-      console.warn("Could not retrieve Supabase storage statistics:", sError.message || sError);
+      console.warn("Could not retrieve Supabase storage statistics, using estimated fallback:", sError.message || sError);
+      
+      // Calculate a realistic estimate of database size based on row counts
+      // Minimum size is ~1.5 MB for postgres system catalogs + schema overhead.
+      // Average sizes per row: users: 500B, products: 1KB, orders: 2KB, sessions: 1KB, pageViews: 500B
+      const estimatedDbBytes = Math.max(1024 * 1024 * 1.5, Math.round(
+        dbStats.users * 500 + 
+        dbStats.products * 1000 + 
+        dbStats.orders * 2000 + 
+        dbStats.sessions * 1000 + 
+        dbStats.pageViews * 500
+      ));
+
       supabaseStorageStats = {
-        error: "RPC function 'get_supabase_storage_stats' not found in database. Run the setup SQL script to enable storage metrics."
+        db_size_bytes: estimatedDbBytes,
+        storage_size_bytes: 0,
+        is_estimated: true
       };
     }
 

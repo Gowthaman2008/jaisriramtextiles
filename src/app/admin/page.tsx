@@ -22,6 +22,7 @@ import {
   Edit2,
   RefreshCw,
   Download,
+  Upload,
   Search,
   Eye,
   CheckCircle,
@@ -325,6 +326,7 @@ export default function AdminDashboardPage() {
     openWhatsAppChat(phone, msg);
   }
   const [loading, setLoading] = useState(true);
+  const [initialDataLoaded, setInitialDataLoaded] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
 
@@ -379,6 +381,8 @@ export default function AdminDashboardPage() {
   const [prodStock, setProdStock] = useState<number | "">("");
   const [prodPiecesPerPack, setProdPiecesPerPack] = useState<number | "">(1);
   const [prodHsn, setProdHsn] = useState("52081190");
+  const [prodRatingAvg, setProdRatingAvg] = useState<number | "">("");
+  const [prodRatingCount, setProdRatingCount] = useState<number | "">("");
   const [prodIsActive, setProdIsActive] = useState(true);
   const [prodIsSale, setProdIsSale] = useState(false);
   const [prodIsFeatured, setProdIsFeatured] = useState(false);
@@ -400,6 +404,19 @@ export default function AdminDashboardPage() {
 
   // Upload state
   const [uploadingImage, setUploadingImage] = useState(false);
+
+  // Category Edit/Add State
+  const [editingCategory, setEditingCategory] = useState<any>(null); // null means adding a new category, or closed
+  const [showCategoryForm, setShowCategoryForm] = useState(false);
+
+  // Category form fields
+  const [catName, setCatName] = useState("");
+  const [catSlug, setCatSlug] = useState("");
+  const [catTagline, setCatTagline] = useState("");
+  const [catSortOrder, setCatSortOrder] = useState<number | "">(0);
+  const [catIsActive, setCatIsActive] = useState(true);
+  const [catImageUrl, setCatImageUrl] = useState("");
+  const [uploadingCategoryFormImage, setUploadingCategoryFormImage] = useState(false);
 
   // Refund state variables
   const [selectedRefundOrder, setSelectedRefundOrder] = useState<any>(null);
@@ -600,6 +617,7 @@ export default function AdminDashboardPage() {
         }
 
         setCurrentUser(profile);
+        setLoading(false);
         await loadAllData();
       } catch (err: any) {
         console.error("Admin init error:", err);
@@ -767,6 +785,7 @@ export default function AdminDashboardPage() {
 
     setError(hadError ? "Some dashboard data failed to load — check the browser console for details." : "");
     setLoading(false);
+    setInitialDataLoaded(true);
     setRefreshing(false);
   }
 
@@ -1092,6 +1111,135 @@ export default function AdminDashboardPage() {
     }
   }
 
+  // --- Category Catalog CRUD Actions ---
+  function openAddCategory() {
+    setEditingCategory(null);
+    setCatName("");
+    setCatSlug("");
+    setCatTagline("");
+    setCatSortOrder(categories.length + 1);
+    setCatIsActive(true);
+    setCatImageUrl("");
+    setShowCategoryForm(true);
+  }
+
+  function openEditCategory(c: any) {
+    setEditingCategory(c);
+    setCatName(c.name);
+    setCatSlug(c.slug);
+    setCatTagline(c.tagline || "");
+    setCatSortOrder(c.sort_order);
+    setCatIsActive(c.is_active);
+    setCatImageUrl(c.image_url || "");
+    setShowCategoryForm(true);
+  }
+
+  async function handleSaveCategory(e: React.FormEvent) {
+    e.preventDefault();
+    if (!catName.trim() || !catSlug.trim()) {
+      notify("Category Name and Slug are required");
+      return;
+    }
+
+    try {
+      const payload = {
+        id: editingCategory ? editingCategory.id : undefined,
+        name: catName.trim(),
+        slug: catSlug.trim(),
+        tagline: catTagline.trim() || null,
+        image_url: catImageUrl || null,
+        sort_order: catSortOrder !== "" ? Number(catSortOrder) : 0,
+        is_active: catIsActive
+      };
+
+      const method = editingCategory ? "PUT" : "POST";
+      const res = await fetch("/api/admin/categories", {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to save category");
+      }
+
+      notify(editingCategory ? "Category updated successfully!" : "Category created successfully!");
+      
+      // Refresh local categories list
+      const { data: newCats } = await supabase
+        .from("categories")
+        .select("*")
+        .order("sort_order", { ascending: true });
+      setCategories(newCats || []);
+
+      setShowCategoryForm(false);
+      setEditingCategory(null);
+    } catch (err: any) {
+      notify(err.message || "Failed to save category");
+    }
+  }
+
+  async function handleDeleteCategory(categoryId: string) {
+    const hasProducts = products.some((p: any) => p.category_id === categoryId);
+    const msg = hasProducts
+      ? "⚠️ WARNING: This category contains active products! Deleting this category will set those products to 'Uncategorized'. Are you sure you want to delete this category?"
+      : "Are you sure you want to delete this category?";
+
+    if (!window.confirm(msg)) return;
+
+    try {
+      const res = await fetch(`/api/admin/categories?id=${categoryId}`, {
+        method: "DELETE"
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to delete category");
+      }
+
+      notify("Category deleted successfully!");
+
+      // Refresh local categories list
+      const { data: newCats } = await supabase
+        .from("categories")
+        .select("*")
+        .order("sort_order", { ascending: true });
+      setCategories(newCats || []);
+    } catch (err: any) {
+      notify(err.message || "Failed to delete category");
+    }
+  }
+
+  async function handleCategoryFormImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingCategoryFormImage(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch("/api/admin/products/upload-image", {
+        method: "POST",
+        body: formData
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || "Upload to Cloudinary failed");
+      }
+
+      const data = await res.json();
+      setCatImageUrl(data.url);
+      notify("Category image uploaded successfully!");
+    } catch (err: any) {
+      notify("Category image upload failed: " + err.message);
+    } finally {
+      setUploadingCategoryFormImage(false);
+    }
+  }
+
   async function refreshReviews() {
     try {
       const res = await fetch("/api/admin/reviews");
@@ -1168,13 +1316,15 @@ export default function AdminDashboardPage() {
     setProdName("");
     setProdSlug("");
     setProdDesc("");
-    setProdCatId(categories[0]?.id || "");
+    setProdCatId("");
     setProdPrice("");
     setProdCompare("");
     setProdCashback("");
     setProdStock("");
     setProdPiecesPerPack(1);
     setProdHsn("52081190");
+    setProdRatingAvg("");
+    setProdRatingCount("");
     setProdIsActive(true);
     setProdIsSale(false);
     setProdIsFeatured(false);
@@ -1204,6 +1354,8 @@ export default function AdminDashboardPage() {
     
     setProdDesc(cleanDesc);
     setProdHsn(hsnVal);
+    setProdRatingAvg(p.rating_avg !== undefined && p.rating_avg !== null ? p.rating_avg : "");
+    setProdRatingCount(p.rating_count !== undefined && p.rating_count !== null ? p.rating_count : "");
     
     setProdCatId(p.category_id || "");
     setProdPrice(p.price_paise / 100);
@@ -1249,6 +1401,10 @@ export default function AdminDashboardPage() {
     if (prodStock !== editingProduct.stock) return true;
     if (prodPiecesPerPack !== (editingProduct.pieces_per_pack || 1)) return true;
     if (prodIsActive !== editingProduct.is_active) return true;
+    const originalRatingAvg = editingProduct.rating_avg !== undefined && editingProduct.rating_avg !== null ? editingProduct.rating_avg : "";
+    if (prodRatingAvg !== originalRatingAvg) return true;
+    const originalRatingCount = editingProduct.rating_count !== undefined && editingProduct.rating_count !== null ? editingProduct.rating_count : "";
+    if (prodRatingCount !== originalRatingCount) return true;
     if (prodIsSale !== editingProduct.is_on_sale) return true;
     if (prodIsFeatured !== (editingProduct.is_featured || false)) return true;
     if (prodIsBestseller !== (editingProduct.is_bestseller || false)) return true;
@@ -1387,6 +1543,10 @@ export default function AdminDashboardPage() {
       notify("Product Name and Slug are required");
       return;
     }
+    if (!prodCatId) {
+      notify("Please select a category");
+      return;
+    }
 
     try {
       // Append HSN code to description to bypass database schema limits
@@ -1413,7 +1573,9 @@ export default function AdminDashboardPage() {
         is_trending: prodIsTrending,
         show_size: prodShowSize,
         images: prodImages,
-        variants: prodVariants
+        variants: prodVariants,
+        rating_avg: prodRatingAvg !== "" ? Number(prodRatingAvg) : null,
+        rating_count: prodRatingCount !== "" ? Number(prodRatingCount) : null
       };
 
       const method = editingProduct && !editingProduct.id.startsWith("default-p") ? "PUT" : "POST";
@@ -2901,9 +3063,32 @@ export default function AdminDashboardPage() {
 
           {/* Module Display Content */}
           <div className="lg:col-span-9">
-            
-            {/* Overview / Dashboard Tab */}
-            {activeTab === "overview" && (
+            {!initialDataLoaded ? (
+              <div className="space-y-6 animate-pulse">
+                {/* Skeleton Widgets */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="bg-white border border-line rounded-card p-6 h-28 flex flex-col justify-between shadow-soft">
+                      <div className="h-3 bg-cream rounded w-1/3" />
+                      <div className="h-6 bg-cream rounded w-1/2" />
+                      <div className="h-3 bg-cream rounded w-2/3" />
+                    </div>
+                  ))}
+                </div>
+                {/* Skeleton Table */}
+                <div className="bg-white border border-line rounded-card p-6 space-y-4 shadow-soft">
+                  <div className="h-4 bg-cream rounded w-1/4" />
+                  <div className="space-y-3">
+                    {[1, 2, 3, 4, 5].map((i) => (
+                      <div key={i} className="h-10 bg-cream/45 rounded w-full" />
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <>
+                {/* Overview / Dashboard Tab */}
+                {activeTab === "overview" && (
               <div className="space-y-8 animate-fade-up">
                 {/* Stats Widget Grid */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
@@ -3044,7 +3229,8 @@ export default function AdminDashboardPage() {
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         <div className="flex flex-col gap-1.5">
                           <label className="text-sm font-semibold">Category</label>
-                          <select value={prodCatId} onChange={(e) => setProdCatId(e.target.value)} className="rounded-md border border-line bg-ivory px-3 py-2 text-sm text-ink outline-none focus:border-zari h-[38px]">
+                          <select required value={prodCatId} onChange={(e) => setProdCatId(e.target.value)} className="rounded-md border border-line bg-ivory px-3 py-2 text-sm text-ink outline-none focus:border-zari h-[38px]">
+                            <option value="">Select Category</option>
                             {categories.map((c: any) => (
                               <option key={c.id} value={c.id}>{c.name}</option>
                             ))}
@@ -3076,6 +3262,14 @@ export default function AdminDashboardPage() {
                         <div className="flex flex-col gap-1.5">
                           <label className="text-sm font-semibold">HSN Code</label>
                           <input type="text" maxLength={8} value={prodHsn} onChange={(e) => setProdHsn(e.target.value.replace(/\D/g, ""))} placeholder="e.g. 52081190" className="rounded-md border border-line bg-ivory px-3 py-2 text-sm text-ink outline-none focus:border-zari" />
+                        </div>
+                        <div className="flex flex-col gap-1.5">
+                          <label className="text-sm font-semibold">Rating Average (0.0 - 5.0)</label>
+                          <input type="number" min="0" max="5" step="0.1" value={prodRatingAvg} onChange={(e) => setProdRatingAvg(e.target.value === "" ? "" : Number(e.target.value))} placeholder="e.g. 4.5" className="rounded-md border border-line bg-ivory px-3 py-2 text-sm text-ink outline-none focus:border-zari" />
+                        </div>
+                        <div className="flex flex-col gap-1.5">
+                          <label className="text-sm font-semibold">Rating Count (Total Ratings)</label>
+                          <input type="number" min="0" step="1" value={prodRatingCount} onChange={(e) => setProdRatingCount(e.target.value === "" ? "" : Number(e.target.value))} placeholder="e.g. 150" className="rounded-md border border-line bg-ivory px-3 py-2 text-sm text-ink outline-none focus:border-zari" />
                         </div>
                         <div className="flex items-center gap-2 mt-4">
                           <input type="checkbox" id="isActive" checked={prodIsActive} onChange={(e) => setProdIsActive(e.target.checked)} className="w-4 h-4 accent-zari" />
@@ -4943,17 +5137,168 @@ export default function AdminDashboardPage() {
 
                 {/* Section 3: Homepage Showcase Categories images */}
                 <div className="bg-white border border-line rounded-card p-6 shadow-soft space-y-6">
-                  <div>
-                    <h3 className="font-display text-lg border-b border-line pb-2">Homepage Category Showcase (Explore Collection)</h3>
-                    <p className="text-xs text-taupe mt-0.5">Edit cover photos displayed in the homepage "Crafted for every occasion" grid.</p>
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div>
+                      <h3 className="font-display text-lg border-b border-line pb-2">Homepage Category Showcase &amp; Catalog Management</h3>
+                      <p className="text-xs text-taupe mt-0.5">Manage, add, edit, or delete categories across the entire website.</p>
+                    </div>
+                    <Button size="sm" variant="gold" onClick={openAddCategory} className="flex-shrink-0">
+                      <Plus className="w-4 h-4" /> Add Category
+                    </Button>
                   </div>
+
+                  {/* Category Creation / Update Form Component overlay */}
+                  {showCategoryForm && (
+                    <div className="bg-white border-2 border-zari rounded-card p-6 shadow-lift relative">
+                      <button 
+                        type="button" 
+                        onClick={() => { setShowCategoryForm(false); setEditingCategory(null); }} 
+                        className="absolute top-4 right-4 p-1 rounded-full text-taupe hover:text-ink hover:bg-cream"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
+                      <h3 className="font-display text-xl border-b border-line pb-3 mb-5">
+                        {editingCategory ? `Edit Category: ${editingCategory.name}` : "Create New Category"}
+                      </h3>
+                      <form onSubmit={handleSaveCategory} className="space-y-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="flex flex-col gap-1.5">
+                            <label className="text-sm font-semibold">Category Name *</label>
+                            <input 
+                              type="text" 
+                              required 
+                              value={catName} 
+                              onChange={(e) => {
+                                setCatName(e.target.value);
+                                if (!editingCategory) {
+                                  setCatSlug(e.target.value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""));
+                                }
+                              }} 
+                              className="rounded-md border border-line bg-ivory px-3 py-2 text-sm text-ink outline-none focus:border-zari" 
+                            />
+                          </div>
+                          <div className="flex flex-col gap-1.5">
+                            <label className="text-sm font-semibold">URL Slug *</label>
+                            <input 
+                              type="text" 
+                              required 
+                              value={catSlug} 
+                              onChange={(e) => setCatSlug(e.target.value.replace(/[^a-zA-Z0-9-]/g, ""))} 
+                              className="rounded-md border border-line bg-ivory px-3 py-2 text-sm text-ink outline-none focus:border-zari" 
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="flex flex-col gap-1.5">
+                            <label className="text-sm font-semibold">Tagline / Short Subtitle</label>
+                            <input 
+                              type="text" 
+                              value={catTagline} 
+                              onChange={(e) => setCatTagline(e.target.value)} 
+                              placeholder="e.g. Traditional pure cotton weaves" 
+                              className="rounded-md border border-line bg-ivory px-3 py-2 text-sm text-ink outline-none focus:border-zari" 
+                            />
+                          </div>
+                          <div className="flex flex-col gap-1.5">
+                            <label className="text-sm font-semibold">Sort Order *</label>
+                            <input 
+                              type="number" 
+                              required 
+                              value={catSortOrder} 
+                              onChange={(e) => setCatSortOrder(e.target.value === "" ? "" : Number(e.target.value))} 
+                              className="rounded-md border border-line bg-ivory px-3 py-2 text-sm text-ink outline-none focus:border-zari" 
+                            />
+                          </div>
+                        </div>
+
+                        <div className="flex flex-col gap-1.5">
+                          <label className="text-sm font-semibold">Category Cover Photo URL</label>
+                          <div className="flex gap-3">
+                            <input 
+                              type="text" 
+                              value={catImageUrl} 
+                              onChange={(e) => setCatImageUrl(e.target.value)} 
+                              placeholder="Upload an image or paste a URL" 
+                              className="flex-1 rounded-md border border-line bg-ivory px-3 py-2 text-sm text-ink outline-none focus:border-zari" 
+                            />
+                            <label className="cursor-pointer inline-flex items-center gap-1.5 px-4 py-2 border border-line rounded bg-cream hover:bg-cream/70 text-xs font-semibold text-ink transition-colors whitespace-nowrap">
+                              <Upload className="w-4 h-4" />
+                              <span>{uploadingCategoryFormImage ? "Uploading..." : "Upload Cover Image"}</span>
+                              <input 
+                                type="file" 
+                                accept="image/*" 
+                                onChange={handleCategoryFormImageUpload} 
+                                className="hidden" 
+                                disabled={uploadingCategoryFormImage} 
+                              />
+                            </label>
+                          </div>
+                          {catImageUrl && (
+                            <div className="mt-2 relative w-32 aspect-[4/3] rounded border overflow-hidden bg-cream">
+                              <img src={catImageUrl} alt="Preview" className="w-full h-full object-cover" />
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <input 
+                            type="checkbox" 
+                            id="catIsActive" 
+                            checked={catIsActive} 
+                            onChange={(e) => setCatIsActive(e.target.checked)} 
+                            className="w-4 h-4 accent-zari" 
+                          />
+                          <label htmlFor="catIsActive" className="text-sm font-semibold cursor-pointer">Visible across storefront &amp; menus (Active)</label>
+                        </div>
+
+                        <div className="flex justify-end gap-3 border-t border-line pt-4">
+                          <Button 
+                            type="button" 
+                            variant="white" 
+                            onClick={() => { setShowCategoryForm(false); setEditingCategory(null); }}
+                          >
+                            Cancel
+                          </Button>
+                          <Button type="submit" variant="gold">
+                            {editingCategory ? "Save Changes" : "Create Category"}
+                          </Button>
+                        </div>
+                      </form>
+                    </div>
+                  )}
 
                   <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                     {categories.filter(c => c.slug !== "all" && c.slug !== "bulk-orders").map((c: any) => (
-                      <div key={c.id} className="zari-frame border border-line rounded-card bg-cream/10 p-4 space-y-3.5 flex flex-col justify-between">
-                        <div>
-                          <p className="font-semibold text-ink text-sm sm:text-base capitalize">{c.name}</p>
-                          <p className="text-[10px] text-taupe tracking-wider font-mono">Slug: {c.slug}</p>
+                      <div key={c.id} className={cn("zari-frame border border-line rounded-card p-4 space-y-3.5 flex flex-col justify-between transition-all", c.is_active ? "bg-cream/10" : "bg-red-50/10 opacity-70")}>
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <p className="font-semibold text-ink text-sm sm:text-base capitalize flex items-center gap-1.5">
+                              {c.name}
+                              {!c.is_active && (
+                                <span className="inline-block px-1.5 py-0.5 rounded bg-danger/10 text-danger text-[8px] font-bold uppercase">Disabled</span>
+                              )}
+                            </p>
+                            <p className="text-[10px] text-taupe tracking-wider font-mono">Slug: {c.slug} | Sort: #{c.sort_order}</p>
+                          </div>
+                          
+                          {/* Edit / Delete actions */}
+                          <div className="flex gap-1">
+                            <button 
+                              onClick={() => openEditCategory(c)} 
+                              className="p-1 border border-line rounded bg-white hover:bg-cream text-ink cursor-pointer"
+                              title="Edit Category Details"
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </button>
+                            <button 
+                              onClick={() => handleDeleteCategory(c.id)} 
+                              className="p-1 border border-line rounded bg-white hover:bg-danger/10 text-danger cursor-pointer"
+                              title="Delete Category"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         </div>
 
                         {/* Image Preview / Input */}
@@ -5139,6 +5484,7 @@ $$ language plpgsql;`}
                         <div className="space-y-4 text-sm font-sans">
                           <p className="text-xs text-taupe">
                             Plan tier: <strong className="text-ink uppercase font-semibold">Supabase Free Tier</strong>
+                            {analytics.supabaseStorageStats.is_estimated && " (Estimated)"}
                           </p>
 
                           {/* Database Storage metric (500 MB Limit) */}
@@ -5182,6 +5528,36 @@ $$ language plpgsql;`}
                             </div>
                             <p className="text-[10px] text-taupe text-right">Limit: 1 GB</p>
                           </div>
+
+                          {analytics.supabaseStorageStats.is_estimated && (
+                            <details className="mt-2 text-taupe text-[10px] bg-cream/10 border border-line rounded p-2">
+                              <summary className="cursor-pointer font-semibold hover:text-ink">Enable Exact Database Metrics</summary>
+                              <p className="mt-1 leading-normal">
+                                To view exact real-time bytes instead of row-based estimates, run the setup SQL script in your Supabase SQL Editor:
+                              </p>
+                              <pre className="mt-1 text-[9px] font-mono whitespace-pre-wrap select-all bg-cream/35 p-1 rounded leading-normal max-h-36 overflow-y-auto">
+{`CREATE OR REPLACE FUNCTION get_supabase_storage_stats()
+RETURNS json security definer as $$
+declare
+  db_size bigint;
+  storage_size bigint;
+begin
+  db_size := pg_database_size(current_database());
+  begin
+    select coalesce(sum(size), 0) into storage_size from storage.objects;
+  exception when others then
+    begin
+      select coalesce(sum((metadata->>'size')::bigint), 0) into storage_size from storage.objects;
+    exception when others then
+      storage_size := 0;
+    end;
+  end;
+  return json_build_object('db_size_bytes', db_size, 'storage_size_bytes', storage_size);
+end;
+$$ language plpgsql;`}
+                              </pre>
+                            </details>
+                          )}
                         </div>
                       )
                     ) : (
@@ -6399,6 +6775,8 @@ $$ language plpgsql;`}
                   )}
                 </div>
               </div>
+            )}
+              </>
             )}
           </div>
 

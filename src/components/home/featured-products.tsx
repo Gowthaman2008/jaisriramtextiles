@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import type { Product } from "@/lib/types";
 
 const tabs = [
+  { key: "all", label: "All" },
   { key: "featured", label: "Featured" },
   { key: "bestseller", label: "Best Sellers" },
   { key: "new", label: "New Arrivals" },
@@ -17,10 +18,12 @@ const tabs = [
 ] as const;
 
 export function FeaturedProducts({ products }: { products: Product[] }) {
-  const [tab, setTab] = useState<(typeof tabs)[number]["key"]>("featured");
+  const [tab, setTab] = useState<(typeof tabs)[number]["key"]>("all");
 
   const list =
-    tab === "featured"
+    tab === "all"
+      ? products
+      : tab === "featured"
       ? products.filter((p) => p.isFeatured)
       : products.filter((p) => p.badges?.includes(tab as never));
 
