@@ -194,7 +194,7 @@ export async function getActiveCategories() {
       .from("categories")
       .select("id, slug, name, tagline, image_url")
       .eq("is_active", true)
-      .order("name");
+      .order("sort_order", { ascending: true });
     return data || [];
   } catch (err: any) {
     if (err && (err.name === "DynamicServerError" || err.message?.includes("Dynamic server usage"))) {

@@ -248,6 +248,24 @@ export default function AdminDashboardPage() {
   const { notify, confirm } = useNotification();
   const [activeTab, setActiveTab] = useState("overview");
 
+  const handleDownloadImage = async (url: string, filename: string) => {
+    try {
+      const response = await fetch(url);
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.download = filename || "download";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (error) {
+      console.error("Failed to download image:", error);
+      window.open(url, "_blank");
+    }
+  };
+
   // --- WhatsApp notification helpers (Option 2) ---
   function openWhatsAppChat(phone: string, message: string) {
     if (!phone) {
@@ -5063,7 +5081,23 @@ export default function AdminDashboardPage() {
                             />
                           </label>
                           {uploadingSlideImage && <p className="text-[10px] text-zari font-semibold animate-pulse mt-0.5">Uploading to Cloudinary…</p>}
-                          {slideImageUrl && !uploadingSlideImage && <p className="text-[10px] text-success font-semibold mt-0.5">✓ Image uploaded successfully</p>}
+                          {slideImageUrl && !uploadingSlideImage && (
+                            <div className="flex justify-between items-center mt-1">
+                              <p className="text-[10px] text-success font-semibold">✓ Image uploaded successfully</p>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  handleDownloadImage(slideImageUrl, `slide-${(slideTitle || "").toLowerCase().replace(/[^a-z0-9]+/g, "-") || "image"}.png`);
+                                }}
+                                className="inline-flex items-center gap-1 px-2.5 py-1.5 border border-line rounded bg-cream hover:bg-cream/70 text-[9px] font-bold text-ink transition-colors cursor-pointer"
+                              >
+                                <Download className="w-2.5 h-2.5 text-zari-deep" />
+                                Download Photo
+                              </button>
+                            </div>
+                          )}
                         </div>
                       </div>
 
@@ -5270,9 +5304,23 @@ export default function AdminDashboardPage() {
                               />
                             </label>
                             {catImageUrl && (
-                              <span className="text-[10px] text-taupe font-medium truncate max-w-xs">
-                                Image uploaded successfully
-                              </span>
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] text-taupe font-medium truncate max-w-xs">
+                                  Image uploaded successfully
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    handleDownloadImage(catImageUrl, `category-${catSlug || "image"}.png`);
+                                  }}
+                                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 border border-line rounded bg-cream hover:bg-cream/70 text-[9px] font-bold text-ink transition-colors cursor-pointer"
+                                >
+                                  <Download className="w-2.5 h-2.5 text-zari-deep" />
+                                  Download Photo
+                                </button>
+                              </div>
                             )}
                           </div>
                           
