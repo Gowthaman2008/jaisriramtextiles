@@ -9,6 +9,7 @@ import { jsPDF } from "jspdf";
 import { drawInvoicePdf } from "@/lib/invoice-generator";
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
+import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
   ShoppingBag,
@@ -5255,7 +5256,7 @@ export default function AdminDashboardPage() {
                         <div className="flex justify-end gap-3 border-t border-line pt-4">
                           <Button 
                             type="button" 
-                            variant="white" 
+                            variant="outline" 
                             onClick={() => { setShowCategoryForm(false); setEditingCategory(null); }}
                           >
                             Cancel

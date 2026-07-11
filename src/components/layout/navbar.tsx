@@ -14,7 +14,7 @@ import { SearchOverlay } from "@/components/layout/search-overlay";
 import { createClient } from "@/lib/supabase/client";
 
 export function Navbar() {
-  const [navCategories, setNavCategories] = useState<any[]>(CATEGORIES);
+  const [navCategories, setNavCategories] = useState<any[]>([...CATEGORIES]);
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
