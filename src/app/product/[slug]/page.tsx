@@ -13,13 +13,7 @@ import { ChevronLeft } from "lucide-react";
 
 type Props = { params: Promise<{ slug: string }> };
 
-// Pre-render all product pages at build time for instant navigation
-export async function generateStaticParams() {
-  const slugs = await getAllProductSlugs();
-  return slugs.map((slug) => ({ slug }));
-}
-
-export const revalidate = 3600; // re-generate in background every hour
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;

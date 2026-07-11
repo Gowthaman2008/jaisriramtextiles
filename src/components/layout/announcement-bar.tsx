@@ -19,6 +19,18 @@ export function AnnouncementBar() {
       try {
         const supabase = createClient();
         
+        // Fetch shipping settings for dynamic banner text
+        const shippingRes = await fetch("/api/shipping-settings").then((r) => r.json()).catch(() => null);
+        const dynamicThreshold = shippingRes && typeof shippingRes.free_shipping_threshold_paise === "number"
+          ? shippingRes.free_shipping_threshold_paise / 100
+          : 699;
+
+        const updatedDefaults = [
+          `Free shipping on orders above ₹${dynamicThreshold}`,
+          "Earn cashback on every order — credited after delivery",
+          "Bulk & wholesale enquiries welcome",
+        ];
+
         // Load standard CMS announcements and active free product campaigns in parallel
         const [cmsRes, campaignsRes] = await Promise.all([
           supabase
@@ -37,7 +49,7 @@ export function AnnouncementBar() {
           const list = (cmsRes.data.content as any).messages.filter((msg: any) => typeof msg === "string" && msg.trim() !== "");
           finalMessages = [...list];
         } else {
-          finalMessages = [...defaultMessages];
+          finalMessages = [...updatedDefaults];
         }
 
         // 2. Add auto-generated active campaign messages

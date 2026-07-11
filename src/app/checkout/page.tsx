@@ -66,6 +66,10 @@ export default function CheckoutPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [checkoutError, setCheckoutError] = useState("");
 
+  // Dynamic shipping states
+  const [shippingThreshold, setShippingThreshold] = useState(69900); // default ₹699
+  const [shippingCharge, setShippingCharge] = useState(9900);       // default ₹99
+
   // 1. Authenticate user and fetch address/wallet lists
   useEffect(() => {
     async function loadCheckoutData() {
@@ -116,6 +120,17 @@ export default function CheckoutPage() {
           });
         }
         setWalletBalance(Math.max(0, calculatedBalance));
+
+        // Fetch shipping settings dynamically
+        const settingsRes = await fetch("/api/shipping-settings").then((r) => r.json()).catch(() => null);
+        if (settingsRes) {
+          if (typeof settingsRes.free_shipping_threshold_paise === "number") {
+            setShippingThreshold(settingsRes.free_shipping_threshold_paise);
+          }
+          if (typeof settingsRes.shipping_charge_paise === "number") {
+            setShippingCharge(settingsRes.shipping_charge_paise);
+          }
+        }
       } catch (err) {
         console.error("Checkout initialization failed:", err);
       } finally {
@@ -334,7 +349,8 @@ export default function CheckoutPage() {
   const maxRedeemableWallet = Math.min(walletBalance, walletCap);
   const walletUsedPaise = useWallet ? Math.min(maxRedeemableWallet, cartSubtotalPaise - discountPaise) : 0;
 
-  const { shippingPaise } = computeShipping(cartSubtotalPaise);
+  const qualifiesFree = cartSubtotalPaise >= shippingThreshold;
+  const shippingPaise = qualifiesFree ? 0 : shippingCharge;
   const grandTotalPaise = cartSubtotalPaise - discountPaise - walletUsedPaise + shippingPaise;
 
   // 4. Place order

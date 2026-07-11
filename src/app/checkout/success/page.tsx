@@ -10,13 +10,15 @@ import { formatINR } from "@/lib/utils";
 
 /* ---------- GPU-only CSS keyframes injected once ---------- */
 const VAN_CSS = `
-@keyframes vanDriveIn  { from { transform: translateX(-110vw); } to { transform: translateX(0); } }
-@keyframes vanIdle     { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-4px)} }
-@keyframes vanShake    { 0%,100%{transform:translateX(0) rotate(0deg)} 25%{transform:translateX(-4px) rotate(-1.5deg)} 75%{transform:translateX(4px) rotate(1.5deg)} }
-@keyframes vanDriveOut { from { transform: translateX(0); } to { transform: translateX(130vw); } }
-@keyframes smokePuff   { 0%{opacity:0;transform:translate(0,0) scale(.4)} 30%{opacity:.4} 100%{opacity:0;transform:translate(var(--sx),var(--sy)) scale(1.6)} }
-@keyframes parcelHop   { 0%{opacity:1;transform:translate(var(--px),28px) scale(1) rotate(0deg)} 55%{opacity:1;transform:translate(calc(var(--px)*.5),-28px) scale(1) rotate(var(--pr))} 100%{opacity:0;transform:translate(0,0) scale(0) rotate(0deg)} }
-@keyframes tirePuff    { 0%{opacity:.7;transform:translate(0,0) scale(0)} 100%{opacity:0;transform:translate(var(--tx),var(--ty)) scale(1)} }
+@keyframes vanDriveIn  { from { transform: translateX(-110vw); } to { transform: translateX(-50%); } }
+@keyframes vanIdle     { 0%,100%{transform:translate(-50%, 0)} 50%{transform:translate(-50%, -4px)} }
+@keyframes vanShake    { 0%,100%{transform:translate(-50%, 0) rotate(0deg)} 25%{transform:translate(-50%, 0) translateX(-4px) rotate(-1.5deg)} 75%{transform:translate(-50%, 0) translateX(4px) rotate(1.5deg)} }
+@keyframes vanDriveOut { from { transform: translateX(-50%); } to { transform: translateX(110vw); } }
+@keyframes smokePuff   { 0%{opacity:0;transform:translate(-50%,-50%) scale(.4)} 30%{opacity:.4} 100%{opacity:0;transform:translate(-50%,-50%) scale(1.8) translate(-40px,-10px)} }
+@keyframes parcelHop1  { 0%{opacity:1;transform:translate(-70px,28px) scale(1) rotate(0deg)} 55%{opacity:1;transform:translate(-45px,-28px) scale(1) rotate(-14deg)} 100%{opacity:0;transform:translate(-20px,0px) scale(0) rotate(0deg)} }
+@keyframes parcelHop2  { 0%{opacity:1;transform:translate(-100px,28px) scale(1) rotate(0deg)} 55%{opacity:1;transform:translate(-60px,-28px) scale(1) rotate(14deg)} 100%{opacity:0;transform:translate(-20px,0px) scale(0) rotate(0deg)} }
+@keyframes parcelHop3  { 0%{opacity:1;transform:translate(-130px,28px) scale(1) rotate(0deg)} 55%{opacity:1;transform:translate(-75px,-28px) scale(1) rotate(-14deg)} 100%{opacity:0;transform:translate(-20px,0px) scale(0) rotate(0deg)} }
+@keyframes tirePuff    { 0%{opacity:.6;transform:scale(0) translate(0,0)} 100%{opacity:0;transform:scale(1.6) translate(-30px,10px)} }
 @keyframes speedLine   { 0%{opacity:0;transform:translateX(0) scaleX(0)} 40%{opacity:.55} 100%{opacity:0;transform:translateX(-22vw) scaleX(1)} }
 `;
 function injectVanCSS() {
@@ -200,17 +202,16 @@ function OrderSuccessPageContent() {
 
           {/* Exhaust smoke – stage 0 */}
           {stage === 0 && [
-            { size: 12, delay: "0s",   sx: "-40px", sy: "-20px" },
-            { size: 9,  delay: "0.2s", sx: "-55px", sy: "-25px" },
-            { size: 7,  delay: "0.4s", sx: "-70px", sy: "-18px" },
+            { size: 12, delay: "0s" },
+            { size: 9,  delay: "0.2s" },
+            { size: 7,  delay: "0.4s" },
           ].map((p, i) => (
             <span key={i} className="absolute rounded-full bg-taupe/25" style={{
               width: p.size, height: p.size,
-              left: "calc(50% - 60px)", top: "calc(50% - 10px)",
-              "--sx": p.sx, "--sy": p.sy,
+              left: "calc(50% - 42px)", top: "calc(50% + 26px)",
               animation: `smokePuff 1.2s ease-out ${p.delay} infinite`,
               willChange: "transform, opacity",
-            } as React.CSSProperties} />
+            }} />
           ))}
 
           {/* Van – animation driven by CSS keyframe per stage */}
@@ -228,34 +229,33 @@ function OrderSuccessPageContent() {
 
           {/* Parcels – stage 1 */}
           {stage === 1 && [
-            { delay: "0.15s", px: "-70px", pr: "-14deg" },
-            { delay: "0.39s", px: "-100px", pr: "14deg" },
-            { delay: "0.63s", px: "-130px", pr: "-14deg" },
+            { delay: "0.15s", anim: "parcelHop1" },
+            { delay: "0.39s", anim: "parcelHop2" },
+            { delay: "0.63s", anim: "parcelHop3" },
           ].map((p, i) => (
             <span key={i} className="absolute text-ink" style={{
               left: "50%", top: "50%",
-              "--px": p.px, "--pr": p.pr,
-              animation: `parcelHop 0.55s ease-in ${p.delay} 1 normal backwards`,
+              animation: `${p.anim} 0.55s ease-in ${p.delay} 1 normal both`,
               willChange: "transform, opacity",
-            } as React.CSSProperties}>
+            }}>
               <Package size={22} strokeWidth={2.5} />
             </span>
           ))}
 
           {/* Tire smoke – stage 2 */}
-          {stage === 2 && Array.from({ length: 6 }, (_, i) => ({
-            size: 10 + (i % 3) * 3,
-            tx: `${(i % 2 === 0 ? -1 : 1) * (16 + (i % 3) * 10)}px`,
-            ty: `${10 + (i % 3) * 6}px`,
-            delay: `${i * 0.09}s`,
-          })).map((s, i) => (
+          {stage === 2 && [
+            { size: 12, delay: "0s" },
+            { size: 9,  delay: "0.12s" },
+            { size: 10, delay: "0.24s" },
+            { size: 8,  delay: "0.36s" },
+            { size: 11, delay: "0.48s" },
+          ].map((s, i) => (
             <span key={i} className="absolute rounded-full bg-taupe/20" style={{
               width: s.size, height: s.size,
-              left: "calc(50% + 10px)", top: "calc(50% + 28px)",
-              "--tx": s.tx, "--ty": s.ty,
+              left: "calc(50% - 25px)", top: "calc(50% + 26px)",
               animation: `tirePuff 0.6s ease-out ${s.delay} forwards`,
               willChange: "transform, opacity",
-            } as React.CSSProperties} />
+            }} />
           ))}
 
           {/* Speed lines – stage 3 */}

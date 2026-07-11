@@ -42,20 +42,34 @@ export async function POST(request: Request) {
     let dbCategories: any[] = [];
     let dbCoupons: any[] = [];
 
+    let freeThreshold = 699;
+    let shippingCharge = 99;
+
     try {
       const supabase = await createClient();
       const [
         productsRes,
         categoriesRes,
-        couponsRes
+        couponsRes,
+        settingsRes
       ] = await Promise.all([
         supabase.from("products").select("name, slug, price_paise, compare_at_paise, stock, description").eq("is_active", true),
         supabase.from("categories").select("name, slug, tagline").eq("is_active", true),
-        supabase.from("coupons").select("code, type, value, min_order_paise").eq("is_active", true)
+        supabase.from("coupons").select("code, type, value, min_order_paise").eq("is_active", true),
+        supabase.from("app_settings").select("value").eq("key", "shipping_settings").maybeSingle()
       ]);
       dbProducts = productsRes.data || [];
       dbCategories = categoriesRes.data || [];
       dbCoupons = couponsRes.data || [];
+      if (settingsRes?.data?.value) {
+        const val = settingsRes.data.value;
+        if (typeof val.free_shipping_threshold_paise === "number") {
+          freeThreshold = val.free_shipping_threshold_paise / 100;
+        }
+        if (typeof val.shipping_charge_paise === "number") {
+          shippingCharge = val.shipping_charge_paise / 100;
+        }
+      }
     } catch (dbErr) {
       console.error("Chatbot failed to query database catalogs:", dbErr);
     }
@@ -65,7 +79,10 @@ export async function POST(request: Request) {
     const couponsList = dbCoupons.map(cp => `- ${cp.code}: ${cp.type === "percent" ? `${cp.value}%` : `₹${cp.value / 100}`} off`).join("\n") || "None";
 
     // Compile dynamic user context to present to the LLM
-    let dynamicPrompt = BASE_SYSTEM_PROMPT;
+    let dynamicPrompt = BASE_SYSTEM_PROMPT.replace(
+      "- Shipping Policy: Free shipping on orders above ₹699. Orders below ₹699 incur a flat ₹99 shipping charge. Delivery estimate is 4-7 business days.",
+      `- Shipping Policy: Free shipping on orders above ₹${freeThreshold}. Orders below ₹${freeThreshold} incur a flat ₹${shippingCharge} shipping charge. Delivery estimate is 4-7 business days.`
+    );
     
     dynamicPrompt += `\n\n### Current Website Catalog & Database Context:
 - **Active Categories**:

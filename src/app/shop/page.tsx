@@ -4,6 +4,8 @@ import { SectionHeading } from "@/components/ui/section-heading";
 import { ProductCard } from "@/components/home/product-card";
 import { getAllProducts } from "@/lib/supabase/queries";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "Shop All",
   description: "Browse the full JAI SRI RAM TEXTILES collection.",

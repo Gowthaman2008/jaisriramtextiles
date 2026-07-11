@@ -18,6 +18,7 @@ export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [shippingThreshold, setShippingThreshold] = useState(699); // default ₹699
   const { cart } = useCart();
 
   useEffect(() => {
@@ -38,6 +39,12 @@ export function Navbar() {
             { slug: "bulk-orders", label: "Bulk Orders" }
           ];
           setNavCategories(finalCategories);
+        }
+
+        // Fetch shipping settings for dynamic nav banner text
+        const shippingRes = await fetch("/api/shipping-settings").then((r) => r.json()).catch(() => null);
+        if (shippingRes && typeof shippingRes.free_shipping_threshold_paise === "number") {
+          setShippingThreshold(shippingRes.free_shipping_threshold_paise / 100);
         }
       } catch (err) {
         console.error("Failed to load nav categories:", err);
@@ -168,7 +175,7 @@ export function Navbar() {
               <div className="bg-zari/5 px-6 py-2.5 text-center border-b border-line/45 flex items-center justify-center gap-1.5">
                 <span className="h-1.5 w-1.5 rounded-full bg-zari animate-pulse" />
                 <p className="text-[10px] font-bold text-zari-deep tracking-widest uppercase">
-                  Free shipping above ₹699
+                  Free shipping above ₹{shippingThreshold}
                 </p>
               </div>
 

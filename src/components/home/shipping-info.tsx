@@ -1,15 +1,37 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import { Container } from "@/components/ui/container";
 import { Reveal } from "@/components/ui/reveal";
 import { Truck, PackageCheck, RefreshCw, ShieldCheck } from "lucide-react";
 
-const items = [
-  { icon: Truck, title: "Free shipping over ₹699", text: "A flat ₹99 applies below that. Delivered in 4–7 business days." },
-  { icon: PackageCheck, title: "Carefully packed", text: "Every order is inspected and packed to arrive in perfect condition." },
-  { icon: RefreshCw, title: "7 Days Easy Return", text: "Return or replacement is only accepted if the product was received in a damaged condition." },
-  { icon: ShieldCheck, title: "Secure checkout", text: "Payments handled securely via Razorpay. Your data stays protected." },
-];
-
 export function ShippingInfo() {
+  const [shippingThreshold, setShippingThreshold] = useState(699);
+  const [shippingCharge, setShippingCharge] = useState(99);
+
+  useEffect(() => {
+    fetch("/api/shipping-settings")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data) {
+          if (typeof data.free_shipping_threshold_paise === "number") {
+            setShippingThreshold(data.free_shipping_threshold_paise / 100);
+          }
+          if (typeof data.shipping_charge_paise === "number") {
+            setShippingCharge(data.shipping_charge_paise / 100);
+          }
+        }
+      })
+      .catch((err) => console.error("Failed to load shipping settings:", err));
+  }, []);
+
+  const items = [
+    { icon: Truck, title: `Free shipping over ₹${shippingThreshold}`, text: `A flat ₹${shippingCharge} applies below that. Delivered in 4–7 business days.` },
+    { icon: PackageCheck, title: "Carefully packed", text: "Every order is inspected and packed to arrive in perfect condition." },
+    { icon: RefreshCw, title: "7 Days Easy Return", text: "Return or replacement is only accepted if the product was received in a damaged condition." },
+    { icon: ShieldCheck, title: "Secure checkout", text: "Payments handled securely via Razorpay. Your data stays protected." },
+  ];
+
   return (
     <section className="border-y border-line bg-cream py-14">
       <Container>

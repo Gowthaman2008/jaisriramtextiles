@@ -10,6 +10,8 @@ import {
   getProductsByCategoryId,
 } from "@/lib/supabase/queries";
 
+export const dynamic = "force-dynamic";
+
 type Props = { params: Promise<{ category: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {

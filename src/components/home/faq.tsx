@@ -1,23 +1,42 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Plus } from "lucide-react";
 import { Container } from "@/components/ui/container";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { cn } from "@/lib/utils";
 
-const faqs = [
-  { q: "How long does delivery take?", a: "Orders are delivered within 4–7 business days across India. You'll receive a tracking ID as soon as your order ships." },
-  { q: "What are the shipping charges?", a: "Shipping is a flat ₹99. Orders above ₹699 qualify for free shipping automatically at checkout." },
-  { q: "How does cashback work?", a: "Eligible products earn wallet cashback, credited after your order is delivered. You can redeem up to 20% of a future order's value from your wallet." },
-  { q: "When can I use a coupon?", a: "Coupons — including your first-order 10% welcome code — are applied at the order summary step of checkout." },
-  { q: "Can I order in bulk or wholesale?", a: "Yes. We supply temples, hotels, retailers and businesses. Visit our Bulk Orders page and send an enquiry with your requirements." },
-  { q: "Who can leave a review?", a: "Reviews (including photo reviews) can be submitted by verified purchasers after their order has been delivered." },
-];
-
 export function Faq() {
   const [open, setOpen] = useState<number | null>(0);
+  const [shippingThreshold, setShippingThreshold] = useState(699);
+  const [shippingCharge, setShippingCharge] = useState(99);
+
+  useEffect(() => {
+    fetch("/api/shipping-settings")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data) {
+          if (typeof data.free_shipping_threshold_paise === "number") {
+            setShippingThreshold(data.free_shipping_threshold_paise / 100);
+          }
+          if (typeof data.shipping_charge_paise === "number") {
+            setShippingCharge(data.shipping_charge_paise / 100);
+          }
+        }
+      })
+      .catch((err) => console.error("Failed to load shipping settings:", err));
+  }, []);
+
+  const faqs = [
+    { q: "How long does delivery take?", a: "Orders are delivered within 4–7 business days across India. You'll receive a tracking ID as soon as your order ships." },
+    { q: "What are the shipping charges?", a: `Shipping is a flat ₹${shippingCharge}. Orders above ₹${shippingThreshold} qualify for free shipping automatically at checkout.` },
+    { q: "How does cashback work?", a: "Eligible products earn wallet cashback, credited after your order is delivered. You can redeem up to 20% of a future order's value from your wallet." },
+    { q: "When can I use a coupon?", a: "Coupons — including your first-order 10% welcome code — are applied at the order summary step of checkout." },
+    { q: "Can I order in bulk or wholesale?", a: "Yes. We supply temples, hotels, retailers and businesses. Visit our Bulk Orders page and send an enquiry with your requirements." },
+    { q: "Who can leave a review?", a: "Reviews (including photo reviews) can be submitted by verified purchasers after their order has been delivered." },
+  ];
+
   return (
     <section className="bg-cream py-20 sm:py-24">
       <Container className="max-w-3xl">

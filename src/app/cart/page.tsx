@@ -48,6 +48,25 @@ export default function CartPage() {
       .catch((e) => console.error("Error fetching campaigns:", e));
   }, []);
 
+  const [shippingThreshold, setShippingThreshold] = useState(69900); // default ₹699
+  const [shippingCharge, setShippingCharge] = useState(9900);       // default ₹99
+
+  useEffect(() => {
+    fetch("/api/shipping-settings")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data) {
+          if (typeof data.free_shipping_threshold_paise === "number") {
+            setShippingThreshold(data.free_shipping_threshold_paise);
+          }
+          if (typeof data.shipping_charge_paise === "number") {
+            setShippingCharge(data.shipping_charge_paise);
+          }
+        }
+      })
+      .catch((err) => console.error("Failed to load shipping settings:", err));
+  }, []);
+
   if (cart.length === 0) {
     return (
       <div className="flex min-h-[60vh] items-center py-20 bg-ivory">
@@ -68,9 +87,9 @@ export default function CartPage() {
           </div>
           <h1 className="font-display text-3xl text-ink">Your cart is empty</h1>
           <p className="mt-3 text-sm text-taupe">
-            Browse our catalog and add premium handloom items to your bag.
+            Browse our curated collection of fine handloom fabrics and discover premium comfort.
           </p>
-          <div className="mt-8">
+          <div className="mt-8 flex justify-center">
             <Button href="/shop" variant="gold" size="lg">
               Browse products
             </Button>
@@ -80,11 +99,12 @@ export default function CartPage() {
     );
   }
 
-  const { shippingPaise, qualifiesFree, remainingForFreePaise } = computeShipping(cartSubtotalPaise);
+  const qualifiesFree = cartSubtotalPaise >= shippingThreshold;
+  const shippingPaise = qualifiesFree ? 0 : shippingCharge;
+  const remainingForFreePaise = qualifiesFree ? 0 : shippingThreshold - cartSubtotalPaise;
   const grandTotalPaise = cartSubtotalPaise + shippingPaise;
 
   // Free shipping progress percentage
-  const shippingThreshold = 69900; // ₹699
   const progressPercent = Math.min((cartSubtotalPaise / shippingThreshold) * 100, 100);
 
   return (
