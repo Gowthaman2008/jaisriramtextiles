@@ -223,9 +223,7 @@ function OrderSuccessPageContent() {
               stage === 2 ? "vanShake 0.2s ease-in-out 6" :
               "vanDriveOut 0.75s cubic-bezier(0.55,0,1,0.45) forwards",
           }}>
-            <span style={{ display: "block", transform: "scaleX(-1)" }}>
-              <Truck size={80} strokeWidth={1.6} />
-            </span>
+            <Truck size={80} strokeWidth={1.6} />
           </span>
 
           {/* Parcels – stage 1 */}
