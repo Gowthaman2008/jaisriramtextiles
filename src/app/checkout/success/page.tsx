@@ -235,7 +235,7 @@ function OrderSuccessPageContent() {
             <span key={i} className="absolute text-ink" style={{
               left: "50%", top: "50%",
               "--px": p.px, "--pr": p.pr,
-              animation: `parcelHop 0.55s ease-in ${p.delay} forwards`,
+              animation: `parcelHop 0.55s ease-in ${p.delay} 1 normal backwards`,
               willChange: "transform, opacity",
             } as React.CSSProperties}>
               <Package size={22} strokeWidth={2.5} />
