@@ -5,35 +5,28 @@ import { Suspense, useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Container } from "@/components/ui/container";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, ShoppingBag, ArrowRight, ShieldCheck, Truck, Package } from "lucide-react";
+import { CheckCircle2, ShoppingBag, ArrowRight, ShieldCheck, Truck } from "lucide-react";
 import { formatINR } from "@/lib/utils";
 
-// Stages: 0 drives in slowly with exhaust smoke, 1 stopped + parcels hop in through the back door,
-// 2 wheel-spin/drift in place with tire smoke, 3 speeds off to the right, 4 reveal order details
+/* ---------- GPU-only CSS keyframes injected once ---------- */
+const VAN_CSS = `
+@keyframes vanDriveIn  { from { transform: translateX(-110vw); } to { transform: translateX(0); } }
+@keyframes vanIdle     { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-4px)} }
+@keyframes vanShake    { 0%,100%{transform:translateX(0) rotate(0deg)} 25%{transform:translateX(-4px) rotate(-1.5deg)} 75%{transform:translateX(4px) rotate(1.5deg)} }
+@keyframes vanDriveOut { from { transform: translateX(0); } to { transform: translateX(130vw); } }
+@keyframes smokePuff   { 0%{opacity:0;transform:translate(0,0) scale(.4)} 30%{opacity:.4} 100%{opacity:0;transform:translate(var(--sx),var(--sy)) scale(1.6)} }
+@keyframes parcelHop   { 0%{opacity:1;transform:translate(var(--px),28px) scale(1) rotate(0deg)} 55%{opacity:1;transform:translate(calc(var(--px)*.5),-28px) scale(1) rotate(var(--pr))} 100%{opacity:0;transform:translate(0,0) scale(0) rotate(0deg)} }
+@keyframes tirePuff    { 0%{opacity:.7;transform:translate(0,0) scale(0)} 100%{opacity:0;transform:translate(var(--tx),var(--ty)) scale(1)} }
+@keyframes speedLine   { 0%{opacity:0;transform:translateX(0) scaleX(0)} 40%{opacity:.55} 100%{opacity:0;transform:translateX(-22vw) scaleX(1)} }
+`;
+function injectVanCSS() {
+  if (typeof document === "undefined" || document.getElementById("van-css")) return;
+  const s = document.createElement("style"); s.id = "van-css"; s.textContent = VAN_CSS;
+  document.head.appendChild(s);
+}
+
+// Stages: 0 drives in, 1 stopped, 2 wheel-spin, 3 speeds off, 4 reveal order details
 type Stage = 0 | 1 | 2 | 3 | 4;
-
-const EXHAUST_PUFFS = [
-  { size: 12, lag: 0.15 },
-  { size: 9, lag: 0.35 },
-  { size: 7, lag: 0.55 },
-];
-
-const TIRE_SMOKE = Array.from({ length: 8 }, (_, i) => ({
-  dx: (i % 2 === 0 ? -1 : 1) * (20 + (i % 4) * 10),
-  dy: 14 + (i % 3) * 6,
-  delay: (i % 4) * 0.12,
-  size: 10 + (i % 3) * 4,
-}));
-
-const SPEED_LINES = [0, 1, 2].map((i) => ({ offsetY: -14 + i * 14, delay: i * 0.05 }));
-
-// Three closed parcels sitting outside the van, each hopping into it one after another
-// (further-out parcels start further away so they don't overlap each other on the way in).
-const PARCEL_JUMPS = [0, 1, 2].map((i) => ({
-  landX: -70 - i * 30,
-  rotateDir: i % 2 === 0 ? -14 : 14,
-  delay: 0.15 + i * 0.24,
-}));
 
 let sharedAudioCtx: any = null;
 
@@ -165,32 +158,18 @@ function OrderSuccessPageContent() {
   const [stage, setStage] = useState<Stage>(0);
 
   useEffect(() => {
-    if (stage === 2) {
-      playVanZoomSound();
-    } else if (stage === 4) {
-      playSuccessChime();
-    }
-  }, [stage]);
-
-  useEffect(() => {
-    // Prime the audio context immediately on mount using checkout active user gesture token
+    injectVanCSS();
     initAudio();
-
-    const unlock = () => {
-      initAudio();
-    };
+    const unlock = () => initAudio();
     window.addEventListener("click", unlock, { once: true });
     window.addEventListener("touchstart", unlock, { once: true });
 
-    const t1 = setTimeout(() => setStage(1), 2000); // finished driving in, stopped at center
-    const t2 = setTimeout(() => setStage(2), 3300); // door opened, parcel dropped
-    const t3 = setTimeout(() => setStage(3), 4400); // done wheel-spinning
-    const t4 = setTimeout(() => setStage(4), 5200); // sped off screen
+    const t1 = setTimeout(() => setStage(1), 2000);
+    const t2 = setTimeout(() => { setStage(2); playVanZoomSound(); }, 3300);
+    const t3 = setTimeout(() => setStage(3), 4400);
+    const t4 = setTimeout(() => { setStage(4); playSuccessChime(); }, 5200);
     return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
-      clearTimeout(t3);
-      clearTimeout(t4);
+      clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); clearTimeout(t4);
       window.removeEventListener("click", unlock);
       window.removeEventListener("touchstart", unlock);
     };
@@ -215,95 +194,84 @@ function OrderSuccessPageContent() {
       }}
       className={`relative py-16 sm:py-24 bg-ivory min-h-[75vh] flex items-center overflow-hidden ${stage < 4 ? "cursor-pointer select-none" : ""}`}
     >
-      {/* Animation overlay: van drives in slowly, stops & unloads a parcel, wheel-spins, then speeds off */}
+      {/* ── Pure-CSS van animation – all transforms run on GPU compositor ── */}
       {stage < 4 && (
         <div className="absolute inset-0 flex items-center justify-center overflow-hidden pointer-events-none">
-          {/* Exhaust smoke trailing behind the van while it drives in */}
-          {stage === 0 &&
-            EXHAUST_PUFFS.map((p, i) => (
-              <motion.span
-                key={i}
-                className="absolute rounded-full bg-taupe/20"
-                style={{ width: p.size, height: p.size, marginLeft: -p.size / 2, marginTop: -p.size / 2, willChange: "transform" }}
-                initial={{ x: "-70vw", y: 6, opacity: 0 }}
-                animate={{ x: "0vw", y: -6, opacity: [0, 0.5, 0.5, 0] }}
-                transition={{ duration: 2, ease: "easeOut", delay: p.lag }}
-              />
-            ))}
 
-          {/* The van itself — always facing right (direction of travel) */}
-          <motion.div
-            initial={{ x: "-70vw", y: 0 }}
-            style={{ willChange: "transform" }}
-            animate={
-              stage === 0
-                ? { x: "0vw", y: [0, -6, 0, -6, 0] }
-                : stage === 1
-                ? { x: "0vw", y: 0 }
-                : stage === 2
-                ? { x: [0, -3, 3, -3, 3, 0], y: 0, rotate: [0, -1.5, 1.5, -1.5, 1.5, 0] }
-                : { x: "70vw", y: [0, -8, 0] } // stage 3: speeds off
-            }
-            transition={
-              stage === 0
-                ? { duration: 2, ease: "easeOut" }
-                : stage === 1
-                ? { duration: 0.3, ease: "easeOut" }
-                : stage === 2
-                ? { duration: 1.1, ease: "easeInOut", repeat: 1 }
-                : { duration: 0.8, ease: "easeIn" }
-            }
-            className="text-ink -scale-x-100"
-          >
-            <Truck size={80} strokeWidth={1.6} />
-          </motion.div>
+          {/* Exhaust smoke – stage 0 */}
+          {stage === 0 && [
+            { size: 12, delay: "0s",   sx: "-40px", sy: "-20px" },
+            { size: 9,  delay: "0.2s", sx: "-55px", sy: "-25px" },
+            { size: 7,  delay: "0.4s", sx: "-70px", sy: "-18px" },
+          ].map((p, i) => (
+            <span key={i} className="absolute rounded-full bg-taupe/25" style={{
+              width: p.size, height: p.size,
+              left: "calc(50% - 60px)", top: "calc(50% - 10px)",
+              "--sx": p.sx, "--sy": p.sy,
+              animation: `smokePuff 1.2s ease-out ${p.delay} infinite`,
+              willChange: "transform, opacity",
+            } as React.CSSProperties} />
+          ))}
 
-          {/* Three closed parcels waiting outside, hopping into the van one by one to be loaded */}
-          {stage === 1 &&
-            PARCEL_JUMPS.map((p, i) => (
-              <motion.div
-                key={i}
-                className="absolute text-ink"
-                style={{ marginTop: 8, willChange: "transform" }}
-                initial={{ x: p.landX, y: 32, scale: 1, opacity: 1 }}
-                animate={{
-                  x: [p.landX, p.landX * 0.55, 0],
-                  y: [32, -30, 0],
-                  scale: [1, 1, 0],
-                  opacity: [1, 1, 0],
-                  rotate: [0, p.rotateDir, 0],
-                }}
-                transition={{ duration: 0.5, delay: p.delay, times: [0, 0.55, 1], ease: "easeIn" }}
-              >
-                <Package size={22} strokeWidth={2} />
-              </motion.div>
-            ))}
+          {/* Van – animation driven by CSS keyframe per stage */}
+          <span className="absolute text-ink" style={{
+            left: "50%", top: "calc(50% - 40px)",
+            willChange: "transform",
+            animation:
+              stage === 0 ? "vanDriveIn 2s cubic-bezier(0.22,1,0.36,1) forwards" :
+              stage === 1 ? "vanIdle 0.8s ease-in-out infinite" :
+              stage === 2 ? "vanShake 0.2s ease-in-out 6" :
+              "vanDriveOut 0.75s cubic-bezier(0.55,0,1,0.45) forwards",
+          }}>
+            <span style={{ display: "block", transform: "scaleX(-1)" }}>
+              <Truck size={80} strokeWidth={1.6} />
+            </span>
+          </span>
 
-          {/* Tire smoke burst while the van wheel-spins in place */}
-          {stage === 2 &&
-            TIRE_SMOKE.map((s, i) => (
-              <motion.span
-                key={i}
-                className="absolute rounded-full bg-taupe/20"
-                style={{ width: s.size, height: s.size, marginTop: 40, willChange: "transform" }}
-                initial={{ x: 0, y: 0, scale: 0, opacity: 0.7 }}
-                animate={{ x: s.dx, y: s.dy, scale: 1, opacity: 0 }}
-                transition={{ duration: 0.7, delay: s.delay, ease: "easeOut" }}
-              />
-            ))}
+          {/* Parcels – stage 1 */}
+          {stage === 1 && [
+            { delay: "0.15s", px: "-70px", pr: "-14deg" },
+            { delay: "0.39s", px: "-100px", pr: "14deg" },
+            { delay: "0.63s", px: "-130px", pr: "-14deg" },
+          ].map((p, i) => (
+            <span key={i} className="absolute text-xl" style={{
+              left: "50%", top: "50%",
+              "--px": p.px, "--pr": p.pr,
+              animation: `parcelHop 0.55s ease-in ${p.delay} forwards`,
+              willChange: "transform, opacity",
+            } as React.CSSProperties}>📦</span>
+          ))}
 
-          {/* Speed lines streaking behind the van as it takes off */}
-          {stage === 3 &&
-            SPEED_LINES.map((l, i) => (
-              <motion.span
-                key={i}
-                className="absolute h-[3px] rounded-full bg-taupe/40"
-                style={{ marginTop: l.offsetY, willChange: "transform" }}
-                initial={{ x: "-30vw", width: 0, opacity: 0 }}
-                animate={{ x: "-55vw", width: 90, opacity: [0, 0.6, 0] }}
-                transition={{ duration: 0.7, ease: "easeOut", delay: l.delay }}
-              />
-            ))}
+          {/* Tire smoke – stage 2 */}
+          {stage === 2 && Array.from({ length: 6 }, (_, i) => ({
+            size: 10 + (i % 3) * 3,
+            tx: `${(i % 2 === 0 ? -1 : 1) * (16 + (i % 3) * 10)}px`,
+            ty: `${10 + (i % 3) * 6}px`,
+            delay: `${i * 0.09}s`,
+          })).map((s, i) => (
+            <span key={i} className="absolute rounded-full bg-taupe/20" style={{
+              width: s.size, height: s.size,
+              left: "calc(50% + 10px)", top: "calc(50% + 28px)",
+              "--tx": s.tx, "--ty": s.ty,
+              animation: `tirePuff 0.6s ease-out ${s.delay} forwards`,
+              willChange: "transform, opacity",
+            } as React.CSSProperties} />
+          ))}
+
+          {/* Speed lines – stage 3 */}
+          {stage === 3 && [
+            { top: "calc(50% - 16px)", delay: "0s"   },
+            { top: "calc(50%)",        delay: "0.05s" },
+            { top: "calc(50% + 16px)", delay: "0.1s"  },
+          ].map((l, i) => (
+            <span key={i} className="absolute bg-taupe/35 rounded-full" style={{
+              height: 3, width: 80,
+              left: "calc(50% - 80px)", top: l.top,
+              transformOrigin: "right center",
+              animation: `speedLine 0.65s ease-out ${l.delay} forwards`,
+              willChange: "transform, opacity",
+            }} />
+          ))}
         </div>
       )}
 
