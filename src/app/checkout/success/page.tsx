@@ -5,7 +5,7 @@ import { Suspense, useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Container } from "@/components/ui/container";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, ShoppingBag, ArrowRight, ShieldCheck, Truck } from "lucide-react";
+import { CheckCircle2, ShoppingBag, ArrowRight, ShieldCheck, Truck, Package } from "lucide-react";
 import { formatINR } from "@/lib/utils";
 
 /* ---------- GPU-only CSS keyframes injected once ---------- */
@@ -232,12 +232,14 @@ function OrderSuccessPageContent() {
             { delay: "0.39s", px: "-100px", pr: "14deg" },
             { delay: "0.63s", px: "-130px", pr: "-14deg" },
           ].map((p, i) => (
-            <span key={i} className="absolute text-xl" style={{
+            <span key={i} className="absolute text-ink" style={{
               left: "50%", top: "50%",
               "--px": p.px, "--pr": p.pr,
               animation: `parcelHop 0.55s ease-in ${p.delay} forwards`,
               willChange: "transform, opacity",
-            } as React.CSSProperties}>📦</span>
+            } as React.CSSProperties}>
+              <Package size={22} strokeWidth={2.5} />
+            </span>
           ))}
 
           {/* Tire smoke – stage 2 */}
