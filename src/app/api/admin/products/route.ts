@@ -286,19 +286,59 @@ export async function PUT(request: Request) {
       }
     }
 
-    // 3. Sync variants (delete and re-insert)
+    // 3. Sync variants (smart upsert to retain stable IDs)
     if (variants !== undefined) {
-      await supabase.from("product_variants").delete().eq("product_id", id);
+      const { data: existingVars } = await supabase
+        .from("product_variants")
+        .select("id, size, color, sku")
+        .eq("product_id", id);
+
+      const existingMap = new Map((existingVars || []).map((v: any) => [v.sku || `${v.size || ""}-${v.color || ""}`, v]));
+      
+      const toInsert: any[] = [];
+      const toUpdate: any[] = [];
+      const processedIds = new Set<string>();
+
       if (variants && variants.length > 0) {
-        const variantRows = variants.map((v: any) => ({
-          product_id: id,
-          size: v.size || null,
-          color: v.color || null,
-          sku: v.sku || null,
-          stock: v.stock !== undefined ? v.stock : 0,
-        }));
-        const { error: varError } = await supabase.from("product_variants").insert(variantRows);
-        if (varError) throw varError;
+        for (const v of variants) {
+          const key = v.sku || `${v.size || ""}-${v.color || ""}`;
+          const match = existingMap.get(key);
+          const rowData = {
+            product_id: id,
+            size: v.size || null,
+            color: v.color || null,
+            sku: v.sku || null,
+            stock: v.stock !== undefined ? v.stock : 0,
+          };
+
+          if (match) {
+            toUpdate.push({ id: match.id, ...rowData });
+            processedIds.add(match.id);
+          } else {
+            toInsert.push(rowData);
+          }
+        }
+      }
+
+      // Delete variants that were removed
+      const toDeleteIds = (existingVars || [])
+        .map((v: any) => v.id)
+        .filter((vid: string) => !processedIds.has(vid));
+
+      if (toDeleteIds.length > 0) {
+        await supabase.from("product_variants").delete().in("id", toDeleteIds);
+      }
+
+      // Insert new variants
+      if (toInsert.length > 0) {
+        const { error: insErr } = await supabase.from("product_variants").insert(toInsert);
+        if (insErr) throw insErr;
+      }
+
+      // Update existing variants
+      if (toUpdate.length > 0) {
+        const { error: upsErr } = await supabase.from("product_variants").upsert(toUpdate);
+        if (upsErr) throw upsErr;
       }
     }
 

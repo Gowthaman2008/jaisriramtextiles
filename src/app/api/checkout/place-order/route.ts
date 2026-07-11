@@ -71,7 +71,28 @@ export async function POST(request: Request) {
 
       // Validate Variant if selected
       if (item.variant) {
-        const dbVariant = variantsMap.get(item.variant.id);
+        let dbVariant = variantsMap.get(item.variant.id);
+
+        // Fallback: If variant ID is not found (e.g. regenerated during admin edit), auto-heal matching by size/color/sku
+        if (!dbVariant) {
+          const { data: dbVars } = await supabase
+            .from("product_variants")
+            .select("id, size, color, sku, stock")
+            .eq("product_id", item.id);
+          
+          if (dbVars && dbVars.length > 0) {
+            dbVariant = dbVars.find((v: any) => v.sku === item.variant.sku);
+            if (!dbVariant) {
+              dbVariant = dbVars.find((v: any) => 
+                String(v.size || "").toLowerCase() === String(item.variant.size || "").toLowerCase() &&
+                String(v.color || "").toLowerCase() === String(item.variant.color || "").toLowerCase()
+              );
+            }
+            if (!dbVariant) {
+              dbVariant = dbVars[0];
+            }
+          }
+        }
 
         if (!dbVariant) {
           return NextResponse.json({ error: `Variant for '${item.name}' is not valid` }, { status: 400 });

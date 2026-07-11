@@ -223,8 +223,8 @@ function OrderSuccessPageContent() {
             EXHAUST_PUFFS.map((p, i) => (
               <motion.span
                 key={i}
-                className="absolute rounded-full bg-taupe/35 blur-[1px]"
-                style={{ width: p.size, height: p.size, marginLeft: -p.size / 2, marginTop: -p.size / 2 }}
+                className="absolute rounded-full bg-taupe/20"
+                style={{ width: p.size, height: p.size, marginLeft: -p.size / 2, marginTop: -p.size / 2, willChange: "transform" }}
                 initial={{ x: "-70vw", y: 6, opacity: 0 }}
                 animate={{ x: "0vw", y: -6, opacity: [0, 0.5, 0.5, 0] }}
                 transition={{ duration: 2, ease: "easeOut", delay: p.lag }}
@@ -234,6 +234,7 @@ function OrderSuccessPageContent() {
           {/* The van itself — always facing right (direction of travel) */}
           <motion.div
             initial={{ x: "-70vw", y: 0 }}
+            style={{ willChange: "transform" }}
             animate={
               stage === 0
                 ? { x: "0vw", y: [0, -6, 0, -6, 0] }
@@ -263,7 +264,7 @@ function OrderSuccessPageContent() {
               <motion.div
                 key={i}
                 className="absolute text-ink"
-                style={{ marginTop: 8 }}
+                style={{ marginTop: 8, willChange: "transform" }}
                 initial={{ x: p.landX, y: 32, scale: 1, opacity: 1 }}
                 animate={{
                   x: [p.landX, p.landX * 0.55, 0],
@@ -283,8 +284,8 @@ function OrderSuccessPageContent() {
             TIRE_SMOKE.map((s, i) => (
               <motion.span
                 key={i}
-                className="absolute rounded-full bg-taupe/30 blur-[1px]"
-                style={{ width: s.size, height: s.size, marginTop: 40 }}
+                className="absolute rounded-full bg-taupe/20"
+                style={{ width: s.size, height: s.size, marginTop: 40, willChange: "transform" }}
                 initial={{ x: 0, y: 0, scale: 0, opacity: 0.7 }}
                 animate={{ x: s.dx, y: s.dy, scale: 1, opacity: 0 }}
                 transition={{ duration: 0.7, delay: s.delay, ease: "easeOut" }}
@@ -297,7 +298,7 @@ function OrderSuccessPageContent() {
               <motion.span
                 key={i}
                 className="absolute h-[3px] rounded-full bg-taupe/40"
-                style={{ marginTop: l.offsetY }}
+                style={{ marginTop: l.offsetY, willChange: "transform" }}
                 initial={{ x: "-30vw", width: 0, opacity: 0 }}
                 animate={{ x: "-55vw", width: 90, opacity: [0, 0.6, 0] }}
                 transition={{ duration: 0.7, ease: "easeOut", delay: l.delay }}
