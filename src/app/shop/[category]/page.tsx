@@ -12,16 +12,14 @@ import {
 
 type Props = { params: Promise<{ category: string }> };
 
-function fallbackLabel(slug: string) {
-  return CATEGORIES.find((c) => c.slug === slug)?.label;
-}
-
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { category: slug } = await params;
-  const label = fallbackLabel(slug);
-  if (!label) return {};
-  const category = slug === "sale" ? null : await getCategoryBySlug(slug);
-  const title = category?.name ?? label;
+  const isSale = slug === "sale";
+  const category = isSale ? null : await getCategoryBySlug(slug);
+  
+  if (!isSale && !category) return {};
+
+  const title = category?.name ?? (isSale ? "Live On Sale" : "Collection");
   return {
     title,
     description: category?.tagline ?? `Shop ${title} from JAI SRI RAM TEXTILES.`,
@@ -30,11 +28,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function CategoryPage({ params }: Props) {
   const { category: slug } = await params;
-  const staticLabel = fallbackLabel(slug);
-  if (!staticLabel) notFound();
-
+  
   const isSale = slug === "sale";
   const category = isSale ? null : await getCategoryBySlug(slug);
+
+  if (!isSale && !category) {
+    notFound();
+  }
 
   const products = isSale
     ? await getOnSaleProducts()
@@ -42,7 +42,7 @@ export default async function CategoryPage({ params }: Props) {
       ? await getProductsByCategoryId(category.id)
       : [];
 
-  const title = category?.name ?? staticLabel!;
+  const title = category?.name ?? (isSale ? "Live On Sale" : "Collection");
   const tagline =
     category?.tagline ??
     (isSale ? "Our best prices, while stock lasts." : `Handloom ${title.toLowerCase()}, made to last.`);
