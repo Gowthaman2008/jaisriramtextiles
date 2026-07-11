@@ -81,7 +81,7 @@ const defaultSlides: Slide[] = [
   },
 ];
 
-const AUTO_MS = 6000;
+const AUTO_MS = 5000;
 
 export function HeroCarousel({ dbSlides }: { dbSlides?: any[] }) {
   const formatDbSlides = useCallback((raw?: any[]): Slide[] => {
@@ -98,7 +98,6 @@ export function HeroCarousel({ dbSlides }: { dbSlides?: any[] }) {
   const [slides, setSlides] = useState<Slide[]>(() => formatDbSlides(dbSlides));
   const reduce = useReducedMotion();
   const [[index, dir], setState] = useState<[number, number]>([0, 1]);
-  const [paused, setPaused] = useState(false);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
@@ -112,12 +111,12 @@ export function HeroCarousel({ dbSlides }: { dbSlides?: any[] }) {
   }, [slides.length]);
 
   useEffect(() => {
-    if (paused || reduce) return;
+    if (reduce) return;
     timer.current = setInterval(() => setState(([i]) => [(i + 1) % slides.length, 1]), AUTO_MS);
     return () => {
       if (timer.current) clearInterval(timer.current);
     };
-  }, [paused, reduce, slides.length]);
+  }, [reduce, slides.length]);
 
   const slide = slides[index];
 
@@ -126,8 +125,6 @@ export function HeroCarousel({ dbSlides }: { dbSlides?: any[] }) {
       aria-roledescription="carousel"
       aria-label="Featured highlights"
       className="relative overflow-hidden bg-cream"
-      onMouseEnter={() => setPaused(true)}
-      onMouseLeave={() => setPaused(false)}
     >
       <div className="relative h-[86vh] min-h-[560px] max-h-[820px]">
         {/* Background image with slow parallax drift */}
