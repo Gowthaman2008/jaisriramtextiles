@@ -17,17 +17,44 @@ const tabs = [
   { key: "trending", label: "Trending" },
 ] as const;
 
+function mixProductsByCategory(items: Product[]): Product[] {
+  const groups: Record<string, Product[]> = {};
+  items.forEach(p => {
+    const cat = p.category || "uncategorized";
+    if (!groups[cat]) groups[cat] = [];
+    groups[cat].push(p);
+  });
+
+  const categoriesList = Object.keys(groups).sort();
+  const mixed: Product[] = [];
+  let index = 0;
+  let hasMore = true;
+
+  while (hasMore) {
+    hasMore = false;
+    for (const cat of categoriesList) {
+      if (index < groups[cat].length) {
+        mixed.push(groups[cat][index]);
+        hasMore = true;
+      }
+    }
+    index++;
+  }
+
+  return mixed;
+}
+
 export function FeaturedProducts({ products }: { products: Product[] }) {
   const [tab, setTab] = useState<(typeof tabs)[number]["key"]>("all");
 
   const list =
     tab === "all"
-      ? products
+      ? mixProductsByCategory(products)
       : tab === "featured"
       ? products.filter((p) => p.isFeatured)
       : products.filter((p) => p.badges?.includes(tab as never));
 
-  const displayed = list.slice(0, 4);
+  const displayed = list.slice(0, 12);
 
   return (
     <section className="bg-cream py-20 sm:py-24">

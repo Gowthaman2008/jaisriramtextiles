@@ -328,6 +328,7 @@ export default function AdminDashboardPage() {
   }
   const [loading, setLoading] = useState(true);
   const [initialDataLoaded, setInitialDataLoaded] = useState(false);
+  const [loadedTabs, setLoadedTabs] = useState<string[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
 
@@ -619,7 +620,6 @@ export default function AdminDashboardPage() {
 
         setCurrentUser(profile);
         setLoading(false);
-        await loadAllData();
       } catch (err: any) {
         console.error("Admin init error:", err);
         setError(err.message || "Failed to initialize admin dashboard");
@@ -629,165 +629,194 @@ export default function AdminDashboardPage() {
     initAdmin();
   }, []);
 
-  async function loadAllData() {
+  useEffect(() => {
+    if (currentUser) {
+      loadDataForTab(activeTab);
+    }
+  }, [activeTab, currentUser]);
+
+  async function loadDataForTab(tab: string, force = false) {
+    const isFirstLoad = !loadedTabs.includes(tab);
+    if (isFirstLoad) {
+      setInitialDataLoaded(false);
+    }
     setRefreshing(true);
 
-    // Fire every request in parallel instead of one-after-another — a dashboard
-    // pulling ~10 independent resources was previously taking the *sum* of all
-    // their latencies instead of just the slowest one. Each result is still
-    // awaited and processed individually below, so one endpoint failing can't
-    // silently block the others from updating their own state.
-    const analyticsPromise = fetch("/api/admin/analytics");
-    const productsPromise = fetch("/api/admin/products");
-    const ordersPromise = fetch("/api/admin/orders");
-    const cmsPromise = fetch("/api/admin/cms");
-    const usersPromise = supabase.from("profiles").select("*").order("created_at", { ascending: false });
-    const categoriesPromise = supabase.from("categories").select("*").order("sort_order", { ascending: true });
-    const supportPromise = supabase.from("support_messages").select("*, profiles(user_id)").order("created_at", { ascending: false });
-    const bulkPromise = supabase.from("bulk_inquiries").select("*").order("created_at", { ascending: false });
-    const subsPromise = supabase.from("newsletter_subscriptions").select("*").order("created_at", { ascending: false });
-    const shippingPromise = fetch("/api/admin/settings");
-    const couponsPromise = fetch("/api/admin/coupons");
-    const reviewsPromise = fetch("/api/admin/reviews");
-    const campaignsPromise = fetch("/api/admin/campaigns");
+    const promises: PromiseLike<any>[] = [];
+
+    // Analytics (Overview, Visitor sessions, System Storage)
+    if (["overview", "visitor-history", "storage"].includes(tab) && (!analytics || force)) {
+      promises.push(
+        fetch("/api/admin/analytics")
+          .then(res => {
+            if (!res.ok) throw new Error("Failed to load analytics");
+            return res.json();
+          })
+          .then(data => setAnalytics(data))
+      );
+    }
+
+    // Orders (Overview, Orders, Refunds)
+    if (["overview", "orders", "refunds"].includes(tab) && (orders.length === 0 || force)) {
+      promises.push(
+        fetch("/api/admin/orders")
+          .then(res => {
+            if (!res.ok) throw new Error("Failed to load orders");
+            return res.json();
+          })
+          .then(data => setOrders(data || []))
+      );
+    }
+
+    // Products (Product Catalog)
+    if (["products"].includes(tab) && (products.length === 0 || force)) {
+      promises.push(
+        fetch("/api/admin/products")
+          .then(res => {
+            if (!res.ok) throw new Error("Failed to load products");
+            return res.json();
+          })
+          .then(data => setProducts(data && data.length > 0 ? data : DEFAULT_PRODUCTS))
+      );
+    }
+
+    // Categories (Product Catalog, Storefront CMS)
+    if (["products", "cms"].includes(tab) && (categories.length === 0 || force)) {
+      promises.push(
+        supabase.from("categories").select("*").order("sort_order", { ascending: true })
+          .then(({ data, error }) => {
+            if (error) throw error;
+            setCategories(data || []);
+          })
+      );
+    }
+
+    // CMS (Storefront CMS)
+    if (["cms"].includes(tab) && (cmsSlides.length === 0 || force)) {
+      promises.push(
+        fetch("/api/admin/cms")
+          .then(res => {
+            if (!res.ok) throw new Error("Failed to load CMS data");
+            return res.json();
+          })
+          .then(data => {
+            setCmsSlides(data.slides && data.slides.length > 0 ? data.slides : DEFAULT_SLIDES);
+            setCmsBanners(data.banners || []);
+            const annBanner = (data.banners || []).find((b: any) => b.placement === "announcement");
+            if (annBanner) {
+              setAnnouncementBannerId(annBanner.id);
+              setAnnouncementList(annBanner.content?.messages || []);
+              setSavedAnnouncementList(annBanner.content?.messages || []);
+            } else {
+              setAnnouncementBannerId(null);
+              setAnnouncementList(DEFAULT_ANNOUNCEMENTS);
+              setSavedAnnouncementList(DEFAULT_ANNOUNCEMENTS);
+            }
+          })
+      );
+    }
+
+    // Coupons (Promo codes)
+    if (["coupons"].includes(tab) && (coupons.length === 0 || force)) {
+      promises.push(
+        fetch("/api/admin/coupons")
+          .then(res => {
+            if (!res.ok) throw new Error("Failed to load promo codes");
+            return res.json();
+          })
+          .then(data => setCoupons(data || []))
+      );
+    }
+
+    // Shipping (Shipping settings)
+    if (["shipping"].includes(tab) && (!shippingSettings || force)) {
+      promises.push(
+        fetch("/api/admin/settings")
+          .then(res => {
+            if (!res.ok) throw new Error("Failed to load settings");
+            return res.json();
+          })
+          .then(data => {
+            setShippingSettings(data);
+            setShippingThresholdInput(data.free_shipping_threshold_paise / 100);
+            setShippingChargeInput(data.shipping_charge_paise / 100);
+          })
+      );
+    }
+
+    // Campaigns (Free products)
+    if (["campaigns"].includes(tab) && (campaigns.length === 0 || force)) {
+      promises.push(
+        fetch("/api/admin/campaigns")
+          .then(res => {
+            if (!res.ok) throw new Error("Failed to load campaigns");
+            return res.json();
+          })
+          .then(data => setCampaigns(data || []))
+      );
+    }
+
+    // Users (User Management)
+    if (["users"].includes(tab) && (users.length === 0 || force)) {
+      promises.push(
+        supabase.from("profiles").select("*").order("created_at", { ascending: false })
+          .then(({ data, error }) => {
+            if (error) throw error;
+            setUsers(data || []);
+          })
+      );
+    }
+
+    // Reviews (Customer reviews)
+    if (["reviews"].includes(tab) && (reviews.length === 0 || force)) {
+      promises.push(
+        fetch("/api/admin/reviews")
+          .then(res => {
+            if (!res.ok) throw new Error("Failed to load reviews");
+            return res.json();
+          })
+          .then(data => setReviews(data || []))
+      );
+    }
+
+    // Communications (Communications)
+    if (["communications"].includes(tab) && (supportMessages.length === 0 || force)) {
+      promises.push(
+        Promise.all([
+          supabase.from("support_messages").select("*, profiles(user_id)").order("created_at", { ascending: false }),
+          supabase.from("bulk_inquiries").select("*").order("created_at", { ascending: false }),
+          supabase.from("newsletter_subscriptions").select("*").order("created_at", { ascending: false })
+        ]).then(([supportRes, bulkRes, subsRes]) => {
+          if (supportRes.error) throw supportRes.error;
+          if (bulkRes.error) throw bulkRes.error;
+          if (subsRes.error) throw subsRes.error;
+          setSupportMessages(supportRes.data || []);
+          setBulkInquiries(bulkRes.data || []);
+          setNewsletterSubs(subsRes.data || []);
+        })
+      );
+    }
+
+    if (promises.length === 0) {
+      setRefreshing(false);
+      setInitialDataLoaded(true);
+      return;
+    }
 
     let hadError = false;
-
     try {
-      const analyticsRes = await analyticsPromise;
-      if (!analyticsRes.ok) throw new Error("Failed to load analytics");
-      setAnalytics(await analyticsRes.json());
+      await Promise.all(promises);
     } catch (err) {
       hadError = true;
-      console.error("Load analytics failed:", err);
-    }
-
-    try {
-      const productsRes = await productsPromise;
-      if (!productsRes.ok) throw new Error("Failed to load products");
-      const productsData = await productsRes.json();
-      setProducts(productsData && productsData.length > 0 ? productsData : DEFAULT_PRODUCTS);
-    } catch (err) {
-      hadError = true;
-      console.error("Load products failed:", err);
-    }
-
-    try {
-      const ordersRes = await ordersPromise;
-      if (!ordersRes.ok) throw new Error("Failed to load orders");
-      setOrders(await ordersRes.json());
-    } catch (err) {
-      hadError = true;
-      console.error("Load orders failed:", err);
-    }
-
-    try {
-      const cmsRes = await cmsPromise;
-      if (!cmsRes.ok) throw new Error("Failed to load CMS data");
-      const cmsData = await cmsRes.json();
-      setCmsSlides(cmsData.slides && cmsData.slides.length > 0 ? cmsData.slides : DEFAULT_SLIDES);
-      setCmsBanners(cmsData.banners || []);
-
-      const annBanner = (cmsData.banners || []).find((b: any) => b.placement === "announcement");
-      if (annBanner) {
-        setAnnouncementBannerId(annBanner.id);
-        setAnnouncementList(annBanner.content?.messages || []);
-        setSavedAnnouncementList(annBanner.content?.messages || []);
-      } else {
-        setAnnouncementBannerId(null);
-        setAnnouncementList(DEFAULT_ANNOUNCEMENTS);
-        setSavedAnnouncementList(DEFAULT_ANNOUNCEMENTS);
+      console.error("Tab data loading failed:", err);
+    } finally {
+      if (!hadError && isFirstLoad) {
+        setLoadedTabs(prev => [...prev, tab]);
       }
-    } catch (err) {
-      hadError = true;
-      console.error("Load CMS data failed:", err);
+      setError(hadError ? "Some tab data failed to load — check browser console for details." : "");
+      setInitialDataLoaded(true);
+      setRefreshing(false);
     }
-
-    try {
-      const { data: profilesList, error: profilesError } = await usersPromise;
-      if (profilesError) throw profilesError;
-      setUsers(profilesList || []);
-    } catch (err) {
-      hadError = true;
-      console.error("Load users failed:", err);
-    }
-
-    try {
-      const { data: categoriesList, error: catError } = await categoriesPromise;
-      if (catError) throw catError;
-      setCategories(categoriesList || []);
-    } catch (err) {
-      hadError = true;
-      console.error("Load categories failed:", err);
-    }
-
-    try {
-      const { data: supportList } = await supportPromise;
-      setSupportMessages(supportList || []);
-    } catch (err) {
-      hadError = true;
-      console.error("Load support messages failed:", err);
-    }
-
-    try {
-      const { data: bulkList } = await bulkPromise;
-      setBulkInquiries(bulkList || []);
-    } catch (err) {
-      hadError = true;
-      console.error("Load bulk inquiries failed:", err);
-    }
-
-    try {
-      const { data: subsList } = await subsPromise;
-      setNewsletterSubs(subsList || []);
-    } catch (err) {
-      hadError = true;
-      console.error("Load newsletter subscriptions failed:", err);
-    }
-
-    try {
-      const couponsRes = await couponsPromise;
-      if (!couponsRes.ok) throw new Error("Failed to load promo codes");
-      setCoupons((await couponsRes.json()) || []);
-    } catch (err) {
-      hadError = true;
-      console.error("Load coupons failed:", err);
-    }
-
-    try {
-      const reviewsRes = await reviewsPromise;
-      if (!reviewsRes.ok) throw new Error("Failed to load reviews");
-      setReviews((await reviewsRes.json()) || []);
-    } catch (err) {
-      hadError = true;
-      console.error("Load reviews failed:", err);
-    }
-
-    try {
-      const shippingRes = await shippingPromise;
-      if (shippingRes.ok) {
-        const shippingData = await shippingRes.json();
-        setShippingSettings(shippingData);
-        setShippingThresholdInput(shippingData.free_shipping_threshold_paise / 100);
-        setShippingChargeInput(shippingData.shipping_charge_paise / 100);
-      }
-    } catch (err) {
-      console.error("Load shipping settings failed:", err);
-    }
-
-    try {
-      const campaignsRes = await campaignsPromise;
-      if (!campaignsRes.ok) throw new Error("Failed to load campaigns");
-      setCampaigns((await campaignsRes.json()) || []);
-    } catch (err) {
-      hadError = true;
-      console.error("Load campaigns failed:", err);
-    }
-
-    setError(hadError ? "Some dashboard data failed to load — check the browser console for details." : "");
-    setLoading(false);
-    setInitialDataLoaded(true);
-    setRefreshing(false);
   }
 
   async function refreshProducts() {
@@ -2998,6 +3027,19 @@ export default function AdminDashboardPage() {
   });
 
 
+  const isCategorySaveDisabled = !!uploadingCategoryFormImage || (
+    editingCategory ? !(
+      catName.trim() !== (editingCategory.name || "").trim() ||
+      catSlug.trim() !== (editingCategory.slug || "").trim() ||
+      (catTagline || "").trim() !== (editingCategory.tagline || "").trim() ||
+      Number(catSortOrder) !== Number(editingCategory.sort_order) ||
+      (catImageUrl || "").trim() !== (editingCategory.image_url || "").trim() ||
+      Boolean(catIsActive) !== Boolean(editingCategory.is_active)
+    ) : (
+      catName.trim() === "" || catSlug.trim() === ""
+    )
+  );
+
   // Render loading state
   if (loading) {
     return (
@@ -3019,7 +3061,7 @@ export default function AdminDashboardPage() {
             <p className="text-xs text-muted mt-0.5">Welcome, <span className="text-zari-soft font-semibold">{currentUser?.full_name || currentUser?.email}</span> ({currentUser?.role})</p>
           </div>
           <div className="flex items-center gap-3">
-            <Button size="sm" variant="outline" className="border-muted text-ivory hover:text-ink hover:bg-ivory" onClick={loadAllData} disabled={refreshing}>
+            <Button size="sm" variant="outline" className="border-muted text-ivory hover:text-ink hover:bg-ivory" onClick={() => loadDataForTab(activeTab, true)} disabled={refreshing}>
               <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
               Sync Live Data
             </Button>
@@ -5214,18 +5256,11 @@ export default function AdminDashboardPage() {
                         </div>
 
                         <div className="flex flex-col gap-1.5">
-                          <label className="text-sm font-semibold">Category Cover Photo URL</label>
-                          <div className="flex gap-3">
-                            <input 
-                              type="text" 
-                              value={catImageUrl} 
-                              onChange={(e) => setCatImageUrl(e.target.value)} 
-                              placeholder="Upload an image or paste a URL" 
-                              className="flex-1 rounded-md border border-line bg-ivory px-3 py-2 text-sm text-ink outline-none focus:border-zari" 
-                            />
-                            <label className="cursor-pointer inline-flex items-center gap-1.5 px-4 py-2 border border-line rounded bg-cream hover:bg-cream/70 text-xs font-semibold text-ink transition-colors whitespace-nowrap">
-                              <Upload className="w-4 h-4" />
-                              <span>{uploadingCategoryFormImage ? "Uploading..." : "Upload Cover Image"}</span>
+                          <label className="text-sm font-semibold">Category Cover Image</label>
+                          <div className="flex items-center gap-4">
+                            <label className="cursor-pointer inline-flex items-center gap-2 px-4 py-2.5 border border-line rounded-lg bg-cream hover:bg-cream/70 text-xs font-bold text-ink transition-colors shadow-sm select-none">
+                              <Upload className="w-4 h-4 text-zari-deep" />
+                              <span>{uploadingCategoryFormImage ? "Uploading..." : "Select Cover Photo"}</span>
                               <input 
                                 type="file" 
                                 accept="image/*" 
@@ -5234,10 +5269,24 @@ export default function AdminDashboardPage() {
                                 disabled={uploadingCategoryFormImage} 
                               />
                             </label>
+                            {catImageUrl && (
+                              <span className="text-[10px] text-taupe font-medium truncate max-w-xs">
+                                Image uploaded successfully
+                              </span>
+                            )}
                           </div>
+                          
                           {catImageUrl && (
-                            <div className="mt-2 relative w-32 aspect-[4/3] rounded border overflow-hidden bg-cream">
+                            <div className="mt-2 relative w-32 aspect-[4/3] rounded-lg border border-line overflow-hidden bg-cream shadow-soft">
                               <img src={catImageUrl} alt="Preview" className="w-full h-full object-cover" />
+                              <button
+                                type="button"
+                                onClick={() => setCatImageUrl("")}
+                                className="absolute top-1 right-1 p-1 bg-danger/80 hover:bg-danger text-white rounded-full transition-colors cursor-pointer"
+                                title="Remove image"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
                             </div>
                           )}
                         </div>
@@ -5261,7 +5310,11 @@ export default function AdminDashboardPage() {
                           >
                             Cancel
                           </Button>
-                          <Button type="submit" variant="gold">
+                          <Button 
+                            type="submit" 
+                            variant="gold"
+                            disabled={isCategorySaveDisabled}
+                          >
                             {editingCategory ? "Save Changes" : "Create Category"}
                           </Button>
                         </div>
@@ -5317,18 +5370,6 @@ export default function AdminDashboardPage() {
                               </div>
                             )}
                           </div>
-
-                          <label className="relative flex items-center justify-center gap-1.5 w-full py-2 bg-cream hover:bg-beige text-ink border border-line rounded text-xs font-bold cursor-pointer transition-colors">
-                            <ImageIcon className="w-3.5 h-3.5" />
-                            <span>{uploadingCatImage === c.id ? "Uploading..." : "Change Image"}</span>
-                            <input
-                              type="file"
-                              accept="image/*"
-                              onChange={(e) => handleCatImageUpload(e, c.id)}
-                              className="hidden"
-                              disabled={uploadingCatImage !== null}
-                            />
-                          </label>
                         </div>
                       </div>
                     ))}
@@ -5429,20 +5470,7 @@ export default function AdminDashboardPage() {
             {activeTab === "storage" && (
               <div className="space-y-6 animate-fade-up">
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                  {/* Database row counts card */}
-                  <div className="bg-white border border-line rounded-card p-6 shadow-soft space-y-4">
-                    <h3 className="font-display text-lg border-b border-line pb-2 flex items-center gap-2">
-                      <Database className="w-5 h-5 text-zari" />
-                      Supabase DB Table Sizes
-                    </h3>
-                    <div className="space-y-3.5">
-                      <RowDetail label="profiles (Registered Users)" count={analytics?.dbStats?.users} />
-                      <RowDetail label="products (Items catalog)" count={analytics?.dbStats?.products} />
-                      <RowDetail label="orders (Placed checkouts)" count={analytics?.dbStats?.orders} />
-                      <RowDetail label="sessions (Visitor sessions)" count={analytics?.dbStats?.sessions} />
-                      <RowDetail label="page_views (Individual views)" count={analytics?.dbStats?.pageViews} />
-                    </div>
-                  </div>
+
 
                   {/* Supabase Storage details card */}
                   <div className="bg-white border border-line rounded-card p-6 shadow-soft space-y-4">

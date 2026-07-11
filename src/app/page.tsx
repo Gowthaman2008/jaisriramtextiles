@@ -9,6 +9,7 @@ import { ReviewsMarquee } from "@/components/home/reviews-marquee";
 import { Faq } from "@/components/home/faq";
 import { Newsletter } from "@/components/home/newsletter";
 import { getAllProducts, getActiveCategories, getActiveCarouselSlides } from "@/lib/supabase/queries";
+export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
   const [products, dbCategories, dbSlides] = await Promise.all([

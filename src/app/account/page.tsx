@@ -59,6 +59,7 @@ export default function AccountPage() {
   // User States
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [initialDataLoaded, setInitialDataLoaded] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [copiedId, setCopiedId] = useState("");
 
@@ -168,16 +169,12 @@ export default function AccountPage() {
         setUser(authUser);
         setAddrRecipient(authUser.user_metadata?.full_name || authUser.user_metadata?.name || "");
 
-        // Profile lookup and account data (orders/wallet/addresses) don't depend on
-        // each other — run them in parallel rather than one after another.
-        const [{ data: profile, error: profileErr }] = await Promise.all([
-          supabase
-            .from("profiles")
-            .select("role, full_name, phone, user_id")
-            .eq("id", authUser.id)
-            .single(),
-          fetchAccountData(authUser.id),
-        ]);
+        // 1. Fetch user profile first (extremely fast ~100ms)
+        const { data: profile, error: profileErr } = await supabase
+          .from("profiles")
+          .select("role, full_name, phone, user_id")
+          .eq("id", authUser.id)
+          .single();
 
         if (profileErr) {
           console.error("DEBUG profiles query error:", profileErr);
@@ -214,9 +211,15 @@ export default function AccountPage() {
 
         const isUserAdmin = profile && ["admin", "staff"].includes(profile.role);
         setIsAdmin(!!isUserAdmin);
+
+        // 2. Hide loading screen immediately so shell renders in < 300ms
+        setLoading(false);
+
+        // 3. Fetch independent queries in background
+        await fetchAccountData(authUser.id);
+        setInitialDataLoaded(true);
       } catch (err) {
         console.error("Account init failed:", err);
-      } finally {
         setLoading(false);
       }
     }
@@ -742,10 +745,26 @@ export default function AccountPage() {
           </div>
         )}
 
-        {/* TAB 1: OVERVIEW INDEX GRID */}
-        {activeTab === "overview" && (
-          <div className="space-y-6 animate-fade-up">
+        {!initialDataLoaded ? (
+          <div className="space-y-6 animate-pulse">
             <div className="grid gap-6 sm:grid-cols-2 md:grid-cols-3">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <div key={i} className="bg-white border border-line rounded-card p-6 h-40 flex flex-col justify-between shadow-soft">
+                  <div className="w-10 h-10 rounded-full bg-cream" />
+                  <div>
+                    <div className="h-4 bg-cream rounded w-1/2 mb-2" />
+                    <div className="h-3 bg-cream rounded w-5/6" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* TAB 1: OVERVIEW INDEX GRID */}
+            {activeTab === "overview" && (
+              <div className="space-y-6 animate-fade-up">
+                <div className="grid gap-6 sm:grid-cols-2 md:grid-cols-3">
               {/* Card 1: Orders */}
               <button
                 onClick={() => setActiveTab("orders")}
@@ -2112,6 +2131,8 @@ export default function AccountPage() {
               </form>
             </div>
           </div>
+        )}
+          </>
         )}
       </Container>
     </div>

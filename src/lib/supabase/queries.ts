@@ -49,11 +49,15 @@ function getDefaultRating(slug: string) {
 function toCardProduct(row: DbProduct): Product {
   const images = [...row.product_images].sort((a, b) => a.sort_order - b.sort_order);
 
-  const defaultStats = getDefaultRating(row.slug);
-  const realCount = row.rating_count || 0;
-  const realAvg = row.rating_avg || 0;
-  const displayCount = defaultStats.count + realCount;
-  const displayRating = Math.round((((defaultStats.rating * defaultStats.count) + (Number(realAvg) * realCount)) / displayCount) * 10) / 10;
+  let displayRating = Number(row.rating_avg) || 0;
+  let displayCount = row.rating_count || 0;
+
+  // Fallback to default mock ratings only if the admin hasn't set anything
+  if (displayCount === 0 && displayRating === 0) {
+    const defaultStats = getDefaultRating(row.slug);
+    displayRating = defaultStats.rating;
+    displayCount = defaultStats.count;
+  }
 
   // Build the badges array dynamically based on database properties
   const badges: ("new" | "bestseller" | "trending" | "sale")[] = [];
@@ -192,7 +196,10 @@ export async function getActiveCategories() {
       .eq("is_active", true)
       .order("name");
     return data || [];
-  } catch {
+  } catch (err: any) {
+    if (err && (err.name === "DynamicServerError" || err.message?.includes("Dynamic server usage"))) {
+      throw err;
+    }
     return [];
   }
 }
@@ -206,7 +213,10 @@ export async function getActiveCarouselSlides() {
       .eq("is_active", true)
       .order("sort_order", { ascending: true });
     return data || [];
-  } catch (err) {
+  } catch (err: any) {
+    if (err && (err.name === "DynamicServerError" || err.message?.includes("Dynamic server usage"))) {
+      throw err;
+    }
     console.error("Failed to load active carousel slides:", err);
     return [];
   }

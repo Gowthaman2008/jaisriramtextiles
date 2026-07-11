@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Heart, ShoppingBag } from "lucide-react";
+import { Heart, ShoppingBag, Minus, Plus } from "lucide-react";
 import { StarRating } from "@/components/ui/star-rating";
 import { formatINR, cn } from "@/lib/utils";
 import type { Product } from "@/lib/types";
@@ -97,26 +97,28 @@ export function ProductCard({ product, index = 0 }: { product: Product; index?: 
                   e.preventDefault();
                   e.stopPropagation();
                 }}
-                className="flex w-full items-center justify-between rounded-pill bg-ink/95 px-4 py-2 text-sm font-bold text-ivory backdrop-blur shadow-soft"
+                className="flex w-full items-center justify-between rounded-pill bg-ink/95 border border-zari/20 px-1 py-1 text-sm text-ivory backdrop-blur shadow-lift transition-all duration-300"
               >
                 <button
                   onClick={() => {
                     updateQuantity(product.id, defaultVariant?.sku || null, cartItem.quantity - 1);
                   }}
-                  className="grid h-8 w-8 place-items-center rounded-full text-lg hover:bg-white/10 hover:text-zari transition cursor-pointer font-semibold"
+                  className="grid h-8 w-8 place-items-center rounded-full text-ivory hover:text-zari hover:bg-white/5 transition-all duration-200 cursor-pointer active:scale-90"
                   title="Decrease quantity"
                 >
-                  −
+                  <Minus size={14} strokeWidth={2.5} />
                 </button>
-                <span className="font-mono text-sm select-none">{cartItem.quantity}</span>
+                <span className="font-display font-bold text-sm tracking-wide text-ivory select-none w-8 text-center">
+                  {cartItem.quantity}
+                </span>
                 <button
                   onClick={() => {
                     updateQuantity(product.id, defaultVariant?.sku || null, cartItem.quantity + 1);
                   }}
-                  className="grid h-8 w-8 place-items-center rounded-full text-lg hover:bg-white/10 hover:text-zari transition cursor-pointer font-semibold"
+                  className="grid h-8 w-8 place-items-center rounded-full text-ivory hover:text-zari hover:bg-white/5 transition-all duration-200 cursor-pointer active:scale-90"
                   title="Increase quantity"
                 >
-                  +
+                  <Plus size={14} strokeWidth={2.5} />
                 </button>
               </div>
             ) : (
