@@ -206,7 +206,7 @@ export async function getActiveCategories() {
 
 export async function getActiveCarouselSlides() {
   try {
-    const supabase = await createClient();
+    const supabase = createServiceClient();
     const { data } = await supabase
       .from("carousel_slides")
       .select("*")
