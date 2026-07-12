@@ -12,6 +12,8 @@ import { formatINR } from "@/lib/utils";
 import { computeShipping } from "@/lib/constants";
 import type { Product } from "@/lib/types";
 
+import { createClient } from "@/lib/supabase/client";
+
 function cartItemToProduct(item: CartItem): Product {
   return {
     id: item.id,
@@ -36,6 +38,14 @@ export default function CartPage() {
   const { toggleWishlist, isWished } = useWishlist();
   const [confirmDelete, setConfirmDelete] = useState<CartItem | null>(null);
   const [activeCampaigns, setActiveCampaigns] = useState<any[]>([]);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setIsAuthenticated(!!user);
+    });
+  }, []);
 
   useEffect(() => {
     fetch("/api/campaigns")
@@ -527,7 +537,7 @@ export default function CartPage() {
 
               {/* Action buttons */}
               <div className="pt-2">
-                <Button href="/checkout" variant="gold" size="lg" className="w-full justify-center">
+                <Button href={isAuthenticated === false ? "/sign-in?next=/checkout" : "/checkout"} variant="gold" size="lg" className="w-full justify-center">
                   Proceed to Checkout
                   <ArrowRight size={18} />
                 </Button>
