@@ -42,6 +42,7 @@ export async function GET() {
         order_events (*),
         coupons (code, type, value)
       `)
+      .neq("payment_status", "created")
       .order("placed_at", { ascending: false });
 
     if (error) throw error;

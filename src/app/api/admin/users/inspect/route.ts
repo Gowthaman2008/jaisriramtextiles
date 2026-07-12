@@ -84,6 +84,7 @@ export async function GET(request: Request) {
       .from("orders")
       .select("*, order_items(*)")
       .eq("user_id", profile.id)
+      .neq("payment_status", "created")
       .order("placed_at", { ascending: false });
 
     if (ordersError) throw ordersError;

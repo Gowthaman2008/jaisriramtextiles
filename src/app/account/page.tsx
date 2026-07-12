@@ -236,6 +236,7 @@ export default function AccountPage() {
           .from("orders")
           .select("*, order_items(*, products(description, slug, pieces_per_pack))")
           .eq("user_id", userId)
+          .neq("payment_status", "created")
           .order("placed_at", { ascending: false }),
         supabase
           .from("wallet_transactions")

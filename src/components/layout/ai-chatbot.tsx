@@ -246,6 +246,7 @@ export function AIChatbot() {
           .from("orders")
           .select("*, order_items(*)")
           .eq("user_id", user.id)
+          .neq("payment_status", "created")
           .order("placed_at", { ascending: false });
 
         // 3. Fetch Addresses

@@ -43,7 +43,7 @@ export async function GET() {
     ] = await Promise.all([
       supabase.from("profiles").select("*", { count: "exact", head: true }),
       supabase.from("products").select("*", { count: "exact", head: true }),
-      supabase.from("orders").select("*", { count: "exact", head: true }),
+      supabase.from("orders").select("*", { count: "exact", head: true }).neq("payment_status", "created"),
       supabase.from("sessions").select("*", { count: "exact", head: true }),
       supabase.from("page_views").select("*", { count: "exact", head: true }),
     ]);

@@ -12,7 +12,33 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Please log in to place an order" }, { status: 401 });
     }
 
-    const { cart, shippingAddress, couponCode, useWallet, isRazorpay, razorpayPaymentId } = await request.json();
+    const { action, cart, shippingAddress, couponCode, useWallet, isRazorpay, razorpayPaymentId, razorpayOrderId, razorpaySignature, dbOrderId: inputDbOrderId } = await request.json();
+
+    const supabase = createServiceClient(); // bypass RLS to perform orders writes & stock decs
+
+    // If the action is "cancel", we clean up the pre-created order from the database
+    if (action === "cancel") {
+      if (!razorpayOrderId && !inputDbOrderId) {
+        return NextResponse.json({ error: "Order ID is required to cancel checkout" }, { status: 400 });
+      }
+
+      try {
+        let query = supabase.from("orders").delete().eq("payment_status", "created");
+        if (inputDbOrderId) {
+          query = query.eq("id", inputDbOrderId);
+        } else {
+          query = query.eq("razorpay_order_id", razorpayOrderId);
+        }
+
+        const { error } = await query;
+        if (error) throw error;
+
+        return NextResponse.json({ success: true, message: "Incomplete checkout order cleaned up" });
+      } catch (err: any) {
+        console.error("Cleanup of incomplete checkout failed:", err);
+        return NextResponse.json({ error: "Failed to clean up order: " + err.message }, { status: 500 });
+      }
+    }
 
     if (!cart || cart.length === 0) {
       return NextResponse.json({ error: "Your shopping bag is empty" }, { status: 400 });
@@ -20,8 +46,6 @@ export async function POST(request: Request) {
     if (!shippingAddress || !shippingAddress.recipient || !shippingAddress.line1 || !shippingAddress.city || !shippingAddress.state || !shippingAddress.pincode) {
       return NextResponse.json({ error: "Please provide a complete shipping address" }, { status: 400 });
     }
-
-    const supabase = createServiceClient(); // bypass RLS to perform orders writes & stock decs
 
     // 2. Batch-fetch every product/variant referenced in the cart in two round
     // trips total (instead of one round trip per item, twice over) — this was
@@ -330,13 +354,137 @@ export async function POST(request: Request) {
     // 6. Calculate grand total
     const totalPaise = subtotalPaise - discountPaise - walletUsedPaise + shippingPaise;
 
-    // Verify the payment with Razorpay if key/secret are set in the environment (Production Mode)
-    if (process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET) {
-      if (!isRazorpay || !razorpayPaymentId) {
-        return NextResponse.json({ error: "Razorpay payment details are required to complete this order" }, { status: 400 });
+    // If the action is "create", we pre-create the order in the database with payment_status: 'created'
+    if (action === "create") {
+      if (!process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
+        return NextResponse.json({ error: "Razorpay keys are not configured on the server." }, { status: 500 });
+      }
+
+      if (totalPaise < 100) {
+        return NextResponse.json({ error: "Amount must be at least ₹1 (100 paise) to complete checkout via Razorpay." }, { status: 400 });
       }
 
       try {
+        // Generate order number e.g. JSRT-2026-XXXXXX
+        const randomDigits = Math.floor(100000 + Math.random() * 900000);
+        const orderNumber = `JSRT-2026-${randomDigits}`;
+
+        // Calculate default delivery date (current date + 4 days)
+        const defaultDeliveryDate = new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toLocaleDateString("en-IN", {
+          weekday: "long",
+          day: "numeric",
+          month: "short",
+          year: "numeric"
+        });
+
+        // Pre-create the order record in database with payment_status: 'created'
+        const { data: preOrder, error: orderInsertError } = await supabase
+          .from("orders")
+          .insert({
+            order_number: orderNumber,
+            user_id: user.id,
+            status: "pending",
+            payment_status: "created", // Pre-created as unpaid
+            subtotal_paise: subtotalPaise,
+            discount_paise: discountPaise,
+            shipping_paise: shippingPaise,
+            wallet_used_paise: walletUsedPaise,
+            tax_paise: 0,
+            total_paise: totalPaise,
+            cashback_earned_paise: totalCashbackEarned,
+            coupon_id: couponId,
+            shipping_address: {
+              ...shippingAddress,
+              delivery_date: defaultDeliveryDate
+            },
+            razorpay_order_id: null,
+            razorpay_payment_id: null,
+            placed_at: new Date().toISOString(),
+          })
+          .select("id")
+          .single();
+
+        if (orderInsertError || !preOrder) {
+          throw orderInsertError || new Error("Failed to write pre-order record");
+        }
+
+        const preOrderId = preOrder.id;
+
+        // Insert pre-order items
+        const itemRows = validatedItems.map(item => ({
+          order_id: preOrderId,
+          ...item,
+        }));
+        let { error: itemsInsertErr } = await supabase.from("order_items").insert(itemRows);
+        if (itemsInsertErr?.message?.match(/column .* does not exist|Could not find the .* column/i)) {
+          const itemRowsBase = validatedItems.map(({ sku, size, color, image_url, ...item }) => ({ order_id: preOrderId, ...item }));
+          ({ error: itemsInsertErr } = await supabase.from("order_items").insert(itemRowsBase));
+        }
+        if (itemsInsertErr) throw itemsInsertErr;
+
+        // Insert order initiated timeline event
+        await supabase.from("order_events").insert({
+          order_id: preOrderId,
+          status: "pending",
+          note: "Order checkout initiated",
+        });
+
+        // Initialize Razorpay client and create the order on Razorpay servers
+        const Razorpay = (await import("razorpay")).default;
+        const rzp = new Razorpay({
+          key_id: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+          key_secret: process.env.RAZORPAY_KEY_SECRET
+        });
+
+        const rzpOrder = await rzp.orders.create({
+          amount: totalPaise,
+          currency: "INR",
+          receipt: orderNumber,
+          notes: {
+            userId: user.id,
+            dbOrderId: preOrderId
+          }
+        });
+
+        // Update the order in database with the actual Razorpay Order ID
+        const { error: updateErr } = await supabase
+          .from("orders")
+          .update({ razorpay_order_id: rzpOrder.id })
+          .eq("id", preOrderId);
+
+        if (updateErr) throw updateErr;
+
+        return NextResponse.json({
+          success: true,
+          razorpayOrderId: rzpOrder.id,
+          amount: totalPaise,
+          dbOrderId: preOrderId
+        });
+      } catch (err: any) {
+        console.error("Razorpay order creation failed:", err);
+        const errMsg = err.description || err.message || (err.error && err.error.description) || JSON.stringify(err);
+        return NextResponse.json({ error: "Failed to initiate Razorpay order: " + errMsg }, { status: 500 });
+      }
+    }
+
+    // Verify the payment with Razorpay if key/secret are set in the environment (Production Mode)
+    if (process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET) {
+      if (!isRazorpay || !razorpayPaymentId || !razorpayOrderId || !razorpaySignature) {
+        return NextResponse.json({ error: "Razorpay payment details (ID, Order ID, and Signature) are required to complete this order" }, { status: 400 });
+      }
+
+      try {
+        // Secure Signature Verification
+        const crypto = await import("crypto");
+        const shasum = crypto.createHmac("sha256", process.env.RAZORPAY_KEY_SECRET);
+        shasum.update(`${razorpayOrderId}|${razorpayPaymentId}`);
+        const generatedSignature = shasum.digest("hex");
+
+        if (generatedSignature !== razorpaySignature) {
+          return NextResponse.json({ error: "Payment verification failed (signature mismatch)" }, { status: 400 });
+        }
+
+        // Additional sanity check: Fetch payment from Razorpay to verify amount & status
         const Razorpay = (await import("razorpay")).default;
         const rzp = new Razorpay({
           key_id: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
@@ -361,19 +509,31 @@ export async function POST(request: Request) {
         }
       } catch (err: any) {
         console.error("Razorpay verification failed:", err);
-        return NextResponse.json({ error: "Payment verification failed: " + (err.message || err) }, { status: 400 });
+        const errMsg = err.description || err.message || (err.error && err.error.description) || JSON.stringify(err);
+        return NextResponse.json({ error: "Payment verification failed: " + errMsg }, { status: 400 });
       }
     }
 
-    // 7. Generate order number e.g. JSRT-2026-XXXXXX
-    const randomDigits = Math.floor(100000 + Math.random() * 900000);
-    const orderNumber = `JSRT-2026-${randomDigits}`;
+    // Determine if we should insert a new order record (Mock Checkout / direct flow) 
+    // or update the existing pre-created one.
+    let dbOrderId = "";
+    let orderNumber = "";
+    let isNewOrder = true;
 
-    // 8. Place order (Atomic operations)
-    // 8a. Insert the main order record
-    const mockPaymentId = razorpayPaymentId || `pay_mock_${Math.random().toString(36).slice(2, 11)}`;
+    if (isRazorpay && razorpayOrderId) {
+      const { data: existingOrder } = await supabase
+        .from("orders")
+        .select("id, order_number")
+        .eq("razorpay_order_id", razorpayOrderId)
+        .maybeSingle();
 
-    // Calculate default delivery date (current date + 4 days)
+      if (existingOrder) {
+        dbOrderId = existingOrder.id;
+        orderNumber = existingOrder.order_number;
+        isNewOrder = false;
+      }
+    }
+
     const defaultDeliveryDate = new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toLocaleDateString("en-IN", {
       weekday: "long",
       day: "numeric",
@@ -381,51 +541,70 @@ export async function POST(request: Request) {
       year: "numeric"
     });
 
-    const { data: newOrder, error: orderInsertError } = await supabase
-      .from("orders")
-      .insert({
-        order_number: orderNumber,
-        user_id: user.id,
-        status: "pending",
-        payment_status: "paid", // Completed transaction
-        subtotal_paise: subtotalPaise,
-        discount_paise: discountPaise,
-        shipping_paise: shippingPaise,
-        wallet_used_paise: walletUsedPaise,
-        tax_paise: 0,
-        total_paise: totalPaise,
-        cashback_earned_paise: totalCashbackEarned,
-        coupon_id: couponId,
-        shipping_address: {
-          ...shippingAddress,
-          delivery_date: defaultDeliveryDate
-        },
-        razorpay_order_id: isRazorpay ? `order_rzp_${randomDigits}` : null,
-        razorpay_payment_id: mockPaymentId,
-        placed_at: new Date().toISOString(),
-      })
-      .select("id")
-      .single();
+    if (isNewOrder) {
+      const randomDigits = Math.floor(100000 + Math.random() * 900000);
+      orderNumber = `JSRT-2026-${randomDigits}`;
+      const mockPaymentId = razorpayPaymentId || `pay_mock_${Math.random().toString(36).slice(2, 11)}`;
 
-    if (orderInsertError || !newOrder) {
-      throw orderInsertError || new Error("Failed to write order record");
+      const { data: newOrder, error: orderInsertError } = await supabase
+        .from("orders")
+        .insert({
+          order_number: orderNumber,
+          user_id: user.id,
+          status: "pending",
+          payment_status: "paid", // Completed transaction
+          subtotal_paise: subtotalPaise,
+          discount_paise: discountPaise,
+          shipping_paise: shippingPaise,
+          wallet_used_paise: walletUsedPaise,
+          tax_paise: 0,
+          total_paise: totalPaise,
+          cashback_earned_paise: totalCashbackEarned,
+          coupon_id: couponId,
+          shipping_address: {
+            ...shippingAddress,
+            delivery_date: defaultDeliveryDate
+          },
+          razorpay_order_id: isRazorpay ? razorpayOrderId : null,
+          razorpay_payment_id: isRazorpay ? razorpayPaymentId : mockPaymentId,
+          placed_at: new Date().toISOString(),
+        })
+        .select("id")
+        .single();
+
+      if (orderInsertError || !newOrder) {
+        throw orderInsertError || new Error("Failed to write order record");
+      }
+      dbOrderId = newOrder.id;
+
+      // Insert order items
+      const itemRows = validatedItems.map(item => ({
+        order_id: dbOrderId,
+        ...item,
+      }));
+      let { error: itemsInsertErr } = await supabase.from("order_items").insert(itemRows);
+      if (itemsInsertErr?.message?.match(/column .* does not exist|Could not find the .* column/i)) {
+        const itemRowsBase = validatedItems.map(({ sku, size, color, image_url, ...item }) => ({ order_id: dbOrderId, ...item }));
+        ({ error: itemsInsertErr } = await supabase.from("order_items").insert(itemRowsBase));
+      }
+      if (itemsInsertErr) throw itemsInsertErr;
+    } else {
+      // Update existing pre-created order status to paid
+      const { error: orderUpdateError } = await supabase
+        .from("orders")
+        .update({
+          payment_status: "paid",
+          razorpay_payment_id: razorpayPaymentId,
+          placed_at: new Date().toISOString(),
+        })
+        .eq("id", dbOrderId);
+
+      if (orderUpdateError) {
+        throw orderUpdateError;
+      }
     }
 
-    const orderId = newOrder.id;
-
-    // 8b. Insert order items
-    const itemRows = validatedItems.map(item => ({
-      order_id: orderId,
-      ...item,
-    }));
-    let { error: itemsInsertErr } = await supabase.from("order_items").insert(itemRows);
-    if (itemsInsertErr?.message?.match(/column .* does not exist|Could not find the .* column/i)) {
-      // sku/size/color/image_url snapshot columns haven't been migrated on this database
-      // yet — retry with only the guaranteed base columns so checkout still succeeds.
-      const itemRowsBase = validatedItems.map(({ sku, size, color, image_url, ...item }) => ({ order_id: orderId, ...item }));
-      ({ error: itemsInsertErr } = await supabase.from("order_items").insert(itemRowsBase));
-    }
-    if (itemsInsertErr) throw itemsInsertErr;
+    const orderId = dbOrderId;
 
     // 8c. Insert order placement tracking event, decrement stock, bump coupon usage, and
     // deduct wallet balance concurrently — these are all independent writes with no

@@ -386,6 +386,7 @@ export default function CheckoutPage() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
+            action: "confirm",
             cart,
             shippingAddress: addressPayload,
             couponCode: appliedCoupon?.code || null,
@@ -409,6 +410,43 @@ export default function CheckoutPage() {
 
     // Razorpay Integration
     try {
+      // 1. Create the Razorpay Order on the server first to prevent client-side price tampering
+      const createRes = await fetch("/api/checkout/place-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "create",
+          cart,
+          shippingAddress: addressPayload,
+          couponCode: appliedCoupon?.code || null,
+          useWallet: walletUsedPaise > 0,
+        }),
+      });
+
+      const createData = await createRes.json();
+      if (!createRes.ok) {
+        throw new Error(createData.error || "Failed to initiate Razorpay order");
+      }
+
+      const { razorpayOrderId } = createData;
+
+      // Handle cleaning up the pre-created database order if checkout fails or is cancelled
+      const handlePaymentCancellation = async () => {
+        try {
+          await fetch("/api/checkout/place-order", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              action: "cancel",
+              razorpayOrderId,
+              dbOrderId: createData.dbOrderId
+            })
+          });
+        } catch (err) {
+          console.error("Failed to cancel pre-order:", err);
+        }
+      };
+
       // Load Razorpay script dynamically
       const loadScript = () => {
         return new Promise((resolve) => {
@@ -433,6 +471,7 @@ export default function CheckoutPage() {
         name: "JAI SRI RAM TEXTILES",
         description: "Handloom Weavers Storefront Payment",
         image: "https://res.cloudinary.com/knpwtpigyevvluehowfq/image/upload/v1/store/logo.png",
+        order_id: razorpayOrderId, // Bind the order ID securely
         handler: async function (response: any) {
           // Payment succeeded, complete the transaction in database!
           try {
@@ -440,12 +479,15 @@ export default function CheckoutPage() {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
+                action: "confirm",
                 cart,
                 shippingAddress: addressPayload,
                 couponCode: appliedCoupon?.code || null,
                 useWallet: walletUsedPaise > 0,
                 isRazorpay: true,
                 razorpayPaymentId: response.razorpay_payment_id,
+                razorpayOrderId: response.razorpay_order_id,
+                razorpaySignature: response.razorpay_signature,
               }),
             });
 
@@ -467,13 +509,23 @@ export default function CheckoutPage() {
         theme: {
           color: "#B08D4C", // luxury gold theme
         },
+        modal: {
+          ondismiss: async function () {
+            setIsSubmitting(false);
+            await handlePaymentCancellation();
+          },
+        },
       };
 
       const rzp = new (window as any).Razorpay(options);
+      rzp.on("payment.failed", async function (response: any) {
+        setCheckoutError(response.error?.description || "Payment failed. Please try again or use another payment method.");
+        setIsSubmitting(false);
+        await handlePaymentCancellation();
+      });
       rzp.open();
     } catch (err: any) {
       setCheckoutError(err.message || "Failed to initialize Razorpay checkout");
-    } finally {
       setIsSubmitting(false);
     }
   }
