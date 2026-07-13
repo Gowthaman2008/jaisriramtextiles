@@ -1015,6 +1015,23 @@ export default function AccountPage() {
                                   <p className="text-[11px] text-taupe mt-1 font-medium">
                                     {formatINR(item.unit_price_paise, true)} × {item.quantity}
                                   </p>
+                                  {o.status === "delivered" && item.product_id && (
+                                    <div className="mt-2.5">
+                                      {isReviewed(item.product_id, o.id) ? (
+                                        <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg">
+                                          ✓ Reviewed
+                                        </span>
+                                      ) : (
+                                        <button
+                                          type="button"
+                                          onClick={() => openReviewModal(o.id, item.product_id, item.name)}
+                                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-ink text-white hover:bg-zari text-[11px] font-bold rounded-lg transition-colors cursor-pointer border-0"
+                                        >
+                                          <Star size={11} className="fill-white" /> Write Review
+                                        </button>
+                                      )}
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                             );

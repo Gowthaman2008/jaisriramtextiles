@@ -141,6 +141,15 @@ export async function DELETE(request: Request) {
     }
 
     const supabase = createServiceClient();
+    
+    // Dissociate the coupon from any existing orders to avoid foreign key violations
+    const { error: updateErr } = await supabase
+      .from("orders")
+      .update({ coupon_id: null })
+      .eq("coupon_id", id);
+
+    if (updateErr) throw updateErr;
+
     const { error } = await supabase
       .from("coupons")
       .delete()

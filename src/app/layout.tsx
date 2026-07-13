@@ -40,17 +40,29 @@ export const metadata: Metadata = {
     "dhoti", "veshti", "handloom towels", "cotton scarf", "jute bags",
     "textile manufacturer Tamil Nadu", "wholesale dhoti", "Komarapalayam textiles",
   ],
+  icons: {
+    icon: [
+      { url: "/favicon.png", type: "image/png" },
+      { url: "/favicon.ico" },
+    ],
+    apple: [
+      { url: "/apple-touch-icon.png", type: "image/png" },
+    ],
+    shortcut: "/favicon.png",
+  },
   openGraph: {
     type: "website",
     siteName: BUSINESS.name,
     title: "JAI SRI RAM TEXTILES",
     description: "Premium handloom dhotis, towels, scarfs & jute bags.",
     url: siteUrl,
+    images: [{ url: "/og-image.png", width: 1200, height: 630, alt: "JAI SRI RAM TEXTILES" }],
   },
   twitter: {
     card: "summary_large_image",
     title: "JAI SRI RAM TEXTILES",
     description: "Premium handloom textiles from Tamil Nadu.",
+    images: ["/og-image.png"],
   },
   robots: { index: true, follow: true },
 };

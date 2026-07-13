@@ -215,14 +215,25 @@ export async function sendEmail({
 }
 
 // Helper: Common AJIO Header
+const BRAND_ICON_URL = "https://res.cloudinary.com/vgwavi5t/image/upload/v1783939101/jai-sri-ram-textiles/brand/logo-ram.jpg";
+
 function renderEmailHeader(title: string, subtitle?: string) {
   return `
     <!-- Header Block -->
     <table class="mobile-header" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #F3ECDD; padding: 14px 12px; border-bottom: 4px solid #B08D4C;">
       <tr>
         <td style="vertical-align: middle; white-space: nowrap;">
-          <div class="mobile-logo text-brand-gold" style="color: #8A6D33; font-family: 'Times New Roman', Georgia, serif; font-size: 15px; font-weight: bold; letter-spacing: 1.5px; text-transform: uppercase; white-space: nowrap;">JAI SRI RAM</div>
-          <div class="mobile-logo-sub" style="color: #6E655A; font-family: Arial, sans-serif; font-size: 7px; font-weight: bold; letter-spacing: 2px; text-transform: uppercase; margin-top: 2px; white-space: nowrap;">Premium Handlooms</div>
+          <table cellpadding="0" cellspacing="0" border="0">
+            <tr>
+              <td style="vertical-align: middle; padding-right: 8px;">
+                <img src="${BRAND_ICON_URL}" alt="Jai Sri Ram Textiles" width="36" height="36" style="width: 36px; height: 36px; border-radius: 50%; object-fit: cover; border: 2px solid #B08D4C; display: block;" />
+              </td>
+              <td style="vertical-align: middle; white-space: nowrap;">
+                <div class="mobile-logo text-brand-gold" style="color: #8A6D33; font-family: 'Times New Roman', Georgia, serif; font-size: 15px; font-weight: bold; letter-spacing: 1.5px; text-transform: uppercase; white-space: nowrap;">JAI SRI RAM</div>
+                <div class="mobile-logo-sub" style="color: #6E655A; font-family: Arial, sans-serif; font-size: 7px; font-weight: bold; letter-spacing: 2px; text-transform: uppercase; margin-top: 2px; white-space: nowrap;">Premium Handlooms</div>
+              </td>
+            </tr>
+          </table>
         </td>
         <td align="right" style="vertical-align: middle; font-family: Arial, sans-serif; text-align: right; white-space: nowrap;">
           <div class="mobile-header-title" style="color: #2A2622; font-size: 9px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap;">${title}</div>
