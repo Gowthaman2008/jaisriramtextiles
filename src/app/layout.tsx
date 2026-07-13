@@ -13,7 +13,6 @@ import { NotificationProvider } from "@/components/providers/notification-provid
 import { AIChatbot } from "@/components/layout/ai-chatbot";
 import { BUSINESS } from "@/lib/constants";
 import { ProfilePrompt } from "@/components/providers/profile-prompt";
-import { LiveUsersFloating } from "@/components/layout/live-users";
 import { Analytics } from "@vercel/analytics/react";
 
 const fraunces = Fraunces({
@@ -101,7 +100,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <main>{children}</main>
                 <ConditionalFooter />
                 <AIChatbot />
-                <LiveUsersFloating />
                 <ProfilePrompt />
               </CartProvider>
             </WishlistProvider>
