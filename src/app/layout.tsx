@@ -40,16 +40,6 @@ export const metadata: Metadata = {
     "dhoti", "veshti", "handloom towels", "cotton scarf", "jute bags",
     "textile manufacturer Tamil Nadu", "wholesale dhoti", "Komarapalayam textiles",
   ],
-  icons: {
-    icon: [
-      { url: "/favicon.png", type: "image/png" },
-      { url: "/favicon.ico" },
-    ],
-    apple: [
-      { url: "/apple-touch-icon.png", type: "image/png" },
-    ],
-    shortcut: "/favicon.png",
-  },
   openGraph: {
     type: "website",
     siteName: BUSINESS.name,
