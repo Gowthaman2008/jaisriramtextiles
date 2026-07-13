@@ -33,19 +33,22 @@ export async function GET() {
   try {
     const supabase = createServiceClient();
 
-    // 1. Get database counts (table row metrics)
+    const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+
     const [
       { count: countProfiles },
       { count: countProducts },
       { count: countOrders },
       { count: countSessions },
       { count: countPageViews },
+      { count: countActiveSessions },
     ] = await Promise.all([
       supabase.from("profiles").select("*", { count: "exact", head: true }),
       supabase.from("products").select("*", { count: "exact", head: true }),
       supabase.from("orders").select("*", { count: "exact", head: true }).neq("payment_status", "created"),
       supabase.from("sessions").select("*", { count: "exact", head: true }),
       supabase.from("page_views").select("*", { count: "exact", head: true }),
+      supabase.from("sessions").select("*", { count: "exact", head: true }).gt("last_seen_at", fifteenMinutesAgo),
     ]);
 
     const dbStats = {
@@ -54,6 +57,7 @@ export async function GET() {
       orders: countOrders || 0,
       sessions: countSessions || 0,
       pageViews: countPageViews || 0,
+      activeSessions: countActiveSessions || 0,
     };
 
     // 2. Fetch Supabase storage and database size metrics

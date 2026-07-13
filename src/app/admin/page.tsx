@@ -3155,7 +3155,7 @@ export default function AdminDashboardPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                   <StatCard icon={<DollarSign className="text-success" />} label="Gross Paid Revenues" value={formatRupees(analytics?.metrics?.totalSalesPaise || 0)} subtitle="Cleared Razorpay transactions" />
                   <StatCard icon={<ShoppingCart className="text-zari" />} label="Delivered Orders" value={analytics?.metrics?.completedOrdersCount || 0} subtitle={`Avg ticket: ${formatRupees(analytics?.metrics?.avgOrderValPaise || 0)}`} />
-                  <StatCard icon={<Users className="text-ink" />} label="Active Sessions" value={analytics?.dbStats?.sessions || 0} subtitle={`Total page views: ${analytics?.dbStats?.pageViews || 0}`} />
+                  <StatCard icon={<Users className="text-ink" />} label="Active Sessions" value={analytics?.dbStats?.activeSessions || 0} subtitle={`Total page views: ${analytics?.dbStats?.pageViews || 0}`} />
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
