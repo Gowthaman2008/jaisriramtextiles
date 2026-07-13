@@ -800,18 +800,16 @@ export default function AdminDashboardPage() {
     // Communications (Communications)
     if (["communications"].includes(tab) && (supportMessages.length === 0 || force)) {
       promises.push(
-        Promise.all([
-          supabase.from("support_messages").select("*, profiles(user_id)").order("created_at", { ascending: false }),
-          supabase.from("bulk_inquiries").select("*").order("created_at", { ascending: false }),
-          supabase.from("newsletter_subscriptions").select("*").order("created_at", { ascending: false })
-        ]).then(([supportRes, bulkRes, subsRes]) => {
-          if (supportRes.error) throw supportRes.error;
-          if (bulkRes.error) throw bulkRes.error;
-          if (subsRes.error) throw subsRes.error;
-          setSupportMessages(supportRes.data || []);
-          setBulkInquiries(bulkRes.data || []);
-          setNewsletterSubs(subsRes.data || []);
-        })
+        fetch("/api/admin/communications")
+          .then(res => {
+            if (!res.ok) throw new Error("Failed to load communications");
+            return res.json();
+          })
+          .then(data => {
+            setSupportMessages(data.supportMessages || []);
+            setBulkInquiries(data.bulkInquiries || []);
+            setNewsletterSubs(data.newsletterSubs || []);
+          })
       );
     }
 
