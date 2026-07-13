@@ -1554,7 +1554,7 @@ export default function AccountPage() {
                   <ShieldCheck className="w-2.5 h-2.5 text-zari-deep" /> Mon-Sat, 9AM-6PM IST
                 </span>
                 <span className="inline-flex items-center gap-1 bg-white/70 border border-zari/20 rounded-full px-2.5 py-1 text-[10px] text-ink font-semibold">
-                  <Mail className="w-2.5 h-2.5 text-zari-deep" /> jaisriramtextiles@gmail.com
+                  <Mail className="w-2.5 h-2.5 text-zari-deep" /> jaisriramtextilekpm@gmail.com
                 </span>
               </div>
             </div>
@@ -1655,8 +1655,8 @@ export default function AccountPage() {
                 </div>
                 <div>
                   <p className="text-[10px] font-bold text-taupe uppercase tracking-widest mb-0.5">Email</p>
-                  <a href="mailto:jaisriramtextiles@gmail.com" className="text-xs text-blue-600 font-bold break-all hover:underline">
-                    jaisriramtextiles@gmail.com
+                  <a href="mailto:jaisriramtextilekpm@gmail.com" className="text-xs text-blue-600 font-bold break-all hover:underline">
+                    jaisriramtextilekpm@gmail.com
                   </a>
                 </div>
               </div>
