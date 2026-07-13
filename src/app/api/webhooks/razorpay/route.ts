@@ -96,19 +96,26 @@ export async function POST(request: Request) {
       }
     }
 
-    // 1. Update order payment status to paid
-    const { error: orderUpdateErr } = await supabase
+    // 1. Update order payment status to paid (only if not already marked as paid)
+    const { data: updatedOrders, error: orderUpdateErr } = await supabase
       .from("orders")
       .update({
         payment_status: "paid",
         razorpay_payment_id: razorpayPaymentId || order.razorpay_payment_id,
         placed_at: new Date().toISOString()
       })
-      .eq("id", order.id);
+      .eq("id", order.id)
+      .neq("payment_status", "paid")
+      .select("id");
 
     if (orderUpdateErr) {
       console.error("Failed to update order status in webhook:", orderUpdateErr);
       return NextResponse.json({ error: "Failed to update order status" }, { status: 500 });
+    }
+
+    const shouldProcessCompletion = updatedOrders && updatedOrders.length > 0;
+    if (!shouldProcessCompletion) {
+      return NextResponse.json({ success: true, message: "Order already processed by checkout success" });
     }
 
     // 2. Perform post-payment database operations concurrently
