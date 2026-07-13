@@ -228,6 +228,29 @@ export async function POST(request: Request) {
 
     if (dbUserEmail) {
       after(async () => {
+        // Double check if the email has already been sent to prevent any race condition
+        try {
+          const { data: existingEvents } = await supabase
+            .from("order_events")
+            .select("id")
+            .eq("order_id", order.id)
+            .eq("note", "Order confirmation email sent");
+
+          if (existingEvents && existingEvents.length > 0) {
+            console.log(`Order confirmation email already sent for order ${order.order_number} - skipping`);
+            return;
+          }
+
+          // Record that the email is being sent
+          await supabase.from("order_events").insert({
+            order_id: order.id,
+            status: "pending",
+            note: "Order confirmation email sent",
+          });
+        } catch (dbErr) {
+          console.error("Failed to check or write email sent log in webhook:", dbErr);
+        }
+
         let pdfBase64 = "";
         try {
           pdfBase64 = generateInvoicePdfBase64({
