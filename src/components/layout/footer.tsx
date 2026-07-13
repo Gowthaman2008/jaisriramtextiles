@@ -69,10 +69,16 @@ export function Footer() {
             </form>
 
             <div className="mt-6 flex gap-3">
-              {[Instagram, Facebook, Youtube].map((Icon, i) => (
+              {[
+                { Icon: Instagram, href: "https://www.instagram.com/jaisriram.textiles?igsh=MTBodDY5dXdvZmVnYQ==" },
+                { Icon: Facebook, href: "#" },
+                { Icon: Youtube, href: "#" }
+              ].map(({ Icon, href }, i) => (
                 <a
                   key={i}
-                  href="#"
+                  href={href}
+                  target={href !== "#" ? "_blank" : undefined}
+                  rel={href !== "#" ? "noopener noreferrer" : undefined}
                   aria-label="Social media"
                   className="grid h-10 w-10 place-items-center rounded-full border border-line text-taupe transition hover:border-zari hover:text-zari-deep"
                 >
