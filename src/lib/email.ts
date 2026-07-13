@@ -229,15 +229,14 @@ function renderEmailHeader(title: string, subtitle?: string) {
                 <img src="${BRAND_ICON_URL}" alt="Jai Sri Ram Textiles" width="36" height="36" style="width: 36px; height: 36px; border-radius: 50%; object-fit: cover; border: 2px solid #B08D4C; display: block;" />
               </td>
               <td style="vertical-align: middle; white-space: nowrap;">
-                <div class="mobile-logo text-brand-gold" style="color: #8A6D33; font-family: 'Times New Roman', Georgia, serif; font-size: 15px; font-weight: bold; letter-spacing: 1.5px; text-transform: uppercase; white-space: nowrap;">JAI SRI RAM</div>
+                <div class="mobile-logo text-brand-gold" style="color: #8A6D33; font-family: 'Times New Roman', Georgia, serif; font-size: 15px; font-weight: bold; letter-spacing: 1.5px; text-transform: uppercase; white-space: nowrap;">JAI SRI RAM TEXTILES</div>
                 <div class="mobile-logo-sub" style="color: #6E655A; font-family: Arial, sans-serif; font-size: 7px; font-weight: bold; letter-spacing: 2px; text-transform: uppercase; margin-top: 2px; white-space: nowrap;">Premium Handlooms</div>
               </td>
             </tr>
           </table>
-        </td>
-        <td align="right" style="vertical-align: middle; font-family: Arial, sans-serif; text-align: right; white-space: nowrap;">
-          <div class="mobile-header-title" style="color: #2A2622; font-size: 9px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap;">${title}</div>
-          ${subtitle ? `<div class="mobile-header-sub text-brand-gold" style="color: #8A6D33; font-size: 7.5px; font-weight: bold; margin-top: 3px; font-family: monospace; white-space: nowrap;">${subtitle}</div>` : ""}
+        <td align="right" style="vertical-align: middle; font-family: Arial, sans-serif; text-align: right; padding-left: 10px;">
+          <div class="mobile-header-title" style="color: #2A2622; font-size: 9px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; line-height: 1.2;">${title}</div>
+          ${subtitle ? `<div class="mobile-header-sub text-brand-gold" style="color: #8A6D33; font-size: 7.5px; font-weight: bold; margin-top: 3px; font-family: monospace; line-height: 1.2; word-break: break-all;">${subtitle}</div>` : ""}
         </td>
       </tr>
     </table>

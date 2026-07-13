@@ -6,7 +6,7 @@
 
 export const BUSINESS = {
   name: "JAI SRI RAM TEXTILES",
-  email: "jaisriramtextiles@gmail.com",
+  email: "jaisriramtextilekpm@gmail.com",
   // Deliberately no phone number anywhere on the public site.
   address: {
     line1: "5/136/5, Shasti Smart City, Kallankattuvalasu",

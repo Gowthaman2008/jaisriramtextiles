@@ -519,6 +519,7 @@ export async function POST(request: Request) {
     let dbOrderId = "";
     let orderNumber = "";
     let isNewOrder = true;
+    let shouldProcessCompletion = true;
 
     if (isRazorpay && razorpayOrderId) {
       const { data: existingOrder } = await supabase
@@ -588,150 +589,154 @@ export async function POST(request: Request) {
         ({ error: itemsInsertErr } = await supabase.from("order_items").insert(itemRowsBase));
       }
       if (itemsInsertErr) throw itemsInsertErr;
-    } else {
-      // Update existing pre-created order status to paid
-      const { error: orderUpdateError } = await supabase
+      // Update existing pre-created order status to paid (only if not already marked as paid)
+      const { data: updatedOrders, error: orderUpdateError } = await supabase
         .from("orders")
         .update({
           payment_status: "paid",
           razorpay_payment_id: razorpayPaymentId,
           placed_at: new Date().toISOString(),
         })
-        .eq("id", dbOrderId);
+        .eq("id", dbOrderId)
+        .neq("payment_status", "paid")
+        .select("id");
 
       if (orderUpdateError) {
         throw orderUpdateError;
       }
+      shouldProcessCompletion = updatedOrders && updatedOrders.length > 0;
     }
 
     const orderId = dbOrderId;
 
-    // 8c. Insert order placement tracking event, decrement stock, bump coupon usage, and
-    // deduct wallet balance concurrently — these are all independent writes with no
-    // interdependency, so running them in parallel instead of one-by-one cuts this whole
-    // block down to the latency of the single slowest write instead of the sum of all of them.
-    const postInsertWrites: any[] = [
-      supabase.from("order_events").insert({
-        order_id: orderId,
-        status: "pending",
-        note: "Order placed successfully (prepaid checkout completed)",
-      }),
-    ];
+    if (shouldProcessCompletion) {
+      // 8c. Insert order placement tracking event, decrement stock, bump coupon usage, and
+      // deduct wallet balance concurrently — these are all independent writes with no
+      // interdependency, so running them in parallel instead of one-by-one cuts this whole
+      // block down to the latency of the single slowest write instead of the sum of all of them.
+      const postInsertWrites: any[] = [
+        supabase.from("order_events").insert({
+          order_id: orderId,
+          status: "pending",
+          note: "Order placed successfully (prepaid checkout completed)",
+        }),
+      ];
 
-    for (const update of stockUpdates) {
-      postInsertWrites.push(
-        supabase.from("products").update({ stock: Math.max(0, update.prodStock - update.qty) }).eq("id", update.productId)
-      );
-      if (update.variantId) {
+      for (const update of stockUpdates) {
         postInsertWrites.push(
-          supabase.from("product_variants").update({ stock: Math.max(0, update.varStock - update.qty) }).eq("id", update.variantId)
+          supabase.from("products").update({ stock: Math.max(0, update.prodStock - update.qty) }).eq("id", update.productId)
+        );
+        if (update.variantId) {
+          postInsertWrites.push(
+            supabase.from("product_variants").update({ stock: Math.max(0, update.varStock - update.qty) }).eq("id", update.variantId)
+          );
+        }
+      }
+
+      if (couponId) {
+        const { data: currentCoupon } = await supabase.from("coupons").select("used_count").eq("id", couponId).single();
+        const nextUsed = (currentCoupon?.used_count || 0) + 1;
+        postInsertWrites.push(supabase.from("coupons").update({ used_count: nextUsed }).eq("id", couponId));
+      }
+
+      if (walletUsedPaise > 0) {
+        const finalBal = Math.max(0, activeBalance - walletUsedPaise);
+        postInsertWrites.push(
+          supabase.from("wallet_transactions").insert({
+            user_id: user.id,
+            type: "redeem",
+            amount_paise: -walletUsedPaise,
+            order_id: orderId,
+            note: `Redeemed for order ${orderNumber}`,
+          }),
+          supabase
+            .from("wallets")
+            .update({ balance_paise: finalBal, updated_at: new Date().toISOString() })
+            .eq("user_id", user.id)
         );
       }
-    }
 
-    if (couponId) {
-      const { data: currentCoupon } = await supabase.from("coupons").select("used_count").eq("id", couponId).single();
-      const nextUsed = (currentCoupon?.used_count || 0) + 1;
-      postInsertWrites.push(supabase.from("coupons").update({ used_count: nextUsed }).eq("id", couponId));
-    }
+      const writeResults = await Promise.all(postInsertWrites);
+      const failedWrite = writeResults.find((r: any) => r?.error);
+      if (failedWrite?.error) throw failedWrite.error;
 
-    if (walletUsedPaise > 0) {
-      const finalBal = Math.max(0, activeBalance - walletUsedPaise);
-      postInsertWrites.push(
-        supabase.from("wallet_transactions").insert({
-          user_id: user.id,
-          type: "redeem",
-          amount_paise: -walletUsedPaise,
-          order_id: orderId,
-          note: `Redeemed for order ${orderNumber}`,
-        }),
-        supabase
-          .from("wallets")
-          .update({ balance_paise: finalBal, updated_at: new Date().toISOString() })
-          .eq("user_id", user.id)
-      );
-    }
-
-    const writeResults = await Promise.all(postInsertWrites);
-    const failedWrite = writeResults.find((r: any) => r?.error);
-    if (failedWrite?.error) throw failedWrite.error;
-
-    // Fetch user profile to get the 8-digit user_id, email, and name
-    let dbUserId: string | number | undefined = undefined;
-    let dbUserEmail: string | undefined = undefined;
-    let dbFullName: string | undefined = undefined;
-    try {
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("user_id, email, full_name")
-        .eq("id", user.id)
-        .single();
-      if (profile) {
-        dbUserId = profile.user_id;
-        dbUserEmail = profile.email;
-        dbFullName = profile.full_name;
-      }
-    } catch (err) {
-      console.error("Failed to fetch user profile for invoice:", err);
-    }
-
-    const recipientEmail = dbUserEmail || user.email;
-    const recipientName = dbFullName || user.user_metadata?.full_name || user.user_metadata?.name;
-
-    // 9 & 10. Order confirmation email (with invoice PDF) and WhatsApp notification are
-    // both slow (PDF rendering + external API round trips) and don't affect what the
-    // customer sees next, so they're deferred via after() to run once the response has
-    // already been sent — this is what makes "Place Order" feel instant instead of
-    // making the customer wait through PDF generation + email + WhatsApp before the
-    // success animation can even start.
-    after(async () => {
-      if (recipientEmail) {
-        let pdfBase64 = "";
-        try {
-          pdfBase64 = generateInvoicePdfBase64({
-            orderNumber,
-            name: recipientName,
-            items: validatedItems,
-            shippingAddress,
-            subtotalPaise,
-            discountPaise,
-            shippingPaise,
-            walletUsedPaise,
-            totalPaise,
-            cashbackEarnedPaise: totalCashbackEarned,
-            userId: dbUserId,
-          });
-        } catch (pdfErr) {
-          console.error("PDF generation failed:", pdfErr);
+      // Fetch user profile to get the 8-digit user_id, email, and name
+      let dbUserId: string | number | undefined = undefined;
+      let dbUserEmail: string | undefined = undefined;
+      let dbFullName: string | undefined = undefined;
+      try {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("user_id, email, full_name")
+          .eq("id", user.id)
+          .single();
+        if (profile) {
+          dbUserId = profile.user_id;
+          dbUserEmail = profile.email;
+          dbFullName = profile.full_name;
         }
-
-        await sendEmail({
-          to: recipientEmail,
-          subject: `Order Confirmed — ${orderNumber} | JAI SRI RAM TEXTILES`,
-          html: orderConfirmationEmailHtml({
-            orderNumber,
-            name: recipientName,
-            items: validatedItems,
-            shippingAddress,
-            subtotalPaise,
-            discountPaise,
-            shippingPaise,
-            walletUsedPaise,
-            totalPaise,
-            cashbackEarnedPaise: totalCashbackEarned,
-            userId: dbUserId,
-          }),
-          ...(pdfBase64 ? {
-            attachments: [
-              {
-                filename: `invoice_${orderNumber}.pdf`,
-                content: pdfBase64,
-              }
-            ]
-          } : {})
-        }).catch((err) => console.error("Order confirmation email failed:", err));
+      } catch (err) {
+        console.error("Failed to fetch user profile for invoice:", err);
       }
-    });
+
+      const recipientEmail = dbUserEmail || user.email;
+      const recipientName = dbFullName || user.user_metadata?.full_name || user.user_metadata?.name;
+
+      // 9 & 10. Order confirmation email (with invoice PDF) and WhatsApp notification are
+      // both slow (PDF rendering + external API round trips) and don't affect what the
+      // customer sees next, so they're deferred via after() to run once the response has
+      // already been sent — this is what makes "Place Order" feel instant instead of
+      // making the customer wait through PDF generation + email + WhatsApp before the
+      // success animation can even start.
+      after(async () => {
+        if (recipientEmail) {
+          let pdfBase64 = "";
+          try {
+            pdfBase64 = generateInvoicePdfBase64({
+              orderNumber,
+              name: recipientName,
+              items: validatedItems,
+              shippingAddress,
+              subtotalPaise,
+              discountPaise,
+              shippingPaise,
+              walletUsedPaise,
+              totalPaise,
+              cashbackEarnedPaise: totalCashbackEarned,
+              userId: dbUserId,
+            });
+          } catch (pdfErr) {
+            console.error("PDF generation failed:", pdfErr);
+          }
+
+          await sendEmail({
+            to: recipientEmail,
+            subject: `Order Confirmed — ${orderNumber} | JAI SRI RAM TEXTILES`,
+            html: orderConfirmationEmailHtml({
+              orderNumber,
+              name: recipientName,
+              items: validatedItems,
+              shippingAddress,
+              subtotalPaise,
+              discountPaise,
+              shippingPaise,
+              walletUsedPaise,
+              totalPaise,
+              cashbackEarnedPaise: totalCashbackEarned,
+              userId: dbUserId,
+            }),
+            ...(pdfBase64 ? {
+              attachments: [
+                {
+                  filename: `invoice_${orderNumber}.pdf`,
+                  content: pdfBase64,
+                }
+              ]
+            } : {})
+          }).catch((err) => console.error("Order confirmation email failed:", err));
+        }
+      });
+    }
 
     return NextResponse.json({ success: true, orderId, orderNumber, cashbackEarnedPaise: totalCashbackEarned });
   } catch (error: any) {

@@ -56,10 +56,10 @@ export default function AboutPage() {
                 <div>
                   <p className="font-bold text-ink uppercase tracking-wider text-xs">General & Trade Enquiries</p>
                   <a
-                    href="mailto:jaisriramtextiles@gmail.com"
+                    href="mailto:jaisriramtextilekpm@gmail.com"
                     className="text-zari-deep font-semibold underline underline-offset-2 hover:text-zari"
                   >
-                    jaisriramtextiles@gmail.com
+                    jaisriramtextilekpm@gmail.com
                   </a>
                 </div>
                 <div>

@@ -800,18 +800,16 @@ export default function AdminDashboardPage() {
     // Communications (Communications)
     if (["communications"].includes(tab) && (supportMessages.length === 0 || force)) {
       promises.push(
-        Promise.all([
-          supabase.from("support_messages").select("*, profiles(user_id)").order("created_at", { ascending: false }),
-          supabase.from("bulk_inquiries").select("*").order("created_at", { ascending: false }),
-          supabase.from("newsletter_subscriptions").select("*").order("created_at", { ascending: false })
-        ]).then(([supportRes, bulkRes, subsRes]) => {
-          if (supportRes.error) throw supportRes.error;
-          if (bulkRes.error) throw bulkRes.error;
-          if (subsRes.error) throw subsRes.error;
-          setSupportMessages(supportRes.data || []);
-          setBulkInquiries(bulkRes.data || []);
-          setNewsletterSubs(subsRes.data || []);
-        })
+        fetch("/api/admin/communications")
+          .then(res => {
+            if (!res.ok) throw new Error("Failed to load communications");
+            return res.json();
+          })
+          .then(data => {
+            setSupportMessages(data.supportMessages || []);
+            setBulkInquiries(data.bulkInquiries || []);
+            setNewsletterSubs(data.newsletterSubs || []);
+          })
       );
     }
 
@@ -3155,7 +3153,7 @@ export default function AdminDashboardPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                   <StatCard icon={<DollarSign className="text-success" />} label="Gross Paid Revenues" value={formatRupees(analytics?.metrics?.totalSalesPaise || 0)} subtitle="Cleared Razorpay transactions" />
                   <StatCard icon={<ShoppingCart className="text-zari" />} label="Delivered Orders" value={analytics?.metrics?.completedOrdersCount || 0} subtitle={`Avg ticket: ${formatRupees(analytics?.metrics?.avgOrderValPaise || 0)}`} />
-                  <StatCard icon={<Users className="text-ink" />} label="Active Sessions" value={analytics?.dbStats?.sessions || 0} subtitle={`Total page views: ${analytics?.dbStats?.pageViews || 0}`} />
+                  <StatCard icon={<Users className="text-ink" />} label="Active Sessions" value={analytics?.dbStats?.activeSessions || 0} subtitle={`Total page views: ${analytics?.dbStats?.pageViews || 0}`} />
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

@@ -56,29 +56,142 @@ export default async function ProductPage({ params }: Props) {
   const totalCount = product.reviewCount;
   const ratingAvg = product.rating;
 
-  let displayReviews = finalReviews;
-  if (finalReviews.length === 0 && totalCount > 0) {
-    displayReviews = [
-      {
-        id: "mock-1",
-        author: "Aravind K.",
-        rating: 5,
-        date: "2 weeks ago",
-        title: "Superb Quality Angavastram",
-        body: "The gold zari border is absolutely beautiful and the quality of cotton is very premium. Perfect for traditional events and temple visits.",
-        photos: [],
-      },
-      {
-        id: "mock-2",
-        author: "Ramesh P.",
-        rating: 4,
-        date: "1 month ago",
-        title: "Very nice traditional look",
-        body: "Authentic handloom design. Cotton feels thick and premium. The color is rich and exactly as shown.",
-        photos: [],
+  // Generate product-specific mock reviews that are always shown alongside real customer reviews
+  const mockReviews = (() => {
+    const slug = product.slug.toLowerCase();
+
+    if (slug.includes("veshti") || slug.includes("dhoti")) {
+      if (slug.includes("white") || slug.includes("gold")) {
+        return [
+          {
+            id: "mock-1",
+            author: "Karthik Raja",
+            rating: 5,
+            date: "3 weeks ago",
+            title: "Very premium white veshti",
+            body: "The double layer veshti is perfect for festive occasions. The cotton is dense and very soft. The border has a beautiful shine.",
+            photos: [],
+          },
+          {
+            id: "mock-2",
+            author: "Subramanian S.",
+            rating: 4,
+            date: "1 month ago",
+            title: "Excellent handloom quality",
+            body: "Very comfortable to wear for long hours. Classic look, pure white. Highly recommended.",
+            photos: [],
+          }
+        ];
+      } else {
+        return [
+          {
+            id: "mock-1",
+            author: "Vijay Kumar",
+            rating: 5,
+            date: "2 weeks ago",
+            title: "Rich color and fine border",
+            body: "The color is exactly as shown in the picture. The border has a nice zari shine. Looks very traditional.",
+            photos: [],
+          },
+          {
+            id: "mock-2",
+            author: "Anandharaj M.",
+            rating: 5,
+            date: "1 month ago",
+            title: "Premium coloured dhoti",
+            body: "Good fit and fabric feels soft. The color did not bleed on first wash. Great quality.",
+            photos: [],
+          }
+        ];
       }
-    ];
-  }
+    } else if (slug.includes("towel")) {
+      return [
+        {
+          id: "mock-1",
+          author: "Murugan G.",
+          rating: 5,
+          date: "10 days ago",
+          title: "Super absorbent bath towel",
+          body: "Very thick combed cotton. It absorbs water quickly and dries fast. Value for money product.",
+          photos: [],
+        },
+        {
+          id: "mock-2",
+          author: "Selvam P.",
+          rating: 4,
+          date: "3 weeks ago",
+          title: "Soft and thick cotton towel",
+          body: "Large size and good quality weave. It is soft on the skin and holds up well after wash.",
+          photos: [],
+        }
+      ];
+    } else if (slug.includes("scarf")) {
+      return [
+        {
+          id: "mock-1",
+          author: "Priya Sundar",
+          rating: 5,
+          date: "1 week ago",
+          title: "Elegant cotton scarf",
+          body: "Beautiful design and the cotton texture is very breathable. Perfect to wear in hot summers.",
+          photos: [],
+        },
+        {
+          id: "mock-2",
+          author: "Divya N.",
+          rating: 4,
+          date: "1 month ago",
+          title: "Lovely summer accessory",
+          body: "The colors are vibrant. Looks great with simple kurtis and dresses. Easy to wash.",
+          photos: [],
+        }
+      ];
+    } else if (slug.includes("tote") || slug.includes("bag") || slug.includes("jute")) {
+      return [
+        {
+          id: "mock-1",
+          author: "Meenakshi R.",
+          rating: 5,
+          date: "12 days ago",
+          title: "Spacious and sturdy jute bag",
+          body: "Perfect tote bag for daily shopping or office. The handles are very comfortable to carry, and it is very spacious.",
+          photos: [],
+        },
+        {
+          id: "mock-2",
+          author: "Rajeshwari S.",
+          rating: 5,
+          date: "3 weeks ago",
+          title: "Great eco-friendly bag",
+          body: "Strong stitching and premium quality jute. Looks neat and elegant. Good value for money.",
+          photos: [],
+        }
+      ];
+    } else {
+      return [
+        {
+          id: "mock-1",
+          author: "Senthil Kumar",
+          rating: 5,
+          date: "2 weeks ago",
+          title: "Great handloom quality",
+          body: "Excellent craftsmanship. The handloom texture is very premium and authentic. Very satisfied with the buy.",
+          photos: [],
+        },
+        {
+          id: "mock-2",
+          author: "Gopalakrishnan V.",
+          rating: 4,
+          date: "1 month ago",
+          title: "Good purchase",
+          body: "Product is very comfortable and soft. The packaging was clean and delivery was fast.",
+          photos: [],
+        }
+      ];
+    }
+  })();
+
+  const displayReviews = [...finalReviews, ...mockReviews];
 
   // Distribute based on average rating
   let pct5 = 0, pct4 = 0, pct3 = 0, pct2 = 0, pct1 = 0;
