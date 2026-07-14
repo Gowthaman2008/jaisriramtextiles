@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/admin";
+import { revalidatePath } from "next/cache";
 
 // Utility to verify admin/staff role
 async function checkAdminAuth() {
@@ -188,6 +189,9 @@ export async function POST(request: Request) {
       if (varError) throw varError;
     }
 
+    revalidatePath("/");
+    revalidatePath("/shop");
+    revalidatePath("/shop/[category]");
     return NextResponse.json({ success: true, productId });
   } catch (error: any) {
     console.error("Add product error:", error);
@@ -342,6 +346,9 @@ export async function PUT(request: Request) {
       }
     }
 
+    revalidatePath("/");
+    revalidatePath("/shop");
+    revalidatePath("/shop/[category]");
     return NextResponse.json({ success: true });
   } catch (error: any) {
     console.error("Update product error:", error);
@@ -374,6 +381,9 @@ export async function DELETE(request: Request) {
 
     if (error) throw error;
 
+    revalidatePath("/");
+    revalidatePath("/shop");
+    revalidatePath("/shop/[category]");
     return NextResponse.json({ success: true });
   } catch (error: any) {
     console.error("Delete product error:", error);

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/admin";
+import { revalidatePath } from "next/cache";
 
 async function checkAdminAuth() {
   try {
@@ -52,6 +53,9 @@ export async function POST(request: Request) {
       .single();
 
     if (error) throw error;
+    revalidatePath("/");
+    revalidatePath("/shop");
+    revalidatePath("/shop/[category]");
     return NextResponse.json({ success: true, category: data });
   } catch (error: any) {
     console.error("Create category error:", error);
@@ -92,6 +96,9 @@ export async function PUT(request: Request) {
       .single();
 
     if (error) throw error;
+    revalidatePath("/");
+    revalidatePath("/shop");
+    revalidatePath("/shop/[category]");
     return NextResponse.json({ success: true, category: data });
   } catch (error: any) {
     console.error("Update category error:", error);
@@ -121,6 +128,9 @@ export async function DELETE(request: Request) {
       .eq("id", id);
 
     if (error) throw error;
+    revalidatePath("/");
+    revalidatePath("/shop");
+    revalidatePath("/shop/[category]");
     return NextResponse.json({ success: true });
   } catch (error: any) {
     console.error("Delete category error:", error);

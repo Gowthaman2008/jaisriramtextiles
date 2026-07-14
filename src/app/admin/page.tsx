@@ -670,156 +670,201 @@ export default function AdminDashboardPage() {
     }
     setRefreshing(true);
 
-    const promises: PromiseLike<any>[] = [];
+    const failedEndpoints: string[] = [];
+
+    const wrap = <T,>(promise: PromiseLike<T>, name: string): PromiseLike<void> => {
+      return promise.then(
+        () => {},
+        (err: any) => {
+          console.error(`${name} failed:`, err);
+          failedEndpoints.push(`${name} (${err.message || err})`);
+        }
+      );
+    };
+
+    const promises: PromiseLike<void>[] = [];
 
     // Analytics (Overview, Visitor sessions, System Storage)
     if (["overview", "visitor-history", "storage"].includes(tab) && (!analytics || force)) {
       promises.push(
-        fetch("/api/admin/analytics")
-          .then(res => {
-            if (!res.ok) throw new Error("Failed to load analytics");
-            return res.json();
-          })
-          .then(data => setAnalytics(data))
+        wrap(
+          fetch("/api/admin/analytics")
+            .then(res => {
+              if (!res.ok) throw new Error(`HTTP ${res.status}`);
+              return res.json();
+            })
+            .then(data => setAnalytics(data)),
+          "Analytics API"
+        )
       );
     }
 
     // Orders (Overview, Orders, Refunds)
     if (["overview", "orders", "refunds"].includes(tab) && (orders.length === 0 || force)) {
       promises.push(
-        fetch("/api/admin/orders")
-          .then(res => {
-            if (!res.ok) throw new Error("Failed to load orders");
-            return res.json();
-          })
-          .then(data => setOrders(data || []))
+        wrap(
+          fetch("/api/admin/orders")
+            .then(res => {
+              if (!res.ok) throw new Error(`HTTP ${res.status}`);
+              return res.json();
+            })
+            .then(data => setOrders(data || [])),
+          "Orders API"
+        )
       );
     }
 
     // Products (Product Catalog)
     if (["products"].includes(tab) && (products.length === 0 || force)) {
       promises.push(
-        fetch("/api/admin/products")
-          .then(res => {
-            if (!res.ok) throw new Error("Failed to load products");
-            return res.json();
-          })
-          .then(data => setProducts(data && data.length > 0 ? data : DEFAULT_PRODUCTS))
+        wrap(
+          fetch("/api/admin/products")
+            .then(res => {
+              if (!res.ok) throw new Error(`HTTP ${res.status}`);
+              return res.json();
+            })
+            .then(data => setProducts(data && data.length > 0 ? data : DEFAULT_PRODUCTS)),
+          "Products API"
+        )
       );
     }
 
     // Categories (Product Catalog, Storefront CMS)
     if (["products", "cms"].includes(tab) && (categories.length === 0 || force)) {
       promises.push(
-        supabase.from("categories").select("*").order("sort_order", { ascending: true })
-          .then(({ data, error }) => {
-            if (error) throw error;
-            setCategories(data || []);
-          })
+        wrap(
+          supabase.from("categories").select("*").order("sort_order", { ascending: true })
+            .then(({ data, error }) => {
+              if (error) throw error;
+              setCategories(data || []);
+            }),
+          "Categories DB"
+        )
       );
     }
 
     // CMS (Storefront CMS)
     if (["cms"].includes(tab) && (cmsSlides.length === 0 || force)) {
       promises.push(
-        fetch("/api/admin/cms")
-          .then(res => {
-            if (!res.ok) throw new Error("Failed to load CMS data");
-            return res.json();
-          })
-          .then(data => {
-            setCmsSlides(data.slides && data.slides.length > 0 ? data.slides : DEFAULT_SLIDES);
-            setCmsBanners(data.banners || []);
-            const annBanner = (data.banners || []).find((b: any) => b.placement === "announcement");
-            if (annBanner) {
-              setAnnouncementBannerId(annBanner.id);
-              setAnnouncementList(annBanner.content?.messages || []);
-              setSavedAnnouncementList(annBanner.content?.messages || []);
-            } else {
-              setAnnouncementBannerId(null);
-              setAnnouncementList(DEFAULT_ANNOUNCEMENTS);
-              setSavedAnnouncementList(DEFAULT_ANNOUNCEMENTS);
-            }
-          })
+        wrap(
+          fetch("/api/admin/cms")
+            .then(res => {
+              if (!res.ok) throw new Error(`HTTP ${res.status}`);
+              return res.json();
+            })
+            .then(data => {
+              setCmsSlides(data.slides && data.slides.length > 0 ? data.slides : DEFAULT_SLIDES);
+              setCmsBanners(data.banners || []);
+              const annBanner = (data.banners || []).find((b: any) => b.placement === "announcement");
+              if (annBanner) {
+                setAnnouncementBannerId(annBanner.id);
+                setAnnouncementList(annBanner.content?.messages || []);
+                setSavedAnnouncementList(annBanner.content?.messages || []);
+              } else {
+                setAnnouncementBannerId(null);
+                setAnnouncementList(DEFAULT_ANNOUNCEMENTS);
+                setSavedAnnouncementList(DEFAULT_ANNOUNCEMENTS);
+              }
+            }),
+          "CMS API"
+        )
       );
     }
 
     // Coupons (Promo codes)
     if (["coupons"].includes(tab) && (coupons.length === 0 || force)) {
       promises.push(
-        fetch("/api/admin/coupons")
-          .then(res => {
-            if (!res.ok) throw new Error("Failed to load promo codes");
-            return res.json();
-          })
-          .then(data => setCoupons(data || []))
+        wrap(
+          fetch("/api/admin/coupons")
+            .then(res => {
+              if (!res.ok) throw new Error(`HTTP ${res.status}`);
+              return res.json();
+            })
+            .then(data => setCoupons(data || [])),
+          "Promo Codes API"
+        )
       );
     }
 
     // Shipping (Shipping settings)
     if (["shipping"].includes(tab) && (!shippingSettings || force)) {
       promises.push(
-        fetch("/api/admin/settings")
-          .then(res => {
-            if (!res.ok) throw new Error("Failed to load settings");
-            return res.json();
-          })
-          .then(data => {
-            setShippingSettings(data);
-            setShippingThresholdInput(data.free_shipping_threshold_paise / 100);
-            setShippingChargeInput(data.shipping_charge_paise / 100);
-          })
+        wrap(
+          fetch("/api/admin/settings")
+            .then(res => {
+              if (!res.ok) throw new Error(`HTTP ${res.status}`);
+              return res.json();
+            })
+            .then(data => {
+              setShippingSettings(data);
+              setShippingThresholdInput(data.free_shipping_threshold_paise / 100);
+              setShippingChargeInput(data.shipping_charge_paise / 100);
+            }),
+          "Settings API"
+        )
       );
     }
 
     // Campaigns (Free products)
     if (["campaigns"].includes(tab) && (campaigns.length === 0 || force)) {
       promises.push(
-        fetch("/api/admin/campaigns")
-          .then(res => {
-            if (!res.ok) throw new Error("Failed to load campaigns");
-            return res.json();
-          })
-          .then(data => setCampaigns(data || []))
+        wrap(
+          fetch("/api/admin/campaigns")
+            .then(res => {
+              if (!res.ok) throw new Error(`HTTP ${res.status}`);
+              return res.json();
+            })
+            .then(data => setCampaigns(data || [])),
+          "Campaigns API"
+        )
       );
     }
 
     // Users (User Management)
     if (["users"].includes(tab) && (users.length === 0 || force)) {
       promises.push(
-        supabase.from("profiles").select("*").order("created_at", { ascending: false })
-          .then(({ data, error }) => {
-            if (error) throw error;
-            setUsers(data || []);
-          })
+        wrap(
+          supabase.from("profiles").select("*").order("created_at", { ascending: false })
+            .then(({ data, error }) => {
+              if (error) throw error;
+              setUsers(data || []);
+            }),
+          "Profiles DB"
+        )
       );
     }
 
     // Reviews (Customer reviews)
     if (["reviews"].includes(tab) && (reviews.length === 0 || force)) {
       promises.push(
-        fetch("/api/admin/reviews")
-          .then(res => {
-            if (!res.ok) throw new Error("Failed to load reviews");
-            return res.json();
-          })
-          .then(data => setReviews(data || []))
+        wrap(
+          fetch("/api/admin/reviews")
+            .then(res => {
+              if (!res.ok) throw new Error(`HTTP ${res.status}`);
+              return res.json();
+            })
+            .then(data => setReviews(data || [])),
+          "Reviews API"
+        )
       );
     }
 
     // Communications (Communications)
     if (["communications"].includes(tab) && (supportMessages.length === 0 || force)) {
       promises.push(
-        fetch("/api/admin/communications")
-          .then(res => {
-            if (!res.ok) throw new Error("Failed to load communications");
-            return res.json();
-          })
-          .then(data => {
-            setSupportMessages(data.supportMessages || []);
-            setBulkInquiries(data.bulkInquiries || []);
-            setNewsletterSubs(data.newsletterSubs || []);
-          })
+        wrap(
+          fetch("/api/admin/communications")
+            .then(res => {
+              if (!res.ok) throw new Error(`HTTP ${res.status}`);
+              return res.json();
+            })
+            .then(data => {
+              setSupportMessages(data.supportMessages || []);
+              setBulkInquiries(data.bulkInquiries || []);
+              setNewsletterSubs(data.newsletterSubs || []);
+            }),
+          "Communications API"
+        )
       );
     }
 
@@ -829,20 +874,15 @@ export default function AdminDashboardPage() {
       return;
     }
 
-    let hadError = false;
-    try {
-      await Promise.all(promises);
-    } catch (err) {
-      hadError = true;
-      console.error("Tab data loading failed:", err);
-    } finally {
-      if (!hadError && isFirstLoad) {
-        setLoadedTabs(prev => [...prev, tab]);
-      }
-      setError(hadError ? "Some tab data failed to load — check browser console for details." : "");
-      setInitialDataLoaded(true);
-      setRefreshing(false);
+    await Promise.all(promises);
+
+    const hadError = failedEndpoints.length > 0;
+    if (!hadError && isFirstLoad) {
+      setLoadedTabs(prev => [...prev, tab]);
     }
+    setError(hadError ? `Failed to load: ${failedEndpoints.join(", ")}` : "");
+    setInitialDataLoaded(true);
+    setRefreshing(false);
   }
 
   async function refreshProducts() {
