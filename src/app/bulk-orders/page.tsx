@@ -13,9 +13,9 @@ const contacts = [
   {
     icon: Phone,
     label: "Call Us",
-    value: "+91 96083 86872",
+    value: "+91 86083 86872",
     sub: "Mon–Sat, 9:00 AM – 7:00 PM",
-    href: "tel:+919608386872",
+    href: "tel:+918608386872",
     cta: "Call Now",
   },
   {

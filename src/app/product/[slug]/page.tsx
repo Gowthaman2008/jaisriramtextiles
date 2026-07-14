@@ -208,13 +208,18 @@ export default async function ProductPage({ params }: Props) {
   return (
     <div className="py-6 sm:py-10 lg:py-14">
       <Container>
-        {/* Back Button */}
-        <Link
-          href="/shop"
-          className="flex items-center gap-1.5 text-xs font-semibold text-taupe hover:text-ink mb-6 transition-colors inline-flex cursor-pointer"
-        >
-          <ChevronLeft size={16} /> Back to Shop
-        </Link>
+        {/* Back Button & Bulk Order CTA */}
+        <div className="flex items-center justify-between gap-4 mb-6">
+          <Link
+            href="/shop"
+            className="flex items-center gap-1.5 text-xs font-semibold text-taupe hover:text-ink transition-colors cursor-pointer"
+          >
+            <ChevronLeft size={16} /> Back to Shop
+          </Link>
+          <Button variant="gold" size="sm" href="/bulk-orders" className="text-xs">
+            Bulk Orders
+          </Button>
+        </div>
         <div className="grid gap-6 sm:gap-10 lg:grid-cols-2 lg:gap-16 w-full min-w-0">
           {/* Gallery */}
           <div className="w-full min-w-0 overflow-hidden">

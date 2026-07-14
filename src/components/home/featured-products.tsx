@@ -123,7 +123,7 @@ export function FeaturedProducts({ products }: { products: Product[] }) {
         )}
 
         <div className="mt-12 text-center">
-          <Button variant="outline" size="lg" href="/shop">
+          <Button variant="gold" size="lg" href="/shop">
             View all products
           </Button>
         </div>
