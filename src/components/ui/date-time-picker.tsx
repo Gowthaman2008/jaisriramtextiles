@@ -19,16 +19,25 @@ function getFirstDayOfMonth(year: number, month: number) {
   return new Date(year, month, 1).getDay();
 }
 
-/** Parse a "YYYY-MM-DDTHH:mm" string into a Date or null */
-function parseValue(value: string): Date | null {
+/** Parse a "YYYY-MM-DD" or "YYYY-MM-DDTHH:mm" string into a Date or null */
+function parseValue(value: string, dateOnly?: boolean): Date | null {
   if (!value) return null;
+  if (dateOnly && value.includes("-")) {
+    const cleanVal = value.split("T")[0];
+    const [y, m, d] = cleanVal.split("-").map(Number);
+    const localDate = new Date(y, m - 1, d);
+    return isNaN(localDate.getTime()) ? null : localDate;
+  }
   const d = new Date(value);
   return isNaN(d.getTime()) ? null : d;
 }
 
-/** Format a Date into "YYYY-MM-DDTHH:mm" (the value format used by input[datetime-local]) */
-function toInputValue(d: Date): string {
+/** Format a Date into "YYYY-MM-DD" or "YYYY-MM-DDTHH:mm" */
+function toInputValue(d: Date, dateOnly?: boolean): string {
   const pad = (n: number) => String(n).padStart(2, "0");
+  if (dateOnly) {
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  }
   return (
     `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` +
     `T${pad(d.getHours())}:${pad(d.getMinutes())}`
@@ -36,13 +45,15 @@ function toInputValue(d: Date): string {
 }
 
 /** Format a Date for the display trigger button */
-function formatDisplay(d: Date): string {
-  return d.toLocaleDateString("en-IN", {
+function formatDisplay(d: Date, dateOnly?: boolean): string {
+  const dateStr = d.toLocaleDateString("en-IN", {
     weekday: "short",
     day: "2-digit",
     month: "short",
     year: "numeric",
-  }) + " · " + d.toLocaleTimeString("en-IN", {
+  });
+  if (dateOnly) return dateStr;
+  return dateStr + " · " + d.toLocaleTimeString("en-IN", {
     hour: "2-digit",
     minute: "2-digit",
     hour12: true,
@@ -57,6 +68,9 @@ interface DateTimePickerProps {
   placeholder?: string;
   className?: string;
   minDate?: Date;
+  dateOnly?: boolean;
+  align?: "top" | "bottom";
+  dropdownAlign?: "left" | "right";
 }
 
 export function DateTimePicker({
@@ -65,8 +79,11 @@ export function DateTimePicker({
   placeholder = "Select date & time",
   className = "",
   minDate,
+  dateOnly = false,
+  align = "bottom",
+  dropdownAlign = "left",
 }: DateTimePickerProps) {
-  const current = parseValue(value);
+  const current = parseValue(value, dateOnly);
 
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<"date" | "time">("date");
@@ -86,7 +103,7 @@ export function DateTimePicker({
 
   // Sync internal state when external value changes
   useEffect(() => {
-    const d = parseValue(value);
+    const d = parseValue(value, dateOnly);
     if (d) {
       setSelDate(d.getDate());
       setSelMonth(d.getMonth());
@@ -96,7 +113,7 @@ export function DateTimePicker({
       setViewYear(d.getFullYear());
       setViewMonth(d.getMonth());
     }
-  }, [value]);
+  }, [value, dateOnly]);
 
   // Close on outside click
   useEffect(() => {
@@ -113,15 +130,19 @@ export function DateTimePicker({
     date: number, month: number, year: number, hour: number, minute: number
   ) => {
     const d = new Date(year, month, date, hour, minute);
-    onChange(toInputValue(d));
-  }, [onChange]);
+    onChange(toInputValue(d, dateOnly));
+  }, [onChange, dateOnly]);
 
   const handleDayClick = (day: number, month: number, year: number) => {
     setSelDate(day);
     setSelMonth(month);
     setSelYear(year);
     commit(day, month, year, selHour, selMinute);
-    setTab("time"); // auto-switch to time tab
+    if (!dateOnly) {
+      setTab("time"); // auto-switch to time tab
+    } else {
+      setOpen(false); // close dropdown if date-only
+    }
   };
 
   const handleTimeChange = (hour: number, minute: number) => {
@@ -205,7 +226,7 @@ export function DateTimePicker({
       >
         <Calendar size={15} className={current ? "text-zari" : "text-muted"} />
         <span className="flex-1 truncate font-medium">
-          {current ? formatDisplay(current) : placeholder}
+          {current ? formatDisplay(current, dateOnly) : (placeholder === "Select date & time" && dateOnly ? "Select date" : placeholder)}
         </span>
         {current && (
           <span
@@ -220,17 +241,17 @@ export function DateTimePicker({
 
       {/* ── Dropdown Panel ── */}
       {open && (
-        <div className="absolute z-50 top-full mt-2 left-0 w-[320px] bg-white rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.14)] border border-line overflow-hidden">
+        <div className={`absolute z-50 ${align === "top" ? "bottom-full mb-2" : "top-full mt-2"} ${dropdownAlign === "right" ? "right-0" : "left-0"} w-[320px] bg-white rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.14)] border border-line overflow-hidden`}>
           {/* Header */}
           <div className="bg-ink text-ivory px-4 pt-4 pb-3">
             <p className="text-[10px] font-bold uppercase tracking-widest text-ivory/50 mb-1">
-              {tab === "date" ? "Select Date" : "Select Time"}
+              {dateOnly ? "Select Date" : tab === "date" ? "Select Date" : "Select Time"}
             </p>
             <p className="text-lg font-bold font-display">
               {selDate != null
                 ? `${MONTHS[selMonth].slice(0, 3)} ${String(selDate).padStart(2, "0")}, ${selYear}`
                 : "—"}
-              {tab === "time" && selDate != null && (
+              {!dateOnly && tab === "time" && selDate != null && (
                 <span className="ml-2 text-zari">
                   {String(selHour).padStart(2, "0")}:{String(selMinute).padStart(2, "0")}
                 </span>
@@ -238,20 +259,22 @@ export function DateTimePicker({
             </p>
 
             {/* Tab switcher */}
-            <div className="flex gap-1 mt-3">
-              {(["date", "time"] as const).map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => setTab(t)}
-                  className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wide transition-all
-                    ${tab === t ? "bg-zari text-white" : "bg-white/10 text-ivory/70 hover:bg-white/20"}`}
-                >
-                  {t === "date" ? <Calendar size={11} /> : <Clock size={11} />}
-                  {t}
-                </button>
-              ))}
-            </div>
+            {!dateOnly && (
+              <div className="flex gap-1 mt-3">
+                {(["date", "time"] as const).map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setTab(t)}
+                    className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wide transition-all
+                      ${tab === t ? "bg-zari text-white" : "bg-white/10 text-ivory/70 hover:bg-white/20"}`}
+                  >
+                    {t === "date" ? <Calendar size={11} /> : <Clock size={11} />}
+                    {t}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* ── DATE TAB ── */}
@@ -266,9 +289,26 @@ export function DateTimePicker({
                 >
                   <ChevronLeft size={15} />
                 </button>
-                <span className="text-sm font-bold text-ink">
-                  {MONTHS[viewMonth]} {viewYear}
-                </span>
+                <div className="flex items-center gap-1">
+                  <select
+                    value={viewMonth}
+                    onChange={(e) => setViewMonth(Number(e.target.value))}
+                    className="text-xs font-bold text-ink bg-transparent hover:bg-cream/80 px-1 py-0.5 rounded cursor-pointer outline-none border border-line/20 hover:border-line transition-all"
+                  >
+                    {MONTHS.map((m, idx) => (
+                      <option key={m} value={idx}>{m}</option>
+                    ))}
+                  </select>
+                  <select
+                    value={viewYear}
+                    onChange={(e) => setViewYear(Number(e.target.value))}
+                    className="text-xs font-bold text-ink bg-transparent hover:bg-cream/80 px-1 py-0.5 rounded cursor-pointer outline-none border border-line/20 hover:border-line transition-all"
+                  >
+                    {Array.from({ length: 21 }, (_, i) => new Date().getFullYear() - 10 + i).map((y) => (
+                      <option key={y} value={y}>{y}</option>
+                    ))}
+                  </select>
+                </div>
                 <button
                   type="button"
                   onClick={nextMonth}

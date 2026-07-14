@@ -386,6 +386,16 @@ export default function AdminDashboardPage() {
   const [bulkReportOpen, setBulkReportOpen] = useState(false);
   const [bulkReportFilter, setBulkReportFilter] = useState("all");
 
+  // Bulk order invoices PDF modal state
+  const [bulkInvoicesOpen, setBulkInvoicesOpen] = useState(false);
+  const [bulkInvoicesFromDate, setBulkInvoicesFromDate] = useState("");
+  const [bulkInvoicesToDate, setBulkInvoicesToDate] = useState("");
+  const [bulkInvoicesLoading, setBulkInvoicesLoading] = useState(false);
+  const [bulkInvoicesGeneratedPdf, setBulkInvoicesGeneratedPdf] = useState<any>(null);
+  const [bulkInvoicesPdfFilename, setBulkInvoicesPdfFilename] = useState("");
+  const [bulkInvoicesError, setBulkInvoicesError] = useState("");
+  const [bulkInvoicesCount, setBulkInvoicesCount] = useState(0);
+
   // Product Edit/Add State
   const [editingProduct, setEditingProduct] = useState<any>(null); // null means adding a new product, or closed
   const [showProductForm, setShowProductForm] = useState(false);
@@ -1583,6 +1593,35 @@ export default function AdminDashboardPage() {
     setProdImages(prodImages.filter((_, idx) => idx !== index));
   }
 
+  const downloadAllImages = async () => {
+    if (prodImages.length === 0) return;
+    notify("Downloading all product images...");
+    for (let i = 0; i < prodImages.length; i++) {
+      const url = prodImages[i];
+      try {
+        const response = await fetch(url);
+        const blob = await response.blob();
+        const blobUrl = window.URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = blobUrl;
+        
+        const extension = url.split(".").pop()?.split("?")[0] || "jpg";
+        const cleanName = (prodName || "product").toLowerCase().replace(/[^a-z0-9]/g, "-");
+        link.download = `${cleanName}-${i + 1}.${extension}`;
+        
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(blobUrl);
+        
+        await new Promise((resolve) => setTimeout(resolve, 300));
+      } catch (error) {
+        console.error("Failed to download image", url, error);
+        window.open(url, "_blank");
+      }
+    }
+  };
+
   async function handleSaveProduct(e: React.FormEvent) {
     e.preventDefault();
     if (!prodName.trim() || !prodSlug.trim()) {
@@ -2521,6 +2560,55 @@ export default function AdminDashboardPage() {
     }
   }
 
+  async function generateBulkInvoices(fromDateStr: string, toDateStr: string) {
+    setBulkInvoicesError("");
+    setBulkInvoicesLoading(true);
+    setBulkInvoicesGeneratedPdf(null);
+    setBulkInvoicesCount(0);
+
+    try {
+      if (!fromDateStr || !toDateStr) {
+        throw new Error("Please select both From and To dates.");
+      }
+
+      const start = new Date(fromDateStr);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(toDateStr);
+      end.setHours(23, 59, 59, 999);
+
+      if (start > end) {
+        throw new Error("From date cannot be after To date.");
+      }
+
+      const filtered = orders.filter((o) => {
+        const orderDate = new Date(o.placed_at || o.created_at);
+        return orderDate >= start && orderDate <= end;
+      });
+
+      if (filtered.length === 0) {
+        throw new Error("No orders found in the selected date range.");
+      }
+
+      const { jsPDF } = await import("jspdf");
+      const doc = new jsPDF();
+      
+      for (let i = 0; i < filtered.length; i++) {
+        if (i > 0) {
+          doc.addPage();
+        }
+        drawInvoicePdf(doc, filtered[i]);
+      }
+
+      setBulkInvoicesCount(filtered.length);
+      setBulkInvoicesGeneratedPdf(doc);
+      setBulkInvoicesPdfFilename(`Invoices_${fromDateStr}_to_${toDateStr}.pdf`);
+    } catch (err: any) {
+      setBulkInvoicesError(err.message || "Failed to generate invoices.");
+    } finally {
+      setBulkInvoicesLoading(false);
+    }
+  }
+
   // --- Invoice & Packing Slip Printer ---
   async function printInvoice(order: any) {
     // Dynamic import to avoid SSR issues
@@ -3364,12 +3452,23 @@ export default function AdminDashboardPage() {
                       <div className="border-t border-line pt-4 space-y-4">
                         <h4 className="font-semibold text-sm">Product Images (Cloudinary)</h4>
                         
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center flex-wrap gap-4">
                           <label className={`cursor-pointer inline-flex items-center gap-2 px-4 py-2 border border-line rounded-md text-sm font-medium hover:bg-cream transition-colors ${uploadingImage ? "opacity-50 pointer-events-none" : ""}`}>
                             <ImageIcon className="w-4 h-4 text-zari" />
                             {uploadingImage ? "Uploading images..." : "Upload Images (Max 10)"}
                             <input type="file" accept="image/*" multiple onChange={handleProductImageUpload} className="hidden" />
                           </label>
+
+                          {prodImages.length > 0 && (
+                            <button
+                              type="button"
+                              onClick={downloadAllImages}
+                              className="inline-flex items-center gap-2 px-4 py-2 border border-zari bg-transparent text-zari hover:bg-zari hover:text-ivory rounded-md text-sm font-semibold transition-colors cursor-pointer"
+                            >
+                              <Download className="w-4 h-4" />
+                              Download All ({prodImages.length})
+                            </button>
+                          )}
                         </div>
 
                         {prodImages.length > 0 ? (
@@ -3945,26 +4044,54 @@ export default function AdminDashboardPage() {
                   </div>
                 ) : (
                   <>
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 p-3.5 rounded-card border border-line bg-cream/25">
-                      <p className="text-xs text-taupe">Look up any single order by its Order Number or Order ID and download a full one-page detail sheet — handy for emergency/offline reference.</p>
-                      <button
-                        type="button"
-                        onClick={() => { setEmergencyLookupQuery(""); setEmergencyLookupOpen(true); }}
-                        className="shrink-0 inline-flex items-center gap-2 h-10 px-4 rounded-full text-xs font-bold text-ink bg-white border border-line hover:border-zari hover:text-zari-deep hover:bg-zari-tint/40 transition-colors shadow-xs cursor-pointer whitespace-nowrap"
-                      >
-                        <Download className="w-4 h-4" /> Download Order Detail (PDF)
-                      </button>
-                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+                      <div className="flex flex-col justify-between p-4 rounded-card border border-line bg-cream/25 space-y-3 shadow-xs hover:border-zari/30 transition-colors">
+                        <div>
+                          <h5 className="font-semibold text-[11px] text-ink uppercase tracking-wider">Single Order Lookup</h5>
+                          <p className="text-[11px] text-taupe mt-1 leading-relaxed">Download a detailed one-page sheet for any order number or order ID.</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => { setEmergencyLookupQuery(""); setEmergencyLookupOpen(true); }}
+                          className="w-full inline-flex items-center justify-center gap-2 h-9 px-3 rounded-xl text-xs font-bold text-ink bg-white border border-line hover:border-zari hover:text-zari-deep hover:bg-zari-tint/40 transition-colors shadow-xs cursor-pointer"
+                        >
+                          <Download className="w-3.5 h-3.5" /> Order Detail
+                        </button>
+                      </div>
 
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 p-3.5 rounded-card border border-line bg-cream/25">
-                      <p className="text-xs text-taupe">Generate a bulk PDF report of orders filtered by status or delivery type — handy for reconciliation and record-keeping.</p>
-                      <button
-                        type="button"
-                        onClick={() => { setBulkReportFilter("all"); setBulkReportOpen(true); }}
-                        className="shrink-0 inline-flex items-center gap-2 h-10 px-4 rounded-full text-xs font-bold text-ink bg-white border border-line hover:border-zari hover:text-zari-deep hover:bg-zari-tint/40 transition-colors shadow-xs cursor-pointer whitespace-nowrap"
-                      >
-                        <Download className="w-4 h-4" /> Download Orders by Status
-                      </button>
+                      <div className="flex flex-col justify-between p-4 rounded-card border border-line bg-cream/25 space-y-3 shadow-xs hover:border-zari/30 transition-colors">
+                        <div>
+                          <h5 className="font-semibold text-[11px] text-ink uppercase tracking-wider">Status Report</h5>
+                          <p className="text-[11px] text-taupe mt-1 leading-relaxed">Generate a bulk orders list filtered by status or delivery method.</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => { setBulkReportFilter("all"); setBulkReportOpen(true); }}
+                          className="w-full inline-flex items-center justify-center gap-2 h-9 px-3 rounded-xl text-xs font-bold text-ink bg-white border border-line hover:border-zari hover:text-zari-deep hover:bg-zari-tint/40 transition-colors shadow-xs cursor-pointer"
+                        >
+                          <Download className="w-3.5 h-3.5" /> Orders by Status
+                        </button>
+                      </div>
+
+                      <div className="flex flex-col justify-between p-4 rounded-card border border-line bg-cream/25 space-y-3 shadow-xs hover:border-zari/30 transition-colors">
+                        <div>
+                          <h5 className="font-semibold text-[11px] text-ink uppercase tracking-wider">Bulk Invoices</h5>
+                          <p className="text-[11px] text-taupe mt-1 leading-relaxed">Download multiple customer invoices in one combined PDF by date range.</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setBulkInvoicesFromDate("");
+                            setBulkInvoicesToDate("");
+                            setBulkInvoicesGeneratedPdf(null);
+                            setBulkInvoicesError("");
+                            setBulkInvoicesOpen(true);
+                          }}
+                          className="w-full inline-flex items-center justify-center gap-2 h-9 px-3 rounded-xl text-xs font-bold text-ink bg-white border border-line hover:border-zari hover:text-zari-deep hover:bg-zari-tint/40 transition-colors shadow-xs cursor-pointer"
+                        >
+                          <Download className="w-3.5 h-3.5" /> Bulk Invoices
+                        </button>
+                      </div>
                     </div>
 
                     <div className="relative w-full">
@@ -7001,6 +7128,99 @@ $$ language plpgsql;`}
                 className="px-4 py-2 text-xs font-semibold text-white bg-zari rounded hover:bg-zari-deep cursor-pointer"
               >
                 Generate PDF
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Invoices Modal */}
+      {bulkInvoicesOpen && (
+        <div className="fixed inset-0 z-[100] flex items-start justify-center bg-ink/50 backdrop-blur-sm p-4 overflow-y-auto pt-16 sm:pt-24">
+          <div className="bg-white rounded-card border border-line shadow-lift w-full max-w-md p-6 space-y-4 relative my-8">
+            <div>
+              <h3 className="font-display text-lg text-ink">Download bulk invoices</h3>
+              <p className="text-xs text-taupe mt-1">
+                Select a date range to generate all customer invoices into a single compiled PDF file.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold text-taupe">From Date</label>
+                <DateTimePicker
+                  value={bulkInvoicesFromDate}
+                  onChange={(val) => {
+                    setBulkInvoicesFromDate(val);
+                    setBulkInvoicesGeneratedPdf(null);
+                    setBulkInvoicesError("");
+                  }}
+                  placeholder="Select From Date"
+                  dateOnly={true}
+                  align="bottom"
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold text-taupe">To Date</label>
+                <DateTimePicker
+                  value={bulkInvoicesToDate}
+                  onChange={(val) => {
+                    setBulkInvoicesToDate(val);
+                    setBulkInvoicesGeneratedPdf(null);
+                    setBulkInvoicesError("");
+                  }}
+                  placeholder="Select To Date"
+                  dateOnly={true}
+                  align="bottom"
+                  dropdownAlign="right"
+                />
+              </div>
+            </div>
+
+            {bulkInvoicesError && (
+              <p className="text-xs text-danger font-semibold bg-danger/5 p-2.5 rounded border border-danger/10">
+                {bulkInvoicesError}
+              </p>
+            )}
+
+            {bulkInvoicesGeneratedPdf && (
+              <div className="bg-success/5 border border-success/15 rounded p-3 text-center space-y-2.5">
+                <p className="text-xs text-success font-semibold">
+                  ✓ Successfully generated <strong>{bulkInvoicesCount}</strong> invoice{bulkInvoicesCount === 1 ? "" : "s"} in one PDF.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    bulkInvoicesGeneratedPdf.save(bulkInvoicesPdfFilename);
+                  }}
+                  className="w-full inline-flex items-center justify-center gap-1.5 h-10 px-4 rounded-full text-xs font-bold text-white bg-success hover:bg-success/90 transition-colors cursor-pointer"
+                >
+                  <Download className="w-4 h-4" /> Download Combined PDF
+                </button>
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setBulkInvoicesOpen(false)}
+                className="px-4 py-2 text-xs font-semibold text-taupe hover:text-ink border border-line rounded bg-white cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={bulkInvoicesLoading || !bulkInvoicesFromDate || !bulkInvoicesToDate}
+                onClick={() => generateBulkInvoices(bulkInvoicesFromDate, bulkInvoicesToDate)}
+                className="px-4 py-2 text-xs font-semibold text-white bg-zari rounded disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer inline-flex items-center gap-1.5"
+              >
+                {bulkInvoicesLoading ? (
+                  <>Generating...</>
+                ) : bulkInvoicesGeneratedPdf ? (
+                  <>Regenerate PDF</>
+                ) : (
+                  <>Generate PDF</>
+                )}
               </button>
             </div>
           </div>

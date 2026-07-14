@@ -55,7 +55,6 @@ function playReplyChime() {
 
 export function AIChatbot() {
   const pathname = usePathname();
-  if (pathname?.startsWith("/admin")) return null;
 
   const [isOpen, setIsOpen] = useState(false);
   const [dbCategories, setDbCategories] = useState<any[]>([]);
@@ -533,6 +532,10 @@ ${itemsList || "- No items listed"}`;
     } finally {
       setLoading(false);
     }
+  }
+
+  if (pathname?.startsWith("/admin")) {
+    return null;
   }
 
   return (
