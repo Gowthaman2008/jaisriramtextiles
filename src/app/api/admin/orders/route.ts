@@ -146,61 +146,7 @@ export async function PUT(request: Request) {
         }
       }
 
-      // Send shipment notification (with tracking + invoice attached) on the -> shipped transition
-      if (status === "shipped") {
-        const profile = originalOrder.profiles as any;
-        if (profile?.email) {
-          const finalTrackingId = tracking_id || originalOrder.tracking_id || null;
-          const finalTrackingUrl = courier_tracking_url || originalOrder.courier_tracking_url || null;
-          const finalCourierName = shipping_address?.courier_name || originalOrder.shipping_address?.courier_name || null;
-          const finalDeliveryDate = shipping_address?.delivery_date || originalOrder.shipping_address?.delivery_date || null;
-
-          // Generate PDF Invoice with AWB number and courier name
-          let pdfBase64 = "";
-          try {
-            pdfBase64 = generateInvoicePdfBase64({
-              orderNumber: originalOrder.order_number,
-              name: profile.full_name,
-              items: originalOrder.order_items || [],
-              shippingAddress: originalOrder.shipping_address,
-              subtotalPaise: originalOrder.subtotal_paise || 0,
-              discountPaise: originalOrder.discount_paise || 0,
-              shippingPaise: originalOrder.shipping_paise || 0,
-              walletUsedPaise: originalOrder.wallet_used_paise || 0,
-              totalPaise: originalOrder.total_paise || 0,
-              cashbackEarnedPaise: originalOrder.cashback_earned_paise || 0,
-              userId: profile.user_id,
-              trackingId: finalTrackingId,
-              carrierName: finalCourierName,
-            });
-          } catch (pdfErr) {
-            console.error("PDF generation on shipment failed:", pdfErr);
-          }
-
-          await sendEmail({
-            to: profile.email,
-            subject: `Order Shipped — ${originalOrder.order_number} | JAI SRI RAM TEXTILES`,
-            html: orderShippedEmailHtml({
-              orderNumber: originalOrder.order_number,
-              name: profile.full_name,
-              items: originalOrder.order_items || [],
-              totalPaise: originalOrder.total_paise,
-              trackingId: finalTrackingId,
-              trackingUrl: finalTrackingUrl,
-              courierName: finalCourierName,
-              estimatedDeliveryDate: finalDeliveryDate,
-            }),
-            ...(pdfBase64 ? {
-              attachments: [
-                {
-                  filename: `invoice_${originalOrder.order_number}.pdf`,
-                  content: pdfBase64,
-                }
-              ]
-            } : {})
-          }).catch((err) => console.error("Shipment email failed:", err));
-        }
-      }
+      // Shipped email block removed (moved outside parent transition block to trigger on AWB updates)
 
       // Send rejection confirmation email on status transition to rejected
       if (status === "rejected") {
@@ -218,6 +164,83 @@ export async function PUT(request: Request) {
             }),
           }).catch((err) => console.error("Rejection email failed:", err));
         }
+      }
+    }
+
+    // 4.5. Send shipment notification (with tracking + invoice attached) on transition to shipped 
+    // OR when tracking ID is added/updated on an already shipped order.
+    const isStatusTransitionToShipped = status === "shipped" && originalOrder?.status !== "shipped";
+    const isTrackingUpdatedForShipped = originalOrder?.status === "shipped" && tracking_id && tracking_id !== originalOrder.tracking_id;
+
+    if ((isStatusTransitionToShipped || isTrackingUpdatedForShipped) && originalOrder) {
+      const profile = originalOrder.profiles as any;
+      if (profile?.email) {
+        const finalTrackingId = tracking_id || originalOrder.tracking_id || null;
+        const finalTrackingUrl = courier_tracking_url || originalOrder.courier_tracking_url || null;
+        const finalCourierName = shipping_address?.courier_name || originalOrder.shipping_address?.courier_name || null;
+        const finalDeliveryDate = shipping_address?.delivery_date || originalOrder.shipping_address?.delivery_date || null;
+
+        // Log tracking update event if it is an update
+        if (isTrackingUpdatedForShipped) {
+          try {
+            await supabase
+              .from("order_events")
+              .insert({
+                order_id: id,
+                status: "shipped",
+                note: `Tracking ID updated to ${finalTrackingId} (${finalCourierName || "Courier"})`,
+              });
+          } catch (eventErr) {
+            console.error("Log AWB update event failed:", eventErr);
+          }
+        }
+
+        // Generate PDF Invoice
+        let pdfBase64 = "";
+        try {
+          pdfBase64 = generateInvoicePdfBase64({
+            orderNumber: originalOrder.order_number,
+            name: profile.full_name,
+            items: originalOrder.order_items || [],
+            shippingAddress: originalOrder.shipping_address,
+            subtotalPaise: originalOrder.subtotal_paise || 0,
+            discountPaise: originalOrder.discount_paise || 0,
+            shippingPaise: originalOrder.shipping_paise || 0,
+            walletUsedPaise: originalOrder.wallet_used_paise || 0,
+            totalPaise: originalOrder.total_paise || 0,
+            cashbackEarnedPaise: originalOrder.cashback_earned_paise || 0,
+            userId: profile.user_id,
+            trackingId: finalTrackingId,
+            carrierName: finalCourierName,
+          });
+        } catch (pdfErr) {
+          console.error("PDF generation on shipment failed:", pdfErr);
+        }
+
+        await sendEmail({
+          to: profile.email,
+          subject: isTrackingUpdatedForShipped
+            ? `Tracking Updated — ${originalOrder.order_number} | JAI SRI RAM TEXTILES`
+            : `Order Shipped — ${originalOrder.order_number} | JAI SRI RAM TEXTILES`,
+          html: orderShippedEmailHtml({
+            orderNumber: originalOrder.order_number,
+            name: profile.full_name,
+            items: originalOrder.order_items || [],
+            totalPaise: originalOrder.total_paise,
+            trackingId: finalTrackingId,
+            trackingUrl: finalTrackingUrl,
+            courierName: finalCourierName,
+            estimatedDeliveryDate: finalDeliveryDate,
+          }),
+          ...(pdfBase64 ? {
+            attachments: [
+              {
+                filename: `invoice_${originalOrder.order_number}.pdf`,
+                content: pdfBase64,
+              }
+            ]
+          } : {})
+        }).catch((err) => console.error("Shipment email failed:", err));
       }
     }
 
