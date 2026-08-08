@@ -509,6 +509,11 @@ export default function AdminDashboardPage() {
   const [shippingChargeInput, setShippingChargeInput] = useState<number | "">("");
   const [savingShipping, setSavingShipping] = useState(false);
 
+  // Admin Alert Email Settings state
+  const [adminAlertEmail, setAdminAlertEmail] = useState("jaisriramtextilekpm@gmail.com");
+  const [adminAlertEmailInput, setAdminAlertEmailInput] = useState("");
+  const [savingAlertEmail, setSavingAlertEmail] = useState(false);
+
   // Campaigns / Free Products state
   const [campaigns, setCampaigns] = useState<any[]>([]);
   const [showCampaignForm, setShowCampaignForm] = useState(false);
@@ -804,6 +809,21 @@ export default function AdminDashboardPage() {
           "Settings API"
         )
       );
+
+      promises.push(
+        wrap(
+          fetch("/api/admin/settings/email")
+            .then(res => {
+              if (!res.ok) throw new Error(`HTTP ${res.status}`);
+              return res.json();
+            })
+            .then(data => {
+              setAdminAlertEmail(data.email);
+              setAdminAlertEmailInput(data.email);
+            }),
+          "Admin Email Settings API"
+        )
+      );
     }
 
     // Campaigns (Free products)
@@ -991,6 +1011,37 @@ export default function AdminDashboardPage() {
       Number(shippingThresholdInput) !== shippingSettings.free_shipping_threshold_paise / 100 ||
       Number(shippingChargeInput) !== shippingSettings.shipping_charge_paise / 100
     );
+  };
+
+  async function handleSaveAlertEmail(e: React.FormEvent) {
+    e.preventDefault();
+    const emailVal = adminAlertEmailInput.trim();
+    if (!emailVal || !emailVal.includes("@")) {
+      notify("Please enter a valid email address.");
+      return;
+    }
+    setSavingAlertEmail(true);
+    try {
+      const res = await fetch("/api/admin/settings/email", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: emailVal }),
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || "Failed to save email settings");
+      }
+      setAdminAlertEmail(emailVal);
+      notify("✅ Order alert notification email updated successfully!");
+    } catch (err: any) {
+      notify("Error: " + err.message);
+    } finally {
+      setSavingAlertEmail(false);
+    }
+  }
+
+  const isAdminEmailModified = () => {
+    return adminAlertEmailInput.trim() !== adminAlertEmail;
   };
 
   // --- CMS Handling ---
@@ -7246,6 +7297,64 @@ $$ language plpgsql;`}
                             setShippingThresholdInput(shippingSettings.free_shipping_threshold_paise / 100);
                             setShippingChargeInput(shippingSettings.shipping_charge_paise / 100);
                           }
+                        }}
+                        className="text-sm text-taupe hover:text-ink underline underline-offset-2 cursor-pointer"
+                      >
+                        Reset to current
+                      </button>
+                    </div>
+                  </form>
+                </div>
+
+                {/* Admin Email Settings Form */}
+                <div className="bg-white border border-line rounded-card p-6 shadow-soft">
+                  <h3 className="font-semibold text-ink mb-5 flex items-center gap-2">
+                    <Mail className="w-4 h-4 text-zari" />
+                    New Order Email Alerts
+                  </h3>
+                  <form onSubmit={handleSaveAlertEmail} className="space-y-6">
+                    <div className="space-y-2">
+                      <label className="text-sm font-bold text-ink block">
+                        Recipient Email Address
+                      </label>
+                      <p className="text-xs text-taupe">This email address will receive immediate alert notifications (including tax invoice PDFs) for all new customer orders.</p>
+                      <div className="flex items-center gap-3 mt-2">
+                        <div className="relative flex-1 max-w-md">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-taupe font-bold text-sm">@</span>
+                          <input
+                            type="email"
+                            value={adminAlertEmailInput}
+                            onChange={(e) => setAdminAlertEmailInput(e.target.value)}
+                            className="w-full rounded-card border border-line bg-cream/30 pl-8 pr-4 py-2.5 text-sm font-semibold text-ink outline-none focus:border-zari focus:ring-1 focus:ring-zari/30 transition-all"
+                            placeholder="admin@example.com"
+                            required
+                          />
+                        </div>
+                        {adminAlertEmail !== "" && !isAdminEmailModified() && (
+                          <div className="flex items-center gap-1.5 bg-success/10 border border-success/25 text-success text-xs font-semibold px-3 py-1.5 rounded-full">
+                            <CheckCircle className="w-3.5 h-3.5" />
+                            Active Alert Recipient
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3 pt-2">
+                      <button
+                        type="submit"
+                        disabled={savingAlertEmail || !isAdminEmailModified()}
+                        className={`h-11 px-6 rounded-full text-sm font-bold transition-all duration-200 shadow-sm cursor-pointer ${
+                          isAdminEmailModified() && !savingAlertEmail
+                            ? "text-[#6B5427] bg-[#D9BE85] hover:bg-[#CDAE6C] hover:-translate-y-0.5"
+                            : "bg-[#EFE9DC] text-taupe border border-line cursor-not-allowed opacity-50"
+                        }`}
+                      >
+                        {savingAlertEmail ? "Saving..." : "Save Email Settings"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAdminAlertEmailInput(adminAlertEmail);
                         }}
                         className="text-sm text-taupe hover:text-ink underline underline-offset-2 cursor-pointer"
                       >

@@ -1,7 +1,7 @@
 import { NextResponse, after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/admin";
-import { sendEmail, orderConfirmationEmailHtml, generateInvoicePdfBase64 } from "@/lib/email";
+import { sendEmail, orderConfirmationEmailHtml, generateInvoicePdfBase64, getAdminNotificationEmail } from "@/lib/email";
 
 export async function POST(request: Request) {
   try {
@@ -689,6 +689,46 @@ export async function POST(request: Request) {
       // making the customer wait through PDF generation + email + WhatsApp before the
       // success animation can even start.
       after(async () => {
+        // Auto-save shipping address if not already in user's saved addresses
+        try {
+          const { data: existingAddress } = await supabase
+            .from("addresses")
+            .select("id")
+            .eq("user_id", user.id)
+            .eq("recipient", shippingAddress.recipient)
+            .eq("line1", shippingAddress.line1)
+            .eq("city", shippingAddress.city)
+            .eq("state", shippingAddress.state)
+            .eq("pincode", shippingAddress.pincode)
+            .maybeSingle();
+
+          if (!existingAddress) {
+            const { count: addressCount } = await supabase
+              .from("addresses")
+              .select("id", { count: "exact", head: true })
+              .eq("user_id", user.id);
+            
+            const isDefault = !addressCount || addressCount === 0;
+
+            await supabase.from("addresses").insert({
+              user_id: user.id,
+              label: isDefault ? "Home" : "Saved Address",
+              recipient: shippingAddress.recipient,
+              line1: shippingAddress.line1,
+              line2: shippingAddress.line2 || null,
+              city: shippingAddress.city,
+              district: shippingAddress.district || null,
+              state: shippingAddress.state,
+              pincode: shippingAddress.pincode,
+              phone: shippingAddress.phone || null,
+              alternate_phone: shippingAddress.alternate_phone || null,
+              is_default: isDefault,
+            });
+          }
+        } catch (addrErr) {
+          console.error("Auto-saving checkout address failed:", addrErr);
+        }
+
         if (recipientEmail) {
           // Double check if the email has already been sent to prevent any race condition
           try {
@@ -759,8 +799,9 @@ export async function POST(request: Request) {
           }).catch((err) => console.error("Order confirmation email failed:", err));
 
           // Send New Order Alert email to Admin
+          const adminEmail = await getAdminNotificationEmail();
           await sendEmail({
-            to: "jaisriramtextilekpm@gmail.com",
+            to: adminEmail,
             subject: `[New Order Alert] ${orderNumber} - Rs. ${(totalPaise / 100).toFixed(2)} | JAI SRI RAM TEXTILES`,
             html: `
               <div style="font-family: Arial, sans-serif; padding: 24px; background-color: #FBF9F4; border: 1px solid #E5DFD2; border-radius: 12px; max-width: 560px; margin: 0 auto; color: #2A2622;">

@@ -1,6 +1,21 @@
 import { formatINR } from "@/lib/utils";
 import { jsPDF } from "jspdf";
 import { drawInvoicePdf } from "@/lib/invoice-generator";
+import { createServiceClient } from "@/lib/supabase/admin";
+
+export async function getAdminNotificationEmail(): Promise<string> {
+  try {
+    const supabase = createServiceClient();
+    const { data } = await supabase
+      .from("app_settings")
+      .select("value")
+      .eq("key", "admin_email_settings")
+      .maybeSingle();
+    return data?.value?.email || "jaisriramtextilekpm@gmail.com";
+  } catch {
+    return "jaisriramtextilekpm@gmail.com";
+  }
+}
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const FROM_ADDRESS = process.env.RESEND_FROM_EMAIL || "Jai Sri Ram Textiles <no-reply@jaisriramtextiles.in>";
@@ -750,6 +765,27 @@ export function orderShippedEmailHtml({
         return d.toLocaleDateString("en-IN", { dateStyle: "long" });
       })();
 
+  // Dynamically resolve tracking URL based on courier preset/name if missing
+  let finalTrackingUrl = trackingUrl || null;
+  if (!finalTrackingUrl && trackingId) {
+    const awb = String(trackingId).trim();
+    const courier = String(courierName || "").toLowerCase();
+    
+    if (courier.includes("shadowfax")) {
+      finalTrackingUrl = `https://www.shadowfax.in/track?awb=${awb}`;
+    } else if (courier.includes("delhivery")) {
+      finalTrackingUrl = `https://www.delhivery.com/track/package/${awb}`;
+    } else if (courier.includes("dtdc")) {
+      finalTrackingUrl = `https://www.dtdc.in/tracking/tracking_results.xhtml?trackId=${awb}`;
+    } else if (courier.includes("professional")) {
+      finalTrackingUrl = `https://www.tpcglobe.co.in/tracking.aspx?strTrackingNo=${awb}`;
+    } else if (courier.includes("speed post") || courier.includes("india post")) {
+      finalTrackingUrl = `https://www.indiapost.gov.in/_layouts/15/dop.portal.tracking/trackconsignment.aspx`;
+    } else {
+      finalTrackingUrl = `https://www.google.com/search?q=track+${encodeURIComponent(courierName || "courier")}+${awb}`;
+    }
+  }
+
   return `
     <div class="email-bg" style="background-color: #F5F2EB; padding: 24px 10px; font-family: Georgia, 'Times New Roman', serif;">
       <div class="email-card" style="width: 100%; max-width: 560px; margin: 0 auto; background-color: #FBF9F4; border: 1px solid #E5DFD2; border-radius: 12px; box-shadow: 0 4px 15px rgba(42, 38, 34, 0.05); overflow: hidden;">
@@ -783,12 +819,16 @@ export function orderShippedEmailHtml({
             </table>
           </div>
 
-          ${trackingUrl ? `
+          ${finalTrackingUrl ? `
           <!-- Track Shipment button -->
           <div style="text-align: center; margin: 0 0 24px 0;">
-            <a href="${trackingUrl}" class="mobile-button" style="display: inline-block; padding: 12px 32px; background-color: #B08D4C; color: #FFFFFF; text-decoration: none; border-radius: 24px; font-weight: bold; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; font-family: Arial, sans-serif;">
+            <a href="${finalTrackingUrl}" class="mobile-button" style="display: inline-block; padding: 12px 32px; background-color: #B08D4C; color: #FFFFFF; text-decoration: none; border-radius: 24px; font-weight: bold; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; font-family: Arial, sans-serif;">
               Track Shipment
             </a>
+            <div style="margin-top: 10px; font-size: 10px; font-family: Arial, sans-serif;">
+              <span style="color: #6E655A;">Button not working? Click this link:</span><br/>
+              <a href="${finalTrackingUrl}" target="_blank" style="color: #B08D4C; text-decoration: underline; font-weight: bold; word-break: break-all;">${finalTrackingUrl}</a>
+            </div>
           </div>` : ""}
 
           <!-- Items shipped box (AJIO style) -->
