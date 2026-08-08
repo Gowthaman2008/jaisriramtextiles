@@ -757,6 +757,82 @@ export async function POST(request: Request) {
               ]
             } : {})
           }).catch((err) => console.error("Order confirmation email failed:", err));
+
+          // Send New Order Alert email to Admin
+          await sendEmail({
+            to: "jaisriramtextilekpm@gmail.com",
+            subject: `[New Order Alert] ${orderNumber} - Rs. ${(totalPaise / 100).toFixed(2)} | JAI SRI RAM TEXTILES`,
+            html: `
+              <div style="font-family: Arial, sans-serif; padding: 24px; background-color: #FBF9F4; border: 1px solid #E5DFD2; border-radius: 12px; max-width: 560px; margin: 0 auto; color: #2A2622;">
+                <h2 style="color: #8A6D33; border-bottom: 2px solid #B08D4C; padding-bottom: 12px; margin-top: 0;">New Order Placed!</h2>
+                <p>Hello Admin,</p>
+                <p>A new customer order has been successfully placed on the webstore.</p>
+                
+                <table style="width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 13px;">
+                  <tr style="background-color: #F7F5EE; border-bottom: 1px solid #E5DFD2;">
+                    <td style="padding: 10px; font-weight: bold; width: 35%;">Order Number:</td>
+                    <td style="padding: 10px; font-family: monospace; font-weight: bold; color: #B08D4C;">${orderNumber}</td>
+                  </tr>
+                  <tr style="border-bottom: 1px solid #E5DFD2;">
+                    <td style="padding: 10px; font-weight: bold;">Customer Details:</td>
+                    <td style="padding: 10px;">${recipientName || "Guest"} (User ID: ${dbUserId || "N/A"})</td>
+                  </tr>
+                  <tr style="border-bottom: 1px solid #E5DFD2;">
+                    <td style="padding: 10px; font-weight: bold;">Email Address:</td>
+                    <td style="padding: 10px;">${recipientEmail || "N/A"}</td>
+                  </tr>
+                  <tr style="border-bottom: 1px solid #E5DFD2;">
+                    <td style="padding: 10px; font-weight: bold;">Total Order Value:</td>
+                    <td style="padding: 10px; font-weight: bold; color: #4B7A52; font-size: 14px;">₹${(totalPaise / 100).toFixed(2)}</td>
+                  </tr>
+                  <tr style="border-bottom: 1px solid #E5DFD2;">
+                    <td style="padding: 10px; font-weight: bold;">Delivery Address:</td>
+                    <td style="padding: 10px; line-height: 1.5;">
+                      ${shippingAddress.recipient}<br/>
+                      ${shippingAddress.line1}${shippingAddress.line2 ? ", " + shippingAddress.line2 : ""}<br/>
+                      ${shippingAddress.city}, ${shippingAddress.state} - ${shippingAddress.pincode}<br/>
+                      Mobile: ${shippingAddress.phone || "N/A"}
+                    </td>
+                  </tr>
+                </table>
+
+                <h3 style="color: #2A2622; margin-top: 24px; border-bottom: 1px solid #E5DFD2; padding-bottom: 8px;">Itemized Summary</h3>
+                <table style="width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 20px;">
+                  <thead>
+                    <tr style="background-color: #F7F5EE; border-bottom: 1px solid #E5DFD2;">
+                      <th style="padding: 8px; text-align: left;">Product</th>
+                      <th style="padding: 8px; text-align: center; width: 60px;">Qty</th>
+                      <th style="padding: 8px; text-align: right; width: 100px;">Price</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${validatedItems.map(item => `
+                      <tr style="border-bottom: 1px solid #E5DFD2;">
+                        <td style="padding: 8px;">
+                          <strong>${item.name}</strong>
+                          ${item.variant ? `<br/><span style="color: #6E655A; font-size: 10px;">Variant: ${item.variant.size || ""} ${item.variant.color || ""}</span>` : ""}
+                        </td>
+                        <td style="padding: 8px; text-align: center;">${item.quantity}</td>
+                        <td style="padding: 8px; text-align: right; font-weight: bold;">₹${(item.unit_price_paise * item.quantity / 100).toFixed(2)}</td>
+                      </tr>
+                    `).join("")}
+                  </tbody>
+                </table>
+
+                <p style="font-size: 11px; color: #6E655A; border-top: 1px solid #E5DFD2; padding-top: 12px; margin-top: 24px; text-align: center;">
+                  Open the Admin Portal to confirm, pack, and ship this order. Invoice PDF is attached.
+                </p>
+              </div>
+            `,
+            ...(pdfBase64 ? {
+              attachments: [
+                {
+                  filename: `invoice_${orderNumber}.pdf`,
+                  content: pdfBase64,
+                }
+              ]
+            } : {})
+          }).catch((err) => console.error("Admin order notification email failed:", err));
         }
       });
     }

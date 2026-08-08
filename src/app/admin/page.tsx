@@ -462,6 +462,7 @@ export default function AdminDashboardPage() {
   const [inspectLoading, setInspectLoading] = useState(false);
   const [inspectedUser, setInspectedUser] = useState<any>(null);
   const [inspectError, setInspectError] = useState("");
+  const [selectedInspectSession, setSelectedInspectSession] = useState<any>(null);
 
   // Wallet Adjust state variables
   const [walletAdjustOpen, setWalletAdjustOpen] = useState(false);
@@ -2820,6 +2821,231 @@ export default function AdminDashboardPage() {
     printWindow.document.close();
   }
 
+  // --- Download User Profile PDF dossier ---
+  function downloadUserProfilePdf(user: any) {
+    const doc = new jsPDF();
+    const ml = 15;
+    const mr = 195;
+    let y = 20;
+
+    // Header
+    doc.setTextColor(176, 141, 76); // Gold (#B08D4C)
+    doc.setFont("times", "bold");
+    doc.setFontSize(20);
+    doc.text("JAI SRI RAM TEXTILES", ml, y);
+    
+    doc.setTextColor(80, 80, 80);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.text("USER AUDIT REPORT & SYSTEM DOSSIER", ml, y + 5);
+
+    // Right aligned metadata
+    doc.setTextColor(30, 30, 30);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.text(`USER ID: ${user.profile.user_id || "N/A"}`, mr, y, { align: "right" });
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.text(`Generated: ${new Date().toLocaleString("en-IN")}`, mr, y + 5, { align: "right" });
+
+    y += 12;
+    doc.setDrawColor(176, 141, 76);
+    doc.setLineWidth(0.5);
+    doc.line(ml, y, mr, y);
+
+    // Section 1: Personal & Business Info
+    y += 10;
+    doc.setTextColor(176, 141, 76);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.text("1. PERSONAL & PROFILE DETAILS", ml, y);
+
+    y += 6;
+    doc.setTextColor(30, 30, 30);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9.5);
+    doc.text(`Full Name: ${user.profile.full_name || "Not Set"}`, ml, y);
+    doc.text(`Email Address: ${user.profile.email}`, ml + 90, y);
+    
+    y += 5.5;
+    doc.text(`Phone Number: ${user.profile.phone || "None"}`, ml, y);
+    doc.text(`Auth Provider: ${user.profile.provider || "email"}`, ml + 90, y);
+    
+    y += 5.5;
+    doc.text(`Account Role: ${user.profile.role}`, ml, y);
+    doc.text(`Member Since: ${new Date(user.profile.created_at).toLocaleDateString("en-IN")}`, ml + 90, y);
+
+    y += 5.5;
+    doc.text(`Email Verified: ${user.authDetails?.email_confirmed_at ? "Yes" : "No"}`, ml, y);
+    if (user.authDetails?.last_sign_in_at) {
+      doc.text(`Last Active Sign-in: ${new Date(user.authDetails.last_sign_in_at).toLocaleString("en-IN")}`, ml + 90, y);
+    }
+
+    // Business Meta
+    const hasBusiness = user.authDetails?.user_metadata?.business_name || user.authDetails?.user_metadata?.gstin;
+    if (hasBusiness) {
+      y += 6;
+      doc.setFont("helvetica", "bold");
+      doc.text("Business Details:", ml, y);
+      doc.setFont("helvetica", "normal");
+      if (user.authDetails?.user_metadata?.business_name) {
+        doc.text(`Company Name: ${user.authDetails.user_metadata.business_name}`, ml + 35, y);
+      }
+      if (user.authDetails?.user_metadata?.gstin) {
+        y += 5.5;
+        doc.text(`GSTIN: ${user.authDetails.user_metadata.gstin}`, ml + 35, y);
+      }
+    }
+    
+    // Personal metadata fields
+    const hasMetadata = user.authDetails?.user_metadata?.gender || user.authDetails?.user_metadata?.dob || user.authDetails?.user_metadata?.alt_phone;
+    if (hasMetadata) {
+      y += 6;
+      doc.setFont("helvetica", "bold");
+      doc.text("Additional Info:", ml, y);
+      doc.setFont("helvetica", "normal");
+      let details = [];
+      if (user.authDetails?.user_metadata?.alt_phone) details.push(`Alt Phone: ${user.authDetails.user_metadata.alt_phone}`);
+      if (user.authDetails?.user_metadata?.gender) details.push(`Gender: ${user.authDetails.user_metadata.gender}`);
+      if (user.authDetails?.user_metadata?.dob) details.push(`DOB: ${new Date(user.authDetails.user_metadata.dob).toLocaleDateString()}`);
+      doc.text(details.join(" | "), ml + 35, y);
+    }
+
+    y += 8;
+    doc.setDrawColor(220, 220, 220);
+    doc.setLineWidth(0.2);
+    doc.line(ml, y, mr, y);
+
+    // Section 2: Account Balances & Metrics
+    y += 10;
+    doc.setTextColor(176, 141, 76);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.text("2. METRICS & ACCOUNT WALLET SUMMARY", ml, y);
+
+    y += 6;
+    doc.setTextColor(30, 30, 30);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9.5);
+    doc.text(`Available Wallet Balance: INR ${(user.wallet.balance_paise / 100).toFixed(2)}`, ml, y);
+    doc.text(`Total Orders Placed: ${user.lifetime.orders}`, ml + 90, y);
+
+    y += 5.5;
+    doc.text(`Total Store Spend: INR ${(user.lifetime.spentPaise / 100).toFixed(2)}`, ml, y);
+    doc.text(`Total Cashback Earned: INR ${(user.lifetime.cashbackEarnedPaise / 100).toFixed(2)}`, ml + 90, y);
+
+    y += 5.5;
+    doc.text(`Visits (Sessions): ${user.usage.totalSessions} sessions`, ml, y);
+    doc.text(`Total Product Views: ${user.usage.totalProductViews || 0} clicks`, ml + 90, y);
+
+    y += 8;
+    doc.line(ml, y, mr, y);
+
+    // Section 3: Saved Addresses
+    y += 10;
+    doc.setTextColor(176, 141, 76);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.text("3. SAVED DELIVERY ADDRESSES", ml, y);
+
+    y += 6;
+    doc.setTextColor(30, 30, 30);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8.5);
+
+    if (user.addresses.length === 0) {
+      doc.text("No saved delivery addresses found.", ml, y);
+      y += 4;
+    } else {
+      user.addresses.forEach((addr: any, idx: number) => {
+        if (y > 270) { doc.addPage(); y = 20; }
+        const label = addr.is_default ? `${addr.label} (Default)` : addr.label;
+        const line = `${idx + 1}. [${label}] ${addr.recipient} - ${addr.line1}${addr.line2 ? `, ${addr.line2}` : ""}, ${addr.city}, ${addr.state} - ${addr.pincode} | Phone: ${addr.phone || "N/A"}`;
+        doc.text(line, ml, y);
+        y += 5;
+      });
+    }
+
+    y += 4;
+    doc.line(ml, y, mr, y);
+
+    // Section 4: Recent Orders
+    y += 10;
+    doc.setTextColor(176, 141, 76);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.text("4. ORDER REGISTRY SUMMARY", ml, y);
+
+    y += 6;
+    doc.setTextColor(30, 30, 30);
+
+    if (user.orders.length === 0) {
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      doc.text("No orders placed yet.", ml, y);
+      y += 6;
+    } else {
+      user.orders.slice(0, 10).forEach((order: any) => {
+        if (y > 255) { doc.addPage(); y = 20; }
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(8.5);
+        doc.text(`${order.order_number} - ${new Date(order.placed_at).toLocaleDateString("en-IN")} | Status: ${order.status.toUpperCase()} | Payment: ${order.payment_status.toUpperCase()}`, ml, y);
+        
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8);
+        const orderSummaryItems = (order.order_items || []).map((it: any) => `${it.name} x ${it.quantity}`).join(", ");
+        doc.text(`Items: ${orderSummaryItems.length > 95 ? orderSummaryItems.substring(0, 95) + "..." : orderSummaryItems}`, ml + 4, y + 4);
+        doc.text(`Total Paid: INR ${(order.total_paise / 100).toFixed(2)}`, mr - 5, y + 4, { align: "right" });
+        y += 9;
+      });
+      if (user.orders.length > 10) {
+        doc.setFont("helvetica", "italic");
+        doc.setFontSize(8);
+        doc.text(`* Showing top 10 recent orders. Total orders: ${user.orders.length}.`, ml, y);
+        y += 5;
+      }
+    }
+
+    y += 4;
+    doc.line(ml, y, mr, y);
+
+    // Section 5: Support Tickets
+    y += 10;
+    doc.setTextColor(176, 141, 76);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.text("5. CUSTOMER SUPPORT INQUIRIES & TICKETS", ml, y);
+
+    y += 6;
+    doc.setTextColor(30, 30, 30);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8.5);
+
+    if (!user.tickets || user.tickets.length === 0) {
+      doc.text("No support ticket logs found for this user.", ml, y);
+      y += 5;
+    } else {
+      user.tickets.slice(0, 8).forEach((ticket: any) => {
+        if (y > 260) { doc.addPage(); y = 20; }
+        doc.setFont("helvetica", "bold");
+        doc.text(`Subject: ${ticket.subject} | Status: ${ticket.status.toUpperCase()} | Created: ${new Date(ticket.created_at).toLocaleDateString()}`, ml, y);
+        doc.setFont("helvetica", "normal");
+        doc.text(`Inquiry: ${ticket.message.length > 90 ? ticket.message.substring(0, 90) + "..." : ticket.message}`, ml + 4, y + 4);
+        y += 9;
+      });
+      if (user.tickets.length > 8) {
+        doc.setFont("helvetica", "italic");
+        doc.setFontSize(8);
+        doc.text(`* Total tickets found: ${user.tickets.length}. Check admin ticket registry for more details.`, ml, y);
+        y += 5;
+      }
+    }
+
+    // Save
+    const filename = `UserReport_${user.profile.full_name?.replace(/\s+/g, "_") || "User"}_${user.profile.user_id}.pdf`;
+    doc.save(filename);
+  }
+
   // --- Emergency single-page order lookup (by Order Number or Order ID) ---
   function confirmEmergencyOrderLookup() {
     const trimmed = emergencyLookupQuery.trim().toLowerCase();
@@ -4540,6 +4766,7 @@ export default function AdminDashboardPage() {
                       e.preventDefault();
                       setInspectError("");
                       setInspectedUser(null);
+                      setSelectedInspectSession(null);
                       if (!inspectUserId.trim()) return;
 
                       setInspectLoading(true);
@@ -4590,6 +4817,22 @@ export default function AdminDashboardPage() {
                 {/* Inspected User Panel */}
                 {inspectedUser && (
                   <div className="space-y-6 animate-fade-in">
+                    
+                    {/* Header Action Bar */}
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-cream/15 border border-line rounded-xl p-4 shadow-sm gap-4">
+                      <div>
+                        <span className="text-[10px] text-taupe uppercase tracking-wider font-semibold">Currently Inspecting Profile</span>
+                        <h3 className="font-display text-lg text-ink font-bold leading-tight">{inspectedUser.profile.full_name || "Name not set"}</h3>
+                      </div>
+                      <Button 
+                        onClick={() => downloadUserProfilePdf(inspectedUser)}
+                        variant="gold"
+                        size="sm"
+                        className="flex items-center gap-1.5 shadow-sm text-xs font-semibold cursor-pointer shrink-0"
+                      >
+                        <Download className="w-3.5 h-3.5" /> Download Dossier PDF
+                      </Button>
+                    </div>
                     
                     {/* User Summary Widget Strip */}
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -5091,6 +5334,106 @@ export default function AdminDashboardPage() {
                                   )}
                                 </div>
                               ))}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* User Sessions History */}
+                        <div className="bg-white border border-line rounded-card p-4 shadow-soft space-y-4">
+                          <h3 className="font-semibold text-sm text-ink pb-2 border-b border-line">
+                            User Browsing Sessions ({inspectedUser.sessions?.length || 0})
+                          </h3>
+                          
+                          {!inspectedUser.sessions || inspectedUser.sessions.length === 0 ? (
+                            <p className="text-taupe py-4 text-center">No browsing sessions recorded for this user.</p>
+                          ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+                              {/* Sessions List (left column, 7/12 width) */}
+                              <div className="md:col-span-7 border border-line rounded overflow-hidden">
+                                <div className="max-h-[300px] overflow-y-auto">
+                                  <table className="w-full text-[11px] text-left">
+                                    <thead>
+                                      <tr className="bg-cream border-b border-line text-taupe font-semibold uppercase text-[9px]">
+                                        <th className="p-2">Device / OS</th>
+                                        <th className="p-2">Date / Time</th>
+                                        <th className="p-2 text-center">Views</th>
+                                        <th className="p-2 text-center">Duration</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {inspectedUser.sessions.map((session: any) => {
+                                        const started = new Date(session.started_at).getTime();
+                                        const lastSeen = new Date(session.last_seen_at).getTime();
+                                        const durationSec = Math.max(0, Math.round((lastSeen - started) / 1000));
+                                        const durationMin = Math.floor(durationSec / 60);
+                                        const durationRemainderSec = durationSec % 60;
+                                        const durationStr = durationMin > 0 ? `${durationMin}m ${durationRemainderSec}s` : `${durationRemainderSec}s`;
+
+                                        return (
+                                          <tr 
+                                            key={session.id || session.started_at} 
+                                            onClick={() => setSelectedInspectSession(session)}
+                                            className={`border-b border-line/60 hover:bg-ivory/50 cursor-pointer transition-colors duration-150 ${
+                                              selectedInspectSession?.started_at === session.started_at ? "bg-zari/5 font-semibold" : ""
+                                            }`}
+                                          >
+                                            <td className="p-2">
+                                              <p className="font-semibold text-ink">{session.os} ({session.device})</p>
+                                              <p className="text-taupe text-[10px] mt-0.5">{session.browser}</p>
+                                            </td>
+                                            <td className="p-2 whitespace-nowrap">
+                                              <span className="block text-ink">
+                                                {new Date(session.started_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "2-digit" })}
+                                              </span>
+                                              <span className="block text-taupe text-[10px] mt-0.5">
+                                                {new Date(session.started_at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true }).toLowerCase()}
+                                              </span>
+                                            </td>
+                                            <td className="p-2 text-center font-semibold text-ink">{session.page_views}</td>
+                                            <td className="p-2 text-center text-taupe font-mono">{durationStr}</td>
+                                          </tr>
+                                        );
+                                      })}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              </div>
+
+                              {/* Page View Path (right column, 5/12 width) */}
+                              <div className="md:col-span-5 p-3 border border-line rounded bg-ivory/5 max-h-[300px] overflow-y-auto space-y-3">
+                                <h4 className="font-semibold text-xs border-b border-line pb-1.5 text-ink uppercase tracking-wider">
+                                  Page Views Path
+                                </h4>
+                                
+                                {selectedInspectSession ? (
+                                  <div className="space-y-3">
+                                    <div className="text-[10px] text-taupe space-y-0.5">
+                                      <p><strong>Device:</strong> {selectedInspectSession.os} ({selectedInspectSession.device})</p>
+                                      <p><strong>Browser:</strong> {selectedInspectSession.browser}</p>
+                                      <p><strong>Started:</strong> {new Date(selectedInspectSession.started_at).toLocaleString()}</p>
+                                    </div>
+                                    
+                                    <div className="border-l-2 border-zari pl-3.5 space-y-2.5">
+                                      {selectedInspectSession.page_views_list?.map((view: any, index: number) => (
+                                        <div key={view.id || index} className="relative text-[11px]">
+                                          <span className="absolute -left-[19px] top-1 w-2 h-2 bg-zari rounded-full border border-white" />
+                                          <p className="font-semibold text-ink break-all">{view.path}</p>
+                                          <p className="text-[9px] text-taupe mt-0.5">
+                                            {new Date(view.created_at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true }).toLowerCase()}
+                                          </p>
+                                        </div>
+                                      ))}
+                                      {(!selectedInspectSession.page_views_list || selectedInspectSession.page_views_list.length === 0) && (
+                                        <p className="text-[11px] text-taupe italic">No detailed page views paths available.</p>
+                                      )}
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <p className="text-[11px] text-taupe italic py-8 text-center">
+                                    Select a session on the left to view the page views path.
+                                  </p>
+                                )}
+                              </div>
                             </div>
                           )}
                         </div>
@@ -5871,7 +6214,11 @@ export default function AdminDashboardPage() {
                             const durationStr = durationMin > 0 ? `${durationMin}m ${durationRemainderSec}s` : `${durationRemainderSec}s`;
 
                             return (
-                              <tr key={session.id} className={`border-b border-line hover:bg-ivory/50 ${selectedSession?.id === session.id ? "bg-zari/5" : ""}`}>
+                              <tr 
+                                key={session.id} 
+                                onClick={() => setSelectedSession(session)}
+                                className={`border-b border-line hover:bg-ivory/50 cursor-pointer transition-colors duration-150 ${selectedSession?.id === session.id ? "bg-zari/5 font-semibold" : ""}`}
+                              >
                                 <td className="p-3">
                                   <p className="font-semibold text-ink">{session.os} ({session.device})</p>
                                   <p className="text-taupe mt-0.5">{session.browser}</p>
@@ -5889,7 +6236,7 @@ export default function AdminDashboardPage() {
                                 <td className="p-3 text-center font-medium">{session.country}</td>
                                 <td className="p-3 text-center font-semibold text-ink">{session.page_views}</td>
                                 <td className="p-3 text-center font-mono">{durationStr}</td>
-                                <td className="p-3 text-center">
+                                <td className="p-3 text-center" onClick={(e) => e.stopPropagation()}>
                                   <button onClick={() => setSelectedSession(session)} className="p-1 border border-line rounded bg-cream hover:bg-beige text-ink" title="View paths">
                                     <Eye className="w-3.5 h-3.5" />
                                   </button>

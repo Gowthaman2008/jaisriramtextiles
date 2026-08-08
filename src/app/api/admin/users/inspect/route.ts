@@ -212,6 +212,7 @@ export async function GET(request: Request) {
       addresses: addresses || [],
       orders: ordersList,
       tickets: ticketsWithReplies,
+      sessions: sessionList,
       usage: {
         totalSessions,
         totalPageViews,
