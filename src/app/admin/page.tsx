@@ -6146,7 +6146,7 @@ $$ language plpgsql;`}
             {/* Combined Communications tab */}
             {activeTab === "communications" && (
               <div className="space-y-6 animate-fade-up">
-                <div className="flex justify-between items-center border-b border-line pb-3">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 border-b border-line pb-3">
                   <h3 className="font-display text-lg">Communications Desk</h3>
                   <span className="text-xs text-taupe font-medium">Manage support mail, wholesale inquiries, and newsletters</span>
                 </div>

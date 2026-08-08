@@ -48,9 +48,15 @@ export async function GET() {
         .order("created_at", { ascending: false })
     ]);
 
-    if (supportRes.error) throw supportRes.error;
-    if (bulkRes.error) throw bulkRes.error;
-    if (subsRes.error) throw subsRes.error;
+    if (supportRes.error) {
+      console.warn("Support messages fetch warning:", supportRes.error.message);
+    }
+    if (bulkRes.error) {
+      console.warn("Bulk inquiries fetch warning:", bulkRes.error.message);
+    }
+    if (subsRes.error) {
+      console.warn("Newsletter subs fetch warning:", subsRes.error.message);
+    }
 
     return NextResponse.json({
       supportMessages: supportRes.data || [],

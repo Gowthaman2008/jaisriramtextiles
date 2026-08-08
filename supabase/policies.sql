@@ -138,3 +138,10 @@ create policy "canned responses staff only" on canned_responses
 alter table courier_presets enable row level security;
 create policy "courier presets staff only" on courier_presets
   for all using (is_staff()) with check (is_staff());
+
+-- ---- Newsletter Subscriptions ----
+alter table newsletter_subscriptions enable row level security;
+create policy "newsletter subs staff read" on newsletter_subscriptions
+  for select using (is_staff());
+create policy "newsletter subs anon insert" on newsletter_subscriptions
+  for insert with check (true);
