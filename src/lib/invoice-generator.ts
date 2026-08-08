@@ -145,7 +145,6 @@ export function drawInvoicePdf(doc: jsPDF, order: any, profileUserId?: string | 
   const shopAddressLine2 = "Kumarapalayam, Namakkal, Tamil Nadu, PIN: 638183";
   const shopGSTIN = "33BTFPR7051F1ZP";
   const shopEmail = "jaisriramtextilekpm@gmail.com";
-  const shopPhone = "+91 8608386872";
 
   // State Code / Place of Supply Calculation
   const shipState = shippingAddress.state || "Tamil Nadu";
@@ -201,7 +200,7 @@ export function drawInvoicePdf(doc: jsPDF, order: any, profileUserId?: string | 
   doc.setFont("helvetica", "normal");
   doc.text(shopAddressLine1, ml + 4, mt + 29);
   doc.text(shopAddressLine2, ml + 4, mt + 33);
-  doc.text(`Customer Support: ${shopPhone} | Email: ${shopEmail}`, ml + 4, mt + 37);
+  doc.text(`Customer Support Email: ${shopEmail}`, ml + 4, mt + 37);
   doc.setFont("helvetica", "bold");
   doc.text(`GSTIN: ${shopGSTIN}`, ml + 4, mt + 41);
 

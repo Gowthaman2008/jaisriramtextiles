@@ -2763,7 +2763,7 @@ export default function AdminDashboardPage() {
                       ${order.shipping_address.city}, ${order.shipping_address.district ? order.shipping_address.district + ", " : ""}${order.shipping_address.state} - <b>${order.shipping_address.pincode}</b>
                     </div>
                     <div style="font-size: 12px; font-weight: bold; margin-top: 6px; color: #1A1612;">
-                      Mobile: ${order.shipping_address.phone}
+                      Mobile: ${order.shipping_address.phone}${order.shipping_address.alternate_phone ? ` / ${order.shipping_address.alternate_phone}` : ""}
                     </div>
                   </td>
                   <td style="width: 45%; vertical-align: top; padding: 0 0 0 10px; border-left: 1px solid #E5DFD2; text-align: center;">
@@ -2946,7 +2946,7 @@ export default function AdminDashboardPage() {
                 <p>${addr.line1 || ""}</p>
                 <p>${addr.line2 ? addr.line2 : ""}</p>
                 <p>${addr.city || ""}${addr.district ? ", " + addr.district : ""}, ${addr.state || ""} - <strong>${addr.pincode || ""}</strong></p>
-                <p>Phone: <strong>${addr.phone || "—"}</strong></p>
+                <p>Phone: <strong>${addr.phone || "—"}${addr.alternate_phone ? ` / ${addr.alternate_phone}` : ""}</strong></p>
               </div>
             </div>
 
@@ -4592,7 +4592,7 @@ export default function AdminDashboardPage() {
                   <div className="space-y-6 animate-fade-in">
                     
                     {/* User Summary Widget Strip */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                       {/* Name Card */}
                       <div className="bg-white border border-line rounded-card p-4 flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-zari-tint/20 flex items-center justify-center text-zari font-bold text-lg uppercase">
@@ -4640,14 +4640,49 @@ export default function AdminDashboardPage() {
                           <p className="text-[10px] text-taupe"><strong>Member Since:</strong> {new Date(inspectedUser.profile.created_at).toLocaleDateString()}</p>
                           <p className="text-[10px] text-taupe"><strong>Phone Number:</strong> {inspectedUser.profile.phone || "None"}</p>
                           <p className="text-[10px] text-taupe"><strong>Auth Method:</strong> <span className="capitalize">{inspectedUser.profile.provider}</span></p>
+                          {inspectedUser.authDetails?.last_sign_in_at && (
+                            <p className="text-[10px] text-taupe"><strong>Last Sign-In:</strong> {new Date(inspectedUser.authDetails.last_sign_in_at).toLocaleString()}</p>
+                          )}
+                          <p className="text-[10px] text-taupe">
+                            <strong>Email Confirmed:</strong> {inspectedUser.authDetails?.email_confirmed_at ? <span className="text-success font-semibold">Yes</span> : <span className="text-warning font-semibold">No</span>}
+                          </p>
                         </div>
+                      </div>
+
+                      {/* Profile & Business Details Card */}
+                      <div className="bg-white border border-line rounded-card p-4 text-[10px] text-taupe font-medium space-y-1.5">
+                        <h4 className="font-semibold text-xs text-zari-deep uppercase tracking-wider mb-2">Profile & Business Details</h4>
+                        
+                        {inspectedUser.authDetails?.user_metadata?.business_name && (
+                          <p><strong>Business Name:</strong> <span className="text-ink font-semibold">{inspectedUser.authDetails.user_metadata.business_name}</span></p>
+                        )}
+                        {inspectedUser.authDetails?.user_metadata?.gstin && (
+                          <p><strong>GSTIN:</strong> <span className="text-ink font-mono font-bold select-all bg-cream/35 px-1.5 py-0.5 rounded border border-line/50">{inspectedUser.authDetails.user_metadata.gstin}</span></p>
+                        )}
+                        {inspectedUser.authDetails?.user_metadata?.alt_phone && (
+                          <p><strong>Alternate Phone:</strong> <span className="text-ink font-semibold">{inspectedUser.authDetails.user_metadata.alt_phone}</span></p>
+                        )}
+                        {inspectedUser.authDetails?.user_metadata?.gender && (
+                          <p><strong>Gender:</strong> <span className="text-ink font-semibold capitalize">{inspectedUser.authDetails.user_metadata.gender}</span></p>
+                        )}
+                        {inspectedUser.authDetails?.user_metadata?.dob && (
+                          <p><strong>Date of Birth:</strong> <span className="text-ink font-semibold">{new Date(inspectedUser.authDetails.user_metadata.dob).toLocaleDateString()}</span></p>
+                        )}
+                        
+                        {!inspectedUser.authDetails?.user_metadata?.business_name &&
+                         !inspectedUser.authDetails?.user_metadata?.gstin &&
+                         !inspectedUser.authDetails?.user_metadata?.alt_phone &&
+                         !inspectedUser.authDetails?.user_metadata?.gender &&
+                         !inspectedUser.authDetails?.user_metadata?.dob && (
+                           <p className="italic text-taupe/80 pt-1">No additional profile or business details provided.</p>
+                         )}
                       </div>
                     </div>
 
                     {/* Website Usage */}
                     <div className="bg-white border border-line rounded-card p-4 shadow-soft">
                       <h3 className="font-semibold text-sm text-ink pb-2 border-b border-line mb-3">Website Usage</h3>
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                      <div className="grid grid-cols-2 sm:grid-cols-6 gap-4">
                         <div>
                           <p className="text-[10px] text-taupe uppercase tracking-wider font-semibold">Visits (Sessions)</p>
                           <p className="font-display text-lg text-ink font-bold mt-0.5">{inspectedUser.usage.totalSessions}</p>
@@ -4661,6 +4696,14 @@ export default function AdminDashboardPage() {
                           <p className="font-display text-lg text-ink font-bold mt-0.5">{inspectedUser.usage.totalPageViews}</p>
                         </div>
                         <div>
+                          <p className="text-[10px] text-taupe uppercase tracking-wider font-semibold">Product Views</p>
+                          <p className="font-display text-lg text-ink font-bold mt-0.5">{inspectedUser.usage.totalProductViews || 0}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-taupe uppercase tracking-wider font-semibold">Products Checked</p>
+                          <p className="font-display text-lg text-ink font-bold mt-0.5">{inspectedUser.usage.distinctProductsViewed || 0}</p>
+                        </div>
+                        <div>
                           <p className="text-[10px] text-taupe uppercase tracking-wider font-semibold">Last Visit</p>
                           <p className="font-display text-lg text-ink font-bold mt-0.5">
                             {inspectedUser.usage.lastVisitAt ? new Date(inspectedUser.usage.lastVisitAt).toLocaleDateString() : "—"}
@@ -4668,6 +4711,42 @@ export default function AdminDashboardPage() {
                         </div>
                       </div>
                     </div>
+
+                    {/* Top Viewed Products */}
+                    {inspectedUser.usage.topProducts && inspectedUser.usage.topProducts.length > 0 && (
+                      <div className="bg-white border border-line rounded-card p-4 shadow-soft">
+                        <h3 className="font-semibold text-sm text-ink pb-2 border-b border-line mb-3">Top Viewed Products</h3>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                          {inspectedUser.usage.topProducts.map((p: any) => (
+                            <div key={p.slug} className="flex items-center gap-3 p-2.5 border border-line/65 rounded-lg bg-ivory/5">
+                              {p.image ? (
+                                <img src={p.image} alt={p.name} className="w-10 h-10 rounded object-cover border border-line bg-white shrink-0" />
+                              ) : (
+                                <div className="w-10 h-10 rounded bg-cream border border-line flex items-center justify-center text-taupe text-[10px] font-bold shrink-0">
+                                  No Img
+                                </div>
+                              )}
+                              <div className="min-w-0 flex-1">
+                                <a 
+                                  href={`/product/${p.slug}`} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer" 
+                                  className="text-xs font-bold text-ink hover:text-zari-deep hover:underline truncate block"
+                                >
+                                  {p.name}
+                                </a>
+                                <p className="text-[10px] text-taupe mt-0.5">
+                                  {p.price_paise ? formatRupees(p.price_paise) : "Price not set"}
+                                </p>
+                              </div>
+                              <div className="px-2.5 py-1 bg-zari/10 border border-zari/20 text-zari-deep rounded-full text-[9px] font-bold shrink-0">
+                                {p.views} {p.views === 1 ? "view" : "views"}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
 
                     {/* Lifetime Stats */}
                     <div className="bg-white border border-line rounded-card p-4 shadow-soft">
@@ -4845,6 +4924,173 @@ export default function AdminDashboardPage() {
                                   })}
                                 </tbody>
                               </table>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Support Tickets & Chat History */}
+                        <div className="bg-white border border-line rounded-card p-4 shadow-soft">
+                          <h3 className="font-semibold text-sm text-ink pb-2 border-b border-line mb-3">
+                            Support Tickets & Chat History ({inspectedUser.tickets?.length || 0})
+                          </h3>
+                          {!inspectedUser.tickets || inspectedUser.tickets.length === 0 ? (
+                            <p className="text-taupe py-4 text-center">No support tickets found for this user.</p>
+                          ) : (
+                            <div className="space-y-4">
+                              {inspectedUser.tickets.map((ticket: any) => (
+                                <div key={ticket.id} className="border border-line rounded-lg p-4 bg-ivory/5 space-y-3">
+                                  <div className="flex justify-between items-start gap-4 pb-2 border-b border-line/40">
+                                    <div>
+                                      <p className="font-semibold text-ink text-sm">{ticket.subject}</p>
+                                      <p className="text-[10px] text-taupe mt-0.5">Ticket ID: <span className="font-mono">{ticket.id}</span></p>
+                                      <p className="text-[10px] text-taupe">Created: {new Date(ticket.created_at).toLocaleString()}</p>
+                                    </div>
+                                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                                      ticket.status === "new" ? "bg-red-50 text-red-600 border border-red-200" :
+                                      ticket.status === "replied" ? "bg-blue-50 text-blue-700 border border-blue-200" :
+                                      "bg-gray-100 text-gray-700 border border-gray-200"
+                                    }`}>
+                                      {ticket.status}
+                                    </span>
+                                  </div>
+                                  
+                                  <div className="p-3 bg-cream/30 rounded border border-line/40 text-xs">
+                                    <p className="font-bold text-ink mb-1">Original inquiry:</p>
+                                    <p className="text-taupe whitespace-pre-wrap">{ticket.message}</p>
+                                  </div>
+
+                                  <div className="space-y-2 mt-3">
+                                    <p className="text-[10px] font-bold text-taupe uppercase tracking-wider">Conversation history:</p>
+                                    
+                                    {ticket.reply_message && (
+                                      <div className="p-2.5 rounded bg-zari-tint/10 border border-zari/20 text-xs self-start ml-4 max-w-[85%]">
+                                        <p className="font-bold text-zari-deep text-[10px] mb-0.5">Staff (Legacy Direct Reply):</p>
+                                        <p className="text-ink">{ticket.reply_message}</p>
+                                        {ticket.replied_at && (
+                                          <p className="text-[8px] text-taupe mt-1 text-right">
+                                            {new Date(ticket.replied_at).toLocaleString()}
+                                          </p>
+                                        )}
+                                      </div>
+                                    )}
+
+                                    {(!ticket.replies || ticket.replies.length === 0) && !ticket.reply_message ? (
+                                      <p className="text-[11px] text-taupe italic pl-2">No replies in this thread yet.</p>
+                                    ) : (
+                                      <div className="space-y-2.5 max-h-[250px] overflow-y-auto p-2 bg-cream/10 rounded border border-line/30">
+                                        {ticket.replies?.map((rep: any) => {
+                                          const isStaff = rep.sender_type !== "user";
+                                          return (
+                                            <div 
+                                              key={rep.id} 
+                                              className={`p-2.5 rounded-lg text-xs max-w-[85%] ${
+                                                isStaff 
+                                                  ? "bg-zari-tint/10 border border-zari/20 ml-auto" 
+                                                  : "bg-white border border-line/80 mr-auto"
+                                              }`}
+                                            >
+                                              <p className={`font-bold text-[9px] mb-0.5 ${isStaff ? "text-zari-deep" : "text-ink"}`}>
+                                                {isStaff ? "Staff Response" : "User Response"}:
+                                              </p>
+                                              <p className="text-ink whitespace-pre-wrap leading-relaxed">{rep.message}</p>
+                                              <p className="text-[8px] text-taupe mt-1 text-right">
+                                                {new Date(rep.created_at).toLocaleString()}
+                                              </p>
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  {ticket.status !== "closed" && (
+                                    <form 
+                                      onSubmit={async (e) => {
+                                        e.preventDefault();
+                                        const form = e.currentTarget;
+                                        const textarea = form.elements.namedItem("replyText") as HTMLTextAreaElement;
+                                        const replyVal = textarea.value.trim();
+                                        if (!replyVal) return;
+
+                                        try {
+                                          const response = await fetch("/api/admin/support/reply", {
+                                            method: "PUT",
+                                            headers: { "Content-Type": "application/json" },
+                                            body: JSON.stringify({
+                                              id: ticket.id,
+                                              replyMessage: replyVal
+                                            })
+                                          });
+                                          
+                                          if (!response.ok) {
+                                            const errData = await response.json().catch(() => ({}));
+                                            throw new Error(errData.error || "Failed to submit reply");
+                                          }
+                                          
+                                          notify("Reply sent successfully!");
+                                          textarea.value = "";
+                                          
+                                          const inspectRes = await fetch(`/api/admin/users/inspect?userId=${encodeURIComponent(inspectUserId.trim().toUpperCase())}`);
+                                          if (inspectRes.ok) {
+                                            const data = await inspectRes.json();
+                                            setInspectedUser(data);
+                                          }
+                                        } catch (err: any) {
+                                          notify("Error: " + err.message);
+                                        }
+                                      }}
+                                      className="pt-2 border-t border-line/30 flex gap-2 items-end"
+                                    >
+                                      <div className="flex-1">
+                                        <textarea
+                                          name="replyText"
+                                          placeholder="Write a response to this customer ticket..."
+                                          rows={1}
+                                          className="w-full rounded border border-line bg-white px-2 py-1.5 text-xs text-ink outline-none focus:border-zari resize-y min-h-[30px]"
+                                          required
+                                        />
+                                      </div>
+                                      <button 
+                                        type="submit"
+                                        className="px-3 py-1.5 bg-zari hover:bg-zari-deep text-white font-bold rounded text-xs transition-colors cursor-pointer"
+                                      >
+                                        Reply Ticket
+                                      </button>
+                                      <button 
+                                        type="button"
+                                        onClick={async () => {
+                                          if (!confirm("Are you sure you want to close this ticket? This will send a ticket closure email to the user.")) return;
+                                          try {
+                                            const response = await fetch("/api/admin/support/reply", {
+                                              method: "PUT",
+                                              headers: { "Content-Type": "application/json" },
+                                              body: JSON.stringify({
+                                                id: ticket.id,
+                                                action: "close"
+                                              })
+                                            });
+                                            if (!response.ok) {
+                                              const errData = await response.json().catch(() => ({}));
+                                              throw new Error(errData.error || "Failed to close ticket");
+                                            }
+                                            notify("Ticket closed successfully!");
+                                            const inspectRes = await fetch(`/api/admin/users/inspect?userId=${encodeURIComponent(inspectUserId.trim().toUpperCase())}`);
+                                            if (inspectRes.ok) {
+                                              const data = await inspectRes.json();
+                                              setInspectedUser(data);
+                                            }
+                                          } catch (err: any) {
+                                            notify("Error: " + err.message);
+                                          }
+                                        }}
+                                        className="px-3 py-1.5 bg-danger/10 hover:bg-danger/20 text-danger border border-danger/20 font-bold rounded text-xs transition-colors cursor-pointer"
+                                      >
+                                        Close Ticket
+                                      </button>
+                                    </form>
+                                  )}
+                                </div>
+                              ))}
                             </div>
                           )}
                         </div>
@@ -5607,6 +5853,7 @@ export default function AdminDashboardPage() {
                         <thead>
                           <tr className="bg-cream border-b border-line text-taupe font-medium">
                             <th className="p-3">Visitor OS/Device</th>
+                            <th className="p-3">Date / Time</th>
                             <th className="p-3">Referrer</th>
                             <th className="p-3 text-center">Country</th>
                             <th className="p-3 text-center">Views</th>
@@ -5629,6 +5876,14 @@ export default function AdminDashboardPage() {
                                   <p className="font-semibold text-ink">{session.os} ({session.device})</p>
                                   <p className="text-taupe mt-0.5">{session.browser}</p>
                                   {session.profiles?.email && <p className="text-[10px] text-zari-deep font-semibold mt-0.5">{session.profiles.full_name || session.profiles.email}</p>}
+                                </td>
+                                <td className="p-3 whitespace-nowrap">
+                                  <span className="block font-medium text-ink">
+                                    {new Date(session.started_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "2-digit" })}
+                                  </span>
+                                  <span className="block text-[10px] text-taupe mt-0.5">
+                                    {new Date(session.started_at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true }).toLowerCase()}
+                                  </span>
                                 </td>
                                 <td className="p-3 text-taupe truncate max-w-[120px]" title={session.referrer}>{session.referrer}</td>
                                 <td className="p-3 text-center font-medium">{session.country}</td>

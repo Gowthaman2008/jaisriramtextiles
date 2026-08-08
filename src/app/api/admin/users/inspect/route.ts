@@ -52,6 +52,22 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
+    // 1.5. Fetch auth details from supabase auth admin API
+    let authDetails = null;
+    try {
+      const { data: authUser } = await supabase.auth.admin.getUserById(profile.id);
+      if (authUser?.user) {
+        authDetails = {
+          last_sign_in_at: authUser.user.last_sign_in_at,
+          email_confirmed_at: authUser.user.email_confirmed_at,
+          phone_confirmed_at: authUser.user.phone_confirmed_at,
+          user_metadata: authUser.user.user_metadata || {}
+        };
+      }
+    } catch (e) {
+      console.error("Fetch auth user error:", e);
+    }
+
     // 2. Fetch user wallet balance
     const { data: wallet, error: walletError } = await supabase
       .from("wallets")
@@ -92,7 +108,7 @@ export async function GET(request: Request) {
     // 6. Fetch browsing sessions for website usage stats
     const { data: sessions, error: sessionsError } = await supabase
       .from("sessions")
-      .select("started_at, last_seen_at, page_views, device, browser")
+      .select("started_at, last_seen_at, page_views, device, browser, page_views_list:page_views(id, path, created_at)")
       .eq("user_id", profile.id)
       .order("started_at", { ascending: false });
 
@@ -108,6 +124,76 @@ export async function GET(request: Request) {
     }, 0);
     const lastVisitAt = sessionList[0]?.last_seen_at || null;
 
+    const allPageViews: any[] = [];
+    sessionList.forEach((session: any) => {
+      if (session.page_views_list && Array.isArray(session.page_views_list)) {
+        allPageViews.push(...session.page_views_list);
+      }
+    });
+
+    const productViewsMap: Record<string, number> = {};
+    let totalProductViews = 0;
+    
+    allPageViews.forEach((pv: any) => {
+      const path = pv.path || "";
+      if (path.startsWith("/product/")) {
+        const slug = path.replace("/product/", "").split("?")[0].split("#")[0];
+        if (slug) {
+          productViewsMap[slug] = (productViewsMap[slug] || 0) + 1;
+          totalProductViews++;
+        }
+      }
+    });
+
+    const sortedProductViews = Object.entries(productViewsMap)
+      .map(([slug, count]) => ({ slug, count }))
+      .sort((a, b) => b.count - a.count);
+
+    const distinctProductsViewed = sortedProductViews.length;
+
+    const topProductsWithDetails = await Promise.all(
+      sortedProductViews.slice(0, 3).map(async (pv) => {
+        const { data: product } = await supabase
+          .from("products")
+          .select(`
+            name, slug, price_paise,
+            product_images (url)
+          `)
+          .eq("slug", pv.slug)
+          .maybeSingle();
+        return {
+          slug: pv.slug,
+          views: pv.count,
+          name: product?.name || pv.slug,
+          image: product?.product_images?.[0]?.url || null,
+          price_paise: product?.price_paise || null
+        };
+      })
+    );
+
+    // 6.5. Fetch user support tickets and replies
+    const { data: tickets, error: ticketsError } = await supabase
+      .from("support_messages")
+      .select("*")
+      .or(`user_id.eq.${profile.id},email.eq.${profile.email}`)
+      .order("created_at", { ascending: false });
+
+    if (ticketsError) throw ticketsError;
+
+    const ticketsWithReplies = await Promise.all(
+      (tickets || []).map(async (ticket) => {
+        const { data: replies } = await supabase
+          .from("support_message_replies")
+          .select("*")
+          .eq("message_id", ticket.id)
+          .order("created_at", { ascending: true });
+        return {
+          ...ticket,
+          replies: replies || [],
+        };
+      })
+    );
+
     // 7. Compute lifetime stats
     const ordersList = orders || [];
     const lifetimeOrders = ordersList.length;
@@ -120,15 +206,20 @@ export async function GET(request: Request) {
 
     return NextResponse.json({
       profile,
+      authDetails,
       wallet: wallet || { balance_paise: 0 },
       walletTransactions: walletTransactions || [],
       addresses: addresses || [],
       orders: ordersList,
+      tickets: ticketsWithReplies,
       usage: {
         totalSessions,
         totalPageViews,
         totalSecondsSpent,
         lastVisitAt,
+        totalProductViews,
+        distinctProductsViewed,
+        topProducts: topProductsWithDetails,
       },
       lifetime: {
         orders: lifetimeOrders,
