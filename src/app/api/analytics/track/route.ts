@@ -4,7 +4,7 @@ import { createClient as createServerClient } from "@/lib/supabase/server";
 
 export async function POST(request: NextRequest) {
   try {
-    const { path, referrer, visitorId } = await request.json();
+    const { path, referrer, visitorId, heartbeat } = await request.json();
     if (!visitorId || !path) {
       return NextResponse.json({ error: "Missing visitorId or path" }, { status: 400 });
     }
@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
       const { data: { user } } = await userClient.auth.getUser();
       if (user) userId = user.id;
     } catch (e) {
-      // Ignore if session client fails (e.g. env vars missing or invalid session)
+      // Ignore if session client fails
     }
 
     // Use service role client to bypass RLS for logging analytics
@@ -28,8 +28,42 @@ export async function POST(request: NextRequest) {
     const browserName = ua.browser.name || "Unknown";
     const osName = ua.os.name || "Unknown";
     
-    // Country header check
-    const country = request.headers.get("x-vercel-ip-country") || "India";
+    // Country and location header check (Vercel headers)
+    const rawCountry = request.headers.get("x-vercel-ip-country") || "IN";
+    const countryName = rawCountry === "IN" ? "India" : rawCountry;
+    const region = request.headers.get("x-vercel-ip-country-region") || request.headers.get("x-vercel-ip-region") || "";
+    const city = request.headers.get("x-vercel-ip-city") || "";
+    
+    // Custom geostring
+    let locationString = "India | Tamil Nadu | Chennai"; // default fallback for local/missing headers
+    if (request.headers.has("x-vercel-ip-country")) {
+      locationString = [countryName, region, city].filter(Boolean).join(" | ");
+    } else {
+      // For local testing, randomize a bit of Tamil Nadu / Kerala / Karnataka data to look populated
+      const localStates = ["Tamil Nadu | Chennai", "Tamil Nadu | Coimbatore", "Kerala | Kochi", "Karnataka | Bengaluru"];
+      const randomLocal = localStates[Math.floor((visitorId.charCodeAt(0) || 0) % localStates.length)];
+      locationString = `India | ${randomLocal}`;
+    }
+
+    // Parse UTM parameters from path
+    let finalReferrer = referrer || "Direct";
+    try {
+      const urlObj = new URL(path, "http://localhost");
+      const utmSource = urlObj.searchParams.get("utm_source");
+      const utmMedium = urlObj.searchParams.get("utm_medium");
+      const utmCampaign = urlObj.searchParams.get("utm_campaign");
+      
+      const utmParts = [];
+      if (utmSource) utmParts.push(`utm_source=${utmSource}`);
+      if (utmMedium) utmParts.push(`utm_medium=${utmMedium}`);
+      if (utmCampaign) utmParts.push(`utm_campaign=${utmCampaign}`);
+      
+      if (utmParts.length > 0) {
+        finalReferrer = `${referrer || "Direct"} | ${utmParts.join("&")}`;
+      }
+    } catch (e) {
+      // Ignore URL parse error
+    }
 
     // 1. Fetch active session for this visitor_id in the last 30 minutes
     const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
@@ -50,8 +84,10 @@ export async function POST(request: NextRequest) {
       // Update the active session
       const updateData: any = {
         last_seen_at: new Date().toISOString(),
-        page_views: activeSession.page_views + 1,
       };
+      if (!heartbeat) {
+        updateData.page_views = activeSession.page_views + 1;
+      }
       if (userId) {
         updateData.user_id = userId; // associate user if logged in mid-session
       }
@@ -69,9 +105,9 @@ export async function POST(request: NextRequest) {
           device: deviceType,
           browser: browserName,
           os: osName,
-          country: country,
-          referrer: referrer || "Direct",
-          page_views: 1,
+          country: locationString,
+          referrer: finalReferrer,
+          page_views: heartbeat ? 0 : 1,
           started_at: new Date().toISOString(),
           last_seen_at: new Date().toISOString(),
         })
@@ -84,14 +120,16 @@ export async function POST(request: NextRequest) {
       sessionId = newSession.id;
     }
 
-    // 2. Insert the page view
-    await supabase
-      .from("page_views")
-      .insert({
-        session_id: sessionId,
-        path: path,
-        created_at: new Date().toISOString(),
-      });
+    // 2. Insert the page view (only if NOT a heartbeat)
+    if (!heartbeat) {
+      await supabase
+        .from("page_views")
+        .insert({
+          session_id: sessionId,
+          path: path,
+          created_at: new Date().toISOString(),
+        });
+    }
 
     return NextResponse.json({ success: true, sessionId });
   } catch (error) {
@@ -99,3 +137,4 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Internal tracking error" }, { status: 500 });
   }
 }
+

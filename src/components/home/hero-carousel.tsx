@@ -118,6 +118,41 @@ export function HeroCarousel({ dbSlides }: { dbSlides?: any[] }) {
     };
   }, [reduce, slides.length]);
 
+  const touchStartX = useRef<number | null>(null);
+  const touchStartY = useRef<number | null>(null);
+  const touchEndX = useRef<number | null>(null);
+  const touchEndY = useRef<number | null>(null);
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    touchEndX.current = null;
+    touchEndY.current = null;
+    touchStartX.current = e.targetTouches[0].clientX;
+    touchStartY.current = e.targetTouches[0].clientY;
+  };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    touchEndX.current = e.targetTouches[0].clientX;
+    touchEndY.current = e.targetTouches[0].clientY;
+  };
+
+  const onTouchEnd = () => {
+    if (!touchStartX.current || !touchEndX.current || !touchStartY.current || !touchEndY.current) return;
+    const xDistance = touchStartX.current - touchEndX.current;
+    const yDistance = touchStartY.current - touchEndY.current;
+
+    const minSwipeDistance = 50;
+
+    if (Math.abs(xDistance) > Math.abs(yDistance) && Math.abs(xDistance) > minSwipeDistance) {
+      if (xDistance > 0) {
+        // Swipe left -> next slide
+        go(index + 1, 1);
+      } else {
+        // Swipe right -> prev slide
+        go(index - 1, -1);
+      }
+    }
+  };
+
   const slide = slides[index];
 
   return (
@@ -125,6 +160,9 @@ export function HeroCarousel({ dbSlides }: { dbSlides?: any[] }) {
       aria-roledescription="carousel"
       aria-label="Featured highlights"
       className="relative overflow-hidden bg-cream"
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
     >
       <div className="relative h-[86vh] min-h-[560px] max-h-[820px]">
         {/* Background image with slow parallax drift */}
@@ -186,8 +224,8 @@ export function HeroCarousel({ dbSlides }: { dbSlides?: any[] }) {
 
         {/* Arrows */}
         <div className="pointer-events-none absolute inset-x-0 bottom-8 z-10">
-          <Container className="pointer-events-auto flex items-center justify-between">
-            <div className="flex gap-2">
+          <Container className="pointer-events-auto flex items-center justify-center sm:justify-between">
+            <div className="hidden sm:flex gap-2">
               <ArrowBtn label="Previous slide" onClick={() => go(index - 1, -1)}>
                 <ChevronLeft size={18} />
               </ArrowBtn>

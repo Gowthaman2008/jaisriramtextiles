@@ -88,6 +88,23 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       productImage: imgUrl,
     });
 
+    // Track add-to-cart in analytics
+    try {
+      const visitorId = localStorage.getItem("visitor_id");
+      if (visitorId) {
+        fetch("/api/analytics/track", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            path: `/action/add-to-cart?product=${encodeURIComponent(product.name)}`,
+            visitorId,
+          }),
+        }).catch((err) => console.error("Error logging add-to-cart:", err));
+      }
+    } catch (e) {
+      console.warn("Failed to log add-to-cart:", e);
+    }
+
     setCart((prev) => {
       // Find if item with same ID and same variant SKU already exists
       const existingIdx = prev.findIndex(

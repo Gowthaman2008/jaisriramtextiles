@@ -344,6 +344,26 @@ export default function AdminDashboardPage() {
 
     openWhatsAppChat(phone, msg);
   }
+
+  function exportToCSV(periodStats: any) {
+    if (!periodStats) return;
+    const { graphData, selectedPeriod } = periodStats;
+    let csvContent = "data:text/csv;charset=utf-8,";
+    csvContent += "Label,Current Period Views,Previous Period Views\n";
+    
+    (graphData || []).forEach((row: any) => {
+      csvContent += `"${row.label}",${row.value || 0},${row.prevValue || 0}\n`;
+    });
+    
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `jsrt_analytics_${selectedPeriod}_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
   const [loading, setLoading] = useState(true);
   const [initialDataLoaded, setInitialDataLoaded] = useState(false);
   const [loadedTabs, setLoadedTabs] = useState<string[]>([]);
@@ -355,6 +375,9 @@ export default function AdminDashboardPage() {
 
   // States for database collections
   const [analytics, setAnalytics] = useState<any>(null);
+  const [selectedPeriod, setSelectedPeriod] = useState<string>("7days");
+  const [isAdvancedExpanded, setIsAdvancedExpanded] = useState<boolean>(false);
+  const [topPagesMetric, setTopPagesMetric] = useState<"views" | "unique">("views");
   const [products, setProducts] = useState<any[]>([]);
   const [orders, setOrders] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
@@ -669,7 +692,39 @@ export default function AdminDashboardPage() {
     }
   }, [activeTab, currentUser]);
 
-  async function loadDataForTab(tab: string, force = false) {
+  useEffect(() => {
+    if (currentUser && activeTab === "overview") {
+      loadDataForTab("overview", true, selectedPeriod);
+    }
+  }, [selectedPeriod]);
+
+  useEffect(() => {
+    if (!currentUser || activeTab !== "overview") return;
+
+    // Realtime subscription
+    const channel = supabase
+      .channel("live-analytics-db")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "sessions" },
+        () => {
+          loadDataForTab("overview", true, selectedPeriod);
+        }
+      )
+      .subscribe();
+
+    // Polling fallback (10 seconds)
+    const interval = setInterval(() => {
+      loadDataForTab("overview", true, selectedPeriod);
+    }, 10000);
+
+    return () => {
+      supabase.removeChannel(channel);
+      clearInterval(interval);
+    };
+  }, [currentUser, activeTab, selectedPeriod]);
+
+  async function loadDataForTab(tab: string, force = false, customPeriod = selectedPeriod) {
     const isFirstLoad = !loadedTabs.includes(tab);
     if (isFirstLoad) {
       setInitialDataLoaded(false);
@@ -694,7 +749,7 @@ export default function AdminDashboardPage() {
     if (["overview", "visitor-history", "storage"].includes(tab) && (!analytics || force)) {
       promises.push(
         wrap(
-          fetch("/api/admin/analytics")
+          fetch(tab === "overview" ? `/api/admin/analytics?period=${customPeriod}` : "/api/admin/analytics")
             .then(res => {
               if (!res.ok) throw new Error(`HTTP ${res.status}`);
               return res.json();
@@ -3559,6 +3614,437 @@ export default function AdminDashboardPage() {
                   <StatCard icon={<DollarSign className="text-success" />} label="Gross Paid Revenues" value={formatRupees(analytics?.metrics?.totalSalesPaise || 0)} subtitle="Cleared Razorpay transactions" />
                   <StatCard icon={<ShoppingCart className="text-zari" />} label="Delivered Orders" value={analytics?.metrics?.completedOrdersCount || 0} subtitle={`Avg ticket: ${formatRupees(analytics?.metrics?.avgOrderValPaise || 0)}`} />
                   <StatCard icon={<Users className="text-ink" />} label="Active Sessions" value={analytics?.dbStats?.activeSessions || 0} subtitle={`Total page views: ${analytics?.dbStats?.pageViews || 0}`} />
+                </div>
+
+                {/* Date Filter Selector */}
+                <div className="bg-white border border-line rounded-card p-4 shadow-soft flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                  <div className="space-y-0.5">
+                    <h3 className="font-display text-base text-ink">Website Traffic Analytics</h3>
+                    <p className="text-xs text-taupe">Track visitor metrics, real-time activity and traffic sources</p>
+                  </div>
+                  <div className="flex flex-wrap gap-1 bg-cream/55 p-1 rounded-lg border border-line w-full sm:w-auto overflow-x-auto whitespace-nowrap">
+                    {[
+                      { key: "today", label: "Today" },
+                      { key: "7days", label: "7 Days" },
+                      { key: "30days", label: "30 Days" },
+                      { key: "thismonth", label: "This Month" },
+                      { key: "thisyear", label: "This Year" },
+                      { key: "all", label: "All Time" }
+                    ].map((item) => (
+                      <button
+                        key={item.key}
+                        type="button"
+                        onClick={() => setSelectedPeriod(item.key)}
+                        className={`px-3 py-1.5 rounded text-xs font-semibold transition-all duration-200 cursor-pointer ${
+                          selectedPeriod === item.key
+                            ? "bg-ink text-ivory shadow-sm"
+                            : "text-taupe hover:text-ink hover:bg-cream/40"
+                        }`}
+                      >
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Analytics KPI Cards */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                  {/* TOTAL VIEWS Card */}
+                  <div className="bg-white border border-line rounded-card p-6 shadow-soft space-y-3 relative overflow-hidden">
+                    <div className="absolute right-4 top-4 bg-cream/55 p-2 rounded-full border border-line">
+                      <Eye className="w-5 h-5 text-zari" />
+                    </div>
+                    <p className="text-xs font-semibold text-taupe uppercase tracking-wider">TOTAL VIEWS</p>
+                    <div className="space-y-1">
+                      <p className="text-3xl font-display text-ink">{analytics?.periodStats?.totalViews?.toLocaleString() || 0}</p>
+                      {selectedPeriod !== "all" && (
+                        <p className={`text-xs flex items-center gap-1 font-semibold ${
+                          (analytics?.periodStats?.viewsChange || 0) >= 0 ? "text-success" : "text-danger"
+                        }`}>
+                          <span>{(analytics?.periodStats?.viewsChange || 0) >= 0 ? "↑" : "↓"} {Math.abs(analytics?.periodStats?.viewsChange || 0)}%</span>
+                          <span className="text-taupe font-normal">vs prev period</span>
+                        </p>
+                      )}
+                    </div>
+                    <div className="pt-2 border-t border-line text-xs text-taupe space-y-1.5">
+                      <div className="flex justify-between">
+                        <span>Today:</span>
+                        <span className="font-mono font-semibold text-ink">{analytics?.periodStats?.viewsBreakdown?.today?.toLocaleString() || 0}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>This Week:</span>
+                        <span className="font-mono font-semibold text-ink">{analytics?.periodStats?.viewsBreakdown?.week?.toLocaleString() || 0}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>This Month:</span>
+                        <span className="font-mono font-semibold text-ink">{analytics?.periodStats?.viewsBreakdown?.month?.toLocaleString() || 0}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>All Time:</span>
+                        <span className="font-mono font-semibold text-ink">{analytics?.periodStats?.viewsBreakdown?.allTime?.toLocaleString() || 0}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* UNIQUE VISITORS Card */}
+                  <div className="bg-white border border-line rounded-card p-6 shadow-soft space-y-3 relative overflow-hidden">
+                    <div className="absolute right-4 top-4 bg-cream/55 p-2 rounded-full border border-line">
+                      <Users className="w-5 h-5 text-zari" />
+                    </div>
+                    <p className="text-xs font-semibold text-taupe uppercase tracking-wider">UNIQUE VISITORS</p>
+                    <div className="space-y-1">
+                      <p className="text-3xl font-display text-ink">{analytics?.periodStats?.uniqueVisitors?.toLocaleString() || 0}</p>
+                      {selectedPeriod !== "all" && (
+                        <p className={`text-xs flex items-center gap-1 font-semibold ${
+                          (analytics?.periodStats?.uniqueChange || 0) >= 0 ? "text-success" : "text-danger"
+                        }`}>
+                          <span>{(analytics?.periodStats?.uniqueChange || 0) >= 0 ? "↑" : "↓"} {Math.abs(analytics?.periodStats?.uniqueChange || 0)}%</span>
+                          <span className="text-taupe font-normal">vs prev period</span>
+                        </p>
+                      )}
+                    </div>
+                    <div className="pt-2 border-t border-line text-xs text-taupe space-y-1.5">
+                      <div className="flex justify-between">
+                        <span>Today:</span>
+                        <span className="font-mono font-semibold text-ink">{analytics?.periodStats?.uniqueBreakdown?.today?.toLocaleString() || 0}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>This Week:</span>
+                        <span className="font-mono font-semibold text-ink">{analytics?.periodStats?.uniqueBreakdown?.week?.toLocaleString() || 0}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>This Month:</span>
+                        <span className="font-mono font-semibold text-ink">{analytics?.periodStats?.uniqueBreakdown?.month?.toLocaleString() || 0}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>All Time:</span>
+                        <span className="font-mono font-semibold text-ink">{analytics?.periodStats?.uniqueBreakdown?.allTime?.toLocaleString() || 0}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* LIVE NOW Card */}
+                  <div className="bg-white border border-line rounded-card p-6 shadow-soft space-y-3 relative overflow-hidden flex flex-col justify-between">
+                    <div>
+                      <div className="absolute right-4 top-4 bg-cream/55 p-2 rounded-full border border-line">
+                        <Activity className="w-5 h-5 text-zari" />
+                      </div>
+                      <p className="text-xs font-semibold text-taupe uppercase tracking-wider flex items-center gap-1.5">
+                        <span className="relative flex h-2 w-2">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-danger opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-danger"></span>
+                        </span>
+                        LIVE NOW
+                      </p>
+                      <p className="text-3xl font-display text-ink mt-3 flex items-baseline gap-2">
+                        {analytics?.periodStats?.liveVisitors || 0}
+                        <span className="text-xs font-sans text-taupe font-normal">Active Visitors</span>
+                      </p>
+                    </div>
+                    <div className="pt-4 border-t border-line text-[11px] text-taupe flex justify-between items-center">
+                      <span>Updated just now</span>
+                      <span className="flex items-center gap-1 text-[10px] font-semibold text-zari">
+                        <RefreshCw className="w-3 h-3 animate-spin" /> Realtime Active
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Advanced Traffic Metrics Expandable Panel */}
+                <div className="bg-white border border-line rounded-card shadow-soft overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => setIsAdvancedExpanded(!isAdvancedExpanded)}
+                    className="w-full px-6 py-4 flex justify-between items-center bg-cream/15 hover:bg-cream/35 transition-colors duration-150 text-left border-b border-line cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <TrendingUp className="w-5 h-5 text-zari" />
+                      <div>
+                        <h4 className="font-display text-sm text-ink font-semibold">Advanced Traffic Metrics</h4>
+                        <p className="text-xs text-taupe">Bounce rates, session durations, and visitor loyalty</p>
+                      </div>
+                    </div>
+                    <span className="text-xs font-semibold text-zari hover:underline">
+                      {isAdvancedExpanded ? "Collapse panel" : "Expand details"}
+                    </span>
+                  </button>
+                  {isAdvancedExpanded && (
+                    <div className="p-6 grid grid-cols-2 sm:grid-cols-4 gap-6 animate-fade-in border-t border-line bg-cream/5">
+                      <div className="space-y-1">
+                        <p className="text-[10px] font-semibold text-taupe uppercase tracking-wider">Avg Session Duration</p>
+                        <p className="text-xl font-display text-ink font-semibold">
+                          {formatDuration(analytics?.periodStats?.averageSessionDuration || 0)}
+                        </p>
+                        <p className="text-[10px] text-taupe">Total time spent on store</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-[10px] font-semibold text-taupe uppercase tracking-wider">Pages per Session</p>
+                        <p className="text-xl font-display text-ink font-semibold">
+                          {analytics?.periodStats?.pagesPerSession || 0}
+                        </p>
+                        <p className="text-[10px] text-taupe">Average page path depth</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-[10px] font-semibold text-taupe uppercase tracking-wider">Bounce Rate</p>
+                        <p className="text-xl font-display text-ink font-semibold">
+                          {analytics?.periodStats?.bounceRate || 0}%
+                        </p>
+                        <p className="text-[10px] text-taupe">Sessions with single view</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-[10px] font-semibold text-taupe uppercase tracking-wider">New vs Returning</p>
+                        <p className="text-xl font-display text-ink font-semibold">
+                          {analytics?.periodStats?.newVisitors} / {analytics?.periodStats?.returningVisitors}
+                        </p>
+                        <p className="text-[10px] text-taupe">Loyalty visitor mix</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Website Views Graph */}
+                <div className="bg-white border border-line rounded-card p-6 shadow-soft space-y-4">
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                    <div className="space-y-0.5">
+                      <h4 className="font-display text-base text-ink">Website Views Over Time</h4>
+                      <p className="text-xs text-taupe">Compare page views against the previous period</p>
+                    </div>
+                    <div className="flex gap-4 text-[10px] sm:text-xs">
+                      <div className="flex items-center gap-1.5">
+                        <span className="inline-block w-3 h-1.5 bg-zari rounded" />
+                        <span className="text-ink font-semibold">Current Period ({analytics?.periodStats?.totalViews?.toLocaleString() || 0} views)</span>
+                      </div>
+                      {selectedPeriod !== "all" && (
+                        <div className="flex items-center gap-1.5">
+                          <span className="inline-block w-3 h-0 border-t border-dashed border-taupe" />
+                          <span className="text-taupe">Previous Period</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="pt-2">
+                    <AnalyticsChart data={analytics?.periodStats?.graphData || []} />
+                  </div>
+                </div>
+
+                {/* Detailed aggregates grid */}
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+                  {/* Traffic Sources */}
+                  <div className="md:col-span-4 bg-white border border-line rounded-card p-6 shadow-soft space-y-4">
+                    <h4 className="font-display text-base text-ink border-b border-line pb-2">Traffic Sources</h4>
+                    <div className="space-y-3.5">
+                      {(analytics?.periodStats?.trafficSources || []).map((src: any) => (
+                        <div key={src.name} className="space-y-1">
+                          <div className="flex justify-between text-xs font-semibold">
+                            <span className="text-ink">{src.name}</span>
+                            <span className="text-taupe">{src.percentage}% ({src.count})</span>
+                          </div>
+                          <div className="w-full bg-cream h-2 rounded-full overflow-hidden">
+                            <div className="bg-zari h-full" style={{ width: `${src.percentage}%` }} />
+                          </div>
+                        </div>
+                      ))}
+                      {(!analytics?.periodStats?.trafficSources || analytics.periodStats.trafficSources.length === 0) && (
+                        <p className="text-xs text-taupe italic py-4 text-center">No traffic sources logged.</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Top Viewed Pages */}
+                  <div className="md:col-span-8 bg-white border border-line rounded-card p-6 shadow-soft space-y-4">
+                    <div className="flex justify-between items-center border-b border-line pb-2">
+                      <h4 className="font-display text-base text-ink">Top Viewed Pages</h4>
+                      <div className="flex bg-cream/65 p-0.5 rounded border border-line">
+                        <button
+                          type="button"
+                          onClick={() => setTopPagesMetric("views")}
+                          className={`px-2 py-1 text-[10px] font-bold rounded cursor-pointer ${
+                            topPagesMetric === "views" ? "bg-ink text-ivory shadow-sm" : "text-taupe hover:text-ink"
+                          }`}
+                        >
+                          Views
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setTopPagesMetric("unique")}
+                          className={`px-2 py-1 text-[10px] font-bold rounded cursor-pointer ${
+                            topPagesMetric === "unique" ? "bg-ink text-ivory shadow-sm" : "text-taupe hover:text-ink"
+                          }`}
+                        >
+                          Unique Visitors
+                        </button>
+                      </div>
+                    </div>
+                    <div className="overflow-x-auto max-h-[220px] scrollbar-thin">
+                      <table className="w-full text-xs text-left">
+                        <thead>
+                          <tr className="text-taupe border-b border-line pb-2">
+                            <th className="pb-2 font-medium">Page URL Path</th>
+                            <th className="pb-2 text-right font-medium">
+                              {topPagesMetric === "views" ? "Views" : "Unique Visitors"}
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {(analytics?.periodStats?.topPages || []).map((page: any, idx: number) => (
+                            <tr key={idx} className="border-b border-line last:border-0 hover:bg-ivory/50">
+                              <td className="py-2 font-mono text-ink font-semibold break-all max-w-[200px]" title={page.path}>
+                                {page.path}
+                              </td>
+                              <td className="py-2 text-right font-bold text-ink">
+                                {topPagesMetric === "views" ? page.views.toLocaleString() : page.unique.toLocaleString()}
+                              </td>
+                            </tr>
+                          ))}
+                          {(!analytics?.periodStats?.topPages || analytics.periodStats.topPages.length === 0) && (
+                            <tr>
+                              <td colSpan={2} className="text-center italic text-taupe py-6">No viewed pages data available.</td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Live Activity & Devices / Location Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+                  {/* Live Activity Feed */}
+                  <div className="md:col-span-7 bg-white border border-line rounded-card p-6 shadow-soft space-y-4">
+                    <h4 className="font-display text-base text-ink border-b border-line pb-2 flex items-center justify-between">
+                      <span>Live Activity Logs</span>
+                      <span className="text-[10px] font-sans text-taupe font-normal italic">Last 25 interactions</span>
+                    </h4>
+                    <div className="max-h-[260px] overflow-y-auto pr-1 space-y-3.5 scrollbar-thin">
+                      {(analytics?.periodStats?.liveActivity || []).map((act: any) => (
+                        <div key={act.id} className="flex justify-between items-start gap-4 text-xs">
+                          <div className="flex items-start gap-2">
+                            <span className="w-1.5 h-1.5 bg-zari rounded-full mt-1.5 shrink-0" />
+                            <span className="text-ink font-medium leading-relaxed">{act.text}</span>
+                          </div>
+                          <span className="text-[10px] text-taupe shrink-0 mt-0.5">
+                            {new Date(act.timestamp).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: true }).toLowerCase()}
+                          </span>
+                        </div>
+                      ))}
+                      {(!analytics?.periodStats?.liveActivity || analytics.periodStats.liveActivity.length === 0) && (
+                        <p className="text-xs text-taupe italic py-8 text-center">Collecting visitor activity data...</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Devices & Geographic Locations */}
+                  <div className="md:col-span-5 space-y-6">
+                    {/* Device Share */}
+                    <div className="bg-white border border-line rounded-card p-6 shadow-soft space-y-4">
+                      <h4 className="font-display text-base text-ink border-b border-line pb-2">Devices Share</h4>
+                      <div className="grid grid-cols-3 gap-2 pt-1">
+                        {(analytics?.periodStats?.devices || []).map((dev: any) => (
+                          <div key={dev.name} className="text-center space-y-1">
+                            <span className="block text-[10px] font-semibold text-taupe uppercase">{dev.name}</span>
+                            <span className="block text-xl font-display text-ink font-bold">{dev.percentage}%</span>
+                            <span className="block text-[9px] text-taupe font-mono">({dev.count})</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Geolocation share */}
+                    <div className="bg-white border border-line rounded-card p-6 shadow-soft space-y-4">
+                      <h4 className="font-display text-base text-ink border-b border-line pb-2">Visitor Locations</h4>
+                      <div className="space-y-2 max-h-[140px] overflow-y-auto scrollbar-thin">
+                        {(analytics?.periodStats?.locations || []).map((loc: any, idx: number) => (
+                          <div key={idx} className="flex justify-between text-xs border-b border-line pb-1.5 last:border-0">
+                            <span className="text-ink font-semibold leading-tight pr-2">
+                              {loc.city ? `${loc.city}, ` : ""}{loc.region ? `${loc.region}, ` : ""}{loc.country}
+                            </span>
+                            <span className="font-mono text-taupe font-bold shrink-0">{loc.count} sessions</span>
+                          </div>
+                        ))}
+                        {(!analytics?.periodStats?.locations || analytics.periodStats.locations.length === 0) && (
+                          <p className="text-xs text-taupe italic py-4 text-center">No location metrics collected yet.</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Peak times & Settings */}
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+                  {/* Peak Traffic times */}
+                  <div className="md:col-span-5 bg-white border border-line rounded-card p-6 shadow-soft flex flex-col justify-between">
+                    <h4 className="font-display text-base text-ink border-b border-line pb-2">Peak Traffic Times</h4>
+                    <div className="grid grid-cols-2 gap-4 py-3">
+                      <div className="space-y-1">
+                        <span className="block text-[10px] font-semibold text-taupe uppercase tracking-wider">Most Active Time</span>
+                        <span className="block text-sm font-display text-ink font-bold leading-tight">{analytics?.periodStats?.peakTraffic?.hour || "N/A"}</span>
+                      </div>
+                      <div className="space-y-1">
+                        <span className="block text-[10px] font-semibold text-taupe uppercase tracking-wider">Peak Day of Week</span>
+                        <span className="block text-sm font-display text-ink font-bold leading-tight">{analytics?.periodStats?.peakTraffic?.day || "N/A"}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Settings Control Panel */}
+                  <div className="md:col-span-7 bg-white border border-line rounded-card p-6 shadow-soft space-y-4">
+                    <h4 className="font-display text-base text-ink border-b border-line pb-2">Analytics Administration</h4>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="cursor-pointer border-line hover:border-zari flex items-center gap-1.5 text-xs py-1"
+                        onClick={() => exportToCSV(analytics?.periodStats)}
+                        disabled={!analytics?.periodStats}
+                      >
+                        <Download className="w-3.5 h-3.5 text-zari" />
+                        Export (CSV)
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="cursor-pointer border-line hover:border-zari flex items-center gap-1.5 text-xs py-1"
+                        onClick={() => loadDataForTab("overview", true)}
+                        disabled={refreshing}
+                      >
+                        <RefreshCw className={`w-3.5 h-3.5 text-zari ${refreshing ? "animate-spin" : ""}`} />
+                        Sync Data
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="cursor-pointer text-danger hover:bg-danger/10 border-danger/20 hover:border-danger flex items-center gap-1.5 text-xs py-1"
+                        onClick={async () => {
+                          if (!confirm("⚠️ WARNING: This will permanently delete all session and page view tracking logs from the database. Are you sure you want to proceed?")) {
+                            return;
+                          }
+                          setRefreshing(true);
+                          try {
+                            const res = await fetch("/api/admin/analytics", {
+                              method: "DELETE",
+                            });
+                            if (!res.ok) throw new Error("HTTP " + res.status);
+                            
+                            notify("Analytics database successfully cleared.");
+                            loadDataForTab("overview", true);
+                          } catch (err: any) {
+                            alert("Error clearing database: " + (err.message || err));
+                          } finally {
+                            setRefreshing(false);
+                          }
+                        }}
+                        disabled={refreshing}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        Clear Database
+                      </Button>
+                    </div>
+                    {analytics?.periodStats?.lastUpdated && (
+                      <p className="text-[10px] text-taupe">
+                        Last updated: {new Date(analytics.periodStats.lastUpdated).toLocaleString("en-IN")}
+                      </p>
+                    )}
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -8209,4 +8695,184 @@ function formatDuration(totalSeconds: number) {
   if (hours > 0) return `${hours}h ${minutes}m`;
   if (minutes > 0) return `${minutes}m`;
   return `${Math.round(totalSeconds)}s`;
+}
+
+function calculatePercentChange(curr: number, prev: number) {
+  if (prev === 0) return curr > 0 ? 100 : 0;
+  return Math.round(((curr - prev) / prev) * 1000) / 10;
+}
+
+function AnalyticsChart({ data }: { data: { label: string; value: number; prevValue?: number }[] }) {
+  const [hoveredIndex, setHoveredIndex] = React.useState<number | null>(null);
+
+  if (!data || data.length === 0) {
+    return (
+      <div className="h-64 flex items-center justify-center bg-cream/20 border border-line rounded-card italic text-taupe text-sm">
+        No analytics data available yet.
+      </div>
+    );
+  }
+
+  // Dimensions
+  const width = 600;
+  const height = 280;
+  const paddingX = 40;
+  const paddingY = 35;
+  const chartWidth = width - 2 * paddingX;
+  const chartHeight = height - 2 * paddingY;
+
+  // Max value calculation
+  const maxVal = Math.max(
+    ...data.map((d) => Math.max(d.value || 0, d.prevValue || 0)),
+    10
+  );
+
+  // Helper to map index & value to coordinates
+  const getX = (index: number) => {
+    if (data.length <= 1) return paddingX + chartWidth / 2;
+    return paddingX + (index * chartWidth) / (data.length - 1);
+  };
+
+  const getY = (val: number) => {
+    return height - paddingY - (val * chartHeight) / maxVal;
+  };
+
+  // Generate Path for current values
+  let currentLinePath = "";
+  let currentAreaPath = "";
+  data.forEach((d, i) => {
+    const x = getX(i);
+    const y = getY(d.value || 0);
+    if (i === 0) {
+      currentLinePath = `M ${x} ${y}`;
+      currentAreaPath = `M ${x} ${height - paddingY} L ${x} ${y}`;
+    } else {
+      currentLinePath += ` L ${x} ${y}`;
+      currentAreaPath += ` L ${x} ${y}`;
+    }
+  });
+  if (data.length > 0) {
+    currentAreaPath += ` L ${getX(data.length - 1)} ${height - paddingY} Z`;
+  }
+
+  // Generate Path for previous values (comparison)
+  let prevLinePath = "";
+  data.forEach((d, i) => {
+    const x = getX(i);
+    const y = getY(d.prevValue || 0);
+    if (i === 0) {
+      prevLinePath = `M ${x} ${y}`;
+    } else {
+      prevLinePath += ` L ${x} ${y}`;
+    }
+  });
+
+  // Grid lines
+  const yTicks = 4;
+  const gridLines = Array.from({ length: yTicks + 1 }, (_, i) => {
+    const val = (maxVal / yTicks) * i;
+    const y = getY(val);
+    return { y, val: Math.round(val) };
+  });
+
+  // Selected details for tooltip
+  const activePoint = hoveredIndex !== null ? data[hoveredIndex] : null;
+  const tooltipX = hoveredIndex !== null ? getX(hoveredIndex) : 0;
+  const tooltipY = hoveredIndex !== null ? getY(activePoint?.value || 0) : 0;
+
+  return (
+    <div className="relative w-full">
+      <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto overflow-visible select-none">
+        <defs>
+          <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#b59a57" stopOpacity="0.25" />
+            <stop offset="100%" stopColor="#b59a57" stopOpacity="0.01" />
+          </linearGradient>
+        </defs>
+
+        {/* Y Axis Grid Lines */}
+        {gridLines.map((line, i) => (
+          <g key={i} className="opacity-40">
+            <line x1={paddingX} y1={line.y} x2={width - paddingX} y2={line.y} stroke="#cbd5e1" strokeWidth="1" strokeDasharray={i === 0 ? "none" : "3 3"} />
+            <text x={paddingX - 10} y={line.y + 4} textAnchor="end" className="text-[10px] fill-taupe font-mono">{line.val}</text>
+          </g>
+        ))}
+
+        {/* Area under curve */}
+        {currentAreaPath && (
+          <path d={currentAreaPath} fill="url(#chartGradient)" />
+        )}
+
+        {/* Previous Period Line (dashed slate) */}
+        {prevLinePath && (
+          <path d={prevLinePath} fill="none" stroke="#94a3b8" strokeWidth="1.5" strokeDasharray="4 4" className="opacity-60" />
+        )}
+
+        {/* Current Period Line (solid gold) */}
+        {currentLinePath && (
+          <path d={currentLinePath} fill="none" stroke="#b59a57" strokeWidth="2.5" />
+        )}
+
+        {/* X Axis Labels */}
+        {data.map((d, i) => {
+          const showLabel = data.length <= 12 || i % Math.ceil(data.length / 8) === 0 || i === data.length - 1;
+          if (!showLabel) return null;
+          return (
+            <text key={i} x={getX(i)} y={height - paddingY + 18} textAnchor="middle" className="text-[9px] fill-taupe font-semibold">{d.label}</text>
+          );
+        })}
+
+        {/* Interactive hover lines and dots */}
+        {data.map((d, i) => {
+          const x = getX(i);
+          const y = getY(d.value || 0);
+          return (
+            <g key={i} onMouseEnter={() => setHoveredIndex(i)} onMouseLeave={() => setHoveredIndex(null)} className="cursor-pointer">
+              <rect x={x - (chartWidth / data.length) / 2} y={paddingY} width={chartWidth / data.length} height={chartHeight} fill="transparent" />
+              {hoveredIndex === i && (
+                <>
+                  <line x1={x} y1={paddingY} x2={x} y2={height - paddingY} stroke="#b59a57" strokeWidth="1.5" strokeDasharray="2 2" />
+                  <circle cx={x} cy={y} r={6} fill="#b59a57" stroke="#ffffff" strokeWidth="2" />
+                  {d.prevValue !== undefined && (
+                    <circle cx={x} cy={getY(d.prevValue)} r={4} fill="#94a3b8" stroke="#ffffff" strokeWidth="1.5" />
+                  )}
+                </>
+              )}
+            </g>
+          );
+        })}
+      </svg>
+
+      {hoveredIndex !== null && activePoint && (
+        <div 
+          className="absolute z-10 bg-ink text-ivory text-[10px] rounded shadow-lg p-2 space-y-1 pointer-events-none border border-zari/20 w-40"
+          style={{
+            left: `${Math.min(75, Math.max(5, ((tooltipX - 80) / width) * 100))}%`,
+            top: `${Math.max(5, ((tooltipY - 90) / height) * 100)}%`
+          }}
+        >
+          <p className="font-semibold text-zari-soft border-b border-white/10 pb-0.5 mb-1">{activePoint.label}</p>
+          <div className="flex justify-between gap-2">
+            <span className="text-muted">Current Views:</span>
+            <span className="font-mono font-bold text-ivory">{activePoint.value}</span>
+          </div>
+          {activePoint.prevValue !== undefined && (
+            <>
+              <div className="flex justify-between gap-2">
+                <span className="text-slate-400">Previous Views:</span>
+                <span className="font-mono text-slate-300">{activePoint.prevValue}</span>
+              </div>
+              <div className="flex justify-between gap-2 pt-0.5 border-t border-white/5 mt-0.5">
+                <span className="text-muted">Difference:</span>
+                <span className={`font-mono font-bold ${activePoint.value >= activePoint.prevValue ? "text-success" : "text-danger"}`}>
+                  {activePoint.value >= activePoint.prevValue ? "+" : ""}
+                  {calculatePercentChange(activePoint.value, activePoint.prevValue)}%
+                </span>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }

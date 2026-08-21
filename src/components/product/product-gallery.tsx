@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
@@ -11,6 +11,44 @@ interface ProductGalleryProps {
 
 export function ProductGallery({ images, name }: ProductGalleryProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
+
+  // Touch swipe states for mobile view
+  const touchStartX = useRef<number | null>(null);
+  const touchStartY = useRef<number | null>(null);
+  const touchEndX = useRef<number | null>(null);
+  const touchEndY = useRef<number | null>(null);
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    touchEndX.current = null;
+    touchEndY.current = null;
+    touchStartX.current = e.targetTouches[0].clientX;
+    touchStartY.current = e.targetTouches[0].clientY;
+  };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    touchEndX.current = e.targetTouches[0].clientX;
+    touchEndY.current = e.targetTouches[0].clientY;
+  };
+
+  const onTouchEnd = () => {
+    if (images.length <= 1) return;
+    if (!touchStartX.current || !touchEndX.current || !touchStartY.current || !touchEndY.current) return;
+    
+    const xDistance = touchStartX.current - touchEndX.current;
+    const yDistance = touchStartY.current - touchEndY.current;
+    const minSwipeDistance = 50;
+
+    // Trigger horizontal swipe only when swipe is predominantly horizontal
+    if (Math.abs(xDistance) > Math.abs(yDistance) && Math.abs(xDistance) > minSwipeDistance) {
+      if (xDistance > 0) {
+        // Swipe left -> Next image
+        setCurrentIndex((prev) => (prev + 1) % images.length);
+      } else {
+        // Swipe right -> Previous image
+        setCurrentIndex((prev) => (prev - 1 + images.length) % images.length);
+      }
+    }
+  };
 
   // Autoplay timer to swap images every 4.5 seconds
   useEffect(() => {
@@ -34,7 +72,12 @@ export function ProductGallery({ images, name }: ProductGalleryProps) {
   return (
     <div className="flex flex-col gap-4 w-full">
       {/* Main Image Frame */}
-      <div className="zari-frame aspect-square overflow-hidden rounded-card bg-cream relative group">
+      <div 
+        className="zari-frame aspect-square overflow-hidden rounded-card bg-cream relative group"
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+      >
         <Image
           src={activeImage}
           alt={`${name} - Image ${currentIndex + 1}`}
@@ -49,14 +92,14 @@ export function ProductGallery({ images, name }: ProductGalleryProps) {
           <>
             <button
               onClick={() => setCurrentIndex((prev) => (prev - 1 + images.length) % images.length)}
-              className="absolute left-3 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white text-ink p-1.5 rounded-full shadow transition-all duration-200 opacity-0 group-hover:opacity-100 max-md:opacity-100 cursor-pointer"
+              className="absolute left-3 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white text-ink p-1.5 rounded-full shadow transition-all duration-200 opacity-0 group-hover:opacity-100 hidden md:block cursor-pointer"
               aria-label="Previous image"
             >
               <ChevronLeft size={20} />
             </button>
             <button
               onClick={() => setCurrentIndex((prev) => (prev + 1) % images.length)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white text-ink p-1.5 rounded-full shadow transition-all duration-200 opacity-0 group-hover:opacity-100 max-md:opacity-100 cursor-pointer"
+              className="absolute right-3 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white text-ink p-1.5 rounded-full shadow transition-all duration-200 opacity-0 group-hover:opacity-100 hidden md:block cursor-pointer"
               aria-label="Next image"
             >
               <ChevronRight size={20} />
