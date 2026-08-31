@@ -20,6 +20,7 @@ Your tone must be polite, premium, and helpful.
 import { createClient } from "@/lib/supabase/server";
 
 export async function POST(request: Request) {
+  let matchedProducts: any[] = [];
   try {
     const { messages, userContext } = await request.json();
 
@@ -98,7 +99,11 @@ export async function POST(request: Request) {
       lastUserMsg.includes("scarf")
     );
 
+<<<<<<< HEAD
     let matchedProducts: any[] = [];
+=======
+    matchedProducts = [];
+>>>>>>> 3986845 (fix(chat): fix matchedProducts scoping build error and add swipe controls)
 
     if (isPhotoOrProductIntent) {
       let filtered = dbProducts.filter((p) => {
