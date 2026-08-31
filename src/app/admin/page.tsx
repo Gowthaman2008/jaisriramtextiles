@@ -45,9 +45,12 @@ import {
   Copy,
   X,
   MessageSquareText,
-  Gift
+  Gift,
+  Send,
+  Sparkles
 } from "lucide-react";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
+import { MarketingHub } from "@/components/admin/marketing/marketing-hub";
 
 // Helper for formatting money — always whole rupees (no paise adjustments)
 function formatRupees(paise: number) {
@@ -3570,6 +3573,7 @@ export default function AdminDashboardPage() {
                 <TabButton active={activeTab === "coupons"} onClick={() => setActiveTab("coupons")} icon={<Ticket className="w-4 h-4" />} label="Promo Codes" badge={coupons.length} />
                 <TabButton active={activeTab === "shipping"} onClick={() => setActiveTab("shipping")} icon={<Truck className="w-4 h-4" />} label="Shipping Settings" />
                 <TabButton active={activeTab === "campaigns"} onClick={() => setActiveTab("campaigns")} icon={<Gift className="w-4 h-4" />} label="Free Products" badge={campaigns.length} />
+                <TabButton active={activeTab === "marketing"} onClick={() => setActiveTab("marketing")} icon={<Send className="w-4 h-4" />} label="Mail Broadcasting" />
                 <TabButton active={activeTab === "users"} onClick={() => setActiveTab("users")} icon={<Users className="w-4 h-4" />} label="User Management" badge={users.length} />
                 <TabButton active={activeTab === "user-inspector"} onClick={() => setActiveTab("user-inspector")} icon={<Search className="w-4 h-4" />} label="User Inspector" />
                 <TabButton active={activeTab === "reviews"} onClick={() => setActiveTab("reviews")} icon={<Star className="w-4 h-4" />} label="Customer Reviews" badge={reviews.length} />
@@ -8213,6 +8217,13 @@ $$ language plpgsql;`}
                     </div>
                   )}
                 </div>
+              </div>
+            )}
+
+            {/* Marketing & Mail Broadcasting Tab */}
+            {activeTab === "marketing" && (
+              <div className="space-y-6 animate-fade-up">
+                <MarketingHub products={products} coupons={coupons} />
               </div>
             )}
               </>

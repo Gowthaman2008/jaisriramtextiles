@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import { ArrowRight } from "lucide-react";
 import { Container } from "@/components/ui/container";
+import { Button } from "@/components/ui/button";
 
 export const metadata: Metadata = {
   title: "Our Manufacturing",
@@ -50,11 +52,18 @@ export default function ManufacturingPage() {
         </h1>
         <div className="zari-rule mt-6 mb-10" />
 
-        <p className="text-base leading-relaxed text-taupe mb-12">
+        <p className="text-base leading-relaxed text-taupe mb-8">
           Every piece from JAI SRI RAM TEXTILES passes through six stages of handcraft
           before it leaves our mill in Komarapalayam. Here is what happens between raw
           cotton and your order.
         </p>
+
+        <div className="mb-12">
+          <Button href="/shop" variant="gold" size="md">
+            Explore Products
+            <ArrowRight size={16} />
+          </Button>
+        </div>
 
         <ol className="space-y-8">
           {steps.map((s) => (
@@ -69,6 +78,21 @@ export default function ManufacturingPage() {
             </li>
           ))}
         </ol>
+
+        <div className="mt-16 rounded-card border border-line bg-cream/30 p-8 text-center sm:p-10">
+          <h2 className="font-display text-2xl text-ink sm:text-3xl">
+            Experience the Authentic Craftsmanship
+          </h2>
+          <p className="mx-auto mt-3 max-w-lg text-sm text-taupe">
+            Discover our collection of pure cotton dhotis, towels, scarfs and jute bags woven with dedication.
+          </p>
+          <div className="mt-6 flex justify-center">
+            <Button href="/shop" variant="gold" size="lg">
+              Explore Products
+              <ArrowRight size={18} />
+            </Button>
+          </div>
+        </div>
       </Container>
     </div>
   );

@@ -520,7 +520,14 @@ ${itemsList || "- No items listed"}`;
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to complete message response");
 
-      setMessages((prev) => [...prev, { role: "assistant", content: data.response }]);
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: data.response,
+          products: data.products && Array.isArray(data.products) && data.products.length > 0 ? data.products : undefined
+        }
+      ]);
     } catch (err: any) {
       setMessages((prev) => [
         ...prev,
@@ -627,22 +634,24 @@ ${itemsList || "- No items listed"}`;
                     )}
 
                     {isAI && m.products && m.products.length > 0 && (
-                      <div className="ml-9 mt-1.5 grid grid-cols-3 gap-2 pb-1">
+                      <div className="ml-9 mt-2 grid grid-cols-2 gap-2 pb-1">
                         {m.products.map((p) => (
                           <a
                             key={p.id}
                             href={`/product/${p.slug}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="bg-white border border-line rounded-xl p-1.5 flex flex-col hover:border-zari transition shadow-sm hover:shadow active:scale-98"
+                            className="bg-white border border-line rounded-xl p-2 flex flex-col hover:border-zari transition shadow-sm hover:shadow-md active:scale-98 group"
                           >
-                            <img
-                              src={p.imageUrl}
-                              alt={p.name}
-                              className="w-full h-12 object-cover rounded-lg bg-cream/35"
-                            />
-                            <p className="mt-1 text-[9px] font-bold text-ink truncate leading-tight">{p.name}</p>
-                            <p className="text-[8px] font-bold text-zari-deep mt-0.5">₹{p.price}</p>
+                            <div className="w-full h-20 sm:h-24 rounded-lg overflow-hidden bg-cream/35 relative border border-line/50">
+                              <img
+                                src={p.imageUrl}
+                                alt={p.name}
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                              />
+                            </div>
+                            <p className="mt-1.5 text-[10px] font-bold text-ink truncate leading-tight group-hover:text-zari-deep">{p.name}</p>
+                            <p className="text-[9px] font-bold text-zari-deep mt-0.5">₹{p.price}</p>
                           </a>
                         ))}
                       </div>

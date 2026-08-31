@@ -529,3 +529,103 @@ begin
   );
 end;
 $$ language plpgsql;
+
+-- ============================================================================
+-- MAIL BROADCASTING & CAMPAIGN MANAGEMENT SYSTEM
+-- ============================================================================
+
+create table if not exists email_segments (
+  id                uuid primary key default gen_random_uuid(),
+  name              text not null,
+  description       text,
+  filter_rules      jsonb not null default '{}'::jsonb,
+  user_count_cache  int not null default 0,
+  created_by        uuid references profiles(id) on delete set null,
+  created_at        timestamptz not null default now(),
+  updated_at        timestamptz not null default now()
+);
+
+create table if not exists email_templates (
+  id                uuid primary key default gen_random_uuid(),
+  name              text not null,
+  category          text not null default 'promotional',
+  subject           text,
+  preview_text      text,
+  content_json      jsonb not null default '[]'::jsonb,
+  content_html      text,
+  preview_image     text,
+  is_built_in       boolean not null default false,
+  created_by        uuid references profiles(id) on delete set null,
+  created_at        timestamptz not null default now(),
+  updated_at        timestamptz not null default now()
+);
+
+create table if not exists email_campaigns (
+  id                  uuid primary key default gen_random_uuid(),
+  name                text not null,
+  description         text,
+  subject             text not null,
+  preview_text        text,
+  sender_name         text not null default 'JAI SRI RAM TEXTILES',
+  sender_email        text not null default 'no-reply@jaisriramtextiles.in',
+  reply_to            text default 'jaisriramtextilekpm@gmail.com',
+  content_json        jsonb not null default '[]'::jsonb,
+  content_html        text,
+  plain_text          text,
+  audience_type       text not null default 'all_users',
+  segment_id          uuid references email_segments(id) on delete set null,
+  filter_rules        jsonb,
+  selected_user_ids   jsonb,
+  status              text not null default 'draft', -- draft, scheduled, sending, sent, paused, cancelled, failed
+  scheduled_at        timestamptz,
+  sent_at             timestamptz,
+  total_recipients    int not null default 0,
+  sent_count          int not null default 0,
+  delivered_count     int not null default 0,
+  opened_count        int not null default 0,
+  unique_opens_count  int not null default 0,
+  clicked_count       int not null default 0,
+  unique_clicks_count int not null default 0,
+  failed_count        int not null default 0,
+  bounced_count       int not null default 0,
+  unsubscribed_count  int not null default 0,
+  created_by          uuid references profiles(id) on delete set null,
+  created_at          timestamptz not null default now(),
+  updated_at          timestamptz not null default now()
+);
+
+create table if not exists email_campaign_recipients (
+  id                  uuid primary key default gen_random_uuid(),
+  campaign_id         uuid not null references email_campaigns(id) on delete cascade,
+  user_id             uuid references profiles(id) on delete set null,
+  email               text not null,
+  name                text,
+  status              text not null default 'queued', -- queued, sending, sent, delivered, opened, clicked, bounced, failed, unsubscribed
+  provider_message_id text,
+  error_message       text,
+  retry_count         int not null default 0,
+  sent_at             timestamptz,
+  delivered_at        timestamptz,
+  opened_at           timestamptz,
+  clicked_at          timestamptz,
+  bounced_at          timestamptz,
+  unsubscribed_at     timestamptz,
+  metadata            jsonb,
+  created_at          timestamptz not null default now()
+);
+
+create table if not exists email_unsubscribes (
+  id                  uuid primary key default gen_random_uuid(),
+  email               text unique not null,
+  reason              text,
+  campaign_id         uuid references email_campaigns(id) on delete set null,
+  created_at          timestamptz not null default now()
+);
+
+-- Marketing indexes
+create index if not exists idx_campaign_recipients_campaign on email_campaign_recipients(campaign_id);
+create index if not exists idx_campaign_recipients_status on email_campaign_recipients(campaign_id, status);
+create index if not exists idx_campaign_recipients_email on email_campaign_recipients(email);
+create index if not exists idx_email_unsubscribes_email on email_unsubscribes(email);
+create index if not exists idx_email_campaigns_status on email_campaigns(status);
+

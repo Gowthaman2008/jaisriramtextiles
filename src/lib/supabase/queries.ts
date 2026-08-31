@@ -120,6 +120,36 @@ export async function getProductsByCategoryId(categoryId: string): Promise<Produ
   return (data ?? []).map(toCardProduct);
 }
 
+function interleaveProductsByCategory(products: Product[]): Product[] {
+  if (products.length <= 1) return products;
+
+  // Group products by their category slug
+  const groups: Record<string, Product[]> = {};
+  for (const p of products) {
+    const cat = p.category || "uncategorized";
+    if (!groups[cat]) groups[cat] = [];
+    groups[cat].push(p);
+  }
+
+  const categoryKeys = Object.keys(groups);
+  const mixed: Product[] = [];
+  let index = 0;
+  let hasMore = true;
+
+  while (hasMore) {
+    hasMore = false;
+    for (const key of categoryKeys) {
+      if (index < groups[key].length) {
+        mixed.push(groups[key][index]);
+        hasMore = true;
+      }
+    }
+    index++;
+  }
+
+  return mixed;
+}
+
 export async function getOnSaleProducts(): Promise<Product[]> {
   const supabase = await createClient();
   const { data } = await supabase
@@ -129,7 +159,8 @@ export async function getOnSaleProducts(): Promise<Product[]> {
     .eq("is_on_sale", true)
     .order("created_at", { ascending: false })
     .returns<DbProduct[]>();
-  return (data ?? []).map(toCardProduct);
+  const cardProducts = (data ?? []).map(toCardProduct);
+  return interleaveProductsByCategory(cardProducts);
 }
 
 export async function getAllProducts(): Promise<Product[]> {
@@ -140,7 +171,8 @@ export async function getAllProducts(): Promise<Product[]> {
     .eq("is_active", true)
     .order("created_at", { ascending: false })
     .returns<DbProduct[]>();
-  return (data ?? []).map(toCardProduct);
+  const cardProducts = (data ?? []).map(toCardProduct);
+  return interleaveProductsByCategory(cardProducts);
 }
 
 export async function getProductBySlug(slug: string): Promise<Product | null> {
