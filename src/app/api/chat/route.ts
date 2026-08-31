@@ -99,11 +99,7 @@ export async function POST(request: Request) {
       lastUserMsg.includes("scarf")
     );
 
-<<<<<<< HEAD
-    let matchedProducts: any[] = [];
-=======
     matchedProducts = [];
->>>>>>> 3986845 (fix(chat): fix matchedProducts scoping build error and add swipe controls)
 
     if (isPhotoOrProductIntent) {
       let filtered = dbProducts.filter((p) => {
