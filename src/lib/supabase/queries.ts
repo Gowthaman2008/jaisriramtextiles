@@ -177,12 +177,48 @@ export async function getAllProducts(): Promise<Product[]> {
 
 export async function getProductBySlug(slug: string): Promise<Product | null> {
   const supabase = await createClient();
-  const { data } = await supabase
+  const rawDecoded = decodeURIComponent(slug).trim();
+  const cleanSlug = rawDecoded.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+
+  // 1. Try exact active slug match
+  let { data } = await supabase
     .from("products")
     .select(PRODUCT_SELECT)
-    .eq("slug", slug)
+    .eq("slug", cleanSlug)
     .eq("is_active", true)
     .maybeSingle<DbProduct>();
+
+  // 2. Fallback to raw slug if different
+  if (!data && cleanSlug !== slug) {
+    const res = await supabase
+      .from("products")
+      .select(PRODUCT_SELECT)
+      .eq("slug", slug)
+      .eq("is_active", true)
+      .maybeSingle<DbProduct>();
+    data = res.data;
+  }
+
+  // 3. Fallback: match product even if is_active is false (for purchased item reviews)
+  if (!data) {
+    const res = await supabase
+      .from("products")
+      .select(PRODUCT_SELECT)
+      .or(`slug.eq.${cleanSlug},slug.eq.${slug},slug.ilike.${cleanSlug}`)
+      .maybeSingle<DbProduct>();
+    data = res.data;
+  }
+
+  // 4. Fallback: match by product name
+  if (!data) {
+    const res = await supabase
+      .from("products")
+      .select(PRODUCT_SELECT)
+      .ilike("name", rawDecoded)
+      .maybeSingle<DbProduct>();
+    data = res.data;
+  }
+
   return data ? toCardProduct(data) : null;
 }
 

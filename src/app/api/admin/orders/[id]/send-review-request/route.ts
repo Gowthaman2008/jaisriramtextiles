@@ -149,9 +149,10 @@ export async function POST(
     const itemsHtml = items
       .map((item: any) => {
         const product = productsMap[item.product_id] || item.products || item.product || {};
-        const slug = product.slug || (item.name ? item.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") : "");
-        const reviewUrl = slug
-          ? `${siteUrl}/product/${slug}#reviews`
+        const rawSlug = product.slug || item.slug || (item.name ? item.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") : "");
+        const cleanSlug = rawSlug.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+        const reviewUrl = cleanSlug
+          ? `${siteUrl}/product/${encodeURIComponent(cleanSlug)}#reviews`
           : `${siteUrl}/account?tab=orders`;
 
         const rawImg =
@@ -202,9 +203,10 @@ export async function POST(
       .join("");
 
     const firstProduct = productsMap[items[0]?.product_id] || items[0]?.products || items[0]?.product;
-    const primaryProductSlug = firstProduct?.slug || (items[0]?.name ? items[0].name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") : "");
-    const primaryReviewUrl = primaryProductSlug
-      ? `${siteUrl}/product/${primaryProductSlug}#reviews`
+    const rawPrimarySlug = firstProduct?.slug || items[0]?.slug || (items[0]?.name ? items[0].name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") : "");
+    const cleanPrimarySlug = rawPrimarySlug.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+    const primaryReviewUrl = cleanPrimarySlug
+      ? `${siteUrl}/product/${encodeURIComponent(cleanPrimarySlug)}#reviews`
       : `${siteUrl}/account?tab=orders`;
 
     const html = `
@@ -280,16 +282,17 @@ export async function POST(
 
     <!-- Footer -->
     <div style="background-color: #FAF8F5; border-top: 1px solid #ECE6D8; padding: 24px; text-align: center; font-size: 11px; color: #8C827A; line-height: 1.6;">
-      <p style="margin: 0 0 4px; font-weight: 600; color: #1F1C18;">
+      <p style="margin: 0 0 4px; font-weight: 700; color: #1F1C18; font-size: 12px; letter-spacing: 0.5px; text-transform: uppercase;">
         Jai Sri Ram Textiles — Authentic Handloom Since 2008
       </p>
-      <p style="margin: 0 0 8px;">
-        Palani, Dindigul, Tamil Nadu | +91 93457 41669 | contact@jaisriramtextiles.in
+      <p style="margin: 0 0 8px; color: #6E655A;">
+        5/136/5, Shasti Smart City, Kallankattuvalasu, Kumarapalayam, Namakkal, Tamil Nadu &ndash; 638183<br/>
+        Email: <a href="mailto:jaisriramtextilekpm@gmail.com" style="color: #8C6D2D; font-weight: 600; text-decoration: none;">jaisriramtextilekpm@gmail.com</a>
       </p>
       <p style="margin: 0;">
-        <a href="${siteUrl}" style="color: #B8860B; text-decoration: none; font-weight: 600;">Visit Store</a> &bull;
+        <a href="${siteUrl}" style="color: #B8860B; text-decoration: none; font-weight: 700;">Visit Website (${siteUrl.replace(/^https?:\/\//, "")})</a> &bull;
         <a href="${siteUrl}/policies/privacy" style="color: #8C827A; text-decoration: none;">Privacy Policy</a> &bull;
-        <a href="${siteUrl}/contact" style="color: #8C827A; text-decoration: none;">Support</a>
+        <a href="${siteUrl}/contact" style="color: #8C827A; text-decoration: none;">Customer Support</a>
       </p>
     </div>
   </div>
