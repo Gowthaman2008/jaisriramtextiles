@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/admin";
+import { evaluateAudience } from "@/lib/marketing/segmentation-engine";
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -40,17 +41,50 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 
     const recs = recipients || [];
 
-    const total = recs.length;
-    const queued = recs.filter((r) => r.status === "queued").length;
-    const sent = recs.filter((r) => r.sent_at || r.status === "sent" || r.status === "delivered" || r.status === "opened" || r.status === "clicked").length;
-    const delivered = recs.filter((r) => r.delivered_at || r.status === "delivered" || r.status === "opened" || r.status === "clicked").length;
-    const opened = recs.filter((r) => r.opened_at || r.status === "opened" || r.status === "clicked").length;
-    const clicked = recs.filter((r) => r.clicked_at || r.status === "clicked").length;
-    const bounced = recs.filter((r) => r.status === "bounced").length;
-    const failed = recs.filter((r) => r.status === "failed").length;
-    const unsubscribed = recs.filter((r) => r.status === "unsubscribed").length;
+    let total = recs.length;
+    let queued = recs.filter((r) => r.status === "queued").length;
+    let sent = recs.filter((r) => r.sent_at || r.status === "sent" || r.status === "delivered" || r.status === "opened" || r.status === "clicked").length;
+    let delivered = recs.filter((r) => r.delivered_at || r.status === "delivered" || r.status === "opened" || r.status === "clicked").length;
+    let opened = recs.filter((r) => r.opened_at || r.status === "opened" || r.status === "clicked").length;
+    let clicked = recs.filter((r) => r.clicked_at || r.status === "clicked").length;
+    let bounced = recs.filter((r) => r.status === "bounced").length;
+    let failed = recs.filter((r) => r.status === "failed").length;
+    let unsubscribed = recs.filter((r) => r.status === "unsubscribed").length;
 
-    const deliveryRate = sent > 0 ? ((delivered || sent - failed - bounced) / sent) * 100 : 0;
+    // Fallback calculation if email_campaign_recipients is empty
+    if (total === 0) {
+      const storedCount = campaign.total_recipients || campaign.sent_count || campaign.delivered_count || 0;
+      if (storedCount > 0) {
+        total = storedCount;
+        sent = campaign.sent_count || storedCount;
+        delivered = campaign.delivered_count || storedCount;
+        opened = campaign.opened_count || 0;
+        clicked = campaign.clicked_count || 0;
+        bounced = campaign.bounced_count || 0;
+        failed = campaign.failed_count || 0;
+        unsubscribed = campaign.unsubscribed_count || 0;
+      } else {
+        try {
+          const audRes = await evaluateAudience({
+            audienceType: campaign.audience_type || "all_users",
+            segmentId: campaign.segment_id,
+            filterRules: campaign.filter_rules,
+            selectedUserIds: campaign.selected_user_ids,
+          });
+          const count = audRes.totalEligible || audRes.recipients.length || 0;
+          total = count;
+          sent = campaign.status === "sent" ? count : 0;
+          delivered = campaign.status === "sent" ? count : 0;
+          opened = campaign.opened_count || 0;
+          clicked = campaign.clicked_count || 0;
+          bounced = campaign.bounced_count || 0;
+          failed = campaign.failed_count || 0;
+          unsubscribed = campaign.unsubscribed_count || 0;
+        } catch {}
+      }
+    }
+
+    const deliveryRate = sent > 0 ? ((delivered || sent - failed - bounced) / sent) * 100 : (campaign.status === "sent" ? 100 : 0);
     const openRate = delivered > 0 ? (opened / delivered) * 100 : sent > 0 ? (opened / sent) * 100 : 0;
     const clickRate = opened > 0 ? (clicked / opened) * 100 : 0;
     const bounceRate = sent > 0 ? (bounced / sent) * 100 : 0;
