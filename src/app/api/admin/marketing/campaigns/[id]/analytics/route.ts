@@ -7,13 +7,28 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     const supabase = createServiceClient();
 
     // 1. Fetch campaign
-    const { data: campaign, error } = await supabase
-      .from("email_campaigns")
-      .select("*")
-      .eq("id", id)
-      .single();
+    let campaign: any = null;
+    try {
+      const { data: dbCampaign } = await supabase
+        .from("email_campaigns")
+        .select("*")
+        .eq("id", id)
+        .maybeSingle();
+      if (dbCampaign) campaign = dbCampaign;
+    } catch {}
 
-    if (error || !campaign) {
+    if (!campaign) {
+      const { data: settingsData } = await supabase
+        .from("app_settings")
+        .select("value")
+        .eq("key", "stored_email_campaigns")
+        .maybeSingle();
+
+      const stored: any[] = Array.isArray(settingsData?.value) ? settingsData.value : [];
+      campaign = stored.find((c: any) => c.id === id);
+    }
+
+    if (!campaign) {
       return NextResponse.json({ error: "Campaign not found" }, { status: 404 });
     }
 

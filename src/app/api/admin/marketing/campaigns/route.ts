@@ -18,8 +18,14 @@ export async function GET(request: Request) {
       .select("*")
       .order("created_at", { ascending: false });
 
-    if (!error && campaigns) {
-      return NextResponse.json(campaigns);
+    if (!error && campaigns && campaigns.length > 0) {
+      const normalized = campaigns.map((c) => {
+        if ((c.sent_at || c.sent_count > 0) && c.status === "draft") {
+          return { ...c, status: "sent" };
+        }
+        return c;
+      });
+      return NextResponse.json(normalized);
     }
 
     // Fallback to app_settings storage if email_campaigns table doesn't exist
@@ -29,7 +35,16 @@ export async function GET(request: Request) {
       .eq("key", "stored_email_campaigns")
       .maybeSingle();
 
-    const stored = Array.isArray(settingsData?.value) ? settingsData.value : [];
+    let stored: any[] = Array.isArray(settingsData?.value) ? settingsData.value : [];
+    
+    // Normalize any dispatched campaigns to 'sent'
+    stored = stored.map((c) => {
+      if ((c.sent_at || c.sent_count > 0) && c.status === "draft") {
+        return { ...c, status: "sent" };
+      }
+      return c;
+    });
+
     return NextResponse.json(stored);
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });

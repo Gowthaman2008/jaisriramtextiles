@@ -214,22 +214,22 @@ export function SegmentManager({ onSelectSegmentForCampaign }: SegmentManagerPro
                   <span className="text-[10px] font-bold uppercase tracking-wider text-zari-deep bg-cream/60 px-2 py-0.5 rounded border border-line">
                     Segment
                   </span>
-                  <div className="flex items-center gap-1 opacity-80 group-hover:opacity-100">
+                  <div className="flex items-center gap-1.5 opacity-90 group-hover:opacity-100">
                     <button
                       type="button"
                       onClick={() => openEditModal(seg)}
-                      className="p-1 text-taupe hover:text-ink cursor-pointer"
+                      className="w-7 h-7 inline-flex items-center justify-center rounded-md border border-line bg-white hover:bg-cream/60 text-taupe hover:text-ink shadow-xs cursor-pointer transition-all shrink-0"
                       title="Edit"
                     >
-                      <Edit2 className="w-3.5 h-3.5" />
+                      <Edit2 className="w-3.5 h-3.5 shrink-0" />
                     </button>
                     <button
                       type="button"
                       onClick={() => handleDeleteSegment(seg.id, seg.name)}
-                      className="p-1 text-danger/70 hover:text-danger cursor-pointer"
+                      className="w-7 h-7 inline-flex items-center justify-center rounded-md border border-line bg-white hover:bg-rose-50 text-danger/70 hover:text-danger shadow-xs cursor-pointer transition-all shrink-0"
                       title="Delete"
                     >
-                      <Trash2 className="w-3.5 h-3.5" />
+                      <Trash2 className="w-3.5 h-3.5 shrink-0" />
                     </button>
                   </div>
                 </div>

@@ -82,6 +82,10 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     if (filter_rules !== undefined) updates.filter_rules = filter_rules;
     if (selected_user_ids !== undefined) updates.selected_user_ids = Array.isArray(selected_user_ids) ? selected_user_ids : [];
     if (status !== undefined) updates.status = status;
+    if (body.sent_at !== undefined) updates.sent_at = body.sent_at;
+    if (body.total_recipients !== undefined) updates.total_recipients = body.total_recipients;
+    if (body.sent_count !== undefined) updates.sent_count = body.sent_count;
+    if (body.delivered_count !== undefined) updates.delivered_count = body.delivered_count;
     if (scheduled_at !== undefined) {
       updates.scheduled_at = scheduled_at ? new Date(scheduled_at).toISOString() : null;
     }

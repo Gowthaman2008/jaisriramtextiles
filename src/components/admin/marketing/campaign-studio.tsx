@@ -267,6 +267,7 @@ export function CampaignStudio({
     setDispatching(true);
     try {
       // 1. Save/update campaign first
+      const nowIso = new Date().toISOString();
       const payload = {
         id: initialCampaign?.id,
         name: name.trim(),
@@ -280,7 +281,9 @@ export function CampaignStudio({
         audience_type: audienceType,
         segment_id: selectedSegmentId || null,
         filter_rules: audienceType === "custom_filter" ? { combinator: filterCombinator, conditions: filterConditions } : null,
-        status: sendMode === "schedule" ? "scheduled" : "draft",
+        status: sendMode === "schedule" ? "scheduled" : "sent",
+        sent_at: sendMode === "now" ? nowIso : null,
+        total_recipients: audienceData?.totalEligible || 0,
         scheduled_at: sendMode === "schedule" ? new Date(scheduledAt).toISOString() : null,
       };
 
@@ -310,9 +313,17 @@ export function CampaignStudio({
           throw new Error(errData.error || "Failed to dispatch campaign");
         }
 
+        const sendData = await sendRes.json().catch(() => ({}));
         notify("🚀 Campaign queued and is now broadcasting to customers!");
+        savedCampaign.status = "sent";
+        savedCampaign.sent_at = sendData.sentAt || nowIso;
+        savedCampaign.total_recipients = sendData.totalRecipients || audienceData?.totalEligible || 0;
+        savedCampaign.delivered_count = sendData.totalRecipients || audienceData?.totalEligible || 0;
+        savedCampaign.sent_count = sendData.totalRecipients || audienceData?.totalEligible || 0;
       } else {
         notify("📅 Campaign scheduled successfully!");
+        savedCampaign.status = "scheduled";
+        savedCampaign.scheduled_at = new Date(scheduledAt).toISOString();
       }
 
       onSaved(savedCampaign);

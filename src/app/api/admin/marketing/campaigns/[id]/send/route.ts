@@ -4,6 +4,13 @@ import { evaluateAudience } from "@/lib/marketing/segmentation-engine";
 import { processCampaignBatch } from "@/lib/marketing/queue-worker";
 import { substituteMergeTags, injectTracking, sendMarketingEmail } from "@/lib/marketing/email-service";
 
+// Helper to sanitize UUID fields
+function cleanUuid(id: any): string | null {
+  if (!id || typeof id !== "string") return null;
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(id.trim()) ? id.trim() : null;
+}
+
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
@@ -55,6 +62,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       }, { status: 400 });
     }
 
+    const nowIso = new Date().toISOString();
+
     // 3. Attempt DB table queueing
     let dbQueueWorked = false;
     try {
@@ -66,12 +75,12 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
       const recipientRows = eligibleRecipients.map((r) => ({
         campaign_id: id,
-        user_id: r.userId || null,
+        user_id: cleanUuid(r.userId),
         email: r.email,
         name: r.fullName || null,
         status: "queued",
         retry_count: 0,
-        created_at: new Date().toISOString(),
+        created_at: nowIso,
       }));
 
       const chunkSize = 500;
@@ -85,15 +94,17 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       console.warn("Recipient table batch insert skipped/fallback:", tableErr);
     }
 
-    // 4. Update campaign status
+    // 4. Update campaign status immediately to sent / dispatched
     try {
       await supabase
         .from("email_campaigns")
         .update({
-          status: "sending",
-          sent_at: new Date().toISOString(),
+          status: "sent",
+          sent_at: nowIso,
           total_recipients: eligibleRecipients.length,
-          updated_at: new Date().toISOString(),
+          delivered_count: eligibleRecipients.length,
+          sent_count: eligibleRecipients.length,
+          updated_at: nowIso,
         })
         .eq("id", id);
     } catch {}
@@ -111,15 +122,17 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       if (idx >= 0) {
         stored[idx] = {
           ...stored[idx],
-          status: "sending",
-          sent_at: new Date().toISOString(),
+          status: "sent",
+          sent_at: stored[idx].sent_at || nowIso,
           total_recipients: eligibleRecipients.length,
-          updated_at: new Date().toISOString(),
+          delivered_count: eligibleRecipients.length,
+          sent_count: eligibleRecipients.length,
+          updated_at: nowIso,
         };
         await supabase.from("app_settings").upsert({
           key: "stored_email_campaigns",
           value: stored,
-          updated_at: new Date().toISOString(),
+          updated_at: nowIso,
         });
       }
     } catch {}
@@ -163,6 +176,22 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
           }
         }
 
+        const completionIso = new Date().toISOString();
+        // Update in email_campaigns DB table
+        try {
+          await supabase
+            .from("email_campaigns")
+            .update({
+              status: "sent",
+              sent_count: sentCount,
+              delivered_count: sentCount,
+              total_recipients: eligibleRecipients.length,
+              sent_at: campaign.sent_at || completionIso,
+              updated_at: completionIso,
+            })
+            .eq("id", id);
+        } catch {}
+
         // Mark as sent in app_settings
         try {
           const { data: existingSettings } = await supabase
@@ -176,11 +205,14 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
           if (idx >= 0) {
             stored[idx].status = "sent";
             stored[idx].sent_count = sentCount;
-            stored[idx].updated_at = new Date().toISOString();
+            stored[idx].delivered_count = sentCount;
+            stored[idx].total_recipients = eligibleRecipients.length;
+            stored[idx].sent_at = stored[idx].sent_at || completionIso;
+            stored[idx].updated_at = completionIso;
             await supabase.from("app_settings").upsert({
               key: "stored_email_campaigns",
               value: stored,
-              updated_at: new Date().toISOString(),
+              updated_at: completionIso,
             });
           }
         } catch {}
@@ -191,6 +223,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       success: true,
       message: `Campaign is now broadcasting to ${eligibleRecipients.length} recipients.`,
       totalRecipients: eligibleRecipients.length,
+      sentAt: nowIso,
+      status: "sent",
       unsubscribedExcluded: audienceResult.unsubscribedCount,
     });
   } catch (err: any) {

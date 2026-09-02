@@ -100,6 +100,44 @@ export function MarketingHub({ products = [], coupons = [] }: MarketingHubProps)
     notify(`Loaded template "${tpl.name}" into campaign studio!`);
   }
 
+  async function handleSendCampaignNow(campaign: EmailCampaign) {
+    try {
+      const res = await fetch(`/api/admin/marketing/campaigns/${campaign.id}/send`, {
+        method: "POST",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        notify(`🚀 Broadcast dispatched! Reaching ${data.totalRecipients || "all"} audience recipients.`);
+        await loadInitialMarketingData();
+      } else {
+        throw new Error(data.error || "Failed to dispatch campaign");
+      }
+    } catch (err: any) {
+      notify("Broadcast failed: " + err.message);
+    }
+  }
+
+  async function handleToggleCampaignStatus(campaign: EmailCampaign, newStatus: string) {
+    try {
+      const res = await fetch(`/api/admin/marketing/campaigns/${campaign.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          status: newStatus,
+          sent_at: newStatus === "sent" ? (campaign.sent_at || new Date().toISOString()) : null,
+        }),
+      });
+      if (res.ok) {
+        notify(`Campaign marked as ${newStatus}`);
+        await loadInitialMarketingData();
+      } else {
+        throw new Error("Failed to update campaign status");
+      }
+    } catch (err: any) {
+      notify("Status update error: " + err.message);
+    }
+  }
+
   async function handleDeleteCampaign(id: string) {
     try {
       const res = await fetch(`/api/admin/marketing/campaigns/${id}`, { method: "DELETE" });
@@ -187,6 +225,8 @@ export function MarketingHub({ products = [], coupons = [] }: MarketingHubProps)
               onDuplicateCampaign={handleDuplicateCampaign}
               onViewAnalytics={(c) => setSelectedAnalyticsCampaign(c)}
               onDeleteCampaign={handleDeleteCampaign}
+              onSendCampaign={handleSendCampaignNow}
+              onToggleStatus={handleToggleCampaignStatus as any}
               onRefresh={loadInitialMarketingData}
             />
           )}
@@ -196,9 +236,10 @@ export function MarketingHub({ products = [], coupons = [] }: MarketingHubProps)
               initialCampaign={editingCampaign}
               initialTemplate={selectedTemplateForNew}
               onBack={() => setActiveSubTab("campaigns")}
-              onSaved={(saved) => {
+              onSaved={async (saved) => {
                 setCampaigns([saved, ...campaigns.filter((c) => c.id !== saved.id)]);
                 setActiveSubTab("campaigns");
+                await loadInitialMarketingData();
               }}
               products={products}
               coupons={coupons}
