@@ -160,7 +160,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
             const personalizedSubject = substituteMergeTags(campaign.subject, recipientCtx, { campaignId: id });
             let personalizedHtml = substituteMergeTags(campaign.content_html || "", recipientCtx, { campaignId: id });
-            personalizedHtml = injectTracking(personalizedHtml, { campaignId: id, recipientId: recipient.userId || id });
+            const recipientIdentifier = recipient.email || recipient.userId || id;
+            personalizedHtml = injectTracking(personalizedHtml, { campaignId: id, recipientId: recipientIdentifier });
 
             await sendMarketingEmail({
               to: recipient.email,

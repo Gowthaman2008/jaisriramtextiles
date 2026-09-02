@@ -33,7 +33,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       return NextResponse.json({ error: "Campaign not found" }, { status: 404 });
     }
 
-    // 2. Fetch recipient status counts
+    // 2. Fetch recipient status counts from email_campaign_recipients table
     const { data: recipients } = await supabase
       .from("email_campaign_recipients")
       .select("status, sent_at, delivered_at, opened_at, clicked_at, bounced_at, unsubscribed_at")
@@ -51,7 +51,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     let failed = recs.filter((r) => r.status === "failed").length;
     let unsubscribed = recs.filter((r) => r.status === "unsubscribed").length;
 
-    // Fallback calculation if email_campaign_recipients is empty
+    // 3. Fallback calculation if email_campaign_recipients is empty
     if (total === 0) {
       const storedCount = campaign.total_recipients || campaign.sent_count || campaign.delivered_count || 0;
       if (storedCount > 0) {
@@ -83,6 +83,26 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
         } catch {}
       }
     }
+
+    // 4. Merge tracking events from app_settings
+    try {
+      const { data: settingsData } = await supabase
+        .from("app_settings")
+        .select("value")
+        .eq("key", "marketing_tracking_events")
+        .maybeSingle();
+
+      const trackingEvents = settingsData?.value?.[id] || {};
+      const openCountFromEvents = Object.keys(trackingEvents).length;
+      const clickCountFromEvents = Object.values(trackingEvents).filter((e: any) => e.clicked_at).length;
+
+      if (openCountFromEvents > opened) {
+        opened = openCountFromEvents;
+      }
+      if (clickCountFromEvents > clicked) {
+        clicked = clickCountFromEvents;
+      }
+    } catch {}
 
     const deliveryRate = sent > 0 ? ((delivered || sent - failed - bounced) / sent) * 100 : (campaign.status === "sent" ? 100 : 0);
     const openRate = delivered > 0 ? (opened / delivered) * 100 : sent > 0 ? (opened / sent) * 100 : 0;
