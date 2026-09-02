@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { EmailCampaign, EmailBlock, EmailSegment, FilterRuleGroup, FilterCondition } from "@/lib/marketing/types";
 import { EmailBuilder } from "./email-builder";
 import {
@@ -955,9 +956,18 @@ export function CampaignStudio({
       )}
 
       {/* AI Subject Suggestions Modal */}
-      {showAiModal && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-ink/75 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white border border-line rounded-card max-w-md w-full p-6 shadow-2xl space-y-4 animate-scale-up relative z-10">
+      {showAiModal && typeof document !== "undefined" && createPortal(
+        <div
+          data-lenis-prevent="true"
+          className="fixed inset-0 z-[999999] flex items-center justify-center p-4 bg-ink/80 backdrop-blur-md animate-fade-in"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowAiModal(false);
+          }}
+        >
+          <div
+            data-lenis-prevent="true"
+            className="bg-white border border-line rounded-card max-w-md w-full p-6 shadow-2xl space-y-4 animate-scale-up relative z-10 max-h-[85vh] overflow-y-auto overscroll-contain"
+          >
             <div className="flex justify-between items-center pb-2 border-b border-line">
               <h3 className="font-display text-base text-ink font-bold flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-zari" /> AI Subject Line Suggestions
@@ -1001,7 +1011,8 @@ export function CampaignStudio({
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { EmailCampaign } from "@/lib/marketing/types";
-import { RefreshCw, Download, Search, CheckCircle2, Eye, MousePointer, AlertCircle, XCircle, Users, BarChart3, Check } from "lucide-react";
+import { RefreshCw, Download, Search, CheckCircle2, Eye, MousePointer, Users, BarChart3, Check, X } from "lucide-react";
 import { useNotification } from "@/components/providers/notification-provider";
 
 interface CampaignAnalyticsModalProps {
@@ -12,6 +13,7 @@ interface CampaignAnalyticsModalProps {
 
 export function CampaignAnalyticsModal({ campaign, onClose }: CampaignAnalyticsModalProps) {
   const { notify } = useNotification();
+  const [mounted, setMounted] = useState(false);
   const [loading, setLoading] = useState(true);
   const [analyticsData, setAnalyticsData] = useState<any>(null);
   const [recipients, setRecipients] = useState<any[]>([]);
@@ -21,6 +23,15 @@ export function CampaignAnalyticsModal({ campaign, onClose }: CampaignAnalyticsM
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [markingEmail, setMarkingEmail] = useState<string | null>(null);
+
+  useEffect(() => {
+    setMounted(true);
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, []);
 
   useEffect(() => {
     loadAnalytics();
@@ -125,9 +136,20 @@ export function CampaignAnalyticsModal({ campaign, onClose }: CampaignAnalyticsM
     bounceRate: 0,
   };
 
-  return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 bg-ink/75 backdrop-blur-sm animate-fade-in">
-      <div className="bg-white border border-line rounded-card max-w-4xl w-full p-6 shadow-2xl space-y-6 max-h-[90vh] overflow-y-auto animate-scale-up relative z-10">
+  if (!mounted) return null;
+
+  const modalContent = (
+    <div
+      data-lenis-prevent="true"
+      className="fixed inset-0 z-[999999] flex items-center justify-center p-4 sm:p-6 bg-ink/80 backdrop-blur-md animate-fade-in"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div
+        data-lenis-prevent="true"
+        className="bg-white border border-line rounded-card max-w-4xl w-full p-6 sm:p-7 shadow-2xl space-y-6 max-h-[90vh] overflow-y-auto overscroll-contain animate-scale-up relative z-10"
+      >
         {/* Modal Header */}
         <div className="flex justify-between items-start pb-3 border-b border-line">
           <div>
@@ -155,8 +177,9 @@ export function CampaignAnalyticsModal({ campaign, onClose }: CampaignAnalyticsM
               type="button"
               onClick={onClose}
               className="text-taupe hover:text-ink text-sm p-1.5 rounded-md hover:bg-cream/40 cursor-pointer"
+              title="Close Report"
             >
-              ✕
+              <X className="w-5 h-5" />
             </button>
           </div>
         </div>
@@ -403,4 +426,6 @@ export function CampaignAnalyticsModal({ campaign, onClose }: CampaignAnalyticsM
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { createPortal } from "react-dom";
 import { EmailBlock, EmailBlockType } from "@/lib/marketing/types";
 import {
   Plus,
@@ -650,9 +651,18 @@ export function EmailBuilder({
       </div>
 
       {/* Send Test Email Modal */}
-      {showTestModal && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-ink/75 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white border border-line rounded-card max-w-md w-full p-6 shadow-2xl space-y-4 animate-scale-up relative z-10">
+      {showTestModal && typeof document !== "undefined" && createPortal(
+        <div
+          data-lenis-prevent="true"
+          className="fixed inset-0 z-[999999] flex items-center justify-center p-4 bg-ink/80 backdrop-blur-md animate-fade-in"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowTestModal(false);
+          }}
+        >
+          <div
+            data-lenis-prevent="true"
+            className="bg-white border border-line rounded-card max-w-md w-full p-6 shadow-2xl space-y-4 animate-scale-up relative z-10 overscroll-contain"
+          >
             <div className="flex justify-between items-center pb-2 border-b border-line">
               <h3 className="font-display text-lg text-ink flex items-center gap-2">
                 <Send className="w-4 h-4 text-zari" /> Send Test Email
@@ -708,7 +718,8 @@ export function EmailBuilder({
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

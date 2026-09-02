@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { EmailSegment, FilterRuleGroup, FilterCondition, FilterField, FilterOperator } from "@/lib/marketing/types";
 import { Plus, Trash2, Edit2, Users, RefreshCw, Sparkles, Filter, Copy, ArrowRight, CheckCircle2 } from "lucide-react";
 import { useNotification } from "@/components/providers/notification-provider";
@@ -274,9 +275,18 @@ export function SegmentManager({ onSelectSegmentForCampaign }: SegmentManagerPro
       )}
 
       {/* Segment Create / Edit Modal with Visual Rule Builder */}
-      {showModal && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-ink/75 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white border border-line rounded-card max-w-2xl w-full p-6 shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto animate-scale-up relative z-10">
+      {showModal && typeof document !== "undefined" && createPortal(
+        <div
+          data-lenis-prevent="true"
+          className="fixed inset-0 z-[999999] flex items-center justify-center p-4 bg-ink/80 backdrop-blur-md animate-fade-in"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowModal(false);
+          }}
+        >
+          <div
+            data-lenis-prevent="true"
+            className="bg-white border border-line rounded-card max-w-2xl w-full p-6 shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto overscroll-contain animate-scale-up relative z-10"
+          >
             <div className="flex justify-between items-center pb-2 border-b border-line">
               <h3 className="font-display text-lg text-ink flex items-center gap-2">
                 <Filter className="w-4 h-4 text-zari" /> {editingSegment ? "Edit Segment" : "Create Audience Segment"}
@@ -455,7 +465,8 @@ export function SegmentManager({ onSelectSegmentForCampaign }: SegmentManagerPro
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

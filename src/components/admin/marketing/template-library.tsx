@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { EmailTemplate } from "@/lib/marketing/types";
 import { Plus, Eye, Copy, ArrowRight, Sparkles, Layout, Trash2, Edit2 } from "lucide-react";
 import { compileEmailHtml } from "@/lib/marketing/email-compiler";
@@ -154,9 +155,18 @@ export function TemplateLibrary({ onUseTemplate }: TemplateLibraryProps) {
       )}
 
       {/* Full Preview Modal */}
-      {previewTemplate && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-ink/75 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white border border-line rounded-card max-w-3xl w-full p-6 shadow-2xl space-y-4 max-h-[90vh] flex flex-col animate-scale-up relative z-10">
+      {previewTemplate && typeof document !== "undefined" && createPortal(
+        <div
+          data-lenis-prevent="true"
+          className="fixed inset-0 z-[999999] flex items-center justify-center p-4 bg-ink/80 backdrop-blur-md animate-fade-in"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setPreviewTemplate(null);
+          }}
+        >
+          <div
+            data-lenis-prevent="true"
+            className="bg-white border border-line rounded-card max-w-3xl w-full p-6 shadow-2xl space-y-4 max-h-[90vh] flex flex-col animate-scale-up relative z-10 overscroll-contain"
+          >
             <div className="flex justify-between items-center pb-2 border-b border-line">
               <div>
                 <h3 className="font-display text-lg text-ink font-bold">{previewTemplate.name}</h3>
@@ -202,7 +212,8 @@ export function TemplateLibrary({ onUseTemplate }: TemplateLibraryProps) {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
