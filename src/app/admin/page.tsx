@@ -4149,30 +4149,10 @@ export default function AdminDashboardPage() {
                 {showProductForm ? (
                   /* Dedicated Full-Screen Product Edit / Create Page */
                   <div className="bg-white border-2 border-zari rounded-card p-6 shadow-lift relative space-y-6">
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-line pb-4">
-                      <div className="flex items-center gap-3">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setShowProductForm(false);
-                            setEditingProduct(null);
-                            if (typeof window !== "undefined") {
-                              window.scrollTo({ top: 0, behavior: "smooth" });
-                            }
-                          }}
-                          className="flex items-center gap-1.5 px-3 py-1.5 border border-line rounded-pill bg-cream hover:bg-beige text-ink text-xs font-semibold cursor-pointer transition-colors"
-                          title="Back to Product Catalog"
-                        >
-                          <ArrowLeft className="w-4 h-4" /> Back to Catalog
-                        </button>
-                        <h3 className="font-display text-xl sm:text-2xl text-ink">
-                          {editingProduct ? `Edit Product: ${editingProduct.name}` : "Create New Product"}
-                        </h3>
-                      </div>
-                      <Button
+                    {/* Top Action & Navigation Bar */}
+                    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-4">
+                      <button
                         type="button"
-                        variant="outline"
-                        size="sm"
                         onClick={() => {
                           setShowProductForm(false);
                           setEditingProduct(null);
@@ -4180,12 +4160,58 @@ export default function AdminDashboardPage() {
                             window.scrollTo({ top: 0, behavior: "smooth" });
                           }
                         }}
+                        className="inline-flex items-center gap-2 px-3.5 py-2 rounded-md border border-line bg-cream/70 hover:bg-cream text-ink text-xs font-semibold shadow-soft hover:border-zari transition-all shrink-0 cursor-pointer"
+                        title="Back to Product Catalog"
                       >
-                        Cancel
-                      </Button>
+                        <ArrowLeft className="w-4 h-4 text-zari-deep" />
+                        <span>Back to Product Catalog</span>
+                      </button>
+
+                      <div className="flex items-center gap-2.5 shrink-0">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setShowProductForm(false);
+                            setEditingProduct(null);
+                            if (typeof window !== "undefined") {
+                              window.scrollTo({ top: 0, behavior: "smooth" });
+                            }
+                          }}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          type="submit"
+                          form="product-editor-form"
+                          variant="gold"
+                          size="sm"
+                          disabled={!isProductModified()}
+                        >
+                          {editingProduct ? "Update Product Details" : "Save Product Details"}
+                        </Button>
+                      </div>
                     </div>
 
-                    <form onSubmit={handleSaveProduct} className="space-y-6">
+                    {/* Editor Title & Context Banner */}
+                    <div className="bg-cream/40 border border-line rounded-lg p-4 space-y-1.5">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-[11px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-zari-tint text-zari-deep border border-zari/20">
+                          {editingProduct ? "Edit Mode" : "New Product"}
+                        </span>
+                        {editingProduct?.slug && (
+                          <span className="text-xs text-taupe font-mono bg-white px-2 py-0.5 rounded border border-line">
+                            slug: {editingProduct.slug}
+                          </span>
+                        )}
+                      </div>
+                      <h3 className="font-display text-xl sm:text-2xl text-ink leading-snug">
+                        {editingProduct ? editingProduct.name : "Create New Product"}
+                      </h3>
+                    </div>
+
+                    <form id="product-editor-form" onSubmit={handleSaveProduct} className="space-y-6">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="flex flex-col gap-1.5">
                           <label className="text-sm font-semibold">Product Name *</label>
@@ -4203,8 +4229,18 @@ export default function AdminDashboardPage() {
                       </div>
 
                       <div className="flex flex-col gap-1.5">
-                        <label className="text-sm font-semibold">Description</label>
-                        <textarea value={prodDesc} onChange={(e) => setProdDesc(e.target.value)} rows={3} className="rounded-md border border-line bg-ivory px-3 py-2 text-sm text-ink outline-none focus:border-zari" />
+                        <div className="flex items-center justify-between">
+                          <label className="text-sm font-semibold text-ink">Description</label>
+                          <span className="text-xs text-taupe font-mono">{prodDesc ? prodDesc.length : 0} characters</span>
+                        </div>
+                        <textarea
+                          value={prodDesc}
+                          onChange={(e) => setProdDesc(e.target.value)}
+                          rows={8}
+                          placeholder="Enter complete product description, fabric weave details, border specifications, wash and care guidelines..."
+                          className="w-full rounded-md border border-line bg-ivory px-3.5 py-3 text-sm text-ink leading-relaxed outline-none focus:border-zari focus:bg-white transition-colors min-h-[180px] resize-y"
+                        />
+                        <p className="text-[11px] text-taupe">Tip: Drag the bottom-right corner to expand the description box if needed.</p>
                       </div>
 
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
