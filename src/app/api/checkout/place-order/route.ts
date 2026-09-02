@@ -278,7 +278,23 @@ export async function POST(request: Request) {
 
         if (orderCountErr) throw orderCountErr;
         if (pastOrders && pastOrders > 0) {
-          return NextResponse.json({ error: "This code is only applicable for new users" }, { status: 400 });
+          return NextResponse.json({ error: "This code is only applicable for new users (first order)" }, { status: 400 });
+        }
+      }
+
+      // Check once-per-user constraint
+      if (coupon.once_per_user) {
+        const { count: pastUsageCount, error: usageErr } = await supabase
+          .from("orders")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", user.id)
+          .eq("coupon_id", coupon.id)
+          .neq("status", "cancelled")
+          .neq("status", "rejected");
+
+        if (usageErr) throw usageErr;
+        if (pastUsageCount && pastUsageCount > 0) {
+          return NextResponse.json({ error: "You have already used this coupon code on a previous order" }, { status: 400 });
         }
       }
 

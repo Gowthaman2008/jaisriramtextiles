@@ -2,20 +2,36 @@ import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/admin";
 import { evaluateAudience } from "@/lib/marketing/segmentation-engine";
 import { processCampaignBatch } from "@/lib/marketing/queue-worker";
+import { substituteMergeTags, injectTracking, sendMarketingEmail } from "@/lib/marketing/email-service";
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
     const supabase = createServiceClient();
 
-    // 1. Fetch campaign
-    const { data: campaign, error: campErr } = await supabase
-      .from("email_campaigns")
-      .select("*")
-      .eq("id", id)
-      .single();
+    // 1. Fetch campaign from DB or app_settings fallback
+    let campaign: any = null;
+    try {
+      const { data: dbCampaign } = await supabase
+        .from("email_campaigns")
+        .select("*")
+        .eq("id", id)
+        .maybeSingle();
+      if (dbCampaign) campaign = dbCampaign;
+    } catch {}
 
-    if (campErr || !campaign) {
+    if (!campaign) {
+      const { data: settingsData } = await supabase
+        .from("app_settings")
+        .select("value")
+        .eq("key", "stored_email_campaigns")
+        .maybeSingle();
+
+      const stored: any[] = Array.isArray(settingsData?.value) ? settingsData.value : [];
+      campaign = stored.find((c: any) => c.id === id);
+    }
+
+    if (!campaign) {
       return NextResponse.json({ error: "Campaign not found" }, { status: 404 });
     }
 
@@ -39,63 +55,141 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       }, { status: 400 });
     }
 
-    // 3. Clear any existing draft/queued recipients for this campaign to prevent duplicates
-    await supabase
-      .from("email_campaign_recipients")
-      .delete()
-      .eq("campaign_id", id)
-      .eq("status", "queued");
+    // 3. Attempt DB table queueing
+    let dbQueueWorked = false;
+    try {
+      await supabase
+        .from("email_campaign_recipients")
+        .delete()
+        .eq("campaign_id", id)
+        .eq("status", "queued");
 
-    // 4. Batch insert into email_campaign_recipients
-    const recipientRows = eligibleRecipients.map((r) => ({
-      campaign_id: id,
-      user_id: r.userId || null,
-      email: r.email,
-      name: r.fullName || null,
-      status: "queued",
-      retry_count: 0,
-      created_at: new Date().toISOString(),
-    }));
+      const recipientRows = eligibleRecipients.map((r) => ({
+        campaign_id: id,
+        user_id: r.userId || null,
+        email: r.email,
+        name: r.fullName || null,
+        status: "queued",
+        retry_count: 0,
+        created_at: new Date().toISOString(),
+      }));
 
-    // Insert in chunks of 500
-    const chunkSize = 500;
-    for (let i = 0; i < recipientRows.length; i += chunkSize) {
-      const chunk = recipientRows.slice(i, i + chunkSize);
-      await supabase.from("email_campaign_recipients").insert(chunk);
+      const chunkSize = 500;
+      for (let i = 0; i < recipientRows.length; i += chunkSize) {
+        const chunk = recipientRows.slice(i, i + chunkSize);
+        const { error: insertErr } = await supabase.from("email_campaign_recipients").insert(chunk);
+        if (insertErr) throw insertErr;
+      }
+      dbQueueWorked = true;
+    } catch (tableErr) {
+      console.warn("Recipient table batch insert skipped/fallback:", tableErr);
     }
 
-    // 5. Update campaign status to 'sending' and set total_recipients
-    await supabase
-      .from("email_campaigns")
-      .update({
-        status: "sending",
-        sent_at: new Date().toISOString(),
-        total_recipients: eligibleRecipients.length,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", id);
-
-    // Audit log
+    // 4. Update campaign status
     try {
-      await supabase.from("audit_logs").insert({
-        action: "campaign.send",
-        entity: "email_campaigns",
-        entity_id: id,
-        meta: {
+      await supabase
+        .from("email_campaigns")
+        .update({
+          status: "sending",
+          sent_at: new Date().toISOString(),
           total_recipients: eligibleRecipients.length,
-          unsubscribed_excluded: audienceResult.unsubscribedCount,
-        },
-      });
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", id);
     } catch {}
 
-    // 6. Asynchronously trigger the queue worker to process the first batch
-    processCampaignBatch(id, 30).catch((err) => {
-      console.error("Queue worker initial batch error:", err);
-    });
+    // Fallback status update in app_settings
+    try {
+      const { data: existingSettings } = await supabase
+        .from("app_settings")
+        .select("value")
+        .eq("key", "stored_email_campaigns")
+        .maybeSingle();
+
+      const stored: any[] = Array.isArray(existingSettings?.value) ? existingSettings.value : [];
+      const idx = stored.findIndex((c: any) => c.id === id);
+      if (idx >= 0) {
+        stored[idx] = {
+          ...stored[idx],
+          status: "sending",
+          sent_at: new Date().toISOString(),
+          total_recipients: eligibleRecipients.length,
+          updated_at: new Date().toISOString(),
+        };
+        await supabase.from("app_settings").upsert({
+          key: "stored_email_campaigns",
+          value: stored,
+          updated_at: new Date().toISOString(),
+        });
+      }
+    } catch {}
+
+    // 5. Trigger dispatch
+    if (dbQueueWorked) {
+      processCampaignBatch(id, 30).catch((err) => {
+        console.error("Queue worker error:", err);
+      });
+    } else {
+      // Direct broadcast loop in background
+      (async () => {
+        let sentCount = 0;
+        for (const recipient of eligibleRecipients) {
+          try {
+            const recipientCtx = {
+              userId: recipient.userId,
+              email: recipient.email,
+              firstName: recipient.fullName?.split(" ")[0] || "Customer",
+              city: recipient.city,
+              state: recipient.state,
+              totalOrders: recipient.totalOrders,
+              totalSpendingRupees: recipient.totalSpendingRupees,
+            };
+
+            const personalizedSubject = substituteMergeTags(campaign.subject, recipientCtx, { campaignId: id });
+            let personalizedHtml = substituteMergeTags(campaign.content_html || "", recipientCtx, { campaignId: id });
+            personalizedHtml = injectTracking(personalizedHtml, { campaignId: id, recipientId: recipient.userId || id });
+
+            await sendMarketingEmail({
+              to: recipient.email,
+              subject: personalizedSubject,
+              html: personalizedHtml,
+              fromName: campaign.sender_name,
+              fromEmail: campaign.sender_email,
+              replyTo: campaign.reply_to,
+            });
+            sentCount++;
+          } catch (sendErr) {
+            console.error("Failed to send email to", recipient.email, sendErr);
+          }
+        }
+
+        // Mark as sent in app_settings
+        try {
+          const { data: existingSettings } = await supabase
+            .from("app_settings")
+            .select("value")
+            .eq("key", "stored_email_campaigns")
+            .maybeSingle();
+
+          const stored: any[] = Array.isArray(existingSettings?.value) ? existingSettings.value : [];
+          const idx = stored.findIndex((c: any) => c.id === id);
+          if (idx >= 0) {
+            stored[idx].status = "sent";
+            stored[idx].sent_count = sentCount;
+            stored[idx].updated_at = new Date().toISOString();
+            await supabase.from("app_settings").upsert({
+              key: "stored_email_campaigns",
+              value: stored,
+              updated_at: new Date().toISOString(),
+            });
+          }
+        } catch {}
+      })().catch(console.error);
+    }
 
     return NextResponse.json({
       success: true,
-      message: `Campaign is now sending to ${eligibleRecipients.length} recipients.`,
+      message: `Campaign is now broadcasting to ${eligibleRecipients.length} recipients.`,
       totalRecipients: eligibleRecipients.length,
       unsubscribedExcluded: audienceResult.unsubscribedCount,
     });

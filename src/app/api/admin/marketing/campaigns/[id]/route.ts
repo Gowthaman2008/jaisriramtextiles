@@ -2,6 +2,12 @@ import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/admin";
 import { compileEmailHtml } from "@/lib/marketing/email-compiler";
 
+function cleanUuid(id: any): string | null {
+  if (!id || typeof id !== "string") return null;
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(id.trim()) ? id.trim() : null;
+}
+
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
@@ -13,11 +19,25 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       .eq("id", id)
       .single();
 
-    if (error || !campaign) {
-      return NextResponse.json({ error: "Campaign not found" }, { status: 404 });
+    if (!error && campaign) {
+      return NextResponse.json(campaign);
     }
 
-    return NextResponse.json(campaign);
+    // Check app_settings fallback
+    const { data: settingsData } = await supabase
+      .from("app_settings")
+      .select("value")
+      .eq("key", "stored_email_campaigns")
+      .maybeSingle();
+
+    const stored: any[] = Array.isArray(settingsData?.value) ? settingsData.value : [];
+    const found = stored.find((c: any) => c.id === id);
+
+    if (found) {
+      return NextResponse.json(found);
+    }
+
+    return NextResponse.json({ error: "Campaign not found" }, { status: 404 });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
@@ -58,9 +78,9 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     if (sender_email !== undefined) updates.sender_email = sender_email.trim();
     if (reply_to !== undefined) updates.reply_to = reply_to ? reply_to.trim() : null;
     if (audience_type !== undefined) updates.audience_type = audience_type;
-    if (segment_id !== undefined) updates.segment_id = segment_id || null;
+    if (segment_id !== undefined) updates.segment_id = cleanUuid(segment_id);
     if (filter_rules !== undefined) updates.filter_rules = filter_rules;
-    if (selected_user_ids !== undefined) updates.selected_user_ids = selected_user_ids;
+    if (selected_user_ids !== undefined) updates.selected_user_ids = Array.isArray(selected_user_ids) ? selected_user_ids : [];
     if (status !== undefined) updates.status = status;
     if (scheduled_at !== undefined) {
       updates.scheduled_at = scheduled_at ? new Date(scheduled_at).toISOString() : null;
@@ -80,21 +100,46 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
       .select()
       .single();
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    if (!error && data) {
+      // Audit log
+      try {
+        await supabase.from("audit_logs").insert({
+          action: "campaign.update",
+          entity: "email_campaigns",
+          entity_id: id,
+          meta: { updates },
+        });
+      } catch {}
+
+      return NextResponse.json(data);
     }
 
-    // Audit log
-    try {
-      await supabase.from("audit_logs").insert({
-        action: "campaign.update",
-        entity: "email_campaigns",
-        entity_id: id,
-        meta: { updates },
-      });
-    } catch {}
+    // Fallback update in app_settings
+    const { data: existingSettings } = await supabase
+      .from("app_settings")
+      .select("value")
+      .eq("key", "stored_email_campaigns")
+      .maybeSingle();
 
-    return NextResponse.json(data);
+    let stored: any[] = Array.isArray(existingSettings?.value) ? existingSettings.value : [];
+    const index = stored.findIndex((c: any) => c.id === id);
+
+    let updatedItem: any;
+    if (index >= 0) {
+      stored[index] = { ...stored[index], ...updates };
+      updatedItem = stored[index];
+    } else {
+      updatedItem = { id, ...updates, created_at: new Date().toISOString() };
+      stored.unshift(updatedItem);
+    }
+
+    await supabase.from("app_settings").upsert({
+      key: "stored_email_campaigns",
+      value: stored,
+      updated_at: new Date().toISOString(),
+    });
+
+    return NextResponse.json(updatedItem);
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }

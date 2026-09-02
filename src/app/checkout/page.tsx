@@ -306,7 +306,24 @@ export default function CheckoutPage() {
           .eq("user_id", user.id);
 
         if (pastOrders && pastOrders > 0) {
-          setCouponError("This code is only applicable for new users");
+          setCouponError("This code is only applicable for new users (first order)");
+          setAppliedCoupon(null);
+          return;
+        }
+      }
+
+      // Check once-per-user constraint
+      if (coupon.once_per_user) {
+        const { count: pastUsageCount } = await supabase
+          .from("orders")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", user.id)
+          .eq("coupon_id", coupon.id)
+          .neq("status", "cancelled")
+          .neq("status", "rejected");
+
+        if (pastUsageCount && pastUsageCount > 0) {
+          setCouponError("You have already used this coupon code on a previous order");
           setAppliedCoupon(null);
           return;
         }

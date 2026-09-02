@@ -293,7 +293,10 @@ export function CampaignStudio({
         body: JSON.stringify(payload),
       });
 
-      if (!saveRes.ok) throw new Error("Failed to save campaign before dispatch");
+      if (!saveRes.ok) {
+        const errData = await saveRes.json().catch(() => ({}));
+        throw new Error(errData.error || "Failed to save campaign before dispatch");
+      }
       const savedCampaign = await saveRes.json();
 
       if (sendMode === "now") {

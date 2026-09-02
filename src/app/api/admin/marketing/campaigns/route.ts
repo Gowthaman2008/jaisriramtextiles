@@ -2,36 +2,35 @@ import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/admin";
 import { compileEmailHtml } from "@/lib/marketing/email-compiler";
 
-// Helper: Ensure marketing tables exist in Supabase dynamically
-async function ensureMarketingTables(supabase: any) {
-  // If email_campaigns table doesn't exist, we can fallback gracefully or execute table creation
-  try {
-    const { error } = await supabase.from("email_campaigns").select("id").limit(1);
-    if (error && error.code === "42P01") {
-      // Table doesn't exist yet in Supabase schema
-      console.warn("email_campaigns table not found in Supabase schema. Please run schema.sql.");
-    }
-  } catch (e) {
-    console.error("ensureMarketingTables error:", e);
-  }
+// Helper to sanitize UUID fields
+function cleanUuid(id: any): string | null {
+  if (!id || typeof id !== "string") return null;
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(id.trim()) ? id.trim() : null;
 }
 
 export async function GET(request: Request) {
   try {
     const supabase = createServiceClient();
-    await ensureMarketingTables(supabase);
 
     const { data: campaigns, error } = await supabase
       .from("email_campaigns")
       .select("*")
       .order("created_at", { ascending: false });
 
-    if (error) {
-      // If table doesn't exist yet, return empty list safely
-      return NextResponse.json([]);
+    if (!error && campaigns) {
+      return NextResponse.json(campaigns);
     }
 
-    return NextResponse.json(campaigns || []);
+    // Fallback to app_settings storage if email_campaigns table doesn't exist
+    const { data: settingsData } = await supabase
+      .from("app_settings")
+      .select("value")
+      .eq("key", "stored_email_campaigns")
+      .maybeSingle();
+
+    const stored = Array.isArray(settingsData?.value) ? settingsData.value : [];
+    return NextResponse.json(stored);
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
@@ -68,6 +67,8 @@ export async function POST(request: Request) {
       previewText: preview_text || "",
     });
 
+    const sanitizedSegmentId = cleanUuid(segment_id);
+
     const newCampaign = {
       name: name.trim(),
       description: description?.trim() || null,
@@ -79,9 +80,9 @@ export async function POST(request: Request) {
       content_json,
       content_html,
       audience_type,
-      segment_id,
+      segment_id: sanitizedSegmentId,
       filter_rules,
-      selected_user_ids,
+      selected_user_ids: Array.isArray(selected_user_ids) ? selected_user_ids : [],
       status,
       scheduled_at: scheduled_at ? new Date(scheduled_at).toISOString() : null,
       created_at: new Date().toISOString(),
@@ -94,21 +95,44 @@ export async function POST(request: Request) {
       .select()
       .single();
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    if (!error && data) {
+      // Audit log
+      try {
+        await supabase.from("audit_logs").insert({
+          action: "campaign.create",
+          entity: "email_campaigns",
+          entity_id: data.id,
+          meta: { name: data.name, subject: data.subject },
+        });
+      } catch {}
+
+      return NextResponse.json(data, { status: 201 });
     }
 
-    // Audit log
-    try {
-      await supabase.from("audit_logs").insert({
-        action: "campaign.create",
-        entity: "email_campaigns",
-        entity_id: data.id,
-        meta: { name: data.name, subject: data.subject },
-      });
-    } catch {}
+    // If table insert failed (e.g. table not created in schema), fallback to app_settings
+    console.warn("email_campaigns table insert failed, falling back to app_settings:", error?.message);
+    const campaignId = crypto.randomUUID();
+    const campaignRecord = {
+      id: campaignId,
+      ...newCampaign,
+    };
 
-    return NextResponse.json(data, { status: 201 });
+    const { data: existingSettings } = await supabase
+      .from("app_settings")
+      .select("value")
+      .eq("key", "stored_email_campaigns")
+      .maybeSingle();
+
+    const currentList = Array.isArray(existingSettings?.value) ? existingSettings.value : [];
+    currentList.unshift(campaignRecord);
+
+    await supabase.from("app_settings").upsert({
+      key: "stored_email_campaigns",
+      value: currentList,
+      updated_at: new Date().toISOString(),
+    });
+
+    return NextResponse.json(campaignRecord, { status: 201 });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }

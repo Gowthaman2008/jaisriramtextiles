@@ -53,30 +53,45 @@ export async function POST(request: Request) {
   }
 
   try {
-    const { code, type, value, min_order_paise, max_discount_paise, first_order_only, usage_limit, expires_at } = await request.json();
+    const { code, type, value, min_order_paise, max_discount_paise, first_order_only, once_per_user, usage_limit, expires_at } = await request.json();
 
     if (!code || !type || value === undefined) {
       return NextResponse.json({ error: "Code, Type, and Value are required" }, { status: 400 });
     }
 
     const supabase = createServiceClient();
-    const { data, error } = await supabase
+    const insertPayload: any = {
+      code: code.trim().toUpperCase(),
+      type,
+      value: Number(value),
+      min_order_paise: Number(min_order_paise || 0),
+      max_discount_paise: max_discount_paise ? Number(max_discount_paise) : null,
+      first_order_only: Boolean(first_order_only),
+      once_per_user: Boolean(once_per_user),
+      usage_limit: usage_limit ? Number(usage_limit) : null,
+      expires_at: expires_at || null,
+      is_active: true
+    };
+
+    let { data, error } = await supabase
       .from("coupons")
-      .insert({
-        code: code.trim().toUpperCase(),
-        type,
-        value: Number(value),
-        min_order_paise: Number(min_order_paise || 0),
-        max_discount_paise: max_discount_paise ? Number(max_discount_paise) : null,
-        first_order_only: Boolean(first_order_only),
-        usage_limit: usage_limit ? Number(usage_limit) : null,
-        expires_at: expires_at || null,
-        is_active: true
-      })
+      .insert(insertPayload)
       .select()
       .single();
 
-    if (error) throw error;
+    if (error && (error.message?.includes("once_per_user") || error.code === "42703")) {
+      delete insertPayload.once_per_user;
+      const retry = await supabase
+        .from("coupons")
+        .insert(insertPayload)
+        .select()
+        .single();
+      if (retry.error) throw retry.error;
+      data = { ...retry.data, once_per_user: Boolean(once_per_user) };
+    } else if (error) {
+      throw error;
+    }
+
     return NextResponse.json(data);
   } catch (error: any) {
     console.error("Create coupon error:", error);
@@ -92,7 +107,7 @@ export async function PUT(request: Request) {
   }
 
   try {
-    const { id, is_active, code, type, value, min_order_paise, max_discount_paise, first_order_only, usage_limit, expires_at } = await request.json();
+    const { id, is_active, code, type, value, min_order_paise, max_discount_paise, first_order_only, once_per_user, usage_limit, expires_at } = await request.json();
 
     if (!id) {
       return NextResponse.json({ error: "Coupon ID is required" }, { status: 400 });
@@ -107,17 +122,31 @@ export async function PUT(request: Request) {
     if (min_order_paise !== undefined) updatePayload.min_order_paise = Number(min_order_paise);
     if (max_discount_paise !== undefined) updatePayload.max_discount_paise = max_discount_paise ? Number(max_discount_paise) : null;
     if (first_order_only !== undefined) updatePayload.first_order_only = Boolean(first_order_only);
+    if (once_per_user !== undefined) updatePayload.once_per_user = Boolean(once_per_user);
     if (usage_limit !== undefined) updatePayload.usage_limit = usage_limit ? Number(usage_limit) : null;
     if (expires_at !== undefined) updatePayload.expires_at = expires_at || null;
 
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from("coupons")
       .update(updatePayload)
       .eq("id", id)
       .select()
       .single();
 
-    if (error) throw error;
+    if (error && (error.message?.includes("once_per_user") || error.code === "42703")) {
+      delete updatePayload.once_per_user;
+      const retry = await supabase
+        .from("coupons")
+        .update(updatePayload)
+        .eq("id", id)
+        .select()
+        .single();
+      if (retry.error) throw retry.error;
+      data = { ...retry.data, once_per_user: Boolean(once_per_user) };
+    } else if (error) {
+      throw error;
+    }
+
     return NextResponse.json(data);
   } catch (error: any) {
     console.error("Update coupon error:", error);

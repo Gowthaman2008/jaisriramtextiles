@@ -623,6 +623,7 @@ export default function AdminDashboardPage() {
   const [newCouponMinOrder, setNewCouponMinOrder] = useState(0);
   const [newCouponMaxDiscount, setNewCouponMaxDiscount] = useState(0);
   const [newCouponFirstOrder, setNewCouponFirstOrder] = useState(false);
+  const [newCouponOncePerUser, setNewCouponOncePerUser] = useState(false);
   const [newCouponLimit, setNewCouponLimit] = useState(0);
   const [newCouponExpiry, setNewCouponExpiry] = useState("");
   const [showCouponForm, setShowCouponForm] = useState(false);
@@ -2409,6 +2410,7 @@ export default function AdminDashboardPage() {
           min_order_paise: Math.round(newCouponMinOrder * 100),
           max_discount_paise: newCouponType === "percent" && newCouponMaxDiscount > 0 ? Math.round(newCouponMaxDiscount * 100) : null,
           first_order_only: newCouponFirstOrder,
+          once_per_user: newCouponOncePerUser,
           usage_limit: newCouponLimit > 0 ? newCouponLimit : null,
           expires_at: newCouponExpiry || null
         })
@@ -2425,6 +2427,7 @@ export default function AdminDashboardPage() {
       setNewCouponMinOrder(0);
       setNewCouponMaxDiscount(0);
       setNewCouponFirstOrder(false);
+      setNewCouponOncePerUser(false);
       setNewCouponLimit(0);
       setNewCouponExpiry("");
       setShowCouponForm(false);
@@ -2481,6 +2484,7 @@ export default function AdminDashboardPage() {
     setNewCouponMinOrder(c.min_order_paise ? c.min_order_paise / 100 : 0);
     setNewCouponMaxDiscount(c.max_discount_paise ? c.max_discount_paise / 100 : 0);
     setNewCouponFirstOrder(c.first_order_only || false);
+    setNewCouponOncePerUser(c.once_per_user || false);
     setNewCouponLimit(c.usage_limit || 0);
     // format for datetime-local input
     setNewCouponExpiry(c.expires_at ? new Date(c.expires_at).toISOString().slice(0, 16) : "");
@@ -2496,6 +2500,7 @@ export default function AdminDashboardPage() {
     if (newCouponMinOrder !== (editingCoupon.min_order_paise ? editingCoupon.min_order_paise / 100 : 0)) return true;
     if (newCouponMaxDiscount !== (editingCoupon.max_discount_paise ? editingCoupon.max_discount_paise / 100 : 0)) return true;
     if (newCouponFirstOrder !== (editingCoupon.first_order_only || false)) return true;
+    if (newCouponOncePerUser !== (editingCoupon.once_per_user || false)) return true;
     if (newCouponLimit !== (editingCoupon.usage_limit || 0)) return true;
     const originalExpiry = editingCoupon.expires_at ? new Date(editingCoupon.expires_at).toISOString().slice(0, 16) : "";
     if (newCouponExpiry !== originalExpiry) return true;
@@ -2520,6 +2525,7 @@ export default function AdminDashboardPage() {
           min_order_paise: Math.round(newCouponMinOrder * 100),
           max_discount_paise: newCouponType === "percent" && newCouponMaxDiscount > 0 ? Math.round(newCouponMaxDiscount * 100) : null,
           first_order_only: newCouponFirstOrder,
+          once_per_user: newCouponOncePerUser,
           usage_limit: newCouponLimit > 0 ? newCouponLimit : null,
           expires_at: newCouponExpiry || null
         })
@@ -2531,7 +2537,7 @@ export default function AdminDashboardPage() {
       notify("Promo Code updated successfully!");
       setEditingCoupon(null);
       setNewCouponCode(""); setNewCouponValue(0); setNewCouponMinOrder(0);
-      setNewCouponMaxDiscount(0); setNewCouponFirstOrder(false); setNewCouponLimit(0); setNewCouponExpiry("");
+      setNewCouponMaxDiscount(0); setNewCouponFirstOrder(false); setNewCouponOncePerUser(false); setNewCouponLimit(0); setNewCouponExpiry("");
       setShowCouponForm(false);
       await refreshCoupons();
     } catch (err: any) {
@@ -6169,7 +6175,7 @@ export default function AdminDashboardPage() {
                     if (showCouponForm && editingCoupon) {
                       setEditingCoupon(null);
                       setNewCouponCode(""); setNewCouponValue(0); setNewCouponMinOrder(0);
-                      setNewCouponMaxDiscount(0); setNewCouponFirstOrder(false); setNewCouponLimit(0); setNewCouponExpiry("");
+                      setNewCouponMaxDiscount(0); setNewCouponFirstOrder(false); setNewCouponOncePerUser(false); setNewCouponLimit(0); setNewCouponExpiry("");
                       setShowCouponForm(false);
                     } else {
                       setEditingCoupon(null);
@@ -6270,17 +6276,37 @@ export default function AdminDashboardPage() {
                           minDate={new Date()}
                         />
                       </div>
-                      <div className="flex items-center gap-2 mt-6">
-                        <input
-                          type="checkbox"
-                          id="firstOrderOnly"
-                          checked={newCouponFirstOrder}
-                          onChange={(e) => setNewCouponFirstOrder(e.target.checked)}
-                          className="w-4 h-4 accent-zari"
-                        />
-                        <label htmlFor="firstOrderOnly" className="text-sm font-semibold cursor-pointer select-none">
-                          First Order Only (e.g. WELCOME10 welcome campaign)
-                        </label>
+                      <div className="flex flex-wrap items-center gap-6 mt-6">
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            id="firstOrderOnly"
+                            checked={newCouponFirstOrder}
+                            onChange={(e) => {
+                              setNewCouponFirstOrder(e.target.checked);
+                              if (e.target.checked) setNewCouponOncePerUser(false);
+                            }}
+                            className="w-4 h-4 accent-zari cursor-pointer"
+                          />
+                          <label htmlFor="firstOrderOnly" className="text-sm font-semibold cursor-pointer select-none">
+                            First Order Only (e.g. WELCOME10)
+                          </label>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            id="oncePerUser"
+                            checked={newCouponOncePerUser}
+                            onChange={(e) => {
+                              setNewCouponOncePerUser(e.target.checked);
+                              if (e.target.checked) setNewCouponFirstOrder(false);
+                            }}
+                            className="w-4 h-4 accent-zari cursor-pointer"
+                          />
+                          <label htmlFor="oncePerUser" className="text-sm font-semibold cursor-pointer select-none">
+                            1 Time Per User (Only usable once per customer)
+                          </label>
+                        </div>
                       </div>
                     </div>
 
@@ -6288,7 +6314,7 @@ export default function AdminDashboardPage() {
                       <Button type="button" variant="outline" size="sm" onClick={() => {
                         setEditingCoupon(null);
                         setNewCouponCode(""); setNewCouponValue(0); setNewCouponMinOrder(0);
-                        setNewCouponMaxDiscount(0); setNewCouponFirstOrder(false); setNewCouponLimit(0); setNewCouponExpiry("");
+                        setNewCouponMaxDiscount(0); setNewCouponFirstOrder(false); setNewCouponOncePerUser(false); setNewCouponLimit(0); setNewCouponExpiry("");
                         setShowCouponForm(false);
                       }}>
                         Cancel
@@ -6315,7 +6341,7 @@ export default function AdminDashboardPage() {
                             <th className="p-3 text-right">Value</th>
                             <th className="p-3 text-right">Min Order</th>
                             <th className="p-3 text-right">Max Cap</th>
-                            <th className="p-3 text-center">First Order Only</th>
+                            <th className="p-3 text-center">User Policy</th>
                             <th className="p-3 text-center">Limit</th>
                             <th className="p-3 text-center">Used Count</th>
                             <th className="p-3 text-center">Expiry</th>
@@ -6344,11 +6370,19 @@ export default function AdminDashboardPage() {
                                 {c.type === "percent" && c.max_discount_paise ? formatRupees(c.max_discount_paise) : "—"}
                               </td>
                               <td className="p-3 text-center">
-                                <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase ${
-                                  c.first_order_only ? "bg-amber-100 text-amber-800" : "bg-slate-100 text-slate-800"
-                                }`}>
-                                  {c.first_order_only ? "Yes" : "No"}
-                                </span>
+                                {c.first_order_only ? (
+                                  <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase bg-amber-100 text-amber-800">
+                                    First Order
+                                  </span>
+                                ) : c.once_per_user ? (
+                                  <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase bg-purple-100 text-purple-800">
+                                    1x Per User
+                                  </span>
+                                ) : (
+                                  <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase bg-slate-100 text-slate-700">
+                                    Standard
+                                  </span>
+                                )}
                               </td>
                               <td className="p-3 text-center text-taupe">
                                 {c.usage_limit !== null ? c.usage_limit : "Unlimited"}

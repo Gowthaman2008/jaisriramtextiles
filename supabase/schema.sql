@@ -197,6 +197,7 @@ create table coupons (
   min_order_paise    int not null default 0,
   max_discount_paise int,                 -- cap for percent coupons
   first_order_only   boolean not null default false, -- e.g. WELCOME10
+  once_per_user      boolean not null default false, -- coupon can only be used 1 time per user
   usage_limit        int,                 -- null = unlimited
   used_count         int not null default 0,
   starts_at          timestamptz,
