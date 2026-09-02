@@ -155,8 +155,8 @@ export function TemplateLibrary({ onUseTemplate }: TemplateLibraryProps) {
 
       {/* Full Preview Modal */}
       {previewTemplate && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-fade-in">
-          <div className="bg-white border border-line rounded-card max-w-3xl w-full p-6 shadow-lift space-y-4 max-h-[90vh] flex flex-col animate-scale-up">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-ink/75 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white border border-line rounded-card max-w-3xl w-full p-6 shadow-2xl space-y-4 max-h-[90vh] flex flex-col animate-scale-up relative z-10">
             <div className="flex justify-between items-center pb-2 border-b border-line">
               <div>
                 <h3 className="font-display text-lg text-ink font-bold">{previewTemplate.name}</h3>

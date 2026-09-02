@@ -52,13 +52,14 @@ export function MarketingDashboard({
   const totalUnsubs = campaigns.reduce((acc, c) => acc + (c.unsubscribed_count || 0), 0);
 
   const avgOpenRate = totalDelivered > 0 ? ((totalOpens / totalDelivered) * 100).toFixed(1) : totalSent > 0 ? ((totalOpens / totalSent) * 100).toFixed(1) : "0.0";
-  const avgClickRate = totalOpens > 0 ? ((totalClicks / totalOpens) * 100).toFixed(1) : "0.0";
+  const avgClickRate = totalDelivered > 0 ? ((totalClicks / totalDelivered) * 100).toFixed(1) : totalOpens > 0 ? ((totalClicks / totalOpens) * 100).toFixed(1) : "0.0";
+  const ctorRate = totalOpens > 0 ? ((totalClicks / totalOpens) * 100).toFixed(1) : "0.0";
   const bounceRate = totalSent > 0 ? ((totalBounces / totalSent) * 100).toFixed(1) : "0.0";
   const unsubRate = totalSent > 0 ? ((totalUnsubs / totalSent) * 100).toFixed(1) : "0.0";
 
   // Best performing campaigns sorted by open count or click count
   const topCampaigns = [...campaigns]
-    .filter((c) => c.sent_count > 0)
+    .filter((c) => c.sent_count > 0 || c.total_recipients > 0 || c.status === "sent")
     .sort((a, b) => (b.opened_count || 0) - (a.opened_count || 0))
     .slice(0, 4);
 
@@ -76,44 +77,42 @@ export function MarketingDashboard({
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={onCreateCampaign}
-            className="px-5 py-2.5 rounded-pill bg-ink hover:bg-black text-ivory text-xs font-semibold flex items-center gap-2 cursor-pointer shadow-sm transition-colors"
-          >
-            <Plus className="w-4 h-4 text-zari" /> Create New Campaign
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={onCreateCampaign}
+          className="px-5 py-2.5 rounded-pill bg-ink text-ivory text-xs font-semibold hover:bg-black transition-colors flex items-center gap-2 cursor-pointer shadow-sm shrink-0"
+        >
+          <Plus className="w-4 h-4" /> Create New Campaign
+        </button>
       </div>
 
-      {/* KPI Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        {/* Subscribers Card */}
+      {/* KPI Funnel Overview Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Audience Pool Card */}
         <div className="bg-white border border-line rounded-card p-5 shadow-soft space-y-3">
           <div className="flex justify-between items-center text-taupe text-xs">
             <span className="font-bold uppercase tracking-wider text-[10px]">Subscribers Pool</span>
-            <Users className="w-4 h-4 text-zari" />
+            <Users className="w-4 h-4 text-ink" />
           </div>
           <div>
             <div className="text-2xl font-display text-ink font-bold">{totalSubscribers.toLocaleString()}</div>
-            <div className="text-xs text-success font-semibold flex items-center gap-1 mt-0.5">
-              <span>{activeSubscribers} Active Opt-Ins</span>
+            <div className="text-xs text-success mt-0.5 font-medium">
+              {activeSubscribers.toLocaleString()} Active Opt-Ins
             </div>
           </div>
-          <div className="pt-2 border-t border-line text-[11px] text-muted flex justify-between">
+          <div className="pt-2 border-t border-line text-[11px] text-muted flex justify-between items-center">
             <span>Unsubscribed: {unsubscribedUsers}</span>
             <button
               type="button"
               onClick={() => onNavigateTab("subscribers")}
-              className="text-zari-deep hover:underline cursor-pointer font-semibold"
+              className="text-zari-deep font-semibold hover:underline cursor-pointer flex items-center gap-1"
             >
               View All →
             </button>
           </div>
         </div>
 
-        {/* Campaigns Card */}
+        {/* Campaigns Sent Card */}
         <div className="bg-white border border-line rounded-card p-5 shadow-soft space-y-3">
           <div className="flex justify-between items-center text-taupe text-xs">
             <span className="font-bold uppercase tracking-wider text-[10px]">Campaigns Overview</span>
@@ -121,16 +120,16 @@ export function MarketingDashboard({
           </div>
           <div>
             <div className="text-2xl font-display text-ink font-bold">{totalCampaigns}</div>
-            <div className="text-xs text-taupe mt-0.5 font-medium">
+            <div className="text-xs text-taupe mt-0.5">
               {sentCampaigns} Sent • {scheduledCampaigns} Scheduled
             </div>
           </div>
-          <div className="pt-2 border-t border-line text-[11px] text-muted flex justify-between">
+          <div className="pt-2 border-t border-line text-[11px] text-muted flex justify-between items-center">
             <span>{draftCampaigns} Drafts</span>
             <button
               type="button"
               onClick={() => onNavigateTab("campaigns")}
-              className="text-zari-deep hover:underline cursor-pointer font-semibold"
+              className="text-zari-deep font-semibold hover:underline cursor-pointer flex items-center gap-1"
             >
               Manage →
             </button>
@@ -163,7 +162,7 @@ export function MarketingDashboard({
           <div>
             <div className="text-2xl font-display text-brand-gold font-bold">{avgClickRate}%</div>
             <div className="text-xs text-taupe mt-0.5">
-              {totalClicks.toLocaleString()} Total Link Clicks
+              {totalClicks.toLocaleString()} Total Link Clicks {totalOpens > 0 ? `(${ctorRate}% CTOR)` : ""}
             </div>
           </div>
           <div className="pt-2 border-t border-line text-[11px] text-muted flex justify-between">

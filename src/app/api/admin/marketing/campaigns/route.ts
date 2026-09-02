@@ -13,6 +13,19 @@ export async function GET(request: Request) {
   try {
     const supabase = createServiceClient();
 
+    // Load live tracking events from app_settings
+    let trackingEvents: Record<string, Record<string, any>> = {};
+    try {
+      const { data: trackingData } = await supabase
+        .from("app_settings")
+        .select("value")
+        .eq("key", "marketing_tracking_events")
+        .maybeSingle();
+      if (trackingData?.value) {
+        trackingEvents = trackingData.value;
+      }
+    } catch {}
+
     const { data: campaigns, error } = await supabase
       .from("email_campaigns")
       .select("*")
@@ -20,10 +33,19 @@ export async function GET(request: Request) {
 
     if (!error && campaigns && campaigns.length > 0) {
       const normalized = campaigns.map((c) => {
-        if ((c.sent_at || c.sent_count > 0) && c.status === "draft") {
-          return { ...c, status: "sent" };
-        }
-        return c;
+        const campEvents = trackingEvents[c.id] || {};
+        const openCount = Object.keys(campEvents).length;
+        const clickCount = Object.values(campEvents).filter((e: any) => e.clicked_at).length;
+        const isSent = Boolean(c.sent_at || c.sent_count > 0 || openCount > 0 || c.status === "sent");
+
+        return {
+          ...c,
+          status: isSent && c.status === "draft" ? "sent" : c.status,
+          opened_count: Math.max(c.opened_count || 0, openCount),
+          unique_opens_count: Math.max(c.unique_opens_count || 0, openCount),
+          clicked_count: Math.max(c.clicked_count || 0, clickCount),
+          unique_clicks_count: Math.max(c.unique_clicks_count || 0, clickCount),
+        };
       });
       return NextResponse.json(normalized);
     }
@@ -37,12 +59,21 @@ export async function GET(request: Request) {
 
     let stored: any[] = Array.isArray(settingsData?.value) ? settingsData.value : [];
     
-    // Normalize any dispatched campaigns to 'sent'
+    // Normalize any dispatched campaigns to 'sent' and merge tracking counters
     stored = stored.map((c) => {
-      if ((c.sent_at || c.sent_count > 0) && c.status === "draft") {
-        return { ...c, status: "sent" };
-      }
-      return c;
+      const campEvents = trackingEvents[c.id] || {};
+      const openCount = Object.keys(campEvents).length;
+      const clickCount = Object.values(campEvents).filter((e: any) => e.clicked_at).length;
+      const isSent = Boolean(c.sent_at || c.sent_count > 0 || openCount > 0 || c.status === "sent");
+
+      return {
+        ...c,
+        status: isSent && c.status === "draft" ? "sent" : c.status,
+        opened_count: Math.max(c.opened_count || 0, openCount),
+        unique_opens_count: Math.max(c.unique_opens_count || 0, openCount),
+        clicked_count: Math.max(c.clicked_count || 0, clickCount),
+        unique_clicks_count: Math.max(c.unique_clicks_count || 0, clickCount),
+      };
     });
 
     return NextResponse.json(stored);

@@ -651,8 +651,8 @@ export function EmailBuilder({
 
       {/* Send Test Email Modal */}
       {showTestModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-fade-in">
-          <div className="bg-white border border-line rounded-card max-w-md w-full p-6 shadow-lift space-y-4 animate-scale-up">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-ink/75 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white border border-line rounded-card max-w-md w-full p-6 shadow-2xl space-y-4 animate-scale-up relative z-10">
             <div className="flex justify-between items-center pb-2 border-b border-line">
               <h3 className="font-display text-lg text-ink flex items-center gap-2">
                 <Send className="w-4 h-4 text-zari" /> Send Test Email

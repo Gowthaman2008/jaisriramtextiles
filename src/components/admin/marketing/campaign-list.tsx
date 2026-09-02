@@ -191,8 +191,8 @@ export function CampaignList({
               </thead>
               <tbody className="divide-y divide-line/60 text-ink">
                 {filtered.map((c) => {
-                  const openRate = c.delivered_count > 0 ? ((c.opened_count / c.delivered_count) * 100).toFixed(1) : "—";
-                  const clickRate = c.opened_count > 0 ? ((c.clicked_count / c.opened_count) * 100).toFixed(1) : "—";
+                  const openRate = c.delivered_count > 0 ? ((c.opened_count / c.delivered_count) * 100).toFixed(1) : c.status === "sent" ? "0.0" : "—";
+                  const clickRate = c.delivered_count > 0 ? ((c.clicked_count / c.delivered_count) * 100).toFixed(1) : c.status === "sent" ? "0.0" : "—";
                   const isBusySending = sendingId === c.id || c.status === "sending";
 
                   return (

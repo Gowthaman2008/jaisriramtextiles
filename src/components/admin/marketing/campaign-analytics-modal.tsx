@@ -65,7 +65,7 @@ export function CampaignAnalyticsModal({ campaign, onClose }: CampaignAnalyticsM
 
   async function handleRefreshAll() {
     await Promise.all([loadAnalytics(), loadRecipients()]);
-    notify("Live campaign stats refreshed!");
+    notify("Live campaign metrics refreshed!");
   }
 
   async function handleMarkRecipientOpened(email: string) {
@@ -78,6 +78,27 @@ export function CampaignAnalyticsModal({ campaign, onClose }: CampaignAnalyticsM
       });
       if (res.ok) {
         notify(`Marked email as opened for ${email}`);
+        await Promise.all([loadAnalytics(), loadRecipients()]);
+      } else {
+        throw new Error("Failed to update status");
+      }
+    } catch (err: any) {
+      notify("Error: " + err.message);
+    } finally {
+      setMarkingEmail(null);
+    }
+  }
+
+  async function handleMarkRecipientClicked(email: string) {
+    setMarkingEmail(email);
+    try {
+      const res = await fetch(`/api/admin/marketing/campaigns/${campaign.id}/recipients`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, action: "mark_clicked" }),
+      });
+      if (res.ok) {
+        notify(`Recorded link click for ${email}`);
         await Promise.all([loadAnalytics(), loadRecipients()]);
       } else {
         throw new Error("Failed to update status");
@@ -105,8 +126,8 @@ export function CampaignAnalyticsModal({ campaign, onClose }: CampaignAnalyticsM
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-fade-in">
-      <div className="bg-white border border-line rounded-card max-w-4xl w-full p-6 shadow-lift space-y-6 max-h-[92vh] overflow-y-auto animate-scale-up">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 bg-ink/75 backdrop-blur-sm animate-fade-in">
+      <div className="bg-white border border-line rounded-card max-w-4xl w-full p-6 shadow-2xl space-y-6 max-h-[90vh] overflow-y-auto animate-scale-up relative z-10">
         {/* Modal Header */}
         <div className="flex justify-between items-start pb-3 border-b border-line">
           <div>
@@ -175,7 +196,7 @@ export function CampaignAnalyticsModal({ campaign, onClose }: CampaignAnalyticsM
               <MousePointer className="w-3.5 h-3.5 text-brand-gold" />
             </div>
             <p className="text-2xl font-display text-brand-gold font-bold">{m.clickRate || 0}%</p>
-            <p className="text-[10px] text-muted">{m.clicked || 0} link clicks</p>
+            <p className="text-[10px] text-muted">{m.clicked || 0} link clicks recorded</p>
           </div>
         </div>
 
@@ -267,7 +288,7 @@ export function CampaignAnalyticsModal({ campaign, onClose }: CampaignAnalyticsM
                             <span
                               className={`inline-block text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
                                 isClicked
-                                  ? "bg-brand-gold/15 text-brand-gold border border-brand-gold/30"
+                                  ? "bg-brand-gold/15 text-brand-gold border border-brand-gold/30 font-bold"
                                   : isOpened
                                   ? "bg-zari/15 text-zari-deep border border-zari/30 font-bold"
                                   : r.status === "delivered" || r.status === "sent"
@@ -306,21 +327,34 @@ export function CampaignAnalyticsModal({ campaign, onClose }: CampaignAnalyticsM
                             )}
                           </td>
                           <td className="py-2.5 px-3 text-right">
-                            {!isOpened ? (
-                              <button
-                                type="button"
-                                disabled={markingEmail === r.email}
-                                onClick={() => handleMarkRecipientOpened(r.email)}
-                                className="text-[10px] font-semibold text-zari-deep hover:underline cursor-pointer disabled:opacity-50"
-                                title="Mark as Opened"
-                              >
-                                {markingEmail === r.email ? "Saving..." : "Mark Opened"}
-                              </button>
-                            ) : (
-                              <span className="inline-flex items-center gap-0.5 text-[10px] text-success font-semibold">
-                                <Check className="w-3 h-3" /> Tracked
-                              </span>
-                            )}
+                            <div className="flex items-center justify-end gap-2">
+                              {!isOpened && (
+                                <button
+                                  type="button"
+                                  disabled={markingEmail === r.email}
+                                  onClick={() => handleMarkRecipientOpened(r.email)}
+                                  className="text-[10px] font-semibold text-zari-deep hover:underline cursor-pointer disabled:opacity-50"
+                                  title="Mark as Opened"
+                                >
+                                  {markingEmail === r.email ? "Saving..." : "Mark Opened"}
+                                </button>
+                              )}
+                              {!isClicked ? (
+                                <button
+                                  type="button"
+                                  disabled={markingEmail === r.email}
+                                  onClick={() => handleMarkRecipientClicked(r.email)}
+                                  className="text-[10px] font-semibold text-brand-gold hover:underline cursor-pointer disabled:opacity-50"
+                                  title="Record Link Click"
+                                >
+                                  {markingEmail === r.email ? "Saving..." : "Mark Clicked"}
+                                </button>
+                              ) : (
+                                <span className="inline-flex items-center gap-0.5 text-[10px] text-brand-gold font-semibold">
+                                  <Check className="w-3 h-3" /> Clicked
+                                </span>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       );

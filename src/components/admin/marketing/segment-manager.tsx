@@ -275,8 +275,8 @@ export function SegmentManager({ onSelectSegmentForCampaign }: SegmentManagerPro
 
       {/* Segment Create / Edit Modal with Visual Rule Builder */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-fade-in">
-          <div className="bg-white border border-line rounded-card max-w-2xl w-full p-6 shadow-lift space-y-5 max-h-[90vh] overflow-y-auto animate-scale-up">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-ink/75 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white border border-line rounded-card max-w-2xl w-full p-6 shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto animate-scale-up relative z-10">
             <div className="flex justify-between items-center pb-2 border-b border-line">
               <h3 className="font-display text-lg text-ink flex items-center gap-2">
                 <Filter className="w-4 h-4 text-zari" /> {editingSegment ? "Edit Segment" : "Create Audience Segment"}
