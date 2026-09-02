@@ -37,13 +37,7 @@ export async function POST(
             size,
             color,
             unit_price_paise,
-            products (
-              id,
-              name,
-              slug,
-              image_url,
-              images
-            )
+            image_url
           ),
           profiles (
             id,
@@ -69,6 +63,21 @@ export async function POST(
       return NextResponse.json({ error: "Order not found" }, { status: 404 });
     }
 
+    // If order_items is empty, fetch explicitly from order_items table
+    if (!order.order_items || order.order_items.length === 0) {
+      try {
+        const { data: dbItems } = await supabase
+          .from("order_items")
+          .select("*")
+          .eq("order_id", id);
+        if (dbItems && dbItems.length > 0) {
+          order.order_items = dbItems;
+        }
+      } catch (e) {
+        console.warn("Error fetching direct order_items:", e);
+      }
+    }
+
     // 2. Enforce strict condition: Order MUST be delivered
     const currentStatus = (order.status || "").toLowerCase().trim();
     if (currentStatus !== "delivered") {
@@ -82,6 +91,7 @@ export async function POST(
 
     // 3. Resolve customer email
     const recipientEmail = (
+      body.sendToEmail ||
       order.profiles?.email ||
       order.shipping_address?.email ||
       order.customer_email ||
@@ -103,6 +113,7 @@ export async function POST(
     const recipientName =
       order.shipping_address?.full_name ||
       order.shipping_address?.recipient_name ||
+      order.shipping_address?.recipient ||
       order.profiles?.full_name ||
       body.recipientName ||
       "Valued Customer";
@@ -112,19 +123,51 @@ export async function POST(
     const orderNumber = order.order_number || `JSRT-${id.slice(0, 6)}`;
     const items = order.order_items || [];
 
+    // Fetch product details (slug, images) for all product IDs
+    const productIds = items
+      .map((it: any) => it.product_id)
+      .filter((pid: any) => Boolean(pid));
+
+    const productsMap: Record<string, any> = {};
+    if (productIds.length > 0) {
+      try {
+        const { data: prods } = await supabase
+          .from("products")
+          .select("id, name, slug, image_url, images")
+          .in("id", productIds);
+        if (prods) {
+          prods.forEach((p: any) => {
+            productsMap[p.id] = p;
+          });
+        }
+      } catch (err) {
+        console.warn("Error fetching products map:", err);
+      }
+    }
+
     // 5. Build items HTML for review
     const itemsHtml = items
       .map((item: any) => {
-        const product = item.products || {};
-        const slug = product.slug || "";
+        const product = productsMap[item.product_id] || item.products || item.product || {};
+        const slug = product.slug || (item.name ? item.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") : "");
         const reviewUrl = slug
           ? `${siteUrl}/product/${slug}#reviews`
           : `${siteUrl}/account?tab=orders`;
 
-        const imageUrl =
+        const rawImg =
+          item.image_url ||
+          item.image ||
           product.image_url ||
           (Array.isArray(product.images) && product.images[0]) ||
-          "https://jaisriramtextiles.in/logo.png";
+          "";
+
+        const imageUrl = rawImg.startsWith("http")
+          ? rawImg
+          : rawImg.startsWith("/")
+          ? `${siteUrl}${rawImg}`
+          : rawImg
+          ? `${siteUrl}/${rawImg}`
+          : "https://jaisriramtextiles.in/logo.png";
 
         const variantInfo = [item.size ? `Size: ${item.size}` : "", item.color ? `Color: ${item.color}` : ""]
           .filter(Boolean)
@@ -133,7 +176,7 @@ export async function POST(
         return `
           <tr style="border-bottom: 1px solid #ECE6D8;">
             <td style="padding: 16px 8px; width: 70px; vertical-align: middle;">
-              <img src="${imageUrl}" alt="${item.name}" style="width: 60px; height: 60px; object-fit: cover; border-radius: 8px; border: 1px solid #E8DFD0; display: block;" />
+              <img src="${imageUrl}" alt="${item.name || "Product"}" width="64" height="64" style="width: 64px; height: 64px; min-width: 64px; min-height: 64px; max-width: 64px; max-height: 64px; object-fit: cover; border-radius: 8px; border: 1px solid #E8DFD0; display: block;" />
             </td>
             <td style="padding: 16px 12px; vertical-align: middle;">
               <div style="font-family: 'Fraunces', Georgia, serif; font-size: 15px; font-weight: 700; color: #1F1C18; line-height: 1.3;">
@@ -158,7 +201,8 @@ export async function POST(
       })
       .join("");
 
-    const primaryProductSlug = items[0]?.products?.slug;
+    const firstProduct = productsMap[items[0]?.product_id] || items[0]?.products || items[0]?.product;
+    const primaryProductSlug = firstProduct?.slug || (items[0]?.name ? items[0].name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") : "");
     const primaryReviewUrl = primaryProductSlug
       ? `${siteUrl}/product/${primaryProductSlug}#reviews`
       : `${siteUrl}/account?tab=orders`;

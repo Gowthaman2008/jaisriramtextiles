@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useRef } from "react";
+import { createPortal } from "react-dom";
 import Image from "next/image";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
@@ -405,6 +406,9 @@ export default function AdminDashboardPage() {
   const [deleteConfirmInput, setDeleteConfirmInput] = useState("");
   const [deletingOrder, setDeletingOrder] = useState(false);
   const [sendingReviewEmail, setSendingReviewEmail] = useState(false);
+  const [reviewModalOrder, setReviewModalOrder] = useState<any>(null);
+  const [reviewModalTarget, setReviewModalTarget] = useState<"customer" | "admin" | "custom">("customer");
+  const [reviewModalCustomEmail, setReviewModalCustomEmail] = useState("");
 
   // Emergency order-detail PDF lookup modal state
   const [emergencyLookupOpen, setEmergencyLookupOpen] = useState(false);
@@ -2776,12 +2780,41 @@ export default function AdminDashboardPage() {
     }
   }
 
-  // --- Send Review Request Email to Customer for Delivered Orders ---
-  async function handleSendReviewRequest(order: any) {
+  // --- Open Review Request Prompt Modal ---
+  function openReviewRequestModal(order: any) {
     if (!order) return;
-    const isDelivered = (orderStatus || order.status || "").toLowerCase() === "delivered";
+    const currentOrdStatus = (selectedOrder && selectedOrder.id === order.id ? orderStatus : order.status) || "";
+    const isDelivered = currentOrdStatus.toLowerCase() === "delivered";
     if (!isDelivered) {
       notify("Review request can only be sent once the order is Delivered.");
+      return;
+    }
+    const orderWithCurrentData = {
+      ...order,
+      status: currentOrdStatus,
+      shipping_address: (selectedOrder && selectedOrder.id === order.id ? orderAddress : order.shipping_address),
+    };
+    setReviewModalOrder(orderWithCurrentData);
+    setReviewModalTarget("customer");
+    setReviewModalCustomEmail("");
+  }
+
+  // --- Send Review Request Email to Customer for Delivered Orders ---
+  async function handleSendReviewRequest(order: any, customTargetEmail?: string) {
+    if (!order) return;
+    const currentOrdStatus = (selectedOrder && selectedOrder.id === order.id ? orderStatus : order.status) || "";
+    const isDelivered = currentOrdStatus.toLowerCase() === "delivered";
+    if (!isDelivered) {
+      notify("Review request can only be sent once the order is Delivered.");
+      return;
+    }
+
+    const customerEmail = order.profiles?.email || order.shipping_address?.email || orderAddress?.email || order.customer_email || order.email || "";
+    const adminEmail = currentUser?.email || "gowthamandharshan4@gmail.com";
+    const resolvedEmail = customTargetEmail || (reviewModalTarget === "admin" ? adminEmail : (reviewModalTarget === "custom" ? reviewModalCustomEmail.trim() : customerEmail));
+
+    if (!resolvedEmail || !resolvedEmail.includes("@")) {
+      notify("Please provide a valid recipient email address.");
       return;
     }
 
@@ -2793,11 +2826,12 @@ export default function AdminDashboardPage() {
         body: JSON.stringify({
           order: {
             ...order,
-            status: orderStatus,
-            shipping_address: orderAddress,
+            status: currentOrdStatus,
+            shipping_address: selectedOrder && selectedOrder.id === order.id ? orderAddress : order.shipping_address,
           },
-          email: order.profiles?.email || orderAddress?.email || order.customer_email || order.email,
-          recipientName: orderAddress?.recipient || order.profiles?.full_name,
+          sendToEmail: resolvedEmail,
+          email: resolvedEmail,
+          recipientName: (selectedOrder && selectedOrder.id === order.id ? orderAddress?.recipient : order.shipping_address?.recipient) || order.profiles?.full_name,
         }),
       });
 
@@ -2806,9 +2840,9 @@ export default function AdminDashboardPage() {
         throw new Error(data.error || "Failed to send review request email.");
       }
 
-      notify(`Review request email sent to customer (${data.recipientEmail})!`);
+      notify(`Review request email successfully sent to ${data.recipientEmail}! ⭐`);
 
-      if (selectedOrder) {
+      if (selectedOrder && selectedOrder.id === order.id) {
         setSelectedOrder({
           ...selectedOrder,
           review_requested_at: data.sent_at,
@@ -2817,6 +2851,7 @@ export default function AdminDashboardPage() {
       setOrders((prev: any[]) =>
         prev.map((o) => (o.id === order.id ? { ...o, review_requested_at: data.sent_at } : o))
       );
+      setReviewModalOrder(null);
     } catch (err: any) {
       console.error("Review request send error:", err);
       notify(err.message || "Failed to send review request email.");
@@ -4703,7 +4738,7 @@ export default function AdminDashboardPage() {
                         <button
                           type="button"
                           disabled={orderStatus.toLowerCase() !== "delivered" || sendingReviewEmail}
-                          onClick={() => handleSendReviewRequest(selectedOrder)}
+                          onClick={() => openReviewRequestModal(selectedOrder)}
                           className={`flex-1 sm:flex-none p-2 border rounded flex items-center justify-center gap-1.5 text-xs font-semibold transition-all ${
                             orderStatus.toLowerCase() === "delivered"
                               ? "bg-amber-50 hover:bg-amber-100 border-amber-300 text-amber-900 shadow-xs cursor-pointer"
@@ -5111,7 +5146,7 @@ export default function AdminDashboardPage() {
                               <th className="p-4 text-center">Payment Status</th>
                               <th className="p-4 text-right">Paid Total</th>
                               <th className="p-4 text-center">Date Placed</th>
-                              <th className="p-4 text-center w-16">Actions</th>
+                              <th className="p-4 text-center min-w-[140px] whitespace-nowrap">Actions</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -5142,15 +5177,15 @@ export default function AdminDashboardPage() {
                                   </span>
                                 </td>
                                 <td className="p-4 text-right font-semibold">{formatRupees(o.total_paise)}</td>
-                                <td className="p-4 text-center text-taupe text-xs">
+                                <td className="p-4 text-center text-taupe text-xs whitespace-nowrap">
                                   {new Date(o.placed_at).toLocaleDateString("en-IN", { dateStyle: "medium" })}
                                 </td>
-                                <td className="p-4 text-center">
+                                <td className="p-4 text-center whitespace-nowrap">
                                   <div className="flex items-center justify-center gap-1.5">
                                     <button
                                       disabled={o.status?.toLowerCase() !== "delivered" || sendingReviewEmail}
-                                      onClick={() => handleSendReviewRequest(o)}
-                                      className={`p-1 border rounded transition-all ${
+                                      onClick={() => openReviewRequestModal(o)}
+                                      className={`w-8.5 h-8.5 inline-flex items-center justify-center rounded-lg border shrink-0 transition-all ${
                                         o.status?.toLowerCase() === "delivered"
                                           ? "border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-700 cursor-pointer shadow-xs"
                                           : "border-line bg-cream/40 text-taupe/30 cursor-not-allowed opacity-50"
@@ -5163,13 +5198,21 @@ export default function AdminDashboardPage() {
                                           : "Review request only available once order is Delivered"
                                       }
                                     >
-                                      <Star className={`w-4 h-4 ${o.status?.toLowerCase() === "delivered" ? "fill-amber-400 text-amber-600" : "text-taupe/30"}`} />
+                                      <Star className={`w-4 h-4 shrink-0 ${o.status?.toLowerCase() === "delivered" ? "fill-amber-400 text-amber-600" : "text-taupe/30"}`} />
                                     </button>
-                                    <button onClick={() => inspectOrder(o)} className="p-1 border border-line rounded bg-cream hover:bg-beige text-ink cursor-pointer" title="Inspect / Manage Order">
-                                      <Eye className="w-4 h-4" />
+                                    <button
+                                      onClick={() => inspectOrder(o)}
+                                      className="w-8.5 h-8.5 inline-flex items-center justify-center border border-line rounded-lg bg-cream hover:bg-cream/80 text-ink cursor-pointer shrink-0 transition-all shadow-xs"
+                                      title="Inspect / Manage Order"
+                                    >
+                                      <Eye className="w-4 h-4 shrink-0 text-ink" />
                                     </button>
-                                    <button onClick={() => promptDeleteOrder(o)} className="p-1 border border-line rounded bg-white hover:bg-danger/10 text-danger cursor-pointer" title="Delete Order">
-                                      <Trash2 className="w-4 h-4" />
+                                    <button
+                                      onClick={() => promptDeleteOrder(o)}
+                                      className="w-8.5 h-8.5 inline-flex items-center justify-center border border-line rounded-lg bg-white hover:bg-danger/10 text-danger cursor-pointer shrink-0 transition-all shadow-xs"
+                                      title="Delete Order"
+                                    >
+                                      <Trash2 className="w-4 h-4 shrink-0 text-danger" />
                                     </button>
                                   </div>
                                 </td>
@@ -8843,6 +8886,159 @@ $$ language plpgsql;`}
             </div>
           </div>
         </div>
+      )}
+
+      {/* Review Request Modal */}
+      {reviewModalOrder && typeof document !== "undefined" && createPortal(
+        <div className="fixed inset-0 bg-ink/70 backdrop-blur-sm z-[999999] flex items-center justify-center p-4" data-lenis-prevent="true">
+          <div className="bg-white border-2 border-zari rounded-2xl max-w-lg w-full p-6 space-y-5 shadow-2xl animate-fade-in text-xs font-sans max-h-[90vh] overflow-y-auto overscroll-contain">
+            <div className="flex justify-between items-center pb-3 border-b border-line">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-full bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600 shrink-0">
+                  <Star className="w-4 h-4 fill-amber-400 text-amber-600" />
+                </div>
+                <div>
+                  <h3 className="font-display font-bold text-sm text-ink uppercase tracking-wider">
+                    Send Product Review Request
+                  </h3>
+                  <p className="text-[11px] text-taupe font-sans">
+                    Order #{reviewModalOrder.order_number} &bull; Delivered
+                  </p>
+                </div>
+              </div>
+              <button 
+                type="button"
+                onClick={() => setReviewModalOrder(null)}
+                className="text-taupe hover:text-ink font-bold text-lg p-1 rounded hover:bg-cream cursor-pointer transition-colors"
+              >
+                &times;
+              </button>
+            </div>
+
+            {/* Customer & Order Summary */}
+            <div className="bg-cream/40 border border-line rounded-xl p-3.5 space-y-2">
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-taupe font-medium">Customer Name:</span>
+                <span className="font-bold text-ink">{reviewModalOrder.profiles?.full_name || reviewModalOrder.shipping_address?.recipient || "Customer"}</span>
+              </div>
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-taupe font-medium">Registered Customer Email:</span>
+                <span className="font-mono font-semibold text-zari-deep">{reviewModalOrder.profiles?.email || reviewModalOrder.shipping_address?.email || reviewModalOrder.customer_email || reviewModalOrder.email || "No email on record"}</span>
+              </div>
+              {reviewModalOrder.review_requested_at && (
+                <div className="pt-2 border-t border-line/60 flex items-center gap-1.5 text-[11px] text-amber-800 font-semibold">
+                  <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-600 shrink-0" />
+                  <span>Previous email sent on {new Date(reviewModalOrder.review_requested_at).toLocaleString("en-IN")}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Recipient Destination Selector */}
+            <div className="space-y-2.5">
+              <label className="font-bold text-ink uppercase tracking-wider text-[11px] block">
+                Choose Where to Send Email:
+              </label>
+              
+              <div className="space-y-2">
+                {/* 1. Customer Email */}
+                <label className={`flex items-start gap-3 p-3 rounded-xl border-2 transition-all cursor-pointer ${
+                  reviewModalTarget === "customer" ? "border-zari bg-amber-50/50 shadow-xs" : "border-line bg-white hover:border-zari/40"
+                }`}>
+                  <input
+                    type="radio"
+                    name="reviewTarget"
+                    checked={reviewModalTarget === "customer"}
+                    onChange={() => setReviewModalTarget("customer")}
+                    className="mt-0.5 cursor-pointer"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-ink text-xs">Send to Customer (Direct)</p>
+                    <p className="text-[11px] text-taupe font-mono truncate">
+                      {reviewModalOrder.profiles?.email || reviewModalOrder.shipping_address?.email || reviewModalOrder.customer_email || reviewModalOrder.email || "Customer Email"}
+                    </p>
+                  </div>
+                </label>
+
+                {/* 2. Admin Test Copy */}
+                <label className={`flex items-start gap-3 p-3 rounded-xl border-2 transition-all cursor-pointer ${
+                  reviewModalTarget === "admin" ? "border-zari bg-amber-50/50 shadow-xs" : "border-line bg-white hover:border-zari/40"
+                }`}>
+                  <input
+                    type="radio"
+                    name="reviewTarget"
+                    checked={reviewModalTarget === "admin"}
+                    onChange={() => setReviewModalTarget("admin")}
+                    className="mt-0.5 cursor-pointer"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-ink text-xs">Send Test Copy to My Admin Email (Gowthaman)</p>
+                    <p className="text-[11px] text-taupe font-mono truncate">
+                      {currentUser?.email || "gowthamandharshan4@gmail.com"}
+                    </p>
+                  </div>
+                </label>
+
+                {/* 3. Custom Email */}
+                <label className={`flex items-start gap-3 p-3 rounded-xl border-2 transition-all cursor-pointer ${
+                  reviewModalTarget === "custom" ? "border-zari bg-amber-50/50 shadow-xs" : "border-line bg-white hover:border-zari/40"
+                }`}>
+                  <input
+                    type="radio"
+                    name="reviewTarget"
+                    checked={reviewModalTarget === "custom"}
+                    onChange={() => setReviewModalTarget("custom")}
+                    className="mt-0.5 cursor-pointer"
+                  />
+                  <div className="flex-1 min-w-0 space-y-1.5">
+                    <p className="font-bold text-ink text-xs">Send to Custom Email Address</p>
+                    {reviewModalTarget === "custom" && (
+                      <input
+                        type="email"
+                        placeholder="e.g. yourname@example.com"
+                        value={reviewModalCustomEmail}
+                        onChange={(e) => setReviewModalCustomEmail(e.target.value)}
+                        className="w-full text-xs rounded-lg border border-line bg-white px-3 py-2 outline-none focus:border-zari font-sans"
+                        autoFocus
+                      />
+                    )}
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-line">
+              <Button
+                variant="outline"
+                size="md"
+                onClick={() => setReviewModalOrder(null)}
+                className="cursor-pointer"
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="gold"
+                size="md"
+                disabled={sendingReviewEmail}
+                onClick={() => handleSendReviewRequest(reviewModalOrder)}
+                className="cursor-pointer flex items-center gap-2"
+              >
+                {sendingReviewEmail ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    <span>Dispatching Email...</span>
+                  </>
+                ) : (
+                  <>
+                    <Star className="w-4 h-4 fill-amber-400 text-amber-900" />
+                    <span>Dispatch Review Email</span>
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
     </main>
   );
