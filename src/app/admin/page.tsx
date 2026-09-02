@@ -404,6 +404,7 @@ export default function AdminDashboardPage() {
   const [orderPendingDelete, setOrderPendingDelete] = useState<any>(null);
   const [deleteConfirmInput, setDeleteConfirmInput] = useState("");
   const [deletingOrder, setDeletingOrder] = useState(false);
+  const [sendingReviewEmail, setSendingReviewEmail] = useState(false);
 
   // Emergency order-detail PDF lookup modal state
   const [emergencyLookupOpen, setEmergencyLookupOpen] = useState(false);
@@ -2775,6 +2776,55 @@ export default function AdminDashboardPage() {
     }
   }
 
+  // --- Send Review Request Email to Customer for Delivered Orders ---
+  async function handleSendReviewRequest(order: any) {
+    if (!order) return;
+    const isDelivered = (orderStatus || order.status || "").toLowerCase() === "delivered";
+    if (!isDelivered) {
+      notify("Review request can only be sent once the order is Delivered.");
+      return;
+    }
+
+    setSendingReviewEmail(true);
+    try {
+      const res = await fetch(`/api/admin/orders/${order.id}/send-review-request`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          order: {
+            ...order,
+            status: orderStatus,
+            shipping_address: orderAddress,
+          },
+          email: order.profiles?.email || orderAddress?.email || order.customer_email || order.email,
+          recipientName: orderAddress?.recipient || order.profiles?.full_name,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to send review request email.");
+      }
+
+      notify(`Review request email sent to customer (${data.recipientEmail})!`);
+
+      if (selectedOrder) {
+        setSelectedOrder({
+          ...selectedOrder,
+          review_requested_at: data.sent_at,
+        });
+      }
+      setOrders((prev: any[]) =>
+        prev.map((o) => (o.id === order.id ? { ...o, review_requested_at: data.sent_at } : o))
+      );
+    } catch (err: any) {
+      console.error("Review request send error:", err);
+      notify(err.message || "Failed to send review request email.");
+    } finally {
+      setSendingReviewEmail(false);
+    }
+  }
+
   // --- Invoice & Packing Slip Printer ---
   async function printInvoice(order: any) {
     // Dynamic import to avoid SSR issues
@@ -4650,6 +4700,28 @@ export default function AdminDashboardPage() {
                             <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.003 5.324 5.328 0 11.859 0c3.166.001 6.141 1.233 8.375 3.469 2.235 2.237 3.464 5.214 3.461 8.381-.005 6.533-5.33 11.857-11.86 11.857-2.001-.002-3.968-.512-5.713-1.488L0 24zm6.758-4.262c1.666.989 3.32 1.48 4.966 1.482 5.385.002 9.774-4.382 9.778-9.768.002-2.607-1.013-5.059-2.859-6.908C16.855 2.695 14.41 1.68 11.857 1.679 6.472 1.68 2.083 6.066 2.079 11.452c-.001 1.8.487 3.56 1.41 5.124L2.52 21.07l4.295-1.128z" />
                           </svg> WhatsApp
                         </button>
+                        <button
+                          type="button"
+                          disabled={orderStatus.toLowerCase() !== "delivered" || sendingReviewEmail}
+                          onClick={() => handleSendReviewRequest(selectedOrder)}
+                          className={`flex-1 sm:flex-none p-2 border rounded flex items-center justify-center gap-1.5 text-xs font-semibold transition-all ${
+                            orderStatus.toLowerCase() === "delivered"
+                              ? "bg-amber-50 hover:bg-amber-100 border-amber-300 text-amber-900 shadow-xs cursor-pointer"
+                              : "bg-cream/40 border-line text-taupe/40 cursor-not-allowed opacity-60"
+                          }`}
+                          title={
+                            orderStatus.toLowerCase() === "delivered"
+                              ? "Send Product Review Request Email to Customer"
+                              : "Review request can only be sent once order status is Delivered"
+                          }
+                        >
+                          {sendingReviewEmail ? (
+                            <RefreshCw className="w-4 h-4 animate-spin text-amber-700" />
+                          ) : (
+                            <Star className={`w-4 h-4 ${orderStatus.toLowerCase() === "delivered" ? "fill-amber-400 text-amber-600" : "text-taupe/40"}`} />
+                          )}
+                          <span>{selectedOrder.review_requested_at ? "Resend Review Email" : "Ask for Rating"}</span>
+                        </button>
                         <button onClick={() => setSelectedOrder(null)} className="flex-1 sm:flex-none flex items-center justify-center gap-1 text-xs font-semibold text-taupe hover:text-ink px-2.5 py-2 border border-line rounded bg-white transition-colors cursor-pointer">
                           <ChevronLeft className="w-4 h-4" /> Back
                         </button>
@@ -4943,6 +5015,12 @@ export default function AdminDashboardPage() {
                           <p><strong>Razorpay Payment:</strong> {selectedOrder.razorpay_payment_id || "—"}</p>
                           <p><strong>Customer User ID:</strong> <span className="font-sans font-bold tracking-wider text-zari-deep bg-cream/50 px-1.5 py-0.5 rounded border border-zari/10">{selectedOrder.profiles?.user_id || "—"}</span></p>
                           <p><strong>Customer Profile Email:</strong> {selectedOrder.profiles?.email || "—"}</p>
+                          {selectedOrder.review_requested_at && (
+                            <div className="pt-2 mt-2 border-t border-line/60 flex items-center gap-1.5 text-[11px] font-semibold text-amber-800">
+                              <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-600 shrink-0" />
+                              <span>Review request email sent on {new Date(selectedOrder.review_requested_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </form>
@@ -5069,6 +5147,24 @@ export default function AdminDashboardPage() {
                                 </td>
                                 <td className="p-4 text-center">
                                   <div className="flex items-center justify-center gap-1.5">
+                                    <button
+                                      disabled={o.status?.toLowerCase() !== "delivered" || sendingReviewEmail}
+                                      onClick={() => handleSendReviewRequest(o)}
+                                      className={`p-1 border rounded transition-all ${
+                                        o.status?.toLowerCase() === "delivered"
+                                          ? "border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-700 cursor-pointer shadow-xs"
+                                          : "border-line bg-cream/40 text-taupe/30 cursor-not-allowed opacity-50"
+                                      }`}
+                                      title={
+                                        o.status?.toLowerCase() === "delivered"
+                                          ? o.review_requested_at
+                                            ? `Resend Review Request (Sent ${new Date(o.review_requested_at).toLocaleDateString()})`
+                                            : "Send Review Request Email to Customer"
+                                          : "Review request only available once order is Delivered"
+                                      }
+                                    >
+                                      <Star className={`w-4 h-4 ${o.status?.toLowerCase() === "delivered" ? "fill-amber-400 text-amber-600" : "text-taupe/30"}`} />
+                                    </button>
                                     <button onClick={() => inspectOrder(o)} className="p-1 border border-line rounded bg-cream hover:bg-beige text-ink cursor-pointer" title="Inspect / Manage Order">
                                       <Eye className="w-4 h-4" />
                                     </button>
