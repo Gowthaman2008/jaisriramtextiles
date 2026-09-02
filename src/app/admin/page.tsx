@@ -31,6 +31,7 @@ import {
   Printer,
   ChevronRight,
   ChevronLeft,
+  ArrowLeft,
   TrendingUp,
   UserCheck,
   AlertTriangle,
@@ -1541,6 +1542,9 @@ export default function AdminDashboardPage() {
     setProdImages([]);
     setProdVariants([]);
     setShowProductForm(true);
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
   }
 
   function openEditProduct(p: any) {
@@ -1579,6 +1583,9 @@ export default function AdminDashboardPage() {
     setProdImages((p.product_images || []).map((img: any) => img.url));
     setProdVariants(p.product_variants || []);
     setShowProductForm(true);
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
   }
 
   const isProductModified = () => {
@@ -1828,6 +1835,9 @@ export default function AdminDashboardPage() {
       notify("Product saved successfully!");
       setShowProductForm(false);
       setEditingProduct(null);
+      if (typeof window !== "undefined") {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
       await refreshProducts();
     } catch (err: any) {
       notify("Error saving product: " + err.message);
@@ -4136,28 +4146,45 @@ export default function AdminDashboardPage() {
             {/* Products catalog management tab */}
             {activeTab === "products" && (
               <div className="space-y-6 animate-fade-up">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                  <div className="relative flex-1 w-full">
-                    <Search className="absolute left-3 top-3 w-4 h-4 text-muted" />
-                    <input
-                      type="text"
-                      placeholder="Search products by title, slug, or category..."
-                      value={productSearch}
-                      onChange={(e) => setProductSearch(e.target.value)}
-                      className="w-full rounded-pill border border-line bg-white pl-9 pr-4 py-2 text-sm text-ink outline-none focus:border-zari"
-                    />
-                  </div>
-                  <Button size="sm" variant="gold" onClick={openAddProduct} className="flex-shrink-0">
-                    <Plus className="w-4 h-4" /> Add Product
-                  </Button>
-                </div>
+                {showProductForm ? (
+                  /* Dedicated Full-Screen Product Edit / Create Page */
+                  <div className="bg-white border-2 border-zari rounded-card p-6 shadow-lift relative space-y-6">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-line pb-4">
+                      <div className="flex items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowProductForm(false);
+                            setEditingProduct(null);
+                            if (typeof window !== "undefined") {
+                              window.scrollTo({ top: 0, behavior: "smooth" });
+                            }
+                          }}
+                          className="flex items-center gap-1.5 px-3 py-1.5 border border-line rounded-pill bg-cream hover:bg-beige text-ink text-xs font-semibold cursor-pointer transition-colors"
+                          title="Back to Product Catalog"
+                        >
+                          <ArrowLeft className="w-4 h-4" /> Back to Catalog
+                        </button>
+                        <h3 className="font-display text-xl sm:text-2xl text-ink">
+                          {editingProduct ? `Edit Product: ${editingProduct.name}` : "Create New Product"}
+                        </h3>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setShowProductForm(false);
+                          setEditingProduct(null);
+                          if (typeof window !== "undefined") {
+                            window.scrollTo({ top: 0, behavior: "smooth" });
+                          }
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
 
-                {/* Product Creation / Update Form Component overlay */}
-                {showProductForm && (
-                  <div className="bg-white border-2 border-zari rounded-card p-6 shadow-lift relative">
-                    <h3 className="font-display text-xl border-b border-line pb-3 mb-5">
-                      {editingProduct ? `Edit Product: ${editingProduct.name}` : "Create New Product"}
-                    </h3>
                     <form onSubmit={handleSaveProduct} className="space-y-6">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="flex flex-col gap-1.5">
@@ -4429,98 +4456,127 @@ export default function AdminDashboardPage() {
                       </div>
 
                       <div className="flex justify-end gap-3 border-t border-line pt-4">
-                        <Button type="button" variant="outline" size="sm" onClick={() => setShowProductForm(false)}>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setShowProductForm(false);
+                            setEditingProduct(null);
+                            if (typeof window !== "undefined") {
+                              window.scrollTo({ top: 0, behavior: "smooth" });
+                            }
+                          }}
+                        >
                           Cancel
                         </Button>
                         <Button type="submit" variant="gold" size="sm" disabled={!isProductModified()}>
-                          Save Product Details
+                          {editingProduct ? "Update Product Details" : "Save Product Details"}
                         </Button>
                       </div>
                     </form>
                   </div>
-                )}
+                ) : (
+                  <>
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                      <div className="relative flex-1 w-full">
+                        <Search className="absolute left-3 top-3 w-4 h-4 text-muted" />
+                        <input
+                          type="text"
+                          placeholder="Search products by title, slug, or category..."
+                          value={productSearch}
+                          onChange={(e) => setProductSearch(e.target.value)}
+                          className="w-full rounded-pill border border-line bg-white pl-9 pr-4 py-2 text-sm text-ink outline-none focus:border-zari"
+                        />
+                      </div>
+                      <Button size="sm" variant="gold" onClick={openAddProduct} className="flex-shrink-0">
+                        <Plus className="w-4 h-4" /> Add Product
+                      </Button>
+                    </div>
 
-                {products.some((p: any) => p.id.startsWith("default-p")) && (
-                  <div className="mb-4 p-4 bg-amber-50 border border-amber-200 text-amber-950 rounded-card text-xs leading-relaxed">
-                    ⚠️ <strong>Showing default product templates</strong>. The database catalog is currently empty. Click the edit icon (pencil) next to any product template and save it to write that product as a custom entry in your database.
-                  </div>
-                )}
+                    {products.some((p: any) => p.id.startsWith("default-p")) && (
+                      <div className="mb-4 p-4 bg-amber-50 border border-amber-200 text-amber-950 rounded-card text-xs leading-relaxed">
+                        ⚠️ <strong>Showing default product templates</strong>. The database catalog is currently empty. Click the edit icon (pencil) next to any product template and save it to write that product as a custom entry in your database.
+                      </div>
+                    )}
 
-                {/* Catalog Table */}
-                <div className="bg-white border border-line rounded-card overflow-hidden shadow-soft">
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm text-left">
-                      <thead>
-                        <tr className="bg-cream border-b border-line text-taupe font-medium">
-                          <th className="p-4">Product details</th>
-                          <th className="p-4">Category</th>
-                          <th className="p-4 text-right">Price</th>
-                          <th className="p-4 text-center">Stock</th>
-                          <th className="p-4 text-center">Status</th>
-                          <th className="p-4 text-center w-24">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {filteredProducts.map((p: any) => (
-                          <tr key={p.id} className="border-b border-line hover:bg-ivory/50">
-                            <td className="p-4">
-                              <div className="flex items-center gap-3">
-                                <div className="relative w-12 h-12 rounded border overflow-hidden flex-shrink-0 bg-cream">
-                                  {p.product_images?.[0] ? (
-                                    <Image src={p.product_images[0].url} alt="" fill className="object-cover" />
-                                  ) : (
-                                    <ShoppingCart className="w-6 h-6 m-3 text-muted" />
-                                  )}
-                                </div>
-                                <div>
-                                  <p className="font-semibold text-ink leading-tight">{p.name}</p>
-                                  <p className="text-xs text-taupe font-mono mt-0.5">slug: {p.slug}</p>
-                                  {(() => {
-                                    const match = (p.description || "").match(/\[HSN:\s*(\d+)\]/);
-                                    return match ? (
-                                      <p className="text-[10px] text-zari-deep font-bold mt-1 bg-zari-tint/40 px-1.5 py-0.5 rounded border border-zari/20 inline-block">HSN: {match[1]}</p>
-                                    ) : null;
-                                  })()}
-                                  {p.is_on_sale && <span className="inline-block bg-danger/10 text-danger text-[10px] font-bold px-1.5 py-0.2 rounded mt-1 uppercase ml-1.5">Sale</span>}
-                                </div>
-                              </div>
-                            </td>
-                            <td className="p-4 text-taupe">
-                              {p.categories?.name || <span className="italic text-muted">Uncategorized</span>}
-                            </td>
-                            <td className="p-4 text-right font-medium">
-                              <div>{formatRupees(p.price_paise)}</div>
-                              {p.compare_at_paise && <div className="text-xs text-muted line-through mt-0.5">{formatRupees(p.compare_at_paise)}</div>}
-                            </td>
-                            <td className="p-4 text-center font-semibold">
-                              <div className={`${p.stock === 0 ? "text-danger" : p.stock < 5 ? "text-amber-800" : "text-ink"}`}>{p.stock} units</div>
-                              <span className="text-[10px] text-taupe font-normal">{p.product_variants?.length || 0} variants</span>
-                            </td>
-                            <td className="p-4 text-center">
-                              <button onClick={() => toggleProductActive(p)} className={`inline-block px-2.5 py-0.5 text-xs rounded-full font-medium cursor-pointer transition-colors ${
-                                p.is_active ? "bg-success/10 text-success hover:bg-danger/10 hover:text-danger" : "bg-danger/10 text-danger hover:bg-success/10 hover:text-success"
-                              }`}>
-                                {p.is_active ? "Active" : "Disabled"}
-                              </button>
-                            </td>
-                            <td className="p-4 text-center">
-                               <div className="flex justify-center items-center gap-1.5">
-                                 <button onClick={() => openEditProduct(p)} className="p-2 border border-line rounded bg-cream/35 hover:bg-cream text-ink cursor-pointer hover:border-zari inline-flex items-center" title="Edit Product">
-                                   <Edit2 className="w-4 h-4" />
-                                 </button>
-                                 {!p.id.startsWith("default-p") && (
-                                   <button onClick={() => handleDeleteProduct(p)} className="p-2 border border-line rounded bg-danger/10 hover:bg-danger text-danger hover:text-white cursor-pointer hover:border-danger inline-flex items-center" title="Delete Product">
-                                     <Trash2 className="w-4 h-4" />
-                                   </button>
-                                 )}
-                               </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
+                    {/* Catalog Table */}
+                    <div className="bg-white border border-line rounded-card overflow-hidden shadow-soft">
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm text-left">
+                          <thead>
+                            <tr className="bg-cream border-b border-line text-taupe font-medium">
+                              <th className="p-4">Product details</th>
+                              <th className="p-4">Category</th>
+                              <th className="p-4 text-right">Price</th>
+                              <th className="p-4 text-center">Stock</th>
+                              <th className="p-4 text-center">Status</th>
+                              <th className="p-4 text-center w-24">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {filteredProducts.map((p: any) => (
+                              <tr key={p.id} className="border-b border-line hover:bg-ivory/50">
+                                <td className="p-4">
+                                  <div className="flex items-center gap-3">
+                                    <div className="relative w-12 h-12 rounded border overflow-hidden flex-shrink-0 bg-cream">
+                                      {p.product_images?.[0] ? (
+                                        <Image src={p.product_images[0].url} alt="" fill className="object-cover" />
+                                      ) : (
+                                        <ShoppingCart className="w-6 h-6 m-3 text-muted" />
+                                      )}
+                                    </div>
+                                    <div>
+                                      <p className="font-semibold text-ink leading-tight">{p.name}</p>
+                                      <p className="text-xs text-taupe font-mono mt-0.5">slug: {p.slug}</p>
+                                      {(() => {
+                                        const match = (p.description || "").match(/\[HSN:\s*(\d+)\]/);
+                                        return match ? (
+                                          <p className="text-[10px] text-zari-deep font-bold mt-1 bg-zari-tint/40 px-1.5 py-0.5 rounded border border-zari/20 inline-block">HSN: {match[1]}</p>
+                                        ) : null;
+                                      })()}
+                                      {p.is_on_sale && <span className="inline-block bg-danger/10 text-danger text-[10px] font-bold px-1.5 py-0.2 rounded mt-1 uppercase ml-1.5">Sale</span>}
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className="p-4 text-taupe">
+                                  {p.categories?.name || <span className="italic text-muted">Uncategorized</span>}
+                                </td>
+                                <td className="p-4 text-right font-medium">
+                                  <div>{formatRupees(p.price_paise)}</div>
+                                  {p.compare_at_paise && <div className="text-xs text-muted line-through mt-0.5">{formatRupees(p.compare_at_paise)}</div>}
+                                </td>
+                                <td className="p-4 text-center font-semibold">
+                                  <div className={`${p.stock === 0 ? "text-danger" : p.stock < 5 ? "text-amber-800" : "text-ink"}`}>{p.stock} units</div>
+                                  <span className="text-[10px] text-taupe font-normal">{p.product_variants?.length || 0} variants</span>
+                                </td>
+                                <td className="p-4 text-center">
+                                  <button onClick={() => toggleProductActive(p)} className={`inline-block px-2.5 py-0.5 text-xs rounded-full font-medium cursor-pointer transition-colors ${
+                                    p.is_active ? "bg-success/10 text-success hover:bg-danger/10 hover:text-danger" : "bg-danger/10 text-danger hover:bg-success/10 hover:text-success"
+                                  }`}>
+                                    {p.is_active ? "Active" : "Disabled"}
+                                  </button>
+                                </td>
+                                <td className="p-4 text-center">
+                                   <div className="flex justify-center items-center gap-1.5">
+                                     <button onClick={() => openEditProduct(p)} className="p-2 border border-line rounded bg-cream/35 hover:bg-cream text-ink cursor-pointer hover:border-zari inline-flex items-center" title="Edit Product">
+                                       <Edit2 className="w-4 h-4" />
+                                     </button>
+                                     {!p.id.startsWith("default-p") && (
+                                       <button onClick={() => handleDeleteProduct(p)} className="p-2 border border-line rounded bg-danger/10 hover:bg-danger text-danger hover:text-white cursor-pointer hover:border-danger inline-flex items-center" title="Delete Product">
+                                         <Trash2 className="w-4 h-4" />
+                                       </button>
+                                     )}
+                                   </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             )}
 

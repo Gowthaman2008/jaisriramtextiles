@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import { ArrowRight } from "lucide-react";
 import { Container } from "@/components/ui/container";
+import { Button } from "@/components/ui/button";
 
 export const metadata: Metadata = {
   title: "About Us",
@@ -37,6 +39,13 @@ export default function AboutPage() {
             you need a single piece for a family occasion or a thousand pieces for an
             institution, the same care goes into every metre we weave.
           </p>
+
+          <div className="pt-2">
+            <Button href="/shop" variant="gold" size="lg">
+              Explore Products
+              <ArrowRight size={18} />
+            </Button>
+          </div>
           
           <div className="zari-rule my-8" />
 
