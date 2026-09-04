@@ -124,13 +124,25 @@ export function HeroCarousel({ dbSlides }: { dbSlides?: any[] }) {
     setState([(next + slides.length) % slides.length, direction]);
   }, [slides.length]);
 
+  const slide = slides[index];
+  const isVideo = isVideoMediaUrl(slide?.image);
+
+  // Auto-advance timer: only active for photo slides. Video slides advance on completion (onEnded).
   useEffect(() => {
     if (reduce) return;
-    timer.current = setInterval(() => setState(([i]) => [(i + 1) % slides.length, 1]), AUTO_MS);
+    if (isVideo) {
+      if (timer.current) clearInterval(timer.current);
+      return;
+    }
+
+    timer.current = setInterval(() => {
+      setState(([i]) => [(i + 1) % slides.length, 1]);
+    }, AUTO_MS);
+
     return () => {
       if (timer.current) clearInterval(timer.current);
     };
-  }, [reduce, slides.length]);
+  }, [reduce, slides.length, index, isVideo]);
 
   const touchStartX = useRef<number | null>(null);
   const touchStartY = useRef<number | null>(null);
@@ -167,9 +179,6 @@ export function HeroCarousel({ dbSlides }: { dbSlides?: any[] }) {
     }
   };
 
-  const slide = slides[index];
-  const isVideo = isVideoMediaUrl(slide?.image);
-
   return (
     <section
       aria-roledescription="carousel"
@@ -197,9 +206,9 @@ export function HeroCarousel({ dbSlides }: { dbSlides?: any[] }) {
                 src={slide.image}
                 autoPlay
                 muted={isMuted}
-                loop
                 playsInline
                 preload="auto"
+                onEnded={() => go(index + 1, 1)}
                 className="w-full h-full object-cover"
               />
             ) : (
