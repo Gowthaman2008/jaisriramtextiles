@@ -3,12 +3,25 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowRight, ChevronLeft, ChevronRight, Volume2, VolumeX } from "lucide-react";
 import { Container } from "@/components/ui/container";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { placeholderImage } from "@/lib/cloudinary-image";
-import { createClient } from "@/lib/supabase/client";
+
+export function isVideoMediaUrl(url?: string | null): boolean {
+  if (!url) return false;
+  const cleanUrl = url.split("?")[0].toLowerCase();
+  return (
+    cleanUrl.includes("/video/upload/") ||
+    cleanUrl.endsWith(".mp4") ||
+    cleanUrl.endsWith(".webm") ||
+    cleanUrl.endsWith(".mov") ||
+    cleanUrl.endsWith(".ogg") ||
+    cleanUrl.endsWith(".m4v") ||
+    cleanUrl.endsWith(".mkv")
+  );
+}
 
 type Slide = {
   eyebrow: string;
@@ -98,6 +111,7 @@ export function HeroCarousel({ dbSlides }: { dbSlides?: any[] }) {
   const [slides, setSlides] = useState<Slide[]>(() => formatDbSlides(dbSlides));
   const reduce = useReducedMotion();
   const [[index, dir], setState] = useState<[number, number]>([0, 1]);
+  const [isMuted, setIsMuted] = useState(true);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
@@ -154,6 +168,7 @@ export function HeroCarousel({ dbSlides }: { dbSlides?: any[] }) {
   };
 
   const slide = slides[index];
+  const isVideo = isVideoMediaUrl(slide?.image);
 
   return (
     <section
@@ -165,7 +180,7 @@ export function HeroCarousel({ dbSlides }: { dbSlides?: any[] }) {
       onTouchEnd={onTouchEnd}
     >
       <div className="relative h-[86vh] min-h-[560px] max-h-[820px]">
-        {/* Background image with slow parallax drift */}
+        {/* Background image or video with smooth transitions */}
         <AnimatePresence initial={false} custom={dir}>
           <motion.div
             key={index}
@@ -176,14 +191,27 @@ export function HeroCarousel({ dbSlides }: { dbSlides?: any[] }) {
             exit={{ opacity: 0 }}
             transition={{ duration: reduce ? 0.3 : 1.2, ease: [0.22, 1, 0.36, 1] }}
           >
-            <Image
-              src={slide.image}
-              alt=""
-              fill
-              priority={index === 0}
-              sizes="100vw"
-              className="object-cover"
-            />
+            {isVideo ? (
+              <video
+                key={slide.image}
+                src={slide.image}
+                autoPlay
+                muted={isMuted}
+                loop
+                playsInline
+                preload="auto"
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <Image
+                src={slide.image}
+                alt=""
+                fill
+                priority={index === 0}
+                sizes="100vw"
+                className="object-cover"
+              />
+            )}
             {/* Ivory scrim keeps the light, luxurious feel and text legible */}
             <div className="absolute inset-0 bg-gradient-to-r from-ivory/55 via-ivory/25 to-transparent" />
             <div className="absolute inset-0 bg-weave opacity-40 mix-blend-multiply" />
@@ -222,16 +250,30 @@ export function HeroCarousel({ dbSlides }: { dbSlides?: any[] }) {
           </div>
         </Container>
 
-        {/* Arrows */}
+        {/* Controls Overlay: Arrows, Sound Toggle, Progress Dots */}
         <div className="pointer-events-none absolute inset-x-0 bottom-8 z-10">
-          <Container className="pointer-events-auto flex items-center justify-center sm:justify-between">
-            <div className="hidden sm:flex gap-2">
-              <ArrowBtn label="Previous slide" onClick={() => go(index - 1, -1)}>
-                <ChevronLeft size={18} />
-              </ArrowBtn>
-              <ArrowBtn label="Next slide" onClick={() => go(index + 1, 1)}>
-                <ChevronRight size={18} />
-              </ArrowBtn>
+          <Container className="pointer-events-auto flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="hidden sm:flex gap-2">
+                <ArrowBtn label="Previous slide" onClick={() => go(index - 1, -1)}>
+                  <ChevronLeft size={18} />
+                </ArrowBtn>
+                <ArrowBtn label="Next slide" onClick={() => go(index + 1, 1)}>
+                  <ChevronRight size={18} />
+                </ArrowBtn>
+              </div>
+
+              {isVideo && (
+                <button
+                  onClick={() => setIsMuted((prev) => !prev)}
+                  aria-label={isMuted ? "Unmute video sound" : "Mute video sound"}
+                  title={isMuted ? "Unmute sound" : "Mute sound"}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-full border border-ink/15 bg-ivory/80 text-ink backdrop-blur text-xs font-semibold hover:border-zari hover:text-zari-deep transition shadow-sm"
+                >
+                  {isMuted ? <VolumeX size={15} /> : <Volume2 size={15} />}
+                  <span className="hidden md:inline">{isMuted ? "Unmute" : "Mute"}</span>
+                </button>
+              )}
             </div>
 
             {/* Progress dots */}
@@ -241,7 +283,7 @@ export function HeroCarousel({ dbSlides }: { dbSlides?: any[] }) {
                   key={i}
                   role="tab"
                   aria-selected={i === index}
-                  aria-label={s.eyebrow}
+                  aria-label={s.eyebrow || `Slide ${i + 1}`}
                   onClick={() => go(i, i > index ? 1 : -1)}
                   className={cn(
                     "h-1.5 rounded-full bg-ink/25 transition-all duration-500 ease-silk",

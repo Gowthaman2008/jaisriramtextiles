@@ -446,7 +446,7 @@ create table newsletter_subscriptions (
 create table carousel_slides (
   id          uuid primary key default gen_random_uuid(),
   eyebrow     text, title text not null, subtitle text,
-  cta_label   text, cta_href text, image_url text,
+  cta_label   text, cta_href text, image_url text, -- supports image or video URLs
   sort_order  int not null default 0, is_active boolean not null default true
 );
 

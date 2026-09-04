@@ -49,10 +49,13 @@ import {
   MessageSquareText,
   Gift,
   Send,
-  Sparkles
+  Sparkles,
+  Video as VideoIcon,
+  Play
 } from "lucide-react";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { MarketingHub } from "@/components/admin/marketing/marketing-hub";
+import { isVideoMediaUrl } from "@/components/home/hero-carousel";
 
 // Helper for formatting money — always whole rupees (no paise adjustments)
 function formatRupees(paise: number) {
@@ -1246,6 +1249,23 @@ export default function AdminDashboardPage() {
     setSlideIsActive(true);
   }
 
+  async function handleDownloadMedia(url: string, filename: string) {
+    try {
+      const res = await fetch(url);
+      const blob = await res.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch {
+      window.open(url, "_blank");
+    }
+  }
+
   async function handleSlideImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -1255,7 +1275,7 @@ export default function AdminDashboardPage() {
       const formData = new FormData();
       formData.append("file", file);
 
-      const res = await fetch("/api/admin/products/upload-image", {
+      const res = await fetch("/api/admin/cms/upload", {
         method: "POST",
         body: formData
       });
@@ -1267,8 +1287,10 @@ export default function AdminDashboardPage() {
 
       const data = await res.json();
       setSlideImageUrl(data.url);
+      const isVid = data.mediaType === "video" || file.type.startsWith("video/");
+      notify(isVid ? "✅ Video uploaded successfully!" : "✅ Image uploaded successfully!");
     } catch (err: any) {
-      notify("Image upload failed: " + err.message);
+      notify("Upload failed: " + err.message);
     } finally {
       setUploadingSlideImage(false);
     }
@@ -6614,47 +6636,94 @@ export default function AdminDashboardPage() {
                           <input type="text" placeholder="e.g. /shop/white-dhoti" value={slideCtaHref} onChange={(e) => setSlideCtaHref(e.target.value)} className="rounded border border-line bg-white px-3 py-1.5 text-xs outline-none" />
                         </div>
                         <div className="flex flex-col gap-1">
-                          <label className="text-xs font-bold text-taupe">Slide Image *</label>
+                          <label className="text-xs font-bold text-taupe">Slide Media (Image or Video) *</label>
                           <label className={`relative flex flex-col items-center justify-center gap-2 rounded border-2 border-dashed transition-colors cursor-pointer ${uploadingSlideImage ? "border-zari bg-zari/5" : "border-line hover:border-zari bg-cream/30 hover:bg-zari/5"}`}>
                             {slideImageUrl ? (
-                              <div className="relative w-full h-32 rounded overflow-hidden">
-                                <img src={slideImageUrl} alt="Slide preview" className="w-full h-full object-cover" />
-                                <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-                                  <span className="text-white text-xs font-bold">Click to replace</span>
-                                </div>
+                              <div className="relative w-full rounded overflow-hidden p-1">
+                                {isVideoMediaUrl(slideImageUrl) ? (
+                                  <div className="relative w-full h-36 bg-black rounded overflow-hidden">
+                                    <video
+                                      src={slideImageUrl}
+                                      controls
+                                      autoPlay
+                                      muted
+                                      loop
+                                      playsInline
+                                      className="w-full h-full object-cover"
+                                    />
+                                    <div className="absolute top-2 left-2 bg-black/80 backdrop-blur text-white text-[10px] font-bold px-2 py-0.5 rounded flex items-center gap-1 shadow">
+                                      <VideoIcon className="w-3 h-3 text-zari" />
+                                      Video Hero Slide
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="relative w-full h-36 rounded overflow-hidden">
+                                    <img src={slideImageUrl} alt="Slide preview" className="w-full h-full object-cover" />
+                                    <div className="absolute top-2 left-2 bg-black/70 backdrop-blur text-white text-[10px] font-bold px-2 py-0.5 rounded flex items-center gap-1 shadow">
+                                      <ImageIcon className="w-3 h-3 text-zari" />
+                                      Image Hero Slide
+                                    </div>
+                                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                                      <span className="text-white text-xs font-bold">Click to replace</span>
+                                    </div>
+                                  </div>
+                                )}
                               </div>
                             ) : (
-                              <div className="flex flex-col items-center gap-1 py-6 text-taupe">
-                                <ImageIcon className="w-7 h-7 text-line" />
-                                {uploadingSlideImage
-                                  ? <span className="text-xs font-semibold text-zari animate-pulse">Uploading to Cloudinary…</span>
-                                  : <><span className="text-xs font-semibold">Click to upload image</span><span className="text-[10px]">PNG, JPG, WEBP — recommended 2000×1200px</span></>
-                                }
+                              <div className="flex flex-col items-center gap-1.5 py-5 text-taupe text-center px-4">
+                                <div className="flex items-center gap-1.5 text-line">
+                                  <ImageIcon className="w-6 h-6" />
+                                  <span className="text-xs">/</span>
+                                  <VideoIcon className="w-6 h-6" />
+                                </div>
+                                {uploadingSlideImage ? (
+                                  <span className="text-xs font-semibold text-zari animate-pulse">Uploading media to Cloudinary…</span>
+                                ) : (
+                                  <>
+                                    <span className="text-xs font-semibold text-ink">Click to upload Image or Video</span>
+                                    <span className="text-[10px]">Images (PNG, JPG, WEBP) or Videos (MP4, WebM, MOV) up to 50MB</span>
+                                  </>
+                                )}
                               </div>
                             )}
                             <input
                               type="file"
-                              accept="image/*"
+                              accept="image/*,video/*"
                               onChange={handleSlideImageUpload}
                               className="hidden"
                               disabled={uploadingSlideImage}
                             />
                           </label>
-                          {uploadingSlideImage && <p className="text-[10px] text-zari font-semibold animate-pulse mt-0.5">Uploading to Cloudinary…</p>}
+
+                          <div className="flex items-center gap-1.5 mt-1">
+                            <span className="text-[10px] text-taupe font-semibold whitespace-nowrap">Or Media URL:</span>
+                            <input
+                              type="url"
+                              placeholder="https://res.cloudinary.com/... or https://.../video.mp4"
+                              value={slideImageUrl}
+                              onChange={(e) => setSlideImageUrl(e.target.value)}
+                              className="flex-1 rounded border border-line bg-white px-2 py-1 text-[11px] outline-none focus:border-zari"
+                            />
+                          </div>
+
+                          {uploadingSlideImage && <p className="text-[10px] text-zari font-semibold animate-pulse mt-0.5">Uploading media to Cloudinary…</p>}
                           {slideImageUrl && !uploadingSlideImage && (
                             <div className="flex justify-between items-center mt-1">
-                              <p className="text-[10px] text-success font-semibold">✓ Image uploaded successfully</p>
+                              <p className="text-[10px] text-success font-semibold flex items-center gap-1">
+                                ✓ {isVideoMediaUrl(slideImageUrl) ? "Video ready" : "Image ready"}
+                              </p>
                               <button
                                 type="button"
                                 onClick={(e) => {
                                   e.preventDefault();
                                   e.stopPropagation();
-                                  handleDownloadImage(slideImageUrl, `slide-${(slideTitle || "").toLowerCase().replace(/[^a-z0-9]+/g, "-") || "image"}.png`);
+                                  const ext = isVideoMediaUrl(slideImageUrl) ? "mp4" : "png";
+                                  handleDownloadMedia(slideImageUrl, `slide-${(slideTitle || "").toLowerCase().replace(/[^a-z0-9]+/g, "-") || "media"}.${ext}`);
                                 }}
-                                className="inline-flex items-center gap-1 px-2.5 py-1.5 border border-line rounded bg-cream hover:bg-cream/70 text-[9px] font-bold text-ink transition-colors cursor-pointer"
+                                className="inline-flex items-center gap-1 px-2.5 py-1 border border-line rounded bg-cream hover:bg-cream/70 text-[9px] font-bold text-ink transition-colors cursor-pointer"
                               >
                                 <Download className="w-2.5 h-2.5 text-zari-deep" />
-                                Download Photo
+                                {isVideoMediaUrl(slideImageUrl) ? "Download Video" : "Download Photo"}
                               </button>
                             </div>
                           )}
@@ -6691,34 +6760,64 @@ export default function AdminDashboardPage() {
 
                   {cmsSlides.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {cmsSlides.map((slide) => (
-                        <div key={slide.id} className="border border-line rounded-md p-4 bg-cream/15 flex gap-4 items-start relative group shadow-soft">
-                          <div className="relative w-20 h-20 border border-line rounded overflow-hidden flex-shrink-0 bg-cream">
-                            {slide.image_url ? (
-                              <Image src={slide.image_url} alt="" fill className="object-cover" />
-                            ) : (
-                              <ImageIcon className="w-6 h-6 m-7 text-muted" />
-                            )}
-                          </div>
-                          <div className="flex-1 space-y-1 min-w-0">
-                            <p className="text-xs font-bold uppercase text-zari tracking-wide">{slide.eyebrow || "Hero highlight"}</p>
-                            <p className="text-sm font-bold text-ink truncate">{slide.title}</p>
-                            <p className="text-xs text-taupe line-clamp-2">{slide.subtitle}</p>
-                            <div className="pt-1.5 flex gap-3 text-[11px] font-semibold">
-                              <span className="text-ink">Sort: #{slide.sort_order}</span>
-                              <span className={slide.is_active ? "text-success" : "text-danger"}>{slide.is_active ? "Active" : "Disabled"}</span>
+                      {cmsSlides.map((slide) => {
+                        const isSlideVideo = isVideoMediaUrl(slide.image_url);
+                        return (
+                          <div key={slide.id} className="border border-line rounded-md p-4 bg-cream/15 flex gap-4 items-start relative group shadow-soft">
+                            <div className="relative w-20 h-20 border border-line rounded overflow-hidden flex-shrink-0 bg-cream">
+                              {slide.image_url ? (
+                                isSlideVideo ? (
+                                  <div className="relative w-full h-full bg-black">
+                                    <video
+                                      src={slide.image_url}
+                                      autoPlay
+                                      muted
+                                      loop
+                                      playsInline
+                                      className="w-full h-full object-cover"
+                                    />
+                                    <div className="absolute bottom-1 right-1 bg-black/80 text-white rounded p-0.5">
+                                      <VideoIcon className="w-3 h-3 text-zari" />
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <Image src={slide.image_url} alt="" fill className="object-cover" />
+                                )
+                              ) : (
+                                <ImageIcon className="w-6 h-6 m-7 text-muted" />
+                              )}
+                            </div>
+                            <div className="flex-1 space-y-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <p className="text-xs font-bold uppercase text-zari tracking-wide truncate">{slide.eyebrow || "Hero highlight"}</p>
+                                {isSlideVideo ? (
+                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[9px] font-bold bg-purple-100 text-purple-800">
+                                    <VideoIcon className="w-2.5 h-2.5" /> Video
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[9px] font-bold bg-slate-100 text-slate-700">
+                                    <ImageIcon className="w-2.5 h-2.5" /> Image
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-sm font-bold text-ink truncate">{slide.title}</p>
+                              <p className="text-xs text-taupe line-clamp-2">{slide.subtitle}</p>
+                              <div className="pt-1.5 flex gap-3 text-[11px] font-semibold">
+                                <span className="text-ink">Sort: #{slide.sort_order}</span>
+                                <span className={slide.is_active ? "text-success" : "text-danger"}>{slide.is_active ? "Active" : "Disabled"}</span>
+                              </div>
+                            </div>
+                            <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button onClick={() => startEditSlide(slide)} className="p-1 border border-line rounded bg-white hover:bg-cream text-ink" title="Edit Slide">
+                                <Edit2 className="w-3.5 h-3.5" />
+                              </button>
+                              <button onClick={() => handleDeleteSlide(slide.id)} className="p-1 border border-line rounded bg-white hover:bg-danger/10 text-danger" title="Delete Slide">
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
                             </div>
                           </div>
-                          <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button onClick={() => startEditSlide(slide)} className="p-1 border border-line rounded bg-white hover:bg-cream text-ink" title="Edit Slide">
-                              <Edit2 className="w-3.5 h-3.5" />
-                            </button>
-                            <button onClick={() => handleDeleteSlide(slide.id)} className="p-1 border border-line rounded bg-white hover:bg-danger/10 text-danger" title="Delete Slide">
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   ) : (
                     <p className="text-sm text-taupe italic">No customized hero slides in database. Storefront is displaying the hardcoded default slides.</p>
