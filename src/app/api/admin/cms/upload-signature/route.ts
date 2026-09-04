@@ -26,15 +26,24 @@ async function checkAdminAuth() {
   }
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const authUser = await checkAdminAuth();
     if (!authUser) {
       return NextResponse.json({ error: "Unauthorized: Admin session expired or forbidden" }, { status: 401 });
     }
 
+    const { searchParams } = new URL(request.url);
+    const requestedFolder = searchParams.get("folder") || "products";
+    const allowedFolders: Record<string, string> = {
+      products: "jai-sri-ram-textiles/products",
+      slides: "jai-sri-ram-textiles/hero-slides",
+      categories: "jai-sri-ram-textiles/categories",
+      hero: "jai-sri-ram-textiles/hero-slides",
+    };
+
+    const folder = allowedFolders[requestedFolder] || `jai-sri-ram-textiles/${requestedFolder}`;
     const timestamp = Math.round(new Date().getTime() / 1000);
-    const folder = "jai-sri-ram-textiles/hero-slides";
 
     const paramsToSign = {
       folder,

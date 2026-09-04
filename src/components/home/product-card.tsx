@@ -4,12 +4,13 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Heart, ShoppingBag, Minus, Plus } from "lucide-react";
+import { Heart, ShoppingBag, Minus, Plus, Video as VideoIcon } from "lucide-react";
 import { StarRating } from "@/components/ui/star-rating";
 import { formatINR, cn } from "@/lib/utils";
 import type { Product } from "@/lib/types";
 import { useWishlist } from "@/components/providers/wishlist-provider";
 import { useCart } from "@/components/providers/cart-provider";
+import { isVideoMediaUrl } from "@/components/home/hero-carousel";
 
 const badgeStyles: Record<string, string> = {
   new: "bg-ink text-ivory",
@@ -23,6 +24,7 @@ export function ProductCard({ product, index = 0 }: { product: Product; index?: 
   const { toggleWishlist, isWished } = useWishlist();
   const { addToCart, cart, updateQuantity } = useCart();
   const wished = isWished(product.id);
+  const isVideo = isVideoMediaUrl(product.image);
 
   const discount =
     product.compareAtPaise && product.compareAtPaise > product.pricePaise
@@ -52,20 +54,40 @@ export function ProductCard({ product, index = 0 }: { product: Product; index?: 
       <Link href={`/product/${product.slug}`} className="relative block">
         <div className="zari-frame relative aspect-[4/5] overflow-hidden rounded-card bg-cream">
           {!loaded && <div className="skeleton absolute inset-0 rounded-card" />}
-          <Image
-            src={product.image}
-            alt={product.name}
-            fill
-            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-            onLoad={() => setLoaded(true)}
-            className={cn(
-              "object-cover transition-all duration-700 ease-silk group-hover:scale-[1.05]",
-              loaded ? "opacity-100" : "opacity-0"
-            )}
-          />
+          {isVideo ? (
+            <video
+              src={product.image}
+              autoPlay
+              muted
+              loop
+              playsInline
+              onLoadedData={() => setLoaded(true)}
+              className={cn(
+                "object-cover w-full h-full transition-all duration-700 ease-silk group-hover:scale-[1.05]",
+                loaded ? "opacity-100" : "opacity-0"
+              )}
+            />
+          ) : (
+            <Image
+              src={product.image}
+              alt={product.name}
+              fill
+              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+              onLoad={() => setLoaded(true)}
+              className={cn(
+                "object-cover transition-all duration-700 ease-silk group-hover:scale-[1.05]",
+                loaded ? "opacity-100" : "opacity-0"
+              )}
+            />
+          )}
 
           {/* Badges */}
           <div className="absolute left-2 top-2 flex flex-wrap gap-1 items-center max-w-[75%]">
+            {isVideo && (
+              <span className="rounded-full bg-black/75 px-2 py-0.5 text-[9px] sm:text-[10px] font-bold text-ivory tracking-wide uppercase flex items-center gap-1 backdrop-blur-xs">
+                <VideoIcon size={10} className="text-zari" /> Video
+              </span>
+            )}
             {discount > 0 && (
               <span className="rounded-full bg-danger px-2 py-0.5 text-[9px] sm:text-[10px] font-bold text-ivory tracking-wide uppercase">
                 −{discount}%

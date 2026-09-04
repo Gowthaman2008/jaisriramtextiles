@@ -456,6 +456,7 @@ export default function AdminDashboardPage() {
   const [prodIsTrending, setProdIsTrending] = useState(false);
   const [prodShowSize, setProdShowSize] = useState(false);
   const [prodImages, setProdImages] = useState<string[]>([]);
+  const [prodMediaUrlInput, setProdMediaUrlInput] = useState("");
   const [prodVariants, setProdVariants] = useState<any[]>([]); // {size, color, sku, stock}
 
   // Variant helper states
@@ -1705,20 +1706,53 @@ export default function AdminDashboardPage() {
     const incomingCount = filesArray.length;
 
     if (currentCount >= 10) {
-      notify("You have already uploaded the maximum limit of 10 images.");
+      notify("You have already uploaded the maximum limit of 10 media files.");
       return;
     }
 
     let filesToUpload = filesArray;
     if (currentCount + incomingCount > 10) {
       const allowedCount = 10 - currentCount;
-      notify(`You can only upload up to 10 images. Only the first ${allowedCount} selected files will be uploaded.`);
+      notify(`You can only upload up to 10 media files. Only the first ${allowedCount} selected files will be uploaded.`);
       filesToUpload = filesArray.slice(0, allowedCount);
     }
 
     setUploadingImage(true);
     try {
+      // 1. Fetch Cloudinary signature for direct signed upload (avoids 413 limits on large videos)
+      const sigRes = await fetch("/api/admin/cms/upload-signature?folder=products");
+      let sigData: any = null;
+      if (sigRes.ok) {
+        sigData = await sigRes.json();
+      }
+
       const uploadPromises = filesToUpload.map(async (file) => {
+        const isVid = file.type.startsWith("video/") || /\.(mp4|webm|mov|ogg|mkv|m4v|avi)$/i.test(file.name);
+
+        if (sigData?.signature) {
+          const directFormData = new FormData();
+          directFormData.append("file", file);
+          directFormData.append("api_key", sigData.apiKey);
+          directFormData.append("timestamp", String(sigData.timestamp));
+          directFormData.append("signature", sigData.signature);
+          directFormData.append("folder", sigData.folder);
+
+          const resourceType = isVid ? "video" : "image";
+          const directRes = await fetch(
+            `https://api.cloudinary.com/v1_1/${sigData.cloudName}/${resourceType}/upload`,
+            {
+              method: "POST",
+              body: directFormData,
+            }
+          );
+
+          if (directRes.ok) {
+            const data = await directRes.json();
+            return data.secure_url;
+          }
+        }
+
+        // Fallback: server upload route
         const formData = new FormData();
         formData.append("file", file);
 
@@ -1738,12 +1772,24 @@ export default function AdminDashboardPage() {
 
       const uploadedUrls = await Promise.all(uploadPromises);
       setProdImages([...prodImages, ...uploadedUrls]);
+      notify(`✅ Uploaded ${uploadedUrls.length} media file(s) successfully!`);
     } catch (err: any) {
-      notify("Image upload failed: " + err.message);
+      notify("Media upload failed: " + err.message);
     } finally {
       e.target.value = "";
       setUploadingImage(false);
     }
+  }
+
+  function addProdMediaUrl() {
+    if (!prodMediaUrlInput.trim()) return;
+    if (prodImages.length >= 10) {
+      notify("You have already reached the maximum limit of 10 media files.");
+      return;
+    }
+    setProdImages([...prodImages, prodMediaUrlInput.trim()]);
+    setProdMediaUrlInput("");
+    notify("Media URL added to product!");
   }
 
   const moveProductImage = (index: number, direction: "left" | "right") => {
@@ -1814,7 +1860,7 @@ export default function AdminDashboardPage() {
 
   const downloadAllImages = async () => {
     if (prodImages.length === 0) return;
-    notify("Downloading all product images...");
+    notify("Downloading all product media files...");
     for (let i = 0; i < prodImages.length; i++) {
       const url = prodImages[i];
       try {
@@ -1824,7 +1870,9 @@ export default function AdminDashboardPage() {
         const link = document.createElement("a");
         link.href = blobUrl;
         
-        const extension = url.split(".").pop()?.split("?")[0] || "jpg";
+        const isVid = isVideoMediaUrl(url);
+        const defaultExt = isVid ? "mp4" : "jpg";
+        const extension = url.split(".").pop()?.split("?")[0] || defaultExt;
         const cleanName = (prodName || "product").toLowerCase().replace(/[^a-z0-9]/g, "-");
         link.download = `${cleanName}-${i + 1}.${extension}`;
         
@@ -1835,7 +1883,7 @@ export default function AdminDashboardPage() {
         
         await new Promise((resolve) => setTimeout(resolve, 300));
       } catch (error) {
-        console.error("Failed to download image", url, error);
+        console.error("Failed to download media", url, error);
         window.open(url, "_blank");
       }
     }
@@ -4263,7 +4311,16 @@ export default function AdminDashboardPage() {
                           <div className="flex items-center gap-3">
                             <div className="relative w-8 h-8 rounded border overflow-hidden flex-shrink-0 bg-cream">
                               {p.product_images?.[0] ? (
-                                <Image src={p.product_images[0].url} alt="" fill className="object-cover" />
+                                isVideoMediaUrl(p.product_images[0].url) ? (
+                                  <div className="relative w-full h-full bg-black">
+                                    <video src={p.product_images[0].url} muted playsInline className="object-cover w-full h-full" />
+                                    <div className="absolute bottom-0.5 right-0.5 bg-black/80 rounded p-0.5">
+                                      <VideoIcon className="w-2.5 h-2.5 text-zari" />
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <Image src={p.product_images[0].url} alt="" fill className="object-cover" />
+                                )
                               ) : (
                                 <ShoppingCart className="w-4 h-4 m-2 text-muted" />
                               )}
@@ -4465,84 +4522,126 @@ export default function AdminDashboardPage() {
                         </div>
                       </div>
 
-                      {/* Product Images uploads (Cloudinary integrated) */}
+                      {/* Product Media uploads (Photos & Videos — Cloudinary integrated) */}
                       <div className="border-t border-line pt-4 space-y-4">
-                        <h4 className="font-semibold text-sm">Product Images (Cloudinary)</h4>
+                        <h4 className="font-semibold text-sm">Product Media — Photos & Videos (Cloudinary)</h4>
                         
-                        <div className="flex items-center flex-wrap gap-4">
-                          <label className={`cursor-pointer inline-flex items-center gap-2 px-4 py-2 border border-line rounded-md text-sm font-medium hover:bg-cream transition-colors ${uploadingImage ? "opacity-50 pointer-events-none" : ""}`}>
-                            <ImageIcon className="w-4 h-4 text-zari" />
-                            {uploadingImage ? "Uploading images..." : "Upload Images (Max 10)"}
-                            <input type="file" accept="image/*" multiple onChange={handleProductImageUpload} className="hidden" />
-                          </label>
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                          <div className="flex items-center flex-wrap gap-3">
+                            <label className={`cursor-pointer inline-flex items-center gap-2 px-4 py-2 border border-line rounded-md text-sm font-medium hover:bg-cream transition-colors ${uploadingImage ? "opacity-50 pointer-events-none" : ""}`}>
+                              <VideoIcon className="w-4 h-4 text-zari" />
+                              {uploadingImage ? "Uploading media files…" : "Upload Photos & Videos (Max 10)"}
+                              <input type="file" accept="image/*,video/*" multiple onChange={handleProductImageUpload} className="hidden" />
+                            </label>
 
-                          {prodImages.length > 0 && (
+                            {prodImages.length > 0 && (
+                              <button
+                                type="button"
+                                onClick={downloadAllImages}
+                                className="inline-flex items-center gap-2 px-4 py-2 border border-zari bg-transparent text-zari hover:bg-zari hover:text-ivory rounded-md text-sm font-semibold transition-colors cursor-pointer"
+                              >
+                                <Download className="w-4 h-4" />
+                                Download All ({prodImages.length})
+                              </button>
+                            )}
+                          </div>
+
+                          <div className="flex items-center gap-2 max-w-sm w-full">
+                            <input
+                              type="url"
+                              placeholder="Or paste media URL (photo / video)..."
+                              value={prodMediaUrlInput}
+                              onChange={(e) => setProdMediaUrlInput(e.target.value)}
+                              className="flex-1 rounded-md border border-line bg-ivory px-3 py-1.5 text-xs text-ink outline-none focus:border-zari focus:bg-white"
+                            />
                             <button
                               type="button"
-                              onClick={downloadAllImages}
-                              className="inline-flex items-center gap-2 px-4 py-2 border border-zari bg-transparent text-zari hover:bg-zari hover:text-ivory rounded-md text-sm font-semibold transition-colors cursor-pointer"
+                              onClick={addProdMediaUrl}
+                              className="px-3 py-1.5 rounded-md bg-ink text-ivory text-xs font-semibold hover:bg-ink/80 transition-colors shrink-0 cursor-pointer"
                             >
-                              <Download className="w-4 h-4" />
-                              Download All ({prodImages.length})
+                              Add URL
                             </button>
-                          )}
+                          </div>
                         </div>
 
                         {prodImages.length > 0 ? (
                           <div className="space-y-2">
-                            <p className="text-[10px] text-taupe">Drag and drop images (or use the arrow buttons) to rearrange their display order. The first image is the primary thumbnail.</p>
+                            <p className="text-[10px] text-taupe">Drag and drop media (or use arrow buttons) to rearrange order. The first item is the primary storefront thumbnail.</p>
                             <div className="grid grid-cols-3 sm:grid-cols-6 gap-4">
-                              {prodImages.map((url, index) => (
-                                <div 
-                                  key={index} 
-                                  draggable
-                                  onDragStart={() => handleImgDragStart(index)}
-                                  onDragOver={handleImgDragOver}
-                                  onDrop={() => handleImgDrop(index)}
-                                  className={`relative aspect-square border rounded-md overflow-hidden bg-cream group cursor-grab active:cursor-grabbing transition-all duration-200 ${
-                                    draggedImgIndex === index ? "border-zari ring-2 ring-zari opacity-50" : "border-line"
-                                  }`}
-                                >
-                                  <Image src={url} alt="Product" fill className="object-cover pointer-events-none" />
-                                  <button 
-                                    type="button" 
-                                    onClick={() => removeProductImage(index)} 
-                                    className="absolute top-1 right-1 bg-danger text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity z-10 cursor-pointer"
+                              {prodImages.map((url, index) => {
+                                const isVid = isVideoMediaUrl(url);
+                                return (
+                                  <div 
+                                    key={index} 
+                                    draggable
+                                    onDragStart={() => handleImgDragStart(index)}
+                                    onDragOver={handleImgDragOver}
+                                    onDrop={() => handleImgDrop(index)}
+                                    className={`relative aspect-square border rounded-md overflow-hidden bg-cream group cursor-grab active:cursor-grabbing transition-all duration-200 ${
+                                      draggedImgIndex === index ? "border-zari ring-2 ring-zari opacity-50" : "border-line"
+                                    }`}
                                   >
-                                    <Trash2 className="w-3 h-3" />
-                                  </button>
+                                    {isVid ? (
+                                      <div className="relative w-full h-full bg-black">
+                                        <video src={url} muted playsInline className="object-cover w-full h-full pointer-events-none" />
+                                        <div className="absolute inset-0 bg-black/30 flex items-center justify-center text-white pointer-events-none">
+                                          <Play size={16} className="fill-white drop-shadow" />
+                                        </div>
+                                        <span className="absolute top-1 left-1 bg-black/80 text-white text-[8px] font-bold px-1 rounded flex items-center gap-0.5 pointer-events-none">
+                                          <VideoIcon size={8} className="text-zari" /> Video
+                                        </span>
+                                      </div>
+                                    ) : (
+                                      <>
+                                        <Image src={url} alt="Product" fill className="object-cover pointer-events-none" />
+                                        <span className="absolute top-1 left-1 bg-black/60 text-white text-[8px] font-bold px-1 rounded flex items-center gap-0.5 pointer-events-none">
+                                          <ImageIcon size={8} /> Photo
+                                        </span>
+                                      </>
+                                    )}
+                                    <button 
+                                      type="button" 
+                                      onClick={() => removeProductImage(index)} 
+                                      className="absolute top-1 right-1 bg-danger text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity z-10 cursor-pointer"
+                                      title="Remove media"
+                                    >
+                                      <Trash2 className="w-3 h-3" />
+                                    </button>
 
-                                  {/* Left/Right swap buttons */}
-                                  <div className="absolute inset-x-0 bottom-1 flex justify-between px-1 opacity-0 group-hover:opacity-100 transition-opacity max-md:opacity-100 z-10">
-                                    {index > 0 ? (
-                                      <button
-                                        type="button"
-                                        onClick={() => moveProductImage(index, "left")}
-                                        className="bg-ink/80 hover:bg-ink text-white p-0.5 rounded cursor-pointer"
-                                      >
-                                        <ChevronLeft className="w-3.5 h-3.5" />
-                                      </button>
-                                    ) : (
-                                      <div />
-                                    )}
-                                    {index < prodImages.length - 1 ? (
-                                      <button
-                                        type="button"
-                                        onClick={() => moveProductImage(index, "right")}
-                                        className="bg-ink/80 hover:bg-ink text-white p-0.5 rounded cursor-pointer"
-                                      >
-                                        <ChevronRight className="w-3.5 h-3.5" />
-                                      </button>
-                                    ) : (
-                                      <div />
-                                    )}
+                                    {/* Left/Right swap buttons */}
+                                    <div className="absolute inset-x-0 bottom-1 flex justify-between px-1 opacity-0 group-hover:opacity-100 transition-opacity max-md:opacity-100 z-10">
+                                      {index > 0 ? (
+                                        <button
+                                          type="button"
+                                          onClick={() => moveProductImage(index, "left")}
+                                          className="bg-ink/80 hover:bg-ink text-white p-0.5 rounded cursor-pointer"
+                                          title="Move left"
+                                        >
+                                          <ChevronLeft className="w-3.5 h-3.5" />
+                                        </button>
+                                      ) : (
+                                        <div />
+                                      )}
+                                      {index < prodImages.length - 1 ? (
+                                        <button
+                                          type="button"
+                                          onClick={() => moveProductImage(index, "right")}
+                                          className="bg-ink/80 hover:bg-ink text-white p-0.5 rounded cursor-pointer"
+                                          title="Move right"
+                                        >
+                                          <ChevronRight className="w-3.5 h-3.5" />
+                                        </button>
+                                      ) : (
+                                        <div />
+                                      )}
+                                    </div>
                                   </div>
-                                </div>
-                              ))}
+                                );
+                              })}
                             </div>
                           </div>
                         ) : (
-                          <p className="text-xs text-taupe italic">No images uploaded yet. The first image will be the primary storefront listing image.</p>
+                          <p className="text-xs text-taupe italic">No media uploaded yet. The first photo or video will be the primary storefront listing item.</p>
                         )}
                       </div>
 
@@ -4704,7 +4803,16 @@ export default function AdminDashboardPage() {
                                   <div className="flex items-center gap-3">
                                     <div className="relative w-12 h-12 rounded border overflow-hidden flex-shrink-0 bg-cream">
                                       {p.product_images?.[0] ? (
-                                        <Image src={p.product_images[0].url} alt="" fill className="object-cover" />
+                                        isVideoMediaUrl(p.product_images[0].url) ? (
+                                          <div className="relative w-full h-full bg-black">
+                                            <video src={p.product_images[0].url} muted playsInline className="object-cover w-full h-full" />
+                                            <div className="absolute bottom-0.5 right-0.5 bg-black/80 rounded p-0.5">
+                                              <VideoIcon className="w-2.5 h-2.5 text-zari" />
+                                            </div>
+                                          </div>
+                                        ) : (
+                                          <Image src={p.product_images[0].url} alt="" fill className="object-cover" />
+                                        )
                                       ) : (
                                         <ShoppingCart className="w-6 h-6 m-3 text-muted" />
                                       )}
