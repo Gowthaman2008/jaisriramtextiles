@@ -231,18 +231,14 @@ export default function AccountPage() {
     try {
       fetchSupportHistory();
       // Run independent queries in parallel instead of one-after-another
-      const [ordersRes, walletRes, addrRes, reviewsRes] = await Promise.all([
+      const [ordersRes, walletDataRes, addrRes, reviewsRes] = await Promise.all([
         supabase
           .from("orders")
           .select("*, order_items(*, products(description, slug, pieces_per_pack))")
           .eq("user_id", userId)
           .neq("payment_status", "created")
           .order("placed_at", { ascending: false }),
-        supabase
-          .from("wallet_transactions")
-          .select("*")
-          .eq("user_id", userId)
-          .order("created_at", { ascending: false }),
+        fetch("/api/account/wallet").then((r) => r.json()).catch(() => null),
         supabase
           .from("addresses")
           .select("*")
@@ -257,22 +253,34 @@ export default function AccountPage() {
       setOrders(ordersRes.data || []);
       setUserReviews(reviewsRes.data || []);
 
-      const history = walletRes.data || [];
-      setWalletHistory(history);
+      if (walletDataRes && Array.isArray(walletDataRes.transactions)) {
+        setWalletHistory(walletDataRes.transactions);
+        setWalletBalance(walletDataRes.balance_paise || 0);
+      } else {
+        // Fallback: direct query
+        const { data: directTxns } = await supabase
+          .from("wallet_transactions")
+          .select("*")
+          .eq("user_id", userId)
+          .order("created_at", { ascending: false });
 
-      let activeBal = 0;
-      const now = new Date();
-      history.forEach((t) => {
-        if (t.type === "cashback_credit") {
-          const exp = t.expires_at ? new Date(t.expires_at) : null;
-          if (!exp || exp > now) {
+        const history = directTxns || [];
+        setWalletHistory(history);
+
+        let activeBal = 0;
+        const now = new Date();
+        history.forEach((t) => {
+          if (t.type === "cashback_credit") {
+            const exp = t.expires_at ? new Date(t.expires_at) : null;
+            if (!exp || exp > now) {
+              activeBal += t.amount_paise;
+            }
+          } else {
             activeBal += t.amount_paise;
           }
-        } else {
-          activeBal += t.amount_paise;
-        }
-      });
-      setWalletBalance(Math.max(0, activeBal));
+        });
+        setWalletBalance(Math.max(0, activeBal));
+      }
 
       setAddresses(addrRes.data || []);
     } catch (err) {

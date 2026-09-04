@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/admin";
 import { sendEmail, orderDeliveredEmailHtml, orderShippedEmailHtml, refundProcessedEmailHtml, orderRejectedEmailHtml, generateInvoicePdfBase64 } from "@/lib/email";
+import { reconcileUserWallet, reconcileAllWallets, parseDeliveryDate, calculateCashbackExpiry } from "@/lib/wallet";
 
 async function checkAdminAuth() {
   try {
@@ -33,6 +34,10 @@ export async function GET() {
 
   try {
     const supabase = createServiceClient();
+
+    // Reconcile wallets in background so expired cashback is properly reconciled
+    reconcileAllWallets(supabase).catch((err) => console.error("Reconcile all wallets error:", err));
+
     const { data: orders, error } = await supabase
       .from("orders")
       .select(`
@@ -89,7 +94,7 @@ export async function PUT(request: Request) {
     // Load original order to compare status (and enough detail to email on delivery)
     const { data: originalOrder } = await supabase
       .from("orders")
-      .select("status, payment_status, order_number, total_paise, subtotal_paise, discount_paise, shipping_paise, wallet_used_paise, cashback_earned_paise, shipping_address, tracking_id, courier_tracking_url, profiles(email, full_name, user_id), order_items(name, variant, unit_price_paise, quantity, image_url, products(pieces_per_pack))")
+      .select("id, user_id, status, payment_status, order_number, total_paise, subtotal_paise, discount_paise, shipping_paise, wallet_used_paise, cashback_earned_paise, delivered_at, shipping_address, tracking_id, courier_tracking_url, profiles(email, full_name, user_id), order_items(name, variant, unit_price_paise, quantity, image_url, products(pieces_per_pack))")
       .eq("id", id)
       .single();
 
@@ -108,6 +113,10 @@ export async function PUT(request: Request) {
     if (payment_status === "refunded") {
       updateFields.refunded_at = new Date().toISOString();
     }
+    if (status === "delivered" && !originalOrder?.delivered_at) {
+      const parsedDelDate = parseDeliveryDate(shipping_address?.delivery_date || originalOrder?.shipping_address?.delivery_date);
+      updateFields.delivered_at = parsedDelDate ? parsedDelDate.toISOString() : new Date().toISOString();
+    }
 
     // 2. Perform update
     const { error: updateError } = await supabase
@@ -116,6 +125,51 @@ export async function PUT(request: Request) {
       .eq("id", id);
 
     if (updateError) throw updateError;
+
+    // 2.5. Reconcile cashback transactions and expiry dates based on delivery date
+    const targetStatus = status || originalOrder?.status;
+    const targetDeliveryDateStr = shipping_address?.delivery_date || originalOrder?.shipping_address?.delivery_date;
+    const userId = originalOrder?.user_id;
+
+    if (userId && (targetStatus === "delivered" || (originalOrder?.cashback_earned_paise || 0) > 0)) {
+      try {
+        const parsedDelDate = parseDeliveryDate(targetDeliveryDateStr);
+        const effectiveDelDate = parsedDelDate || (targetStatus === "delivered" ? new Date() : null);
+
+        if (effectiveDelDate && (originalOrder?.cashback_earned_paise || 0) > 0) {
+          const expiresAt = calculateCashbackExpiry(effectiveDelDate);
+
+          const { data: existingCredit } = await supabase
+            .from("wallet_transactions")
+            .select("id, expires_at")
+            .eq("order_id", id)
+            .eq("type", "cashback_credit")
+            .maybeSingle();
+
+          if (existingCredit) {
+            await supabase
+              .from("wallet_transactions")
+              .update({ expires_at: expiresAt.toISOString() })
+              .eq("id", existingCredit.id);
+          } else if (targetStatus === "delivered") {
+            await supabase
+              .from("wallet_transactions")
+              .insert({
+                user_id: userId,
+                type: "cashback_credit",
+                amount_paise: originalOrder.cashback_earned_paise,
+                order_id: id,
+                note: `Cashback for order ${originalOrder.order_number}`,
+                expires_at: expiresAt.toISOString(),
+                created_at: effectiveDelDate.toISOString(),
+              });
+          }
+        }
+        await reconcileUserWallet(userId, supabase);
+      } catch (reconErr) {
+        console.error("Cashback reconciliation error in admin update:", reconErr);
+      }
+    }
 
     // 3. Log event if status changed
     if (status && originalOrder && originalOrder.status !== status) {

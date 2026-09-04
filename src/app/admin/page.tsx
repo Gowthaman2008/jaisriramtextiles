@@ -5214,6 +5214,34 @@ export default function AdminDashboardPage() {
                           <p><strong>Razorpay Payment:</strong> {selectedOrder.razorpay_payment_id || "—"}</p>
                           <p><strong>Customer User ID:</strong> <span className="font-sans font-bold tracking-wider text-zari-deep bg-cream/50 px-1.5 py-0.5 rounded border border-zari/10">{selectedOrder.profiles?.user_id || "—"}</span></p>
                           <p><strong>Customer Profile Email:</strong> {selectedOrder.profiles?.email || "—"}</p>
+                          {selectedOrder.cashback_earned_paise > 0 && (
+                            <div className="pt-2 mt-2 border-t border-line/60 space-y-1">
+                              <div className="flex justify-between items-center text-xs">
+                                <span className="font-bold text-ink">Cashback Reward:</span>
+                                <span className="font-bold text-success font-mono">+{formatRupees(selectedOrder.cashback_earned_paise)}</span>
+                              </div>
+                              {(() => {
+                                const isDelivered = selectedOrder.status === "delivered";
+                                if (!isDelivered) {
+                                  return <p className="text-[10px] text-taupe">⏳ Pending delivery &middot; Credits on delivery</p>;
+                                }
+                                const delDateStr = selectedOrder.shipping_address?.delivery_date;
+                                const parsedDelDate = delDateStr ? new Date(delDateStr.replace(/^[A-Za-z]+,\s*/, "")) : null;
+                                const delDate = (parsedDelDate && !isNaN(parsedDelDate.getTime())) ? parsedDelDate : (selectedOrder.delivered_at ? new Date(selectedOrder.delivered_at) : new Date(selectedOrder.placed_at));
+                                const expiryDate = new Date(delDate.getTime() + 90 * 24 * 60 * 60 * 1000);
+                                const isExpired = new Date() > expiryDate;
+                                return isExpired ? (
+                                  <div className="flex items-center gap-1 text-[10px] font-bold text-danger bg-danger/5 border border-danger/25 px-2 py-1 rounded">
+                                    <span>⏰ Expired on {expiryDate.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })} (90-day validity period passed)</span>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center gap-1 text-[10px] font-bold text-success bg-success/5 border border-success/25 px-2 py-1 rounded">
+                                    <span>✅ Active &middot; Expires on {expiryDate.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</span>
+                                  </div>
+                                );
+                              })()}
+                            </div>
+                          )}
                           {selectedOrder.review_requested_at && (
                             <div className="pt-2 mt-2 border-t border-line/60 flex items-center gap-1.5 text-[11px] font-semibold text-amber-800">
                               <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-600 shrink-0" />
@@ -6092,13 +6120,15 @@ export default function AdminDashboardPage() {
                                         <td className="py-2 text-taupe">{new Date(txn.created_at).toLocaleDateString()}</td>
                                         <td className="py-2">
                                           <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${
-                                            txn.type === "cashback_credit" ? "bg-success/10 text-success" : 
-                                            txn.type === "redeem" ? "bg-danger/10 text-danger" : "bg-warning/10 text-warning"
+                                            txn.type === "cashback_credit" ? "bg-success/10 text-success border border-success/20" : 
+                                            txn.type === "redeem" ? "bg-danger/10 text-danger border border-danger/20" : 
+                                            txn.type === "expiry" ? "bg-amber-100 text-amber-800 border border-amber-300 font-extrabold" :
+                                            "bg-warning/10 text-warning"
                                           }`}>
-                                            {txn.type.replace("_", " ")}
+                                            {txn.type === "expiry" ? "EXPIRED" : txn.type.replace("_", " ")}
                                           </span>
                                         </td>
-                                        <td className={`py-2 text-right font-bold ${isCredit ? "text-success" : "text-danger"}`}>
+                                        <td className={`py-2 text-right font-bold ${txn.type === "expiry" ? "text-amber-700" : isCredit ? "text-success" : "text-danger"}`}>
                                           {isCredit ? "+" : ""}{formatRupees(txn.amount_paise)}
                                         </td>
                                         <td className="py-2 pl-4 text-taupe">

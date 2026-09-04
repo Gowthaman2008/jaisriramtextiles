@@ -2,6 +2,7 @@ import { NextResponse, after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/admin";
 import { sendEmail, orderConfirmationEmailHtml, generateInvoicePdfBase64, getAdminNotificationEmail } from "@/lib/email";
+import { reconcileUserWallet } from "@/lib/wallet";
 
 export async function POST(request: Request) {
   try {
@@ -316,24 +317,18 @@ export async function POST(request: Request) {
     let walletUsedPaise = 0;
     let activeBalance = 0;
     if (useWallet) {
-      const { data: txns } = await supabase
-        .from("wallet_transactions")
-        .select("amount_paise, type, expires_at")
-        .eq("user_id", user.id);
-
-      if (txns) {
-        const nowTime = new Date();
-        txns.forEach((t) => {
-          if (t.type === "cashback_credit") {
-            const exp = t.expires_at ? new Date(t.expires_at) : null;
-            if (!exp || exp > nowTime) {
-              activeBalance += t.amount_paise;
-            }
-          } else {
-            activeBalance += t.amount_paise;
-          }
-        });
-        activeBalance = Math.max(0, activeBalance);
+      try {
+        const recon = await reconcileUserWallet(user.id, supabase);
+        activeBalance = recon.activeBalancePaise;
+      } catch (reconErr) {
+        console.error("Wallet reconciliation error at checkout:", reconErr);
+        // Fallback: query DB directly
+        const { data: walletRow } = await supabase
+          .from("wallets")
+          .select("balance_paise")
+          .eq("user_id", user.id)
+          .maybeSingle();
+        activeBalance = walletRow?.balance_paise || 0;
       }
 
       if (activeBalance > 0) {

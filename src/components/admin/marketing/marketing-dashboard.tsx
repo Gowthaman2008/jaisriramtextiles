@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { EmailCampaign, EmailSubscriber } from "@/lib/marketing/types";
 import {
   Users,
@@ -56,6 +56,52 @@ export function MarketingDashboard({
   const ctorRate = totalOpens > 0 ? ((totalClicks / totalOpens) * 100).toFixed(1) : "0.0";
   const bounceRate = totalSent > 0 ? ((totalBounces / totalSent) * 100).toFixed(1) : "0.0";
   const unsubRate = totalSent > 0 ? ((totalUnsubs / totalSent) * 100).toFixed(1) : "0.0";
+  const [cashbackReminderStats, setCashbackReminderStats] = useState<{ totalWithBalance: number; dueNowCount: number; users: any[] } | null>(null);
+  const [loadingCashbackStats, setLoadingCashbackStats] = useState(false);
+  const [sendingCashbackReminders, setSendingCashbackReminders] = useState(false);
+  const [cashbackSendResult, setCashbackSendResult] = useState<string | null>(null);
+  const [showCashbackPreviewModal, setShowCashbackPreviewModal] = useState(false);
+
+  useEffect(() => {
+    async function loadCashbackStats() {
+      setLoadingCashbackStats(true);
+      try {
+        const res = await fetch("/api/marketing/cashback-reminder");
+        if (res.ok) {
+          const data = await res.json();
+          setCashbackReminderStats(data);
+        }
+      } catch (err) {
+        console.error("Failed to load cashback reminder stats:", err);
+      } finally {
+        setLoadingCashbackStats(false);
+      }
+    }
+    loadCashbackStats();
+  }, []);
+
+  async function handleDispatchCashbackReminders(forceAll = false) {
+    setSendingCashbackReminders(true);
+    setCashbackSendResult(null);
+    try {
+      const res = await fetch("/api/marketing/cashback-reminder", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ forceAll }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to dispatch reminders");
+      setCashbackSendResult(`✅ Successfully sent ${data.sentCount} reminder email(s)! (${data.skippedCount} skipped due to 10-day cycle limit)`);
+      const refreshRes = await fetch("/api/marketing/cashback-reminder");
+      if (refreshRes.ok) {
+        setCashbackReminderStats(await refreshRes.json());
+      }
+    } catch (err: any) {
+      setCashbackSendResult(`❌ Error: ${err.message}`);
+    } finally {
+      setSendingCashbackReminders(false);
+    }
+  }
 
   // Best performing campaigns sorted by open count or click count
   const topCampaigns = [...campaigns]
@@ -171,6 +217,120 @@ export function MarketingDashboard({
           </div>
         </div>
       </div>
+
+      {/* Automated 10-Day Cashback Expiry Marketing Hub */}
+      <div className="bg-gradient-to-br from-cream/40 via-white to-zari-tint/20 border border-zari/35 rounded-card p-6 shadow-soft space-y-4">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-line/60 pb-4">
+          <div className="space-y-1">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-zari/15 border border-zari/30 text-zari-deep text-[10px] font-bold uppercase tracking-wider">
+              <Sparkles className="w-3 h-3" /> Automated 10-Day Retention Engine
+            </div>
+            <h3 className="font-display text-lg text-ink font-bold">10-Day Cashback Expiry Reminders</h3>
+            <p className="text-xs text-taupe max-w-2xl leading-relaxed">
+              Sends an email reminder every 10 days to users who have an active cashback balance in their wallet, notifying them of their upcoming expiration date (90-day validity window) and inviting them to order and redeem.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => setShowCashbackPreviewModal(true)}
+              className="px-3.5 py-2 rounded-pill bg-white border border-line hover:border-zari text-ink text-xs font-semibold transition-colors cursor-pointer shadow-xs"
+            >
+              Inspect Active Recipients ({cashbackReminderStats?.totalWithBalance || 0})
+            </button>
+            <button
+              type="button"
+              onClick={() => handleDispatchCashbackReminders(false)}
+              disabled={sendingCashbackReminders || loadingCashbackStats}
+              className="px-4 py-2 rounded-pill bg-zari-deep hover:bg-ink text-white text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer shadow-sm disabled:opacity-50"
+            >
+              <Send className="w-3.5 h-3.5" />
+              {sendingCashbackReminders ? "Dispatching..." : `Send Due Cycle (${cashbackReminderStats?.dueNowCount || 0})`}
+            </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
+          <div className="p-3 bg-white/80 border border-line/70 rounded-lg">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-taupe">Accounts With Active Cashback</span>
+            <p className="text-xl font-display font-bold text-ink mt-0.5">
+              {loadingCashbackStats ? "..." : cashbackReminderStats?.totalWithBalance || 0} users
+            </p>
+          </div>
+          <div className="p-3 bg-white/80 border border-line/70 rounded-lg">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-taupe">Due For 10-Day Reminder Now</span>
+            <p className="text-xl font-display font-bold text-success mt-0.5">
+              {loadingCashbackStats ? "..." : cashbackReminderStats?.dueNowCount || 0} users
+            </p>
+          </div>
+          <div className="p-3 bg-white/80 border border-line/70 rounded-lg">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-taupe">Automated Frequency</span>
+            <p className="text-xs font-bold text-ink mt-1.5">
+              Strictly once per 10 days per user &middot; 90-day expiry notice
+            </p>
+          </div>
+        </div>
+
+        {cashbackSendResult && (
+          <div className="p-3 rounded-lg bg-cream/70 border border-zari/30 text-xs text-ink font-medium">
+            {cashbackSendResult}
+          </div>
+        )}
+      </div>
+
+      {/* Recipient Preview Modal */}
+      {showCashbackPreviewModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-fade-in">
+          <div className="bg-white border border-line rounded-card shadow-lift max-w-2xl w-full max-h-[80vh] flex flex-col overflow-hidden">
+            <div className="p-4 border-b border-line bg-cream/30 flex justify-between items-center">
+              <div>
+                <h4 className="font-display font-bold text-ink text-base">Active Cashback Accounts</h4>
+                <p className="text-xs text-taupe">Users currently holding unexpired cashback credits</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowCashbackPreviewModal(false)}
+                className="text-taupe hover:text-ink font-bold text-lg cursor-pointer px-2"
+              >
+                &times;
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+              {(!cashbackReminderStats?.users || cashbackReminderStats.users.length === 0) ? (
+                <p className="text-xs text-taupe text-center py-6">No users currently have an active cashback balance.</p>
+              ) : (
+                cashbackReminderStats.users.map((u: any) => (
+                  <div key={u.profileId} className="p-3 border border-line rounded-lg bg-ivory/5 flex justify-between items-center gap-3">
+                    <div>
+                      <p className="text-xs font-bold text-ink">{u.name} <span className="font-mono text-[10px] text-taupe font-normal">({u.email})</span></p>
+                      <p className="text-[11px] text-taupe mt-0.5">
+                        Cashback Balance: <strong className="text-success">₹{(u.balancePaise / 100).toFixed(2)}</strong> &middot; Expires in <strong>{u.daysRemaining} days</strong>
+                      </p>
+                    </div>
+                    <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase ${
+                      u.isDueNow ? "bg-success/15 text-success border border-success/30" : "bg-muted text-taupe border border-line"
+                    }`}>
+                      {u.isDueNow ? "Due For 10-Day Mail" : "Sent Recently (<10d)"}
+                    </span>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="p-3 border-t border-line bg-cream/20 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowCashbackPreviewModal(false)}
+                className="px-4 py-1.5 rounded bg-cream text-ink text-xs font-semibold cursor-pointer border border-line"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Quick Launchpad Hub */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">

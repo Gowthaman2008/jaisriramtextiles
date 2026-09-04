@@ -54,6 +54,7 @@ create table profiles (
   role          user_role not null default 'customer',
   provider      auth_provider not null default 'email',
   welcome_email_sent boolean not null default false,
+  last_cashback_reminder_sent_at timestamptz,
   created_at    timestamptz not null default now()
 );
 
@@ -288,8 +289,10 @@ create table wallet_transactions (
 -- Credit cashback into the wallet when an order is marked delivered.
 create or replace function credit_cashback_on_delivery()
 returns trigger language plpgsql as $$
+declare
+  del_timestamp timestamptz := coalesce(new.delivered_at, now());
 begin
-  if new.status = 'delivered' and old.status <> 'delivered'
+  if new.status = 'delivered' and (old.status is null or old.status <> 'delivered')
      and new.cashback_earned_paise > 0 then
      
     -- Only credit if no cashback_credit transaction already exists for this order
@@ -297,9 +300,9 @@ begin
       select 1 from public.wallet_transactions 
       where order_id = new.id and type = 'cashback_credit'
     ) then
-      insert into wallet_transactions (user_id, type, amount_paise, order_id, note, expires_at)
+      insert into wallet_transactions (user_id, type, amount_paise, order_id, note, expires_at, created_at)
       values (new.user_id, 'cashback_credit', new.cashback_earned_paise, new.id,
-              'Cashback for order ' || new.order_number, now() + interval '15 days');
+              'Cashback for order ' || new.order_number, del_timestamp + interval '90 days', del_timestamp);
 
       insert into wallets (user_id, balance_paise)
       values (new.user_id, new.cashback_earned_paise)
@@ -308,7 +311,9 @@ begin
                     updated_at = now();
     end if;
 
-    new.delivered_at := now();
+    if new.delivered_at is null then
+      new.delivered_at := now();
+    end if;
   end if;
   return new;
 end $$;
@@ -316,6 +321,43 @@ end $$;
 create trigger trg_cashback_on_delivery
   before update on orders
   for each row execute function credit_cashback_on_delivery();
+
+-- Helper function to reconcile expired cashback directly in Postgres/Supabase
+create or replace function reconcile_expired_cashback(target_user_id uuid default null)
+returns void language plpgsql security definer as $$
+declare
+  txn record;
+  user_rec record;
+  net_active int;
+begin
+  -- Loop through users needing reconciliation
+  for user_rec in
+    select distinct user_id from wallet_transactions
+    where (target_user_id is null or user_id = target_user_id)
+  loop
+    -- Compute active non-expired balance (FIFO/unexpired total)
+    select coalesce(sum(
+      case 
+        when type = 'cashback_credit' and (expires_at is null or expires_at > now()) then amount_paise
+        when type in ('redeem', 'expiry') or (type = 'admin_adjust' and amount_paise < 0) then amount_paise
+        when type = 'admin_adjust' and amount_paise > 0 then amount_paise
+        else 0
+      end
+    ), 0) into net_active
+    from wallet_transactions
+    where user_id = user_rec.user_id;
+
+    if net_active < 0 then
+      net_active := 0;
+    end if;
+
+    update wallets
+    set balance_paise = net_active,
+        updated_at = now()
+    where user_id = user_rec.user_id;
+  end loop;
+end;
+$$;
 
 -- ============================================================================
 -- REVIEWS  (only verified purchasers, only after delivery)

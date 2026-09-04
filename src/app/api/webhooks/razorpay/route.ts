@@ -2,6 +2,7 @@ import { NextResponse, after } from "next/server";
 import crypto from "crypto";
 import { createServiceClient } from "@/lib/supabase/admin";
 import { sendEmail, orderConfirmationEmailHtml, generateInvoicePdfBase64, getAdminNotificationEmail } from "@/lib/email";
+import { reconcileUserWallet } from "@/lib/wallet";
 
 export async function POST(request: Request) {
   try {
@@ -163,25 +164,18 @@ export async function POST(request: Request) {
 
     // Process wallet credits deductions
     if (order.wallet_used_paise > 0) {
-      const { data: txns } = await supabase
-        .from("wallet_transactions")
-        .select("amount_paise, type, expires_at")
-        .eq("user_id", order.user_id);
-
       let activeBalance = 0;
-      if (txns) {
-        const nowTime = new Date();
-        txns.forEach((t) => {
-          if (t.type === "cashback_credit") {
-            const exp = t.expires_at ? new Date(t.expires_at) : null;
-            if (!exp || exp > nowTime) {
-              activeBalance += t.amount_paise;
-            }
-          } else {
-            activeBalance += t.amount_paise;
-          }
-        });
-        activeBalance = Math.max(0, activeBalance);
+      try {
+        const recon = await reconcileUserWallet(order.user_id, supabase);
+        activeBalance = recon.activeBalancePaise;
+      } catch (reconErr) {
+        console.error("Wallet reconciliation error in webhook:", reconErr);
+        const { data: walletRow } = await supabase
+          .from("wallets")
+          .select("balance_paise")
+          .eq("user_id", order.user_id)
+          .maybeSingle();
+        activeBalance = walletRow?.balance_paise || 0;
       }
 
       const finalBal = Math.max(0, activeBalance - order.wallet_used_paise);

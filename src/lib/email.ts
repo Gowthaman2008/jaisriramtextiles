@@ -1084,3 +1084,102 @@ export function generateInvoicePdfBase64({
 
   return doc.output("datauristring").split(",")[1];
 }
+
+export function cashbackExpiryReminderEmailHtml({
+  name,
+  balancePaise,
+  daysLeft,
+  expiryDateFormatted,
+  websiteUrl,
+}: {
+  name?: string;
+  balancePaise: number;
+  daysLeft: number;
+  expiryDateFormatted: string;
+  websiteUrl?: string;
+}) {
+  const formattedBalance = formatINR(balancePaise, true);
+  const siteUrl = websiteUrl || "https://jaisriramtextiles.in";
+
+  return `
+    <div class="email-bg" style="background-color: #F5F2EB; padding: 24px 10px; font-family: Georgia, 'Times New Roman', serif;">
+      <div class="email-card" style="width: 100%; max-width: 560px; margin: 0 auto; background-color: #FBF9F4; border: 1px solid #E5DFD2; border-radius: 12px; box-shadow: 0 4px 15px rgba(42, 38, 34, 0.05); overflow: hidden;">
+        ${renderEmailHeader("Wallet Rewards", `Expiring in ${daysLeft} Days`)}
+        
+        <div class="mobile-body" style="padding: 24px 16px; color: #2A2622; font-size: 13px; line-height: 1.6;">
+          <p class="email-heading" style="font-size: 14px; font-weight: bold; margin: 0 0 12px 0;">Hi <b>${name || "Valued Customer"}</b>,</p>
+          <p style="margin: 0 0 20px 0; color: #5A5248;">
+            You have an active cashback reward waiting in your JAI SRI RAM TEXTILES wallet, but it is scheduled to expire soon!
+          </p>
+
+          <!-- Highlighted Cashback Value Card -->
+          <div class="light-card" style="background: linear-gradient(135deg, #1A1612 0%, #2E271F 100%); border: 1.5px solid #B08D4C; border-radius: 12px; padding: 24px 20px; text-align: center; margin-bottom: 24px; box-shadow: 0 4px 12px rgba(0,0,0,0.12);">
+            <div style="display: inline-block; background-color: rgba(176, 141, 76, 0.2); border: 1px solid #B08D4C; border-radius: 20px; padding: 4px 14px; margin-bottom: 12px;">
+              <span style="font-size: 11px; font-weight: bold; color: #E8D3A7; letter-spacing: 1.2px; text-transform: uppercase;">
+                ⏰ ${daysLeft === 1 ? "Expires Tomorrow!" : `Expiring in ${daysLeft} Days`}
+              </span>
+            </div>
+            
+            <p style="font-size: 11px; color: #D1C7B7; text-transform: uppercase; letter-spacing: 1px; margin: 0 0 4px 0; font-family: Arial, sans-serif;">Your Available Cashback Balance</p>
+            <h1 style="font-size: 38px; color: #F5E5C9; margin: 0 0 8px 0; font-family: Georgia, serif; font-weight: bold; letter-spacing: 0.5px;">
+              ${formattedBalance}
+            </h1>
+            
+            <p style="font-size: 12px; color: #D1C7B7; margin: 0; font-family: Arial, sans-serif;">
+              Valid until: <strong style="color: #FFFFFF;">${expiryDateFormatted}</strong>
+            </p>
+          </div>
+
+          <!-- Explanatory Benefit Box -->
+          <div style="background-color: #FFFFFF; border: 1px solid #E5DFD2; border-radius: 8px; padding: 16px 18px; margin-bottom: 24px; font-family: Arial, sans-serif; font-size: 12.5px; line-height: 1.6;">
+            <p style="margin: 0 0 8px 0; font-weight: bold; color: #2A2622;">💡 How to use your cashback:</p>
+            <ul style="margin: 0; padding-left: 18px; color: #5A5248; space-y: 4px;">
+              <li style="margin-bottom: 4px;">Redeem up to <strong>20% of your total order value</strong> instantly at checkout.</li>
+              <li style="margin-bottom: 4px;">Valid on all pure cotton dhotis, absorbent towels, handloom scarfs, and jute bags.</li>
+              <li>Free courier shipping on all orders over ₹699!</li>
+            </ul>
+          </div>
+
+          <!-- Call to Action Button -->
+          <div style="text-align: center; margin: 28px 0;">
+            <a href="${siteUrl}/shop" target="_blank" rel="noopener noreferrer" style="display: inline-block; background-color: #B08D4C; color: #FFFFFF; padding: 14px 28px; font-size: 14px; font-weight: bold; text-decoration: none; border-radius: 30px; box-shadow: 0 4px 10px rgba(176, 141, 76, 0.3); font-family: Arial, sans-serif; letter-spacing: 0.5px;">
+              🛍️ Order Now &amp; Redeem ${formattedBalance} Cashback &rarr;
+            </a>
+            <p style="font-size: 11px; color: #8A8175; margin-top: 8px; font-family: Arial, sans-serif;">
+              Direct from our heritage looms in Komarapalayam, Tamil Nadu
+            </p>
+          </div>
+
+          <!-- Featured Categories Strip -->
+          <div style="border-top: 1px solid #E5DFD2; padding-top: 18px; margin-top: 24px; text-align: center;">
+            <p style="font-size: 11px; font-weight: bold; text-transform: uppercase; color: #8A8175; letter-spacing: 1px; margin: 0 0 12px 0; font-family: Arial, sans-serif;">
+              Explore Popular Handloom Collections
+            </p>
+            <table width="100%" cellpadding="0" cellspacing="0" style="font-family: Arial, sans-serif; font-size: 11.5px;">
+              <tr>
+                <td style="text-align: center; padding: 6px;">
+                  <a href="${siteUrl}/shop/colour-dhoti-9x5" style="color: #2A2622; text-decoration: none; font-weight: bold; display: block; padding: 8px; background: #FFFFFF; border: 1px solid #E5DFD2; border-radius: 6px;">
+                    🥻 Colour Dhotis
+                  </a>
+                </td>
+                <td style="text-align: center; padding: 6px;">
+                  <a href="${siteUrl}/shop/white-dhoti" style="color: #2A2622; text-decoration: none; font-weight: bold; display: block; padding: 8px; background: #FFFFFF; border: 1px solid #E5DFD2; border-radius: 6px;">
+                    ✨ White Veshtis
+                  </a>
+                </td>
+                <td style="text-align: center; padding: 6px;">
+                  <a href="${siteUrl}/shop/towels" style="color: #2A2622; text-decoration: none; font-weight: bold; display: block; padding: 8px; background: #FFFFFF; border: 1px solid #E5DFD2; border-radius: 6px;">
+                    🛁 Bath Towels
+                  </a>
+                </td>
+              </tr>
+            </table>
+          </div>
+        </div>
+
+        ${renderEmailFooter()}
+      </div>
+    </div>
+  `;
+}
+

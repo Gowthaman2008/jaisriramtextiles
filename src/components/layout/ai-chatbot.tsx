@@ -328,7 +328,7 @@ export function AIChatbot() {
         { role: "user", content: "Wallet Balance" },
         {
           role: "assistant",
-          content: `💰 **Cashback Wallet Balance**: ${formattedBalance}\n\n⏰ **Expiry**: 15 days from last delivery date\n📅 **Last Updated**: ${new Date().toLocaleDateString()}`
+          content: `💰 **Cashback Wallet Balance**: ${formattedBalance}\n\n⏰ **Expiry**: 90 days from last delivery date\n📅 **Last Updated**: ${new Date().toLocaleDateString()}`
         }
       ]);
     } else if (opt.action === "edit_profile") {

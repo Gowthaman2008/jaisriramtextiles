@@ -99,27 +99,37 @@ export default function CheckoutPage() {
           applySavedAddress(defaultAddr);
         }
 
-        // Fetch wallet balance dynamically based on unexpired transactions
-        const { data: txns } = await supabase
-          .from("wallet_transactions")
-          .select("amount_paise, type, expires_at")
-          .eq("user_id", authUser.id);
+        // Fetch wallet balance dynamically from reconciled backend endpoint
+        try {
+          const walletRes = await fetch("/api/account/wallet").then((r) => r.json()).catch(() => null);
+          if (walletRes && typeof walletRes.balance_paise === "number") {
+            setWalletBalance(walletRes.balance_paise);
+          } else {
+            // Fallback: client-side dynamic calculate
+            const { data: txns } = await supabase
+              .from("wallet_transactions")
+              .select("amount_paise, type, expires_at")
+              .eq("user_id", authUser.id);
 
-        let calculatedBalance = 0;
-        if (txns) {
-          const nowTime = new Date();
-          txns.forEach((t) => {
-            if (t.type === "cashback_credit") {
-              const exp = t.expires_at ? new Date(t.expires_at) : null;
-              if (!exp || exp > nowTime) {
-                calculatedBalance += t.amount_paise;
-              }
-            } else {
-              calculatedBalance += t.amount_paise;
+            let calculatedBalance = 0;
+            if (txns) {
+              const nowTime = new Date();
+              txns.forEach((t) => {
+                if (t.type === "cashback_credit") {
+                  const exp = t.expires_at ? new Date(t.expires_at) : null;
+                  if (!exp || exp > nowTime) {
+                    calculatedBalance += t.amount_paise;
+                  }
+                } else {
+                  calculatedBalance += t.amount_paise;
+                }
+              });
             }
-          });
+            setWalletBalance(Math.max(0, calculatedBalance));
+          }
+        } catch (wErr) {
+          console.error("Wallet fetch error in checkout:", wErr);
         }
-        setWalletBalance(Math.max(0, calculatedBalance));
 
         // Fetch shipping settings dynamically
         const settingsRes = await fetch("/api/shipping-settings").then((r) => r.json()).catch(() => null);

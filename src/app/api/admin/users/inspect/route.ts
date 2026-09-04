@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/admin";
+import { reconcileUserWallet } from "@/lib/wallet";
 
 async function checkAdminAuth() {
   try {
@@ -68,7 +69,14 @@ export async function GET(request: Request) {
       console.error("Fetch auth user error:", e);
     }
 
-    // 2. Fetch user wallet balance
+    // 2. Reconcile and expire any past-due cashback automatically
+    try {
+      await reconcileUserWallet(profile.id, supabase);
+    } catch (reconcileErr) {
+      console.error("Wallet auto-reconciliation error during inspect:", reconcileErr);
+    }
+
+    // 2.5. Fetch user wallet balance
     const { data: wallet, error: walletError } = await supabase
       .from("wallets")
       .select("*")
