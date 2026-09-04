@@ -1272,23 +1272,56 @@ export default function AdminDashboardPage() {
 
     setUploadingSlideImage(true);
     try {
-      const formData = new FormData();
-      formData.append("file", file);
+      const isVid = file.type.startsWith("video/") || /\.(mp4|webm|mov|ogg|mkv|m4v|avi)$/i.test(file.name);
 
-      const res = await fetch("/api/admin/cms/upload", {
-        method: "POST",
-        body: formData
-      });
+      // 1. Get secure signature for direct browser-to-Cloudinary upload (bypasses Next.js server payload limit)
+      const sigRes = await fetch("/api/admin/cms/upload-signature");
 
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.error || `Server returned status ${res.status}`);
+      if (sigRes.ok) {
+        const { signature, timestamp, folder, apiKey, cloudName } = await sigRes.json();
+        const directFormData = new FormData();
+        directFormData.append("file", file);
+        directFormData.append("api_key", apiKey);
+        directFormData.append("timestamp", String(timestamp));
+        directFormData.append("signature", signature);
+        directFormData.append("folder", folder);
+
+        const resourceType = isVid ? "video" : "image";
+        const directUploadRes = await fetch(
+          `https://api.cloudinary.com/v1_1/${cloudName}/${resourceType}/upload`,
+          {
+            method: "POST",
+            body: directFormData,
+          }
+        );
+
+        if (!directUploadRes.ok) {
+          const errorData = await directUploadRes.json().catch(() => ({}));
+          throw new Error(errorData.error?.message || `Cloudinary upload failed with status ${directUploadRes.status}`);
+        }
+
+        const data = await directUploadRes.json();
+        setSlideImageUrl(data.secure_url);
+        notify(isVid ? "✅ Video uploaded successfully!" : "✅ Image uploaded successfully!");
+      } else {
+        // Fallback: server route
+        const formData = new FormData();
+        formData.append("file", file);
+
+        const res = await fetch("/api/admin/cms/upload", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!res.ok) {
+          const errorData = await res.json().catch(() => ({}));
+          throw new Error(errorData.error || `Server returned status ${res.status}`);
+        }
+
+        const data = await res.json();
+        setSlideImageUrl(data.url);
+        notify(isVid ? "✅ Video uploaded successfully!" : "✅ Image uploaded successfully!");
       }
-
-      const data = await res.json();
-      setSlideImageUrl(data.url);
-      const isVid = data.mediaType === "video" || file.type.startsWith("video/");
-      notify(isVid ? "✅ Video uploaded successfully!" : "✅ Image uploaded successfully!");
     } catch (err: any) {
       notify("Upload failed: " + err.message);
     } finally {

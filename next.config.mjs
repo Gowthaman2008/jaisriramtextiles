@@ -6,6 +6,11 @@ const nextConfig = {
     formats: ["image/avif", "image/webp"],
     remotePatterns: [{ protocol: "https", hostname: "res.cloudinary.com" }],
   },
+  experimental: {
+    serverActions: {
+      bodySizeLimit: "100mb",
+    },
+  },
   async headers() {
     // Baseline security headers. Tighten CSP once all third-party origins
     // (Razorpay, Cloudinary, Supabase, Groq) are finalised for production.
