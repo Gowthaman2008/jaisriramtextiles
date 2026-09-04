@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/admin";
 import { compileEmailHtml } from "@/lib/marketing/email-compiler";
+import { checkAdminAuth } from "@/lib/admin-auth";
 
 // Helper to sanitize UUID fields
 function cleanUuid(id: any): string | null {
@@ -10,6 +11,11 @@ function cleanUuid(id: any): string | null {
 }
 
 export async function GET(request: Request) {
+  const auth = await checkAdminAuth();
+  if (!auth) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const supabase = createServiceClient();
 
@@ -83,6 +89,11 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const auth = await checkAdminAuth();
+  if (!auth) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const supabase = createServiceClient();
     const body = await request.json();

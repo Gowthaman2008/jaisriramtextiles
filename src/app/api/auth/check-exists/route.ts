@@ -1,8 +1,15 @@
 import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/admin";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limiter";
 
 export async function POST(request: Request) {
   try {
+    const clientIp = getClientIp(request);
+    const limit = checkRateLimit(clientIp, { prefix: "auth_check_exists", maxRequests: 20, windowSeconds: 60 });
+    if (!limit.allowed) {
+      return NextResponse.json({ error: "Too many checks. Please wait a moment." }, { status: 429 });
+    }
+
     const { email, phone } = await request.json();
 
     if (!email || !email.trim()) {

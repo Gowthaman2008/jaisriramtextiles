@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/admin";
 import { compileEmailHtml } from "@/lib/marketing/email-compiler";
+import { checkAdminAuth } from "@/lib/admin-auth";
 
 function cleanUuid(id: any): string | null {
   if (!id || typeof id !== "string") return null;
@@ -9,6 +10,11 @@ function cleanUuid(id: any): string | null {
 }
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const auth = await checkAdminAuth();
+  if (!auth) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const { id } = await params;
     const supabase = createServiceClient();
@@ -44,6 +50,11 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 }
 
 export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const auth = await checkAdminAuth();
+  if (!auth) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const { id } = await params;
     const supabase = createServiceClient();
@@ -71,51 +82,36 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     };
 
     if (name !== undefined) updates.name = name.trim();
-    if (description !== undefined) updates.description = description ? description.trim() : null;
+    if (description !== undefined) updates.description = description?.trim() || null;
     if (subject !== undefined) updates.subject = subject.trim();
-    if (preview_text !== undefined) updates.preview_text = preview_text ? preview_text.trim() : null;
+    if (preview_text !== undefined) updates.preview_text = preview_text?.trim() || null;
     if (sender_name !== undefined) updates.sender_name = sender_name.trim();
     if (sender_email !== undefined) updates.sender_email = sender_email.trim();
-    if (reply_to !== undefined) updates.reply_to = reply_to ? reply_to.trim() : null;
+    if (reply_to !== undefined) updates.reply_to = reply_to?.trim() || null;
     if (audience_type !== undefined) updates.audience_type = audience_type;
     if (segment_id !== undefined) updates.segment_id = cleanUuid(segment_id);
     if (filter_rules !== undefined) updates.filter_rules = filter_rules;
     if (selected_user_ids !== undefined) updates.selected_user_ids = Array.isArray(selected_user_ids) ? selected_user_ids : [];
     if (status !== undefined) updates.status = status;
-    if (body.sent_at !== undefined) updates.sent_at = body.sent_at;
-    if (body.total_recipients !== undefined) updates.total_recipients = body.total_recipients;
-    if (body.sent_count !== undefined) updates.sent_count = body.sent_count;
-    if (body.delivered_count !== undefined) updates.delivered_count = body.delivered_count;
-    if (scheduled_at !== undefined) {
-      updates.scheduled_at = scheduled_at ? new Date(scheduled_at).toISOString() : null;
-    }
+    if (scheduled_at !== undefined) updates.scheduled_at = scheduled_at ? new Date(scheduled_at).toISOString() : null;
 
     if (content_json !== undefined) {
       updates.content_json = content_json;
       updates.content_html = compileEmailHtml(content_json, {
-        previewText: preview_text || updates.preview_text || "",
+        previewText: preview_text || "",
       });
     }
 
-    const { data, error } = await supabase
+    // Try DB update first
+    const { data: dbUpdated, error: dbError } = await supabase
       .from("email_campaigns")
       .update(updates)
       .eq("id", id)
       .select()
-      .single();
+      .maybeSingle();
 
-    if (!error && data) {
-      // Audit log
-      try {
-        await supabase.from("audit_logs").insert({
-          action: "campaign.update",
-          entity: "email_campaigns",
-          entity_id: id,
-          meta: { updates },
-        });
-      } catch {}
-
-      return NextResponse.json(data);
+    if (!dbError && dbUpdated) {
+      return NextResponse.json(dbUpdated);
     }
 
     // Fallback update in app_settings
@@ -150,6 +146,11 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
 }
 
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const auth = await checkAdminAuth();
+  if (!auth) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const { id } = await params;
     const supabase = createServiceClient();

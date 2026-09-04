@@ -10,10 +10,6 @@ import { createServerClient, type CookieOptions } from "@supabase/ssr";
 export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
 
-  // Skip auth for /admin/upload (has its own password gate)
-  if (path.startsWith("/admin/upload")) {
-    return NextResponse.next({ request });
-  }
 
   // ─── Public routes: no auth check needed ────────────────────────────────
   // Only run Supabase getUser() when navigating to protected areas.

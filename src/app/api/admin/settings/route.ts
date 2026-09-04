@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/admin";
+import { checkAdminAuth } from "@/lib/admin-auth";
 
 const SETTINGS_KEY = "shipping_settings";
 
@@ -11,6 +12,11 @@ const DEFAULTS = {
 
 /** GET /api/admin/settings — returns current shipping settings */
 export async function GET() {
+  const auth = await checkAdminAuth();
+  if (!auth) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const supabase = createServiceClient();
     const { data, error } = await supabase
@@ -32,6 +38,11 @@ export async function GET() {
 
 /** PATCH /api/admin/settings — upsert shipping settings */
 export async function PATCH(request: Request) {
+  const auth = await checkAdminAuth();
+  if (!auth) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const supabase = createServiceClient();
     const body = await request.json();

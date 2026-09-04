@@ -1,7 +1,13 @@
 import { NextResponse } from "next/server";
 import { evaluateAudience } from "@/lib/marketing/segmentation-engine";
+import { checkAdminAuth } from "@/lib/admin-auth";
 
 export async function POST(request: Request) {
+  const auth = await checkAdminAuth();
+  if (!auth) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const body = await request.json();
     const { audience_type = "all_users", segment_id, filter_rules, selected_user_ids } = body;

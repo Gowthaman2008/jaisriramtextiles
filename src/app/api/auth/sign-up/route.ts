@@ -1,9 +1,16 @@
 import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/admin";
 import { sendEmail, signUpConfirmationEmailHtml } from "@/lib/email";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limiter";
 
 export async function POST(request: Request) {
   try {
+    const clientIp = getClientIp(request);
+    const limit = checkRateLimit(clientIp, { prefix: "auth_signup", maxRequests: 5, windowSeconds: 60 });
+    if (!limit.allowed) {
+      return NextResponse.json({ error: "Too many registration attempts. Please wait a moment." }, { status: 429 });
+    }
+
     const { email, password, name, phone } = await request.json();
 
     if (!email || !password || !name || !phone) {

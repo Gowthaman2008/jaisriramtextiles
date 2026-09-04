@@ -18,10 +18,20 @@ Your tone must be polite, premium, and helpful.
 - If the user asks how to contact support / get in touch: tell them to tap the "Chat Now" button below or email jaisriramtextilekpm@gmail.com.`;
 
 import { createClient } from "@/lib/supabase/server";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limiter";
 
 export async function POST(request: Request) {
   let matchedProducts: any[] = [];
   try {
+    const clientIp = getClientIp(request);
+    const limit = checkRateLimit(clientIp, { prefix: "ai_chat", maxRequests: 20, windowSeconds: 60 });
+    if (!limit.allowed) {
+      return NextResponse.json(
+        { error: "Too many AI assistant messages. Please wait a moment before sending more." },
+        { status: 429 }
+      );
+    }
+
     const { messages, userContext } = await request.json();
 
     if (!messages || !Array.isArray(messages)) {

@@ -1,8 +1,14 @@
 import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/admin";
 import { processCampaignBatch } from "@/lib/marketing/queue-worker";
+import { checkAdminOrCronAuth } from "@/lib/admin-auth";
 
 export async function POST(request: Request) {
+  const auth = await checkAdminOrCronAuth(request);
+  if (!auth) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const supabase = createServiceClient();
     const url = new URL(request.url);
@@ -26,6 +32,9 @@ export async function POST(request: Request) {
           // Trigger send API internally or queue
           await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/api/admin/marketing/campaigns/${sc.id}/send`, {
             method: "POST",
+            headers: {
+              ...(process.env.CRON_SECRET ? { Authorization: `Bearer ${process.env.CRON_SECRET}` } : {})
+            }
           }).catch(() => null);
         }
       }

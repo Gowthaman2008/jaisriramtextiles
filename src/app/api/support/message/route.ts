@@ -1,26 +1,42 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createServiceClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limiter";
 
 export async function POST(request: Request) {
   try {
-    const { userId, name, email, subject, message } = await request.json();
+    const clientIp = getClientIp(request);
+    const limit = checkRateLimit(clientIp, { prefix: "support_msg", maxRequests: 5, windowSeconds: 60 });
+    if (!limit.allowed) {
+      return NextResponse.json({ error: "Too many support messages. Please wait a moment." }, { status: 429 });
+    }
+
+    const { name, email, subject, message } = await request.json();
 
     if (!name || !email || !subject || !message) {
       return NextResponse.json({ error: "Please fill in all fields" }, { status: 400 });
     }
 
-    // Initialize Supabase Client bypassing RLS via Service Role Key
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
+    // Determine actual authenticated user ID if logged in (do not trust client param)
+    let validatedUserId: string | null = null;
+    try {
+      const userClient = await createClient();
+      const { data: { user } } = await userClient.auth.getUser();
+      if (user) {
+        validatedUserId = user.id;
+      }
+    } catch {
+      // Unauthenticated visitor
+    }
+
+    const supabase = createServiceClient();
 
     const { data, error } = await supabase
       .from("support_messages")
       .insert({
-        user_id: userId || null,
+        user_id: validatedUserId,
         name: name.trim(),
-        email: email.trim(),
+        email: email.trim().toLowerCase(),
         subject: subject.trim(),
         message: message.trim(),
       })

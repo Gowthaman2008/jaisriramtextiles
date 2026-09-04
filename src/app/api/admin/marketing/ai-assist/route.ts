@@ -1,7 +1,13 @@
 import { NextResponse } from "next/server";
 import { generateMarketingContent } from "@/lib/marketing/ai-generator";
+import { checkAdminAuth } from "@/lib/admin-auth";
 
 export async function POST(request: Request) {
+  const auth = await checkAdminAuth();
+  if (!auth) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const body = await request.json();
     const {

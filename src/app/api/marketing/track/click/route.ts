@@ -11,7 +11,32 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const campaignId = url.searchParams.get("c")?.trim();
   const recipientId = url.searchParams.get("r")?.trim();
-  const targetUrl = url.searchParams.get("url") || process.env.NEXT_PUBLIC_SITE_URL || "https://jaisriramtextiles.in";
+  const rawTargetUrl = url.searchParams.get("url") || process.env.NEXT_PUBLIC_SITE_URL || "https://jaisriramtextiles.in";
+  let targetUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://jaisriramtextiles.in";
+
+  try {
+    if (rawTargetUrl.startsWith("/") && !rawTargetUrl.startsWith("//") && !rawTargetUrl.startsWith("/\\")) {
+      targetUrl = `${process.env.NEXT_PUBLIC_SITE_URL || "https://jaisriramtextiles.in"}${rawTargetUrl}`;
+    } else {
+      const parsed = new URL(rawTargetUrl);
+      const allowedHosts = [
+        "jaisriramtextiles.in",
+        "www.jaisriramtextiles.in",
+        "localhost",
+        "127.0.0.1",
+      ];
+      if (process.env.NEXT_PUBLIC_SITE_URL) {
+        try {
+          allowedHosts.push(new URL(process.env.NEXT_PUBLIC_SITE_URL).hostname);
+        } catch {}
+      }
+      if (allowedHosts.includes(parsed.hostname)) {
+        targetUrl = parsed.toString();
+      }
+    }
+  } catch {
+    targetUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://jaisriramtextiles.in";
+  }
 
   try {
     if (campaignId && recipientId) {

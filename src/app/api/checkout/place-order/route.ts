@@ -3,14 +3,27 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/admin";
 import { sendEmail, orderConfirmationEmailHtml, generateInvoicePdfBase64, getAdminNotificationEmail } from "@/lib/email";
 import { reconcileUserWallet } from "@/lib/wallet";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limiter";
 
 export async function POST(request: Request) {
   try {
+    // 0. Rate limiting per IP and user
+    const clientIp = getClientIp(request);
+    const ipLimit = checkRateLimit(clientIp, { prefix: "checkout", maxRequests: 20, windowSeconds: 60 });
+    if (!ipLimit.allowed) {
+      return NextResponse.json({ error: "Too many checkout requests. Please slow down and try again shortly." }, { status: 429 });
+    }
+
     // 1. Verify user auth
     const userClient = await createClient();
     const { data: { user } } = await userClient.auth.getUser();
     if (!user) {
       return NextResponse.json({ error: "Please log in to place an order" }, { status: 401 });
+    }
+
+    const userLimit = checkRateLimit(user.id, { prefix: "checkout_user", maxRequests: 15, windowSeconds: 60 });
+    if (!userLimit.allowed) {
+      return NextResponse.json({ error: "Too many order submissions. Please wait a moment." }, { status: 429 });
     }
 
     const { action, cart, shippingAddress, couponCode, useWallet, isRazorpay, razorpayPaymentId, razorpayOrderId, razorpaySignature, dbOrderId: inputDbOrderId } = await request.json();
@@ -600,6 +613,8 @@ export async function POST(request: Request) {
         ({ error: itemsInsertErr } = await supabase.from("order_items").insert(itemRowsBase));
       }
       if (itemsInsertErr) throw itemsInsertErr;
+      shouldProcessCompletion = true;
+    } else {
       // Update existing pre-created order status to paid (only if not already marked as paid)
       const { data: updatedOrders, error: orderUpdateError } = await supabase
         .from("orders")

@@ -1,7 +1,13 @@
 import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/admin";
+import { checkAdminAuth } from "@/lib/admin-auth";
 
 export async function GET(request: Request) {
+  const auth = await checkAdminAuth();
+  if (!auth) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const url = new URL(request.url);
     const search = url.searchParams.get("search") || "";
@@ -122,6 +128,11 @@ export async function GET(request: Request) {
 }
 
 export async function PUT(request: Request) {
+  const auth = await checkAdminAuth();
+  if (!auth) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const supabase = createServiceClient();
     const { email, status, reason } = await request.json();

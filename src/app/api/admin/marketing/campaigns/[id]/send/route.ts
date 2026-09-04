@@ -3,6 +3,7 @@ import { createServiceClient } from "@/lib/supabase/admin";
 import { evaluateAudience } from "@/lib/marketing/segmentation-engine";
 import { processCampaignBatch } from "@/lib/marketing/queue-worker";
 import { substituteMergeTags, injectTracking, sendMarketingEmail } from "@/lib/marketing/email-service";
+import { checkAdminOrCronAuth } from "@/lib/admin-auth";
 
 // Helper to sanitize UUID fields
 function cleanUuid(id: any): string | null {
@@ -12,6 +13,11 @@ function cleanUuid(id: any): string | null {
 }
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const auth = await checkAdminOrCronAuth(request);
+  if (!auth) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const { id } = await params;
     const supabase = createServiceClient();

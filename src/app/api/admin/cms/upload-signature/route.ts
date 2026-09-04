@@ -40,9 +40,11 @@ export async function GET(request: Request) {
       slides: "jai-sri-ram-textiles/hero-slides",
       categories: "jai-sri-ram-textiles/categories",
       hero: "jai-sri-ram-textiles/hero-slides",
+      reviews: "jai-sri-ram-textiles/reviews",
+      brand: "jai-sri-ram-textiles/brand",
     };
 
-    const folder = allowedFolders[requestedFolder] || `jai-sri-ram-textiles/${requestedFolder}`;
+    const folder = allowedFolders[requestedFolder] || "jai-sri-ram-textiles/products";
     const timestamp = Math.round(new Date().getTime() / 1000);
 
     const paramsToSign = {

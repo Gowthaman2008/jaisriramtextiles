@@ -145,3 +145,55 @@ create policy "newsletter subs staff read" on newsletter_subscriptions
   for select using (is_staff());
 create policy "newsletter subs anon insert" on newsletter_subscriptions
   for insert with check (true);
+
+-- ---- Support Message Replies ----
+alter table if exists support_message_replies enable row level security;
+create policy "support replies select own or staff" on support_message_replies
+  for select using (
+    exists (
+      select 1 from support_messages m
+      where m.id = message_id and (m.user_id = auth.uid() or is_staff())
+    )
+  );
+
+-- ---- Free Product Campaigns ----
+alter table if exists free_product_campaigns enable row level security;
+create policy "free product campaigns public read" on free_product_campaigns
+  for select using (is_active or is_staff());
+create policy "free product campaigns staff all" on free_product_campaigns
+  for all using (is_staff()) with check (is_staff());
+
+-- ---- Carousel Slides & Banners ----
+alter table if exists carousel_slides enable row level security;
+create policy "carousel slides public read" on carousel_slides
+  for select using (is_active or is_staff());
+create policy "carousel slides staff all" on carousel_slides
+  for all using (is_staff()) with check (is_staff());
+
+alter table if exists banners enable row level security;
+create policy "banners public read" on banners
+  for select using (is_active or is_staff());
+create policy "banners staff all" on banners
+  for all using (is_staff()) with check (is_staff());
+
+-- ---- Email Marketing Tables (Staff Only) ----
+alter table if exists email_segments enable row level security;
+create policy "email segments staff only" on email_segments
+  for all using (is_staff()) with check (is_staff());
+
+alter table if exists email_templates enable row level security;
+create policy "email templates staff only" on email_templates
+  for all using (is_staff()) with check (is_staff());
+
+alter table if exists email_campaigns enable row level security;
+create policy "email campaigns staff only" on email_campaigns
+  for all using (is_staff()) with check (is_staff());
+
+alter table if exists email_campaign_recipients enable row level security;
+create policy "email recipients staff only" on email_campaign_recipients
+  for all using (is_staff()) with check (is_staff());
+
+alter table if exists email_unsubscribes enable row level security;
+create policy "email unsubscribes staff read" on email_unsubscribes
+  for select using (is_staff());
+

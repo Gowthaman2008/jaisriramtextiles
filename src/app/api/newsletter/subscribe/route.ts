@@ -1,19 +1,22 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createServiceClient } from "@/lib/supabase/admin";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limiter";
 
 export async function POST(request: Request) {
   try {
-    const { email } = await request.json();
-
-    if (!email || !email.trim()) {
-      return NextResponse.json({ error: "Email is required" }, { status: 400 });
+    const clientIp = getClientIp(request);
+    const limit = checkRateLimit(clientIp, { prefix: "newsletter", maxRequests: 5, windowSeconds: 60 });
+    if (!limit.allowed) {
+      return NextResponse.json({ error: "Too many subscription attempts. Please wait a moment." }, { status: 429 });
     }
 
-    // Initialize Supabase Client bypassing RLS via Service Role Key
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
+    const { email } = await request.json();
+
+    if (!email || !email.trim() || !email.includes("@")) {
+      return NextResponse.json({ error: "Please enter a valid email address." }, { status: 400 });
+    }
+
+    const supabase = createServiceClient();
 
     const { error } = await supabase.from("newsletter_subscriptions").insert({
       email: email.trim().toLowerCase(),

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/admin";
 import { MarketingSettings } from "@/lib/marketing/types";
+import { checkAdminAuth } from "@/lib/admin-auth";
 
 const DEFAULT_SETTINGS: MarketingSettings = {
   default_sender_name: "JAI SRI RAM TEXTILES",
@@ -21,6 +22,11 @@ const DEFAULT_SETTINGS: MarketingSettings = {
 };
 
 export async function GET() {
+  const auth = await checkAdminAuth();
+  if (!auth) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const supabase = createServiceClient();
     const { data } = await supabase
@@ -61,6 +67,11 @@ export async function GET() {
 }
 
 export async function PUT(request: Request) {
+  const auth = await checkAdminAuth();
+  if (!auth) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const supabase = createServiceClient();
     const body = await request.json();
