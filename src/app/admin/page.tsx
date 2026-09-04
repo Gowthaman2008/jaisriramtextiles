@@ -1282,7 +1282,7 @@ export default function AdminDashboardPage() {
 
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.error || "Upload failed");
+        throw new Error(errorData.error || `Server returned status ${res.status}`);
       }
 
       const data = await res.json();
@@ -1293,6 +1293,7 @@ export default function AdminDashboardPage() {
       notify("Upload failed: " + err.message);
     } finally {
       setUploadingSlideImage(false);
+      e.target.value = "";
     }
   }
 
