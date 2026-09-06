@@ -21,6 +21,7 @@ const cols = [
       ["About Us", "/about"],
       ["Manufacturing", "/manufacturing"],
       ["Bulk Orders", "/bulk-orders"],
+      ["Claim ₹100 Gift Card", "/claim-giftcard"],
       ["Contact", "/contact"],
     ],
   },

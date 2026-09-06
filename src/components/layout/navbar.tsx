@@ -36,7 +36,8 @@ export function Navbar() {
             { slug: "all", label: "All" },
             ...dbCategories.map(c => ({ slug: c.slug, label: c.name })),
             { slug: "sale", label: "Live On Sale" },
-            { slug: "bulk-orders", label: "Bulk Orders" }
+            { slug: "bulk-orders", label: "Bulk Orders" },
+            { slug: "claim-giftcard", label: "₹100 Gift Card" }
           ];
           setNavCategories(finalCategories);
         }
@@ -100,7 +101,7 @@ export function Navbar() {
             {navCategories.map((c) => (
               <Link
                 key={c.slug}
-                href={c.slug === "bulk-orders" ? "/bulk-orders" : c.slug === "all" ? "/shop" : `/shop/${c.slug}`}
+                href={c.slug === "claim-giftcard" ? "/claim-giftcard" : c.slug === "bulk-orders" ? "/bulk-orders" : c.slug === "all" ? "/shop" : `/shop/${c.slug}`}
                 className="group relative text-sm font-medium text-ink/80 transition-colors hover:text-ink"
               >
                 {c.label}
@@ -217,7 +218,7 @@ export function Navbar() {
                           }}
                         >
                           <Link
-                            href={c.slug === "bulk-orders" ? "/bulk-orders" : c.slug === "all" ? "/shop" : `/shop/${c.slug}`}
+                            href={c.slug === "claim-giftcard" ? "/claim-giftcard" : c.slug === "bulk-orders" ? "/bulk-orders" : c.slug === "all" ? "/shop" : `/shop/${c.slug}`}
                             onClick={() => setMobileOpen(false)}
                             className={cn(
                               "group flex items-center justify-between py-3.5 px-2 text-sm font-medium transition-all duration-300 ease-silk",

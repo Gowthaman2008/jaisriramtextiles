@@ -55,6 +55,7 @@ import {
 } from "lucide-react";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { MarketingHub } from "@/components/admin/marketing/marketing-hub";
+import { GiftCardManager } from "@/components/admin/giftcards/giftcard-manager";
 import { isVideoMediaUrl } from "@/components/home/hero-carousel";
 
 // Helper for formatting money — always whole rupees (no paise adjustments)
@@ -3776,6 +3777,7 @@ export default function AdminDashboardPage() {
                 <TabButton active={activeTab === "cms"} onClick={() => setActiveTab("cms")} icon={<Wrench className="w-4 h-4" />} label="Storefront CMS" />
                 <TabButton active={activeTab === "refunds"} onClick={() => setActiveTab("refunds")} icon={<RefreshCw className="w-4 h-4" />} label="Issue Refund" badge={orders.filter(o => (o.status === "returned" || o.status === "rejected") && o.payment_status !== "refunded").length} />
                 <TabButton active={activeTab === "coupons"} onClick={() => setActiveTab("coupons")} icon={<Ticket className="w-4 h-4" />} label="Promo Codes" badge={coupons.length} />
+                <TabButton active={activeTab === "giftcards"} onClick={() => setActiveTab("giftcards")} icon={<Gift className="w-4 h-4" />} label="Gift Cards" />
                 <TabButton active={activeTab === "shipping"} onClick={() => setActiveTab("shipping")} icon={<Truck className="w-4 h-4" />} label="Shipping Settings" />
                 <TabButton active={activeTab === "campaigns"} onClick={() => setActiveTab("campaigns")} icon={<Gift className="w-4 h-4" />} label="Free Products" badge={campaigns.length} />
                 <TabButton active={activeTab === "marketing"} onClick={() => setActiveTab("marketing")} icon={<Send className="w-4 h-4" />} label="Mail Broadcasting" />
@@ -8760,6 +8762,13 @@ $$ language plpgsql;`}
             {activeTab === "marketing" && (
               <div className="space-y-6 animate-fade-up">
                 <MarketingHub products={products} coupons={coupons} />
+              </div>
+            )}
+
+            {/* Gift Card & Review Rewards Tab */}
+            {activeTab === "giftcards" && (
+              <div className="space-y-6 animate-fade-up">
+                <GiftCardManager />
               </div>
             )}
               </>

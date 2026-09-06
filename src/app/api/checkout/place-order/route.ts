@@ -345,9 +345,9 @@ export async function POST(request: Request) {
       }
 
       if (activeBalance > 0) {
-        // Enforce 20% cap rule: wallet_used_paise <= (subtotal_paise / 5), rounded
+        // Enforce 20% cap rule and max ₹50 (5000 paise): wallet_used_paise <= min(subtotal_paise / 5, 5000), rounded
         // down to the nearest whole rupee so every on-site transaction is a whole number.
-        const walletCap = Math.floor(subtotalPaise / 5 / 100) * 100;
+        const walletCap = Math.min(Math.floor(subtotalPaise / 5 / 100) * 100, 5000);
         const maxRedeemable = Math.min(activeBalance, walletCap);
         // Ensure wallet deduction doesn't exceed order value remaining after coupon
         walletUsedPaise = Math.min(maxRedeemable, subtotalPaise - discountPaise);

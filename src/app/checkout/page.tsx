@@ -370,9 +370,9 @@ export default function CheckoutPage() {
     }
   }
 
-  // Capped at 20% of subtotal order value as per store rules — rounded down to
+  // Capped at 20% of subtotal order value (max ₹50 / 5000 paise) as per store rules — rounded down to
   // the nearest whole rupee so every on-site transaction is a whole number.
-  const walletCap = Math.floor(cartSubtotalPaise / 5 / 100) * 100;
+  const walletCap = Math.min(Math.floor(cartSubtotalPaise / 5 / 100) * 100, 5000);
   const maxRedeemableWallet = Math.min(walletBalance, walletCap);
   const walletUsedPaise = useWallet ? Math.min(maxRedeemableWallet, cartSubtotalPaise - discountPaise) : 0;
 
@@ -831,7 +831,7 @@ export default function CheckoutPage() {
                       Your wallet balance: <strong className="text-ink">{formatINR(walletBalance, true)}</strong>
                     </p>
                     <p className="text-[10px] text-muted leading-relaxed">
-                      Toggle to apply credit. Redemptions are capped at 20% of the subtotal ({formatINR(walletCap, true)}).
+                      Toggle to apply credit. Redemptions are capped at 20% of subtotal (max ₹50 per order: {formatINR(walletCap, true)}).
                     </p>
                   </div>
                   <label className="relative inline-flex items-center cursor-pointer mt-1">

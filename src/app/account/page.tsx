@@ -34,7 +34,10 @@ import {
   Star,
   X,
   Pencil,
-  HelpCircle
+  HelpCircle,
+  Gift,
+  CheckCircle2,
+  AlertCircle
 } from "lucide-react";
 
 export default function AccountPage() {
@@ -50,10 +53,23 @@ export default function AccountPage() {
   // Tab State: "overview" | "orders" | "wallet" | "wishlist" | "addresses" | "contact"
   const [activeTab, setActiveTab] = useState("overview");
 
-  // Land directly on a specific tab when arriving via a link like /account?tab=orders
+  // Gift Card Redeem State
+  const [giftCardCodeInput, setGiftCardCodeInput] = useState("");
+  const [redeemingGiftCard, setRedeemingGiftCard] = useState(false);
+  const [redeemSuccessMsg, setRedeemSuccessMsg] = useState("");
+  const [redeemErrorMsg, setRedeemErrorMsg] = useState("");
+
+  // Land directly on a specific tab when arriving via a link like /account?tab=orders or /account?tab=wallet&redeem=CODE
   useEffect(() => {
-    const tab = new URLSearchParams(window.location.search).get("tab");
-    if (tab) setActiveTab(tab);
+    const params = new URLSearchParams(window.location.search);
+    const tab = params.get("tab");
+    const redeem = params.get("redeem");
+    if (redeem) {
+      setGiftCardCodeInput(redeem);
+      setActiveTab("wallet");
+    } else if (tab) {
+      setActiveTab(tab);
+    }
   }, []);
 
   // User States
@@ -575,6 +591,44 @@ export default function AccountPage() {
       notify("Error: " + err.message);
     } finally {
       setSubmittingUserReply(false);
+    }
+  }
+
+  async function handleRedeemGiftCard(e: React.FormEvent) {
+    e.preventDefault();
+    if (!giftCardCodeInput.trim()) {
+      setRedeemErrorMsg("Please enter a gift card code.");
+      return;
+    }
+    setRedeemingGiftCard(true);
+    setRedeemErrorMsg("");
+    setRedeemSuccessMsg("");
+    try {
+      const res = await fetch("/api/giftcards/redeem", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: giftCardCodeInput.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to redeem gift card.");
+      }
+      setRedeemSuccessMsg(data.message || `₹${data.amount_rupees || 100} Gift Card added to your wallet!`);
+      if (typeof data.new_balance_paise === "number") {
+        setWalletBalance(data.new_balance_paise);
+      }
+      setGiftCardCodeInput("");
+      notify("Gift card successfully redeemed to your wallet!", "success");
+      // Refresh wallet transactions
+      const walletRes = await fetch("/api/account/wallet").then(r => r.json()).catch(() => null);
+      if (walletRes?.transactions) {
+        setWalletHistory(walletRes.transactions);
+      }
+    } catch (err: any) {
+      setRedeemErrorMsg(err.message || "Failed to redeem gift card.");
+      notify(err.message || "Redemption failed", "error");
+    } finally {
+      setRedeemingGiftCard(false);
     }
   }
 
@@ -1199,14 +1253,80 @@ export default function AccountPage() {
         {/* TAB 3: WALLET LEDGERS */}
         {activeTab === "wallet" && (
           <div className="space-y-6 animate-fade-up">
-            <h2 className="font-display text-xl text-ink">Cashback Balance Ledger</h2>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h2 className="font-display text-xl text-ink">Cashback Balance Ledger</h2>
+                <p className="text-xs text-taupe mt-0.5">Manage your cashback balance and redeem gift card reward codes</p>
+              </div>
+              <Link
+                href="/claim-giftcard"
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-zari/10 border border-zari/30 text-zari-deep text-xs font-bold hover:bg-zari/20 transition-colors shrink-0"
+              >
+                <Gift size={13} />
+                Claim ₹100 Review Gift Card &rarr;
+              </Link>
+            </div>
+
+            {/* Redeem Gift Card Card */}
+            <div className="bg-gradient-to-r from-cream/60 via-white to-cream/40 border border-zari/30 rounded-2xl p-5 sm:p-6 shadow-soft space-y-3">
+              <div className="flex items-center gap-2">
+                <span className="p-1.5 rounded-lg bg-zari/20 text-zari-deep">
+                  <Gift size={16} />
+                </span>
+                <div>
+                  <h3 className="font-bold text-sm text-ink">Redeem Gift Card Code</h3>
+                  <p className="text-[11px] text-taupe">Enter your ₹100 review gift code or promo gift card to add instant cashback balance.</p>
+                </div>
+              </div>
+
+              {redeemSuccessMsg && (
+                <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs rounded-xl font-medium flex items-center gap-2">
+                  <CheckCircle2 size={15} className="text-emerald-600 shrink-0" />
+                  <span>{redeemSuccessMsg}</span>
+                </div>
+              )}
+
+              {redeemErrorMsg && (
+                <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl font-medium flex items-center gap-2">
+                  <AlertCircle size={15} className="shrink-0" />
+                  <span>{redeemErrorMsg}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleRedeemGiftCard} className="flex flex-col sm:flex-row gap-2.5 pt-1">
+                <input
+                  type="text"
+                  placeholder="Enter code (e.g. JSRT-100-XXXX-XXXX)"
+                  value={giftCardCodeInput}
+                  onChange={(e) => setGiftCardCodeInput(e.target.value.toUpperCase())}
+                  className="flex-1 px-4 py-2.5 bg-white border border-line rounded-xl text-xs font-mono font-bold tracking-wider text-ink uppercase placeholder:normal-case placeholder:font-sans placeholder:font-normal placeholder:text-muted/60 focus:outline-none focus:border-zari focus:ring-1 focus:ring-zari/40 shadow-sm"
+                />
+                <button
+                  type="submit"
+                  disabled={redeemingGiftCard}
+                  className="px-6 py-2.5 bg-ink hover:bg-zari text-ivory text-xs font-bold uppercase tracking-wider rounded-xl transition-all duration-200 shadow-soft cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2 shrink-0"
+                >
+                  {redeemingGiftCard ? (
+                    <>
+                      <RefreshCw className="animate-spin" size={14} />
+                      Redeeming...
+                    </>
+                  ) : (
+                    <>
+                      <Gift size={14} />
+                      Redeem to Wallet
+                    </>
+                  )}
+                </button>
+              </form>
+            </div>
 
             {/* Total Balance Card */}
             <div className="relative overflow-hidden bg-gradient-to-br from-white via-[#fffdf7] to-[#fdfbf0] border border-zari/20 rounded-2xl p-6 flex justify-between items-center shadow-soft">
               <div className="space-y-1.5 z-10">
                 <span className="text-xs font-bold uppercase tracking-wide text-zari-deep">Available Balance</span>
                 <p className="text-4xl font-display text-ink">{formatINR(walletBalance, true)}</p>
-                <p className="text-xs text-taupe">Cashback credits automatically apply at checkout up to 20% of order totals.</p>
+                <p className="text-xs text-taupe">Cashback credits automatically apply at checkout up to 20% of order totals (max ₹50 per order).</p>
               </div>
               <Wallet className="w-16 h-16 text-zari/30 absolute right-6 top-6 flex-shrink-0" />
             </div>
