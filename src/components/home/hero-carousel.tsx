@@ -123,6 +123,8 @@ export function HeroCarousel({ dbSlides }: { dbSlides?: any[] }) {
   const [isMuted, setIsMuted] = useState(true);
   const [searchOpen, setSearchOpen] = useState(false);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const mobileScrollRef = useRef<HTMLDivElement>(null);
+  const isMobileInteracting = useRef(false);
 
   useEffect(() => {
     if (dbSlides) {
@@ -132,7 +134,19 @@ export function HeroCarousel({ dbSlides }: { dbSlides?: any[] }) {
 
   const go = useCallback(
     (next: number, direction: number) => {
-      setState([(next + slides.length) % slides.length, direction]);
+      const targetIndex = (next + slides.length) % slides.length;
+      setState([targetIndex, direction]);
+
+      // Sync mobile horizontal scroll track
+      if (mobileScrollRef.current) {
+        const container = mobileScrollRef.current;
+        const cardWidth = container.firstElementChild?.clientWidth || 320;
+        const gap = 14;
+        container.scrollTo({
+          left: targetIndex * (cardWidth + gap),
+          behavior: "smooth",
+        });
+      }
     },
     [slides.length]
   );
@@ -150,14 +164,29 @@ export function HeroCarousel({ dbSlides }: { dbSlides?: any[] }) {
     }
 
     timer.current = setInterval(() => {
-      setState(([i]) => [(i + 1) % slides.length, 1]);
+      if (!isMobileInteracting.current) {
+        go(index + 1, 1);
+      }
     }, AUTO_MS);
 
     return () => {
       if (timer.current) clearInterval(timer.current);
     };
-  }, [reduce, slides.length, index, isVideo]);
+  }, [reduce, slides.length, index, isVideo, go]);
 
+  // Handle Mobile Scroll Event to sync active index indicator
+  const handleMobileScroll = () => {
+    if (!mobileScrollRef.current) return;
+    const container = mobileScrollRef.current;
+    const cardWidth = container.firstElementChild?.clientWidth || 320;
+    const gap = 14;
+    const newIndex = Math.round(container.scrollLeft / (cardWidth + gap));
+    if (newIndex >= 0 && newIndex < slides.length && newIndex !== index) {
+      setState([newIndex, newIndex > index ? 1 : -1]);
+    }
+  };
+
+  // Touch handlers for Desktop hero slide swiping
   const touchStartX = useRef<number | null>(null);
   const touchStartY = useRef<number | null>(null);
   const touchEndX = useRef<number | null>(null);
@@ -280,16 +309,144 @@ export function HeroCarousel({ dbSlides }: { dbSlides?: any[] }) {
           </div>
 
           {/* ========================================================================= */}
-          {/* AMAZON-STYLE HERO SLIDE CARD CAROUSEL (Rounded Card Shape with Peek) */}
+          {/* 1. MOBILE VIEW: EXACT AMAZON MULTI-CARD CAROUSEL WITH ADJACENT PEEK */}
+          {/* ========================================================================= */}
+          <div className="block md:hidden">
+            <div
+              ref={mobileScrollRef}
+              onScroll={handleMobileScroll}
+              onTouchStart={() => {
+                isMobileInteracting.current = true;
+              }}
+              onTouchEnd={() => {
+                setTimeout(() => {
+                  isMobileInteracting.current = false;
+                }, 3000);
+              }}
+              className="flex gap-3.5 overflow-x-auto snap-x snap-mandatory scrollbar-none pb-2 pt-1 -mx-3 px-3.5 scroll-smooth"
+            >
+              {slides.map((s, idx) => {
+                const sIsVideo = isVideoMediaUrl(s.image);
+                const isActive = idx === index;
+
+                return (
+                  <div
+                    key={idx}
+                    onClick={() => {
+                      if (!isActive) go(idx, idx > index ? 1 : -1);
+                    }}
+                    className={cn(
+                      "w-[84vw] max-w-[340px] shrink-0 snap-start h-[520px] rounded-3xl overflow-hidden border border-ink/10 shadow-lift relative bg-stone-900 transition-all duration-300",
+                      isActive ? "ring-1 ring-zari/30 shadow-xl" : "opacity-90"
+                    )}
+                  >
+                    {/* Slide Background Media */}
+                    <div className="absolute inset-0">
+                      {sIsVideo ? (
+                        <video
+                          src={s.image}
+                          autoPlay={isActive}
+                          muted={isMuted}
+                          playsInline
+                          preload="metadata"
+                          onEnded={() => go(index + 1, 1)}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <Image
+                          src={s.image}
+                          alt={s.title}
+                          fill
+                          priority={idx === 0}
+                          sizes="85vw"
+                          className="object-cover"
+                        />
+                      )}
+
+                      {/* Amazon-style High-Contrast Scrim Gradient */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-ink/95 via-ink/40 to-ink/20" />
+                      <div className="absolute inset-0 bg-weave opacity-25 mix-blend-multiply" />
+                    </div>
+
+                    {/* Card Content Overlay */}
+                    <div className="relative z-10 flex flex-col justify-between h-full p-5 text-white">
+                      {/* Top: Eyebrow + Title + Subtitle */}
+                      <div className="space-y-3">
+                        {/* Eyebrow Pill */}
+                        <div>
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-zari/25 text-zari-soft text-[11px] font-bold tracking-wider uppercase backdrop-blur-md border border-zari/40 shadow-xs">
+                            <Sparkles className="w-3 h-3 text-zari-soft" />
+                            {s.eyebrow}
+                          </span>
+                        </div>
+
+                        {/* Title */}
+                        <h2 className="font-display text-2xl font-black text-white leading-tight drop-shadow-md">
+                          {s.title}
+                        </h2>
+
+                        {/* Subtitle */}
+                        <p className="text-xs text-white/85 leading-relaxed line-clamp-2 font-medium">
+                          {s.subtitle}
+                        </p>
+
+                        {/* CTA + Sound Toggle */}
+                        <div className="pt-2 flex items-center gap-2.5">
+                          <Button
+                            variant="gold"
+                            size="sm"
+                            href={s.cta.href}
+                            className="rounded-full shadow-md text-xs font-bold px-4 py-2"
+                          >
+                            {s.cta.label}
+                            <ArrowRight size={14} />
+                          </Button>
+
+                          {sIsVideo && isActive && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setIsMuted((prev) => !prev);
+                              }}
+                              aria-label={isMuted ? "Unmute video" : "Mute video"}
+                              className="p-2 rounded-full border border-white/30 bg-black/50 text-white backdrop-blur text-xs font-semibold hover:border-zari transition shadow-sm"
+                            >
+                              {isMuted ? <VolumeX size={14} /> : <Volume2 size={14} />}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Bottom Amazon-style Discount Offer Pill Strip */}
+                      <div className="pt-2">
+                        <div className="flex items-center gap-2 px-3 py-2 rounded-2xl bg-white text-ink text-xs font-semibold shadow-md border border-line/60 backdrop-blur w-full truncate">
+                          <div className="grid place-items-center w-5 h-5 rounded-full bg-zari/20 text-zari-deep shrink-0">
+                            <Tag className="w-3 h-3" />
+                          </div>
+                          <span className="truncate text-[11px] font-bold">
+                            {s.highlightOffer || "10% Instant Discount on First Order"}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* ========================================================================= */}
+          {/* 2. LAPTOP/DESKTOP VIEW: CURRENT POLISHED HERO SLIDE VIEW WITH PEEK */}
           {/* ========================================================================= */}
           <div
-            className="relative flex items-center justify-center"
+            className="hidden md:flex relative items-center justify-center"
             onTouchStart={onTouchStart}
             onTouchMove={onTouchMove}
             onTouchEnd={onTouchEnd}
           >
             {/* Main Rounded Hero Card */}
-            <div className="relative w-full h-[520px] sm:h-[560px] md:h-[600px] rounded-3xl sm:rounded-[32px] overflow-hidden border border-ink/10 shadow-lift bg-cream/30">
+            <div className="relative w-full h-[540px] md:h-[600px] rounded-[32px] overflow-hidden border border-ink/10 shadow-lift bg-cream/30">
               {/* Background Media with AnimatePresence */}
               <AnimatePresence initial={false} custom={dir}>
                 <motion.div
@@ -318,19 +475,19 @@ export function HeroCarousel({ dbSlides }: { dbSlides?: any[] }) {
                       alt={slide.title}
                       fill
                       priority={index === 0}
-                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 90vw, 1200px"
+                      sizes="(max-width: 1200px) 90vw, 1200px"
                       className="object-cover"
                     />
                   )}
 
                   {/* Luxury Scrim Gradient: Keeps card bright, readable, and premium */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-ink/90 via-ink/40 to-transparent sm:bg-gradient-to-r sm:from-ivory/95 sm:via-ivory/70 sm:to-transparent" />
+                  <div className="absolute inset-0 bg-gradient-to-r from-ivory/95 via-ivory/70 to-transparent" />
                   <div className="absolute inset-0 bg-weave opacity-25 mix-blend-multiply" />
                 </motion.div>
               </AnimatePresence>
 
               {/* Card Content Overlay */}
-              <div className="relative z-10 flex flex-col justify-between h-full p-6 sm:p-10 md:p-12">
+              <div className="relative z-10 flex flex-col justify-between h-full p-8 md:p-12">
                 {/* Upper Content: Eyebrow + Title + Subtitle */}
                 <div className="max-w-xl">
                   <AnimatePresence mode="wait">
@@ -348,12 +505,12 @@ export function HeroCarousel({ dbSlides }: { dbSlides?: any[] }) {
                       </span>
 
                       {/* Main Title */}
-                      <h1 className="mt-4 font-display text-3xl sm:text-5xl md:text-6xl font-extrabold tracking-tight text-white sm:text-ink leading-[1.08] drop-shadow-sm">
+                      <h1 className="mt-4 font-display text-4xl md:text-6xl font-extrabold tracking-tight text-ink leading-[1.08] drop-shadow-sm">
                         {slide.title}
                       </h1>
 
                       {/* Subtitle / Description */}
-                      <p className="mt-3.5 max-w-md text-sm sm:text-base md:text-lg leading-relaxed text-white/90 sm:text-taupe font-medium">
+                      <p className="mt-3.5 max-w-md text-base md:text-lg leading-relaxed text-taupe font-medium">
                         {slide.subtitle}
                       </p>
 
@@ -373,10 +530,10 @@ export function HeroCarousel({ dbSlides }: { dbSlides?: any[] }) {
                           <button
                             onClick={() => setIsMuted((prev) => !prev)}
                             aria-label={isMuted ? "Unmute video" : "Mute video"}
-                            className="flex items-center gap-1.5 px-3 py-2.5 rounded-full border border-white/30 sm:border-ink/15 bg-black/40 sm:bg-ivory/80 text-white sm:text-ink backdrop-blur text-xs font-semibold hover:border-zari transition shadow-sm"
+                            className="flex items-center gap-1.5 px-3 py-2.5 rounded-full border border-ink/15 bg-ivory/80 text-ink backdrop-blur text-xs font-semibold hover:border-zari transition shadow-sm cursor-pointer"
                           >
                             {isMuted ? <VolumeX size={15} /> : <Volume2 size={15} />}
-                            <span className="hidden sm:inline">{isMuted ? "Unmute" : "Mute"}</span>
+                            <span>{isMuted ? "Unmute" : "Mute"}</span>
                           </button>
                         )}
                       </div>
@@ -386,7 +543,7 @@ export function HeroCarousel({ dbSlides }: { dbSlides?: any[] }) {
 
                 {/* Bottom Amazon-style Offer Strip on the Card */}
                 <div className="pt-4">
-                  <div className="inline-flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-white/95 sm:bg-white text-ink text-xs sm:text-sm font-semibold shadow-md border border-line/60 backdrop-blur max-w-full truncate">
+                  <div className="inline-flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-white text-ink text-sm font-semibold shadow-md border border-line/60 backdrop-blur max-w-full truncate">
                     <div className="grid place-items-center w-6 h-6 rounded-full bg-zari/15 text-zari-deep shrink-0">
                       <Tag className="w-3.5 h-3.5" />
                     </div>
@@ -398,7 +555,7 @@ export function HeroCarousel({ dbSlides }: { dbSlides?: any[] }) {
               </div>
 
               {/* Desktop Next/Prev Arrow Controls */}
-              <div className="hidden sm:flex items-center justify-between absolute inset-x-4 top-1/2 -translate-y-1/2 z-20 pointer-events-none">
+              <div className="flex items-center justify-between absolute inset-x-4 top-1/2 -translate-y-1/2 z-20 pointer-events-none">
                 <button
                   aria-label="Previous Slide"
                   onClick={() => go(index - 1, -1)}
