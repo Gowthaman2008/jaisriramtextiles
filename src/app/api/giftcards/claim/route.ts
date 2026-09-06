@@ -5,6 +5,7 @@ import cloudinary from "@/lib/cloudinary";
 import type { UploadApiResponse } from "cloudinary";
 import { generateGiftCardCode } from "@/lib/gift-cards";
 import { verifyReviewScreenshotsWithAI } from "@/lib/ai-review-verifier";
+import { sendEmail, giftCardIssuedEmailHtml } from "@/lib/email";
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024; // 5MB limit per screenshot
 
@@ -264,9 +265,32 @@ export async function POST(request: Request) {
         .eq("id", verifiedPlatformOrderId);
     }
 
+    // 8. Send Gift Card Email to the User
+    try {
+      const recipientEmail = user.email;
+      const recipientName = user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split("@")[0] || "Valued Customer";
+      if (recipientEmail) {
+        sendEmail({
+          to: recipientEmail,
+          subject: `🎉 Here is your ₹100 Gift Card Code (${giftCard.code}) — JAI SRI RAM TEXTILES`,
+          html: giftCardIssuedEmailHtml({
+            name: recipientName,
+            code: giftCard.code,
+            amountRupees: 100,
+            platform,
+            expiresAt: giftCard.expires_at,
+          }),
+        }).catch((emailErr) => {
+          console.error("[giftcards/claim] Background email dispatch error:", emailErr);
+        });
+      }
+    } catch (emailErr) {
+      console.error("[giftcards/claim] Failed to trigger gift card email:", emailErr);
+    }
+
     return NextResponse.json({
       success: true,
-      message: "Gift card generated successfully!",
+      message: "Gift card generated and emailed successfully!",
       giftCard: {
         id: giftCard.id,
         code: giftCard.code,

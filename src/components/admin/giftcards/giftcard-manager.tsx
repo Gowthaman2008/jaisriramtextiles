@@ -48,8 +48,8 @@ interface GiftCardRecord {
   expires_at?: string;
   notes?: string;
   created_at: string;
-  creator?: { id: string; full_name?: string; email?: string; phone?: string };
-  redeemer?: { id: string; full_name?: string; email?: string; phone?: string };
+  creator?: { id: string; full_name?: string; email?: string; phone?: string; role?: string; created_at?: string };
+  redeemer?: { id: string; full_name?: string; email?: string; phone?: string; role?: string; created_at?: string };
 }
 
 interface GiftCardMetrics {
@@ -490,18 +490,18 @@ export function GiftCardManager() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
+            <table className="w-full text-left text-xs min-w-[960px]">
               <thead>
                 <tr className="bg-cream/45 border-b border-line text-taupe font-bold text-[10px] uppercase tracking-wider">
-                  <th className="px-4 py-3 min-w-[150px]">Code</th>
-                  <th className="px-3 py-3 text-center">Value</th>
-                  <th className="px-3 py-3 text-center">Status</th>
-                  <th className="px-3 py-3 text-center">Platform</th>
-                  <th className="px-3 py-3 text-center">Proof Screenshot</th>
-                  <th className="px-4 py-3 min-w-[140px]">Customer / Assigned</th>
-                  <th className="px-3 py-3 text-center whitespace-nowrap">Redeemed Status</th>
-                  <th className="px-3 py-3 text-center whitespace-nowrap">Created Date</th>
-                  <th className="px-4 py-3 text-right">Actions</th>
+                  <th className="px-4 py-3 min-w-[160px]">Code</th>
+                  <th className="px-3 py-3 text-center min-w-[80px]">Value</th>
+                  <th className="px-3 py-3 text-center min-w-[100px]">Status</th>
+                  <th className="px-3 py-3 text-center min-w-[100px]">Platform</th>
+                  <th className="px-3 py-3 text-center min-w-[120px]">Proof Screenshot</th>
+                  <th className="px-4 py-3 min-w-[180px]">Customer / Submitter</th>
+                  <th className="px-3 py-3 text-center min-w-[120px] whitespace-nowrap">Redeemed Status</th>
+                  <th className="px-3 py-3 text-center min-w-[110px] whitespace-nowrap">Created Date</th>
+                  <th className="px-4 py-3 text-right min-w-[170px]">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-line/60">
@@ -514,16 +514,17 @@ export function GiftCardManager() {
                     <tr key={card.id} className="hover:bg-cream/10 transition-colors">
                       {/* Code */}
                       <td className="px-4 py-3.5">
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-mono text-xs font-bold text-ink bg-cream/70 px-2 py-1 rounded border border-line/60 select-all">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-xs font-bold text-ink bg-cream/70 px-2.5 py-1 rounded-lg border border-line/60 select-all">
                             {card.code}
                           </span>
                           <button
+                            type="button"
                             onClick={() => handleCopy(card.code)}
                             title="Copy code"
-                            className="p-1 text-taupe hover:text-ink hover:bg-cream/60 rounded transition-colors cursor-pointer"
+                            className="p-1.5 text-taupe hover:text-ink hover:bg-cream rounded-lg transition-colors cursor-pointer border border-line/50"
                           >
-                            {isCopied ? <Check size={13} className="text-emerald-600" /> : <Copy size={13} />}
+                            {isCopied ? <Check size={14} className="text-emerald-600" /> : <Copy size={14} />}
                           </button>
                         </div>
                         {card.notes && (
@@ -534,21 +535,21 @@ export function GiftCardManager() {
                       </td>
 
                       {/* Value */}
-                      <td className="px-3 py-3.5 text-center font-bold text-ink whitespace-nowrap">
+                      <td className="px-3 py-3.5 text-center font-bold text-ink whitespace-nowrap text-sm">
                         {formatINR(card.amount_paise, true)}
                       </td>
 
                       {/* Status */}
                       <td className="px-3 py-3.5 text-center whitespace-nowrap">
                         <span
-                          className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
+                          className={`inline-block px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider border shadow-xs ${
                             card.status === "active"
-                              ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+                              ? "bg-emerald-50 text-emerald-800 border-emerald-300"
                               : card.status === "redeemed"
-                              ? "bg-blue-50 text-blue-800 border-blue-200"
+                              ? "bg-blue-50 text-blue-800 border-blue-300"
                               : card.status === "disabled"
-                              ? "bg-neutral-100 text-neutral-600 border-neutral-300"
-                              : "bg-amber-50 text-amber-800 border-amber-200"
+                              ? "bg-neutral-100 text-neutral-700 border-neutral-300"
+                              : "bg-amber-50 text-amber-800 border-amber-300"
                           }`}
                         >
                           {card.status}
@@ -557,7 +558,7 @@ export function GiftCardManager() {
 
                       {/* Platform */}
                       <td className="px-3 py-3.5 text-center uppercase text-[10px] font-bold text-taupe whitespace-nowrap">
-                        <span className="bg-cream/60 px-2 py-0.5 rounded border border-line/40">
+                        <span className="bg-cream/80 px-2.5 py-1 rounded-md border border-line font-mono font-bold text-ink">
                           {card.platform}
                         </span>
                       </td>
@@ -566,53 +567,68 @@ export function GiftCardManager() {
                       <td className="px-3 py-3.5 text-center whitespace-nowrap">
                         {card.review_screenshot_url ? (
                           <button
+                            type="button"
                             onClick={() => setSelectedScreenshotCard(card)}
-                            className="inline-flex items-center gap-1 text-[11px] font-bold text-zari-deep hover:underline cursor-pointer bg-zari/10 hover:bg-zari/20 px-2.5 py-1 rounded-lg transition-colors border border-zari/30"
+                            className="inline-flex items-center gap-1.5 text-[11px] font-bold text-zari-deep hover:text-ink cursor-pointer bg-zari/15 hover:bg-zari/25 px-3 py-1.5 rounded-xl transition-all border border-zari/40 shadow-xs"
                           >
-                            <Eye size={13} /> View Proof
+                            <Eye size={14} /> View Proof
                           </button>
                         ) : (
-                          <span className="text-[10px] text-muted italic">None</span>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedScreenshotCard(card)}
+                            className="inline-flex items-center gap-1 text-[11px] font-bold text-taupe hover:text-ink cursor-pointer bg-stone-100 hover:bg-stone-200 px-2.5 py-1 rounded-lg border border-line"
+                          >
+                            <Eye size={12} /> Audit Info
+                          </button>
                         )}
                       </td>
 
                       {/* Customer / Creator */}
                       <td className="px-4 py-3.5 text-ink">
                         {card.creator ? (
-                          <div>
-                            <p className="font-semibold text-[11px] text-ink truncate max-w-[140px]">
+                          <div
+                            onClick={() => setSelectedScreenshotCard(card)}
+                            className="cursor-pointer group"
+                            title="Click to view full user audit"
+                          >
+                            <p className="font-semibold text-xs text-ink group-hover:text-zari truncate max-w-[160px] transition-colors">
                               {card.creator.full_name || "Registered User"}
                             </p>
-                            <p className="text-[10px] text-taupe truncate max-w-[140px]">
+                            <p className="text-[10px] text-taupe group-hover:text-ink truncate max-w-[160px] font-mono transition-colors mt-0.5">
                               {card.creator.email || card.creator.phone}
                             </p>
                           </div>
                         ) : (
-                          <span className="text-[10px] text-taupe font-medium">Store Admin</span>
+                          <span className="text-[11px] text-taupe font-medium">Store Admin</span>
                         )}
                       </td>
 
                       {/* Redeemed Info */}
                       <td className="px-3 py-3.5 text-center text-[10px] whitespace-nowrap">
                         {isRedeemed ? (
-                          <div>
-                            <span className="text-emerald-700 font-bold block">✓ Redeemed</span>
-                            <span className="text-taupe block text-[9px] mt-0.5">
+                          <div
+                            onClick={() => setSelectedScreenshotCard(card)}
+                            className="cursor-pointer group"
+                            title="Click to inspect redemption details"
+                          >
+                            <span className="text-emerald-700 font-bold block group-hover:underline text-[11px]">✓ Redeemed</span>
+                            <span className="text-taupe block text-[10px] mt-0.5">
                               {card.redeemed_at ? new Date(card.redeemed_at).toLocaleDateString("en-IN") : "Yes"}
                             </span>
                             {card.redeemer?.email && (
-                              <span className="text-muted block text-[9px] max-w-[110px] truncate" title={card.redeemer.email}>
+                              <span className="text-muted block text-[9px] max-w-[120px] truncate" title={card.redeemer.email}>
                                 by {card.redeemer.email}
                               </span>
                             )}
                           </div>
                         ) : (
-                          <span className="text-taupe">Unredeemed</span>
+                          <span className="text-taupe text-[11px] font-medium">Unredeemed</span>
                         )}
                       </td>
 
                       {/* Created Date */}
-                      <td className="px-3 py-3.5 text-center text-taupe text-[10px] whitespace-nowrap">
+                      <td className="px-3 py-3.5 text-center text-taupe text-[11px] whitespace-nowrap">
                         {new Date(card.created_at).toLocaleDateString("en-IN", {
                           day: "2-digit",
                           month: "short",
@@ -622,22 +638,34 @@ export function GiftCardManager() {
 
                       {/* Actions */}
                       <td className="px-4 py-3.5 text-right whitespace-nowrap">
-                        <div className="inline-flex items-center gap-1.5">
+                        <div className="inline-flex items-center justify-end gap-2">
+                          {/* Inspect / View Details */}
+                          <button
+                            type="button"
+                            onClick={() => setSelectedScreenshotCard(card)}
+                            title="View Full Details & User Audit"
+                            className="w-8 h-8 rounded-xl bg-zari/15 hover:bg-zari/30 text-zari-deep border border-zari/40 flex items-center justify-center transition-all cursor-pointer shadow-xs shrink-0"
+                          >
+                            <Eye size={15} />
+                          </button>
+
                           {/* Toggle Active / Deactivate */}
                           <button
+                            type="button"
                             onClick={() => handleToggleStatus(card)}
                             title={isActive ? "Deactivate Code" : "Activate Code"}
-                            className={`p-1.5 rounded-lg border transition-colors cursor-pointer ${
+                            className={`w-8 h-8 rounded-xl border flex items-center justify-center transition-all cursor-pointer shadow-xs shrink-0 ${
                               isActive
-                                ? "bg-amber-50 hover:bg-amber-100 text-amber-700 border-amber-200"
-                                : "bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200"
+                                ? "bg-amber-100 hover:bg-amber-200 text-amber-800 border-amber-300"
+                                : "bg-emerald-100 hover:bg-emerald-200 text-emerald-800 border-emerald-300"
                             }`}
                           >
-                            {isActive ? <XCircle size={13} /> : <CheckCircle2 size={13} />}
+                            {isActive ? <XCircle size={15} /> : <CheckCircle2 size={15} />}
                           </button>
 
                           {/* Edit Details */}
                           <button
+                            type="button"
                             onClick={() => {
                               setEditingCard(card);
                               setEditStatus(card.status);
@@ -645,19 +673,20 @@ export function GiftCardManager() {
                               setEditAmountRupees(card.amount_paise / 100);
                             }}
                             title="Edit Details"
-                            className="p-1.5 rounded-lg border border-line bg-white hover:bg-cream/60 text-ink transition-colors cursor-pointer"
+                            className="w-8 h-8 rounded-xl bg-stone-100 hover:bg-stone-200 text-ink border border-stone-300 flex items-center justify-center transition-all cursor-pointer shadow-xs shrink-0"
                           >
-                            <Edit2 size={13} />
+                            <Edit2 size={14} />
                           </button>
 
                           {/* Delete Card */}
                           <button
+                            type="button"
                             onClick={() => handleDeleteCard(card.id)}
                             disabled={deletingId === card.id}
                             title="Delete Gift Card"
-                            className="p-1.5 rounded-lg border border-red-200 bg-red-50 hover:bg-red-100 text-red-600 transition-colors cursor-pointer disabled:opacity-50"
+                            className="w-8 h-8 rounded-xl bg-red-100 hover:bg-red-200 text-red-700 border border-red-300 flex items-center justify-center transition-all cursor-pointer shadow-xs shrink-0 disabled:opacity-50"
                           >
-                            <Trash2 size={13} />
+                            <Trash2 size={14} />
                           </button>
                         </div>
                       </td>
@@ -670,102 +699,331 @@ export function GiftCardManager() {
         )}
       </div>
 
-      {/* ================= SCREENSHOT VIEWER MODAL ================= */}
+      {/* ================= COMPREHENSIVE GIFT CARD & USER INSPECTOR MODAL ================= */}
       {selectedScreenshotCard && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink/75 backdrop-blur-sm animate-fade-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink/80 backdrop-blur-md animate-fade-in">
           <div
-            className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl border border-line overflow-hidden animate-scale-up max-h-[90vh] flex flex-col"
+            className="relative w-full max-w-3xl bg-white rounded-3xl shadow-2xl border border-line overflow-hidden animate-scale-up max-h-[92vh] flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
-            <div className="bg-ink text-ivory p-5 flex items-center justify-between border-b border-zari/40">
-              <div className="flex items-center gap-2">
-                <span className="p-1.5 rounded-lg bg-zari/20 text-zari-soft">
-                  <FileImage size={18} />
+            <div className="bg-ink text-ivory p-5 sm:p-6 flex items-center justify-between border-b border-zari/30">
+              <div className="flex items-center gap-3">
+                <span className="w-11 h-11 rounded-2xl bg-zari/20 text-zari-soft flex items-center justify-center shrink-0 shadow-inner">
+                  <Gift size={22} />
                 </span>
                 <div>
-                  <h3 className="font-display text-base text-ivory">
-                    Review Screenshot Proof — {selectedScreenshotCard.code}
-                  </h3>
-                  <p className="text-[11px] text-taupe">
-                    Platform: <strong className="text-zari-soft uppercase">{selectedScreenshotCard.platform}</strong> • Value: {formatINR(selectedScreenshotCard.amount_paise, true)}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="font-display text-lg text-ivory tracking-tight">
+                      Gift Card Details & User Audit
+                    </h3>
+                    <span
+                      className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider border ${
+                        selectedScreenshotCard.status === "active"
+                          ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40"
+                          : selectedScreenshotCard.status === "redeemed"
+                          ? "bg-blue-500/20 text-blue-300 border-blue-500/40"
+                          : selectedScreenshotCard.status === "disabled"
+                          ? "bg-neutral-500/20 text-neutral-300 border-neutral-500/40"
+                          : "bg-amber-500/20 text-amber-300 border-amber-500/40"
+                      }`}
+                    >
+                      ● {selectedScreenshotCard.status}
+                    </span>
+                  </div>
+                  <p className="text-xs text-taupe mt-0.5 font-mono">
+                    ID: {selectedScreenshotCard.id}
                   </p>
                 </div>
               </div>
               <button
                 onClick={() => setSelectedScreenshotCard(null)}
-                className="text-ivory/70 hover:text-white bg-white/10 hover:bg-white/20 rounded-full p-1.5 transition-colors"
+                className="text-ivory/70 hover:text-white bg-white/10 hover:bg-white/20 rounded-full p-2 transition-colors cursor-pointer"
               >
                 <X size={18} />
               </button>
             </div>
 
-            {/* Modal Image Body */}
-            <div className="p-6 overflow-y-auto space-y-4 flex-1 bg-cream/10">
-              {(() => {
-                const urls = selectedScreenshotCard.review_screenshot_url
-                  ? selectedScreenshotCard.review_screenshot_url.split(",").map((u) => u.trim()).filter(Boolean)
-                  : [];
-
-                if (urls.length === 0) {
-                  return <p className="text-xs text-taupe py-10 text-center">No screenshot URL found for this card.</p>;
-                }
-
-                return (
-                  <div className={`grid gap-4 ${urls.length > 1 ? "grid-cols-1 md:grid-cols-2" : "grid-cols-1"}`}>
-                    {urls.map((url, idx) => (
-                      <div key={idx} className="space-y-2">
-                        <div className="flex items-center justify-between text-[11px] font-bold text-taupe uppercase">
-                          <span>Screenshot {idx + 1} of {urls.length}</span>
-                          <a
-                            href={url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-zari-deep hover:underline flex items-center gap-1 font-bold text-[10px]"
-                          >
-                            <ExternalLink size={12} /> Full Image
-                          </a>
-                        </div>
-                        <div className="rounded-2xl border border-line overflow-hidden bg-white shadow-inner max-h-[380px] flex items-center justify-center p-2">
-                          <img
-                            src={url}
-                            alt={`Review Proof ${idx + 1}`}
-                            className="max-h-[360px] w-auto object-contain mx-auto rounded-lg"
-                          />
-                        </div>
-                      </div>
-                    ))}
+            {/* Modal Body */}
+            <div className="p-6 overflow-y-auto space-y-6 flex-1 bg-cream/15">
+              {/* 1. Gift Card Code & Value Box */}
+              <div className="bg-gradient-to-r from-cream via-white to-cream p-4 rounded-2xl border border-zari/30 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="space-y-1">
+                  <span className="text-[10px] font-bold text-taupe uppercase tracking-wider block">
+                    Gift Card Code
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <code className="text-base sm:text-lg font-mono font-extrabold text-ink bg-white px-3 py-1 rounded-xl border border-line shadow-xs">
+                      {selectedScreenshotCard.code}
+                    </code>
+                    <button
+                      type="button"
+                      onClick={() => handleCopy(selectedScreenshotCard.code)}
+                      className="px-2.5 py-1 bg-ink text-ivory hover:bg-zari text-xs font-bold rounded-lg transition-colors flex items-center gap-1 cursor-pointer shadow-xs"
+                    >
+                      {copiedCode === selectedScreenshotCard.code ? (
+                        <>
+                          <Check size={13} className="text-emerald-400" /> Copied
+                        </>
+                      ) : (
+                        <>
+                          <Copy size={13} /> Copy
+                        </>
+                      )}
+                    </button>
                   </div>
-                );
-              })()}
+                </div>
 
-              {/* Submitter details */}
-              <div className="bg-white border border-line rounded-2xl p-4 text-left grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                <div>
-                  <span className="text-[10px] text-taupe uppercase font-bold block">Submitted By</span>
-                  <p className="font-semibold text-ink mt-0.5">
-                    {selectedScreenshotCard.creator?.full_name || "User"} ({selectedScreenshotCard.creator?.email || "No email"})
-                  </p>
+                <div className="text-left sm:text-right">
+                  <span className="text-[10px] font-bold text-taupe uppercase tracking-wider block">
+                    Reward Value
+                  </span>
+                  <span className="text-xl sm:text-2xl font-display font-bold text-zari-deep">
+                    {formatINR(selectedScreenshotCard.amount_paise, true)}
+                  </span>
                 </div>
-                <div>
-                  <span className="text-[10px] text-taupe uppercase font-bold block">Order Reference / Notes</span>
-                  <p className="font-semibold text-ink mt-0.5">
-                    {selectedScreenshotCard.order_reference || selectedScreenshotCard.notes || "None"}
-                  </p>
+              </div>
+
+              {/* 2. User & Redemption Timestamps Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                {/* User / Submitter Profile */}
+                <div className="bg-white p-4 rounded-2xl border border-line shadow-soft space-y-3">
+                  <div className="flex items-center gap-2 text-ink font-bold border-b border-line/60 pb-2">
+                    <User size={15} className="text-zari" />
+                    <span>Customer & Submitter Details</span>
+                  </div>
+
+                  <div className="space-y-2 text-[11px]">
+                    <div className="flex justify-between items-center">
+                      <span className="text-taupe">Full Name:</span>
+                      <strong className="text-ink font-semibold">
+                        {selectedScreenshotCard.creator?.full_name || "Guest / Direct"}
+                      </strong>
+                    </div>
+
+                    <div className="flex justify-between items-center">
+                      <span className="text-taupe">Email Address:</span>
+                      <strong className="text-ink font-semibold font-mono">
+                        {selectedScreenshotCard.creator?.email || "No email"}
+                      </strong>
+                    </div>
+
+                    {selectedScreenshotCard.creator?.phone && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-taupe">Phone:</span>
+                        <strong className="text-ink font-semibold">
+                          {selectedScreenshotCard.creator.phone}
+                        </strong>
+                      </div>
+                    )}
+
+                    <div className="flex justify-between items-center">
+                      <span className="text-taupe">Account Role:</span>
+                      <span className="px-2 py-0.5 rounded bg-cream text-ink text-[10px] font-bold uppercase border border-line/60">
+                        {selectedScreenshotCard.creator?.role || "Customer"}
+                      </span>
+                    </div>
+
+                    {selectedScreenshotCard.creator?.created_at && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-taupe">Customer Since:</span>
+                        <span className="text-ink">
+                          {new Date(selectedScreenshotCard.creator.created_at).toLocaleDateString("en-IN", {
+                            day: "2-digit",
+                            month: "short",
+                            year: "numeric",
+                          })}
+                        </span>
+                      </div>
+                    )}
+
+                    {selectedScreenshotCard.creator?.id && (
+                      <div className="pt-1 text-[10px] text-muted truncate border-t border-line/40">
+                        User ID: {selectedScreenshotCard.creator.id}
+                      </div>
+                    )}
+                  </div>
                 </div>
+
+                {/* Redemption & Validity Timestamps */}
+                <div className="bg-white p-4 rounded-2xl border border-line shadow-soft space-y-3">
+                  <div className="flex items-center gap-2 text-ink font-bold border-b border-line/60 pb-2">
+                    <Clock size={15} className="text-zari" />
+                    <span>Timestamps & Redemption Audit</span>
+                  </div>
+
+                  <div className="space-y-2 text-[11px]">
+                    <div className="flex justify-between items-center">
+                      <span className="text-taupe">Generated / Claimed At:</span>
+                      <strong className="text-ink font-semibold">
+                        {new Date(selectedScreenshotCard.created_at).toLocaleString("en-IN", {
+                          day: "2-digit",
+                          month: "short",
+                          year: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                          second: "2-digit",
+                        })}
+                      </strong>
+                    </div>
+
+                    <div className="flex justify-between items-center">
+                      <span className="text-taupe">1-Year Expiration:</span>
+                      <strong className="text-ink font-semibold">
+                        {selectedScreenshotCard.expires_at
+                          ? new Date(selectedScreenshotCard.expires_at).toLocaleString("en-IN", {
+                              day: "2-digit",
+                              month: "short",
+                              year: "numeric",
+                            })
+                          : "1 Year from issue"}
+                      </strong>
+                    </div>
+
+                    <div className="flex justify-between items-center">
+                      <span className="text-taupe">Redemption Status:</span>
+                      {selectedScreenshotCard.status === "redeemed" ? (
+                        <span className="px-2 py-0.5 rounded bg-blue-100 text-blue-800 text-[10px] font-extrabold uppercase">
+                          ✓ Redeemed into Wallet
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px] font-extrabold uppercase">
+                          Active / Available
+                        </span>
+                      )}
+                    </div>
+
+                    {selectedScreenshotCard.redeemed_at && (
+                      <div className="flex justify-between items-center bg-blue-50/80 p-2 rounded-xl border border-blue-200">
+                        <span className="text-blue-900 font-semibold">Redeemed At:</span>
+                        <strong className="text-blue-950 font-bold">
+                          {new Date(selectedScreenshotCard.redeemed_at).toLocaleString("en-IN", {
+                            day: "2-digit",
+                            month: "short",
+                            year: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                            second: "2-digit",
+                          })}
+                        </strong>
+                      </div>
+                    )}
+
+                    {selectedScreenshotCard.redeemer && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-taupe">Redeemed By:</span>
+                        <span className="text-ink font-medium truncate max-w-[150px]" title={selectedScreenshotCard.redeemer.email}>
+                          {selectedScreenshotCard.redeemer.full_name || selectedScreenshotCard.redeemer.email}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* 3. Platform & Order Reference Details */}
+              <div className="bg-white p-4 rounded-2xl border border-line shadow-soft space-y-2 text-xs">
+                <div className="flex items-center justify-between border-b border-line/60 pb-2">
+                  <div className="flex items-center gap-2 text-ink font-bold">
+                    <ShieldCheck size={15} className="text-zari" />
+                    <span>Review Platform & Order Verification</span>
+                  </div>
+                  <span className="px-2.5 py-0.5 rounded-full bg-cream font-bold text-ink uppercase text-[10px] border border-line">
+                    {selectedScreenshotCard.platform}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 text-[11px]">
+                  <div>
+                    <span className="text-taupe block text-[10px] uppercase font-bold">Platform Order ID</span>
+                    <p className="font-semibold text-ink font-mono mt-0.5">
+                      {selectedScreenshotCard.order_reference || "N/A (Google Review / Direct)"}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-taupe block text-[10px] uppercase font-bold">System Log / Notes</span>
+                    <p className="text-ink mt-0.5 leading-relaxed">
+                      {selectedScreenshotCard.notes || "Standard issuance"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* 4. Uploaded Review Proof Screenshots */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-ink font-bold text-xs uppercase tracking-wider">
+                    <FileImage size={15} className="text-zari" />
+                    <span>Uploaded Review Proof Screenshots</span>
+                  </div>
+                  <span className="text-[10px] font-bold text-taupe">
+                    Verified via Vision AI
+                  </span>
+                </div>
+
+                {(() => {
+                  const urls = selectedScreenshotCard.review_screenshot_url
+                    ? selectedScreenshotCard.review_screenshot_url.split(",").map((u) => u.trim()).filter(Boolean)
+                    : [];
+
+                  if (urls.length === 0) {
+                    return (
+                      <div className="p-8 text-center bg-white rounded-2xl border border-line text-taupe text-xs">
+                        No review screenshot proof attached (Direct/Admin created card).
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className={`grid gap-4 ${urls.length > 1 ? "grid-cols-1 md:grid-cols-2" : "grid-cols-1"}`}>
+                      {urls.map((url, idx) => (
+                        <div key={idx} className="bg-white p-3.5 rounded-2xl border border-line shadow-soft space-y-2.5">
+                          <div className="flex items-center justify-between text-[11px] font-bold text-taupe uppercase">
+                            <span>
+                              {idx === 0
+                                ? "Screenshot 1: Review & Rating"
+                                : "Screenshot 2: Review Submitted / Proof"}
+                            </span>
+                            <a
+                              href={url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-zari-deep hover:underline flex items-center gap-1 font-bold text-[10px] bg-zari/10 px-2 py-0.5 rounded-md"
+                            >
+                              <ExternalLink size={12} /> Open Full View
+                            </a>
+                          </div>
+                          <div className="rounded-xl border border-line overflow-hidden bg-cream/15 max-h-[380px] flex items-center justify-center p-2 group relative">
+                            <img
+                              src={url}
+                              alt={`Review Proof ${idx + 1}`}
+                              className="max-h-[360px] w-auto object-contain mx-auto rounded-lg transition-transform duration-200 group-hover:scale-[1.02]"
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
               </div>
             </div>
 
             {/* Modal Footer */}
             <div className="p-4 bg-cream/30 border-t border-line flex items-center justify-between gap-3">
-              <span className="text-[11px] text-taupe">
-                Status: <strong className="uppercase text-ink">{selectedScreenshotCard.status}</strong>
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-taupe font-medium">
+                  Current Status:
+                </span>
+                <span className="font-bold text-xs uppercase text-ink">
+                  {selectedScreenshotCard.status}
+                </span>
+              </div>
               <button
+                type="button"
                 onClick={() => setSelectedScreenshotCard(null)}
-                className="px-5 py-2 rounded-xl bg-ink text-ivory text-xs font-bold hover:bg-zari transition-colors cursor-pointer"
+                className="px-6 py-2 rounded-xl bg-ink text-ivory text-xs font-bold hover:bg-zari transition-colors cursor-pointer shadow-sm"
               >
-                Close
+                Close Audit View
               </button>
             </div>
           </div>

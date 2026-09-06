@@ -9,7 +9,131 @@ export interface ReviewVerificationResult {
 }
 
 /**
- * Verifies review screenshots using AI Vision to confirm authenticity.
+ * Optimizes Cloudinary URL for faster AI Vision processing & lower token usage
+ */
+function optimizeImageUrl(url: string): string {
+  if (url.includes("res.cloudinary.com") && url.includes("/upload/")) {
+    return url.replace("/upload/", "/upload/w_1000,c_limit,q_auto:good/");
+  }
+  return url;
+}
+
+/**
+ * Extracts and parses JSON from AI output
+ */
+function extractJsonFromAiResponse(rawText: string): any | null {
+  if (!rawText) return null;
+  // Strip thought blocks and markdown fences
+  const cleaned = rawText
+    .replace(/<think>[\s\S]*?<\/think>/gi, "")
+    .replace(/```json/gi, "")
+    .replace(/```/gi, "")
+    .trim();
+
+  const match = cleaned.match(/\{[\s\S]*\}/);
+  if (!match) return null;
+
+  try {
+    return JSON.parse(match[0]);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Analyzes a single image using Groq Vision models (Qwen 2.5/3 Vision)
+ */
+async function verifySingleScreenshot(options: {
+  imageUrl: string;
+  index: number;
+  platform: string;
+  orderReference?: string;
+  apiKey: string;
+}): Promise<ReviewVerificationResult> {
+  const { imageUrl, index, platform, orderReference, apiKey } = options;
+  const optimizedUrl = optimizeImageUrl(imageUrl);
+
+  const visionModels = [
+    "qwen/qwen3.8-27b",
+    "qwen/qwen3.6-27b",
+  ];
+
+  const systemPrompt = `You are a strict AI Review Verification System for JAI SRI RAM TEXTILES.
+The user uploaded this image as Screenshot ${index + 1} to claim a ₹100 Gift Card reward for leaving a positive review on ${platform.toUpperCase()}${orderReference ? ` (Platform Order ID: ${orderReference})` : ""}.
+
+CRITICAL VERIFICATION RULES:
+1. REJECT (isValid: false) if the image is:
+   - A random photo, landscape, personal selfie, or scenery.
+   - A logo, company banner, promotional poster, or meme.
+   - A blank, black, or unreadable screenshot.
+   - A product catalog image or product photo with no user rating or written review.
+   - A payment receipt or invoice that does NOT contain a customer review or rating.
+
+2. ACCEPT (isValid: true) if the image shows:
+   - An e-commerce or Google review screen (Amazon, Flipkart, Google Reviews, etc.).
+   - A star rating interface (e.g. 4 or 5 stars).
+   - A submitted review text or "Review submitted / pending approval / Live" confirmation.
+   - An order details screen displaying the customer's rating/feedback.
+
+Respond ONLY with a JSON object in this exact format (no other text, no markdown):
+{"isValid": false, "confidence": 0.95, "reason": "The uploaded image is a random photo, not an online review screenshot."}`;
+
+  for (const model of visionModels) {
+    try {
+      const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model,
+          messages: [
+            {
+              role: "user",
+              content: [
+                { type: "text", text: systemPrompt },
+                { type: "image_url", image_url: { url: optimizedUrl } },
+              ],
+            },
+          ],
+          temperature: 0.1,
+          max_tokens: 300,
+        }),
+        signal: AbortSignal.timeout(10000),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const rawContent = data.choices?.[0]?.message?.content || "";
+        const parsed = extractJsonFromAiResponse(rawContent);
+
+        if (parsed && typeof parsed.isValid === "boolean") {
+          return {
+            isValid: parsed.isValid,
+            confidence: Number(parsed.confidence) || 0.9,
+            reason: parsed.reason || (parsed.isValid ? `Screenshot ${index + 1} verified as valid review.` : `Screenshot ${index + 1} is not a valid review screenshot.`),
+            detectedPlatform: parsed.detectedPlatform || platform,
+            detectedRating: parsed.detectedRating,
+          };
+        }
+      }
+    } catch (err: any) {
+      console.warn(`[ai-verifier] Model ${model} failed on image ${index + 1}:`, err.message);
+    }
+  }
+
+  // If AI API was unreachable, strictly reject rather than allowing fake photos
+  return {
+    isValid: false,
+    confidence: 0,
+    reason: `Screenshot ${index + 1} could not be verified by AI Vision. Please upload a clear review screenshot.`,
+  };
+}
+
+/**
+ * Verifies all uploaded review screenshots using AI Vision.
+ * If any uploaded image is NOT a review screenshot, the claim is rejected.
  */
 export async function verifyReviewScreenshotsWithAI(options: {
   imageUrls: string[];
@@ -46,97 +170,38 @@ export async function verifyReviewScreenshotsWithAI(options: {
     }
   }
 
-  // If no AI key is configured in the environment, perform structural image verification
   if (!apiKey) {
-    console.log("[ai-verifier] No Groq API key found. Passing with structural verification.");
     return {
-      isValid: true,
-      confidence: 0.95,
-      reason: "Review images verified successfully.",
-      detectedPlatform: platform,
+      isValid: false,
+      confidence: 0,
+      reason: "AI review verification service is currently unavailable. Please contact support.",
     };
   }
 
-  // 2. Call AI Vision Model (Groq Llama 3.2 Vision)
-  const visionModels = [
-    "llama-3.2-11b-vision-preview",
-    "llama-3.2-90b-vision-preview",
-  ];
-
-  const contentPayload: any[] = [
-    {
-      type: "text",
-      text: `You are an AI Review Verification System for JAI SRI RAM TEXTILES.
-The user is claiming a ₹100 Gift Card reward for leaving a positive review on ${platform.toUpperCase()}${orderReference ? ` (Platform Order ID: ${orderReference})` : ""}.
-
-Analyze the attached ${imageUrls.length} screenshot(s) and determine if they contain genuine proof of a review submission, star rating, feedback, or order review confirmation.
-
-Rules:
-1. Return isValid: true if the image clearly shows an online review interface, 4 or 5-star rating, review text, or review submitted/approved status on ${platform.toUpperCase()} (or a general review screen).
-2. Return isValid: false if the image is completely unrelated (e.g. a selfie, random scenery, meme, blank/black image, payment receipt without review, or unrelated product photo).
-3. Be fair and lenient towards authentic mobile screenshots that show star ratings, thumbs up, feedback text, or review submission screens.
-
-Respond ONLY with a JSON object in this exact format, with no markdown formatting or extra text:
-{"isValid": true, "confidence": 0.95, "reason": "Valid 5-star review screenshot detected on ${platform}.", "detectedPlatform": "${platform}", "detectedRating": 5}`,
-    },
-  ];
-
-  for (const url of imageUrls) {
-    contentPayload.push({
-      type: "image_url",
-      image_url: { url },
+  // 2. Verify each uploaded screenshot with AI Vision
+  for (let i = 0; i < imageUrls.length; i++) {
+    const singleResult = await verifySingleScreenshot({
+      imageUrl: imageUrls[i],
+      index: i,
+      platform,
+      orderReference,
+      apiKey,
     });
-  }
 
-  for (const model of visionModels) {
-    try {
-      const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model,
-          messages: [
-            {
-              role: "user",
-              content: contentPayload,
-            },
-          ],
-          temperature: 0.1,
-          max_tokens: 300,
-        }),
-        signal: AbortSignal.timeout(10000),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        let raw = data.choices?.[0]?.message?.content || "";
-        raw = raw.replace(/```json/gi, "").replace(/```/gi, "").trim();
-
-        const jsonMatch = raw.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          const parsed = JSON.parse(jsonMatch[0]);
-          return {
-            isValid: Boolean(parsed.isValid),
-            confidence: Number(parsed.confidence) || 0.9,
-            reason: parsed.reason || (parsed.isValid ? "Review verified by AI" : "Image does not appear to be a review screenshot"),
-            detectedPlatform: parsed.detectedPlatform,
-            detectedRating: parsed.detectedRating,
-          };
-        }
-      }
-    } catch (modelErr) {
-      console.warn(`[ai-verifier] Vision model ${model} failed:`, modelErr);
+    if (!singleResult.isValid) {
+      return {
+        isValid: false,
+        confidence: singleResult.confidence,
+        reason: `Screenshot ${i + 1} rejected by AI: ${singleResult.reason}`,
+        detectedPlatform: singleResult.detectedPlatform,
+      };
     }
   }
 
-  // If vision API timed out or had temporary network error, safely pass with notice
   return {
     isValid: true,
-    confidence: 0.9,
-    reason: "Review screenshots submitted and verified.",
+    confidence: 0.95,
+    reason: `All ${imageUrls.length} screenshot(s) verified successfully as authentic review proof!`,
     detectedPlatform: platform,
   };
 }

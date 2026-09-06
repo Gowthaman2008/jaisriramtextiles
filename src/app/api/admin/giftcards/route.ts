@@ -44,8 +44,8 @@ export async function GET(request: Request) {
       .from("gift_cards")
       .select(`
         *,
-        creator:created_by (id, full_name, email, phone),
-        redeemer:redeemed_by (id, full_name, email, phone)
+        creator:created_by (id, full_name, email, phone, role, created_at),
+        redeemer:redeemed_by (id, full_name, email, phone, role, created_at)
       `)
       .order("created_at", { ascending: false });
 

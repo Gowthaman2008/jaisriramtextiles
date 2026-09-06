@@ -83,6 +83,7 @@ export default function AccountPage() {
   const [orders, setOrders] = useState<any[]>([]);
   const [walletBalance, setWalletBalance] = useState(0);
   const [walletHistory, setWalletHistory] = useState<any[]>([]);
+  const [myGiftCards, setMyGiftCards] = useState<any[]>([]);
   const [addresses, setAddresses] = useState<any[]>([]);
   const [userReviews, setUserReviews] = useState<any[]>([]);
 
@@ -247,7 +248,7 @@ export default function AccountPage() {
     try {
       fetchSupportHistory();
       // Run independent queries in parallel instead of one-after-another
-      const [ordersRes, walletDataRes, addrRes, reviewsRes] = await Promise.all([
+      const [ordersRes, walletDataRes, addrRes, reviewsRes, giftCardsRes] = await Promise.all([
         supabase
           .from("orders")
           .select("*, order_items(*, products(description, slug, pieces_per_pack))")
@@ -263,11 +264,17 @@ export default function AccountPage() {
         supabase
           .from("reviews")
           .select("product_id, order_id")
-          .eq("user_id", userId)
+          .eq("user_id", userId),
+        supabase
+          .from("gift_cards")
+          .select("*")
+          .or(`user_id.eq.${userId},created_by.eq.${userId},redeemed_by.eq.${userId}`)
+          .order("created_at", { ascending: false }),
       ]);
 
       setOrders(ordersRes.data || []);
       setUserReviews(reviewsRes.data || []);
+      setMyGiftCards(giftCardsRes.data || []);
 
       if (walletDataRes && Array.isArray(walletDataRes.transactions)) {
         setWalletHistory(walletDataRes.transactions);
@@ -1330,6 +1337,128 @@ export default function AccountPage() {
               </div>
               <Wallet className="w-16 h-16 text-zari/30 absolute right-6 top-6 flex-shrink-0" />
             </div>
+
+            {/* My Claimed Gift Cards & Review Rewards Section */}
+            {myGiftCards.length > 0 && (
+              <div className="bg-white border border-line rounded-card overflow-hidden shadow-soft">
+                <div className="p-4 bg-cream/15 border-b border-line flex items-center justify-between">
+                  <h3 className="font-bold text-sm sm:text-base flex items-center gap-2 text-ink">
+                    <Gift className="w-4 h-4 text-zari" /> My Claimed Gift Cards &amp; Review Rewards
+                  </h3>
+                  <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-zari/15 text-zari-deep border border-zari/30">
+                    {myGiftCards.length} {myGiftCards.length === 1 ? "Reward" : "Rewards"}
+                  </span>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs min-w-[600px]">
+                    <thead>
+                      <tr className="bg-cream/45 border-b border-line text-taupe font-bold text-[10px] uppercase tracking-wider">
+                        <th className="px-4 py-3">Gift Card Code</th>
+                        <th className="px-3 py-3 text-center">Value</th>
+                        <th className="px-3 py-3 text-center">Platform</th>
+                        <th className="px-3 py-3 text-center">Status</th>
+                        <th className="px-3 py-3 text-center">Valid Until</th>
+                        <th className="px-4 py-3 text-right">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-line/60">
+                      {myGiftCards.map((gc) => {
+                        const isRedeemed = gc.status === "redeemed";
+                        const isActive = gc.status === "active";
+                        const isExpired = gc.expires_at && new Date(gc.expires_at) < new Date();
+                        const isCopied = copiedId === gc.id;
+
+                        return (
+                          <tr key={gc.id} className="hover:bg-cream/10 transition-colors">
+                            {/* Code */}
+                            <td className="px-4 py-3.5">
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-mono text-xs font-bold text-ink bg-cream/70 px-2.5 py-1 rounded-lg border border-line/60 select-all">
+                                  {gc.code}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(gc.code);
+                                    setCopiedId(gc.id);
+                                    notify(`Copied ${gc.code} to clipboard!`, "success");
+                                    setTimeout(() => setCopiedId(""), 2000);
+                                  }}
+                                  title="Copy Code"
+                                  className="p-1 text-taupe hover:text-ink hover:bg-cream rounded transition-colors cursor-pointer"
+                                >
+                                  {isCopied ? <CheckCircle2 size={13} className="text-emerald-600" /> : <Copy size={13} />}
+                                </button>
+                              </div>
+                              <span className="text-[10px] text-taupe block mt-0.5">
+                                Claimed on {new Date(gc.created_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+                              </span>
+                            </td>
+
+                            {/* Value */}
+                            <td className="px-3 py-3.5 text-center font-bold text-ink whitespace-nowrap">
+                              {formatINR(gc.amount_paise || 10000, true)}
+                            </td>
+
+                            {/* Platform */}
+                            <td className="px-3 py-3.5 text-center uppercase text-[10px] font-bold text-taupe whitespace-nowrap">
+                              <span className="bg-cream/80 px-2 py-0.5 rounded border border-line/60 font-mono text-ink">
+                                {gc.platform}
+                              </span>
+                            </td>
+
+                            {/* Status */}
+                            <td className="px-3 py-3.5 text-center whitespace-nowrap">
+                              <span
+                                className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wide border ${
+                                  isRedeemed
+                                    ? "bg-blue-50 text-blue-800 border-blue-200"
+                                    : isExpired
+                                    ? "bg-red-50 text-red-800 border-red-200"
+                                    : isActive
+                                    ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+                                    : "bg-neutral-100 text-neutral-600 border-neutral-200"
+                                }`}
+                              >
+                                {isRedeemed ? "✓ Redeemed" : isExpired ? "Expired" : "Active / Unused"}
+                              </span>
+                            </td>
+
+                            {/* Valid Until */}
+                            <td className="px-3 py-3.5 text-center text-taupe text-[10px] whitespace-nowrap">
+                              {gc.expires_at
+                                ? new Date(gc.expires_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })
+                                : "1 Year from issue"}
+                            </td>
+
+                            {/* Action */}
+                            <td className="px-4 py-3.5 text-right whitespace-nowrap">
+                              {isActive && !isExpired ? (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setGiftCardCodeInput(gc.code);
+                                    window.scrollTo({ top: 0, behavior: "smooth" });
+                                  }}
+                                  className="inline-flex items-center gap-1 px-3 py-1.5 bg-ink hover:bg-zari text-ivory text-[11px] font-bold rounded-lg transition-colors cursor-pointer shadow-xs"
+                                >
+                                  <Gift size={12} /> Redeem Now
+                                </button>
+                              ) : (
+                                <span className="text-[11px] text-taupe italic">
+                                  {isRedeemed ? "Added to Wallet" : "Unavailable"}
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
 
             {/* Audit Logs Table */}
             <div className="bg-white border border-line rounded-card overflow-hidden shadow-soft">

@@ -1183,3 +1183,75 @@ export function cashbackExpiryReminderEmailHtml({
   `;
 }
 
+export function giftCardIssuedEmailHtml({
+  name,
+  code,
+  amountRupees,
+  platform,
+  expiresAt,
+}: {
+  name?: string;
+  code: string;
+  amountRupees: number;
+  platform: string;
+  expiresAt?: string;
+}) {
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://jaisriramtextiles.in";
+  const redeemUrl = `${siteUrl}/account?tab=wallet&redeem=${encodeURIComponent(code)}`;
+  const expiryFormatted = expiresAt
+    ? new Date(expiresAt).toLocaleDateString("en-IN", { dateStyle: "long" })
+    : "1 Year from issuance";
+
+  return `
+    <div class="email-bg" style="background-color: #F5F2EB; padding: 24px 10px; font-family: Georgia, 'Times New Roman', serif;">
+      <div class="email-card" style="width: 100%; max-width: 560px; margin: 0 auto; background-color: #FBF9F4; border: 1px solid #E5DFD2; border-radius: 12px; box-shadow: 0 4px 15px rgba(42, 38, 34, 0.05); overflow: hidden;">
+        ${renderEmailHeader("Gift Card Reward", "₹" + amountRupees + " Cashback")}
+        
+        <div class="mobile-body" style="padding: 24px 16px; color: #2A2622; font-size: 13px; line-height: 1.6;">
+          <p class="email-heading" style="font-size: 15px; font-weight: bold; margin: 0 0 12px 0;">Congratulations <b>${name || "Valued Customer"}</b>! 🎉</p>
+          <p style="margin: 0 0 20px 0; color: #5A5248;">
+            Thank you for sharing your positive review of <b>JAI SRI RAM TEXTILES</b> on <b>${platform.toUpperCase()}</b>! Your review screenshot has been verified by our AI system, and your ₹${amountRupees} Gift Card code is ready below.
+          </p>
+
+          <!-- Gift Card Luxury Box -->
+          <div style="background: linear-gradient(135deg, #1A1612 0%, #2E271F 100%); border: 2px solid #B08D4C; border-radius: 14px; padding: 24px 20px; text-align: center; margin: 24px 0; box-shadow: 0 6px 16px rgba(0,0,0,0.15);">
+            <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 2px; color: #C9AE78; font-weight: bold; margin-bottom: 8px;">
+              🎁 EXCLUSIVE 1-TIME REWARD CODE
+            </div>
+            <div style="font-family: monospace; font-size: 22px; font-weight: bold; letter-spacing: 3px; background-color: rgba(176, 141, 76, 0.15); border: 1.5px dashed #C9AE78; border-radius: 8px; padding: 12px 18px; margin: 12px 0; color: #F5E6C8; display: inline-block;">
+              ${code}
+            </div>
+            <div style="font-size: 12px; color: #E5DFD2; margin-top: 10px; font-family: Arial, sans-serif;">
+              <b>Value:</b> <span style="color: #F5E6C8; font-weight: bold;">₹${amountRupees} Cashback</span> &nbsp;|&nbsp; <b>Valid Until:</b> <span style="color: #FFFFFF;">${expiryFormatted}</span>
+            </div>
+          </div>
+
+          <!-- Direct 1-Click Redeem Button -->
+          <div style="margin: 28px 0; text-align: center;">
+            <a href="${redeemUrl}" target="_blank" rel="noopener noreferrer" style="display: inline-block; background-color: #B08D4C; color: #FFFFFF; padding: 14px 32px; font-size: 13px; font-weight: bold; text-decoration: none; border-radius: 30px; box-shadow: 0 4px 12px rgba(176, 141, 76, 0.3); font-family: Arial, sans-serif; letter-spacing: 0.5px; text-transform: uppercase;">
+              💰 Redeem ₹${amountRupees} to Wallet Now &rarr;
+            </a>
+            <p style="font-size: 11px; color: #8A8175; margin-top: 8px; font-family: Arial, sans-serif;">
+              Tap button above to auto-fill and convert this code into instant wallet cashback
+            </p>
+          </div>
+
+          <!-- Terms Summary -->
+          <div style="background-color: #FFFFFF; border: 1px solid #E5DFD2; border-radius: 8px; padding: 16px 18px; margin: 20px 0; font-family: Arial, sans-serif; font-size: 11.5px; color: #6E655A; line-height: 1.6;">
+            <p style="margin: 0 0 6px 0; font-weight: bold; color: #2A2622; text-transform: uppercase; font-size: 10px; letter-spacing: 0.5px;">Terms &amp; Conditions:</p>
+            <ul style="margin: 0; padding-left: 18px; space-y: 4px;">
+              <li>This gift card is valid for 1 year from the date of issuance (expires ${expiryFormatted}).</li>
+              <li>Redeemable directly into your account's cashback wallet.</li>
+              <li>Redeemed wallet cashback can be applied at checkout (up to 20% of subtotal, max ₹50 per order).</li>
+              <li>Single-use only per customer.</li>
+            </ul>
+          </div>
+        </div>
+
+        ${renderEmailFooter()}
+      </div>
+    </div>
+  `;
+}
+
+

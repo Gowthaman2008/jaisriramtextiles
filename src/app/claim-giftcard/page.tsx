@@ -595,102 +595,118 @@ export default function ClaimGiftCardPage() {
                       className="hidden"
                     />
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
                       {/* SLOT 1 */}
-                      <div className="space-y-2">
-                        <span className="text-[11px] font-bold text-taupe uppercase tracking-wider block">
-                          Screenshot 1: Review & 5-Star Rating *
-                        </span>
+                      <div className="flex flex-col h-full space-y-2">
+                        <div className="min-h-[36px] flex items-center">
+                          <span className="text-[11px] font-bold text-taupe uppercase tracking-wider leading-tight">
+                            Screenshot 1: Review & 5-Star Rating *
+                          </span>
+                        </div>
                         {!preview1 ? (
                           <div
                             onClick={handleTriggerUpload1}
-                            className="border-2 border-dashed border-zari/40 hover:border-zari bg-cream/20 hover:bg-cream/40 rounded-2xl p-6 text-center transition-all duration-200 cursor-pointer group flex flex-col items-center justify-center space-y-2 min-h-[160px]"
+                            className="flex-1 border-2 border-dashed border-zari/40 hover:border-zari bg-cream/20 hover:bg-cream/40 rounded-2xl p-5 text-center transition-all duration-200 cursor-pointer group flex flex-col items-center justify-center space-y-2 min-h-[170px]"
                           >
-                            <div className="w-12 h-12 rounded-xl bg-zari/10 group-hover:bg-zari/20 text-zari flex items-center justify-center transition-colors">
-                              <UploadCloud size={24} />
+                            <div className="w-11 h-11 rounded-xl bg-zari/10 group-hover:bg-zari/20 text-zari flex items-center justify-center transition-colors">
+                              <UploadCloud size={22} />
                             </div>
                             <p className="font-bold text-xs text-ink group-hover:text-zari transition-colors">
-                              Upload Screenshot 1 (Compulsory)
+                              Upload Screenshot 1
                             </p>
                             <span className="text-[10px] text-taupe">PNG, JPG, WEBP (Max 5MB)</span>
-                            <span className="inline-flex items-center gap-1 px-3 py-1 bg-ink text-ivory text-[10px] font-bold rounded-lg group-hover:bg-zari transition-colors">
+                            <span className="inline-flex items-center gap-1 px-3 py-1 bg-ink text-ivory text-[10px] font-bold rounded-lg group-hover:bg-zari transition-colors mt-1">
                               <FileImage size={12} /> Choose Image 1
                             </span>
                           </div>
                         ) : (
-                          <div className="relative rounded-2xl border border-line bg-cream/15 p-3 flex items-center gap-3 min-h-[160px]">
-                            <div className="relative w-24 h-24 rounded-xl overflow-hidden border border-line shrink-0 bg-white">
+                          <div className="flex-1 rounded-2xl border border-line bg-cream/15 p-3.5 flex items-center gap-3.5 min-h-[170px]">
+                            <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-xl overflow-hidden border border-line shrink-0 bg-white shadow-xs flex items-center justify-center">
                               <img
                                 src={preview1}
                                 alt="Screenshot 1 Preview"
-                                className="w-full h-full object-cover"
+                                className="w-full h-full object-cover block"
                               />
                             </div>
-                            <div className="flex-1 min-w-0 space-y-1 text-left">
-                              <span className="inline-block px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[9px] font-extrabold uppercase">
-                                ✓ Screenshot 1 Ready
-                              </span>
-                              <p className="font-bold text-xs text-ink truncate">{screenshot1?.name}</p>
+                            <div className="flex-1 min-w-0 flex flex-col justify-center space-y-1 text-left">
+                              <div>
+                                <span className="inline-block px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[9px] font-extrabold uppercase tracking-wide">
+                                  ✓ Screenshot 1 Ready
+                                </span>
+                              </div>
+                              <p className="font-bold text-xs text-ink truncate block" title={screenshot1?.name}>
+                                {screenshot1?.name}
+                              </p>
                               <p className="text-[10px] text-taupe">
                                 Size: {screenshot1 ? (screenshot1.size / 1024).toFixed(1) + " KB" : ""}
                               </p>
-                              <button
-                                type="button"
-                                onClick={handleRemoveFile1}
-                                className="mt-1 px-2.5 py-1 rounded-lg border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 text-[10px] font-bold flex items-center gap-1 transition-colors cursor-pointer"
-                              >
-                                <X size={12} /> Remove
-                              </button>
+                              <div>
+                                <button
+                                  type="button"
+                                  onClick={handleRemoveFile1}
+                                  className="mt-1 px-2.5 py-1 rounded-lg border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 text-[10px] font-bold inline-flex items-center gap-1 transition-colors cursor-pointer"
+                                >
+                                  <X size={12} /> Remove
+                                </button>
+                              </div>
                             </div>
                           </div>
                         )}
                       </div>
 
                       {/* SLOT 2 */}
-                      <div className="space-y-2">
-                        <span className="text-[11px] font-bold text-taupe uppercase tracking-wider block">
-                          Screenshot 2: Review Submitted / Order Proof *
-                        </span>
+                      <div className="flex flex-col h-full space-y-2">
+                        <div className="min-h-[36px] flex items-center">
+                          <span className="text-[11px] font-bold text-taupe uppercase tracking-wider leading-tight">
+                            Screenshot 2: Review Submitted / Order Proof *
+                          </span>
+                        </div>
                         {!preview2 ? (
                           <div
                             onClick={handleTriggerUpload2}
-                            className="border-2 border-dashed border-zari/40 hover:border-zari bg-cream/20 hover:bg-cream/40 rounded-2xl p-6 text-center transition-all duration-200 cursor-pointer group flex flex-col items-center justify-center space-y-2 min-h-[160px]"
+                            className="flex-1 border-2 border-dashed border-zari/40 hover:border-zari bg-cream/20 hover:bg-cream/40 rounded-2xl p-5 text-center transition-all duration-200 cursor-pointer group flex flex-col items-center justify-center space-y-2 min-h-[170px]"
                           >
-                            <div className="w-12 h-12 rounded-xl bg-zari/10 group-hover:bg-zari/20 text-zari flex items-center justify-center transition-colors">
-                              <UploadCloud size={24} />
+                            <div className="w-11 h-11 rounded-xl bg-zari/10 group-hover:bg-zari/20 text-zari flex items-center justify-center transition-colors">
+                              <UploadCloud size={22} />
                             </div>
                             <p className="font-bold text-xs text-ink group-hover:text-zari transition-colors">
-                              Upload Screenshot 2 (Compulsory)
+                              Upload Screenshot 2
                             </p>
                             <span className="text-[10px] text-taupe">PNG, JPG, WEBP (Max 5MB)</span>
-                            <span className="inline-flex items-center gap-1 px-3 py-1 bg-ink text-ivory text-[10px] font-bold rounded-lg group-hover:bg-zari transition-colors">
+                            <span className="inline-flex items-center gap-1 px-3 py-1 bg-ink text-ivory text-[10px] font-bold rounded-lg group-hover:bg-zari transition-colors mt-1">
                               <FileImage size={12} /> Choose Image 2
                             </span>
                           </div>
                         ) : (
-                          <div className="relative rounded-2xl border border-line bg-cream/15 p-3 flex items-center gap-3 min-h-[160px]">
-                            <div className="relative w-24 h-24 rounded-xl overflow-hidden border border-line shrink-0 bg-white">
+                          <div className="flex-1 rounded-2xl border border-line bg-cream/15 p-3.5 flex items-center gap-3.5 min-h-[170px]">
+                            <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-xl overflow-hidden border border-line shrink-0 bg-white shadow-xs flex items-center justify-center">
                               <img
                                 src={preview2}
                                 alt="Screenshot 2 Preview"
-                                className="w-full h-full object-cover"
+                                className="w-full h-full object-cover block"
                               />
                             </div>
-                            <div className="flex-1 min-w-0 space-y-1 text-left">
-                              <span className="inline-block px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[9px] font-extrabold uppercase">
-                                ✓ Screenshot 2 Ready
-                              </span>
-                              <p className="font-bold text-xs text-ink truncate">{screenshot2?.name}</p>
+                            <div className="flex-1 min-w-0 flex flex-col justify-center space-y-1 text-left">
+                              <div>
+                                <span className="inline-block px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[9px] font-extrabold uppercase tracking-wide">
+                                  ✓ Screenshot 2 Ready
+                                </span>
+                              </div>
+                              <p className="font-bold text-xs text-ink truncate block" title={screenshot2?.name}>
+                                {screenshot2?.name}
+                              </p>
                               <p className="text-[10px] text-taupe">
                                 Size: {screenshot2 ? (screenshot2.size / 1024).toFixed(1) + " KB" : ""}
                               </p>
-                              <button
-                                type="button"
-                                onClick={handleRemoveFile2}
-                                className="mt-1 px-2.5 py-1 rounded-lg border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 text-[10px] font-bold flex items-center gap-1 transition-colors cursor-pointer"
-                              >
-                                <X size={12} /> Remove
-                              </button>
+                              <div>
+                                <button
+                                  type="button"
+                                  onClick={handleRemoveFile2}
+                                  className="mt-1 px-2.5 py-1 rounded-lg border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 text-[10px] font-bold inline-flex items-center gap-1 transition-colors cursor-pointer"
+                                >
+                                  <X size={12} /> Remove
+                                </button>
+                              </div>
                             </div>
                           </div>
                         )}

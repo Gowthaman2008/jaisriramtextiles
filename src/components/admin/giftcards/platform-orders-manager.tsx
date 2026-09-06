@@ -489,13 +489,16 @@ export function PlatformOrdersManager() {
 
                       {/* Actions */}
                       <td className="py-3 px-4 text-right whitespace-nowrap">
-                        <button
-                          onClick={() => setDeletingId(order.id)}
-                          className="p-1.5 rounded-lg border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 transition-colors cursor-pointer"
-                          title="Delete Order ID"
-                        >
-                          <Trash2 size={13} />
-                        </button>
+                        <div className="flex items-center justify-end">
+                          <button
+                            type="button"
+                            onClick={() => setDeletingId(order.id)}
+                            className="w-8 h-8 rounded-xl border border-red-300 bg-red-100 text-red-700 hover:bg-red-200 flex items-center justify-center transition-all cursor-pointer shadow-xs"
+                            title="Delete Order ID"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
