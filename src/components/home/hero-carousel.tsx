@@ -104,6 +104,53 @@ const defaultSlides: Slide[] = [
 
 const AUTO_MS = 5000;
 
+// Dedicated Video Player with robust autoplay, looping and resume
+function SlideVideo({
+  src,
+  isActive,
+  isMuted,
+  className,
+}: {
+  src: string;
+  isActive: boolean;
+  isMuted: boolean;
+  className?: string;
+}) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    const el = videoRef.current;
+    if (!el) return;
+
+    if (isActive) {
+      el.currentTime = 0;
+      const playPromise = el.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(() => {
+          // Autoplay policy fallback: ensure muted and retry
+          el.muted = true;
+          el.play().catch(() => {});
+        });
+      }
+    } else {
+      el.pause();
+    }
+  }, [isActive]);
+
+  return (
+    <video
+      ref={videoRef}
+      src={src}
+      autoPlay
+      muted={isMuted}
+      playsInline
+      loop
+      preload="auto"
+      className={className}
+    />
+  );
+}
+
 export function HeroCarousel({ dbSlides }: { dbSlides?: any[] }) {
   const formatDbSlides = useCallback((raw?: any[]): Slide[] => {
     if (!raw || raw.length === 0) return defaultSlides;
@@ -140,8 +187,8 @@ export function HeroCarousel({ dbSlides }: { dbSlides?: any[] }) {
       // Sync mobile horizontal scroll track
       if (mobileScrollRef.current) {
         const container = mobileScrollRef.current;
-        const cardWidth = container.firstElementChild?.clientWidth || 320;
-        const gap = 14;
+        const cardWidth = container.firstElementChild?.clientWidth || 280;
+        const gap = 12;
         container.scrollTo({
           left: targetIndex * (cardWidth + gap),
           behavior: "smooth",
@@ -178,8 +225,8 @@ export function HeroCarousel({ dbSlides }: { dbSlides?: any[] }) {
   const handleMobileScroll = () => {
     if (!mobileScrollRef.current) return;
     const container = mobileScrollRef.current;
-    const cardWidth = container.firstElementChild?.clientWidth || 320;
-    const gap = 14;
+    const cardWidth = container.firstElementChild?.clientWidth || 280;
+    const gap = 12;
     const newIndex = Math.round(container.scrollLeft / (cardWidth + gap));
     if (newIndex >= 0 && newIndex < slides.length && newIndex !== index) {
       setState([newIndex, newIndex > index ? 1 : -1]);
@@ -225,32 +272,32 @@ export function HeroCarousel({ dbSlides }: { dbSlides?: any[] }) {
       <section
         aria-roledescription="carousel"
         aria-label="Featured highlights"
-        className="relative bg-gradient-to-b from-cream/40 via-cream/10 to-transparent pt-2 pb-6 sm:py-4 overflow-hidden"
+        className="relative bg-gradient-to-b from-cream/40 via-cream/10 to-transparent pt-1 pb-4 sm:py-4 overflow-hidden"
       >
-        <Container className="px-3 sm:px-6 max-w-7xl">
+        <div className="w-full max-w-7xl mx-auto">
           {/* ========================================================================= */}
           {/* AMAZON-STYLE SEARCH BAR + LOCATION HEADER (Matches Screenshot Style) */}
           {/* ========================================================================= */}
-          <div className="mb-3.5 space-y-2">
+          <div className="px-4 sm:px-6 mb-3 space-y-2">
             {/* Search Pill Input Bar */}
             <div
               onClick={() => setSearchOpen(true)}
               role="button"
               tabIndex={0}
               onKeyDown={(e) => e.key === "Enter" && setSearchOpen(true)}
-              className="group relative flex items-center justify-between w-full h-12 sm:h-14 px-4 bg-white rounded-2xl sm:rounded-full border border-ink/10 shadow-[0_2px_10px_rgba(0,0,0,0.06)] hover:border-zari/60 hover:shadow-md transition-all duration-300 cursor-pointer"
+              className="group relative flex items-center justify-between w-full h-11 sm:h-14 px-3.5 sm:px-4 bg-white rounded-2xl sm:rounded-full border border-ink/10 shadow-[0_2px_8px_rgba(0,0,0,0.05)] hover:border-zari/60 hover:shadow-md transition-all duration-300 cursor-pointer"
             >
               {/* Left Search Icon + Placeholder */}
-              <div className="flex items-center gap-3 min-w-0 flex-1">
-                <Search className="w-5 h-5 text-ink/75 shrink-0 group-hover:text-zari-deep transition-colors" />
-                <div className="truncate text-sm sm:text-base text-ink/70 font-normal">
+              <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
+                <Search className="w-4 h-4 sm:w-5 sm:h-5 text-ink/75 shrink-0 group-hover:text-zari-deep transition-colors" />
+                <div className="truncate text-xs sm:text-base text-ink/70 font-normal">
                   <span className="hidden sm:inline">Search dhotis, cotton towels, scarfs or ask a question...</span>
                   <span className="sm:hidden">Search or ask a question...</span>
                 </div>
               </div>
 
               {/* Right Action Icons (Amazon Style: Camera/AI Lens, Mic, Scan) */}
-              <div className="flex items-center gap-2.5 sm:gap-3 shrink-0 text-ink/70 pl-2 border-l border-line/40">
+              <div className="flex items-center gap-2 sm:gap-3 shrink-0 text-ink/70 pl-2 border-l border-line/40">
                 <button
                   type="button"
                   aria-label="Visual AI Search"
@@ -262,8 +309,8 @@ export function HeroCarousel({ dbSlides }: { dbSlides?: any[] }) {
                   }}
                 >
                   <div className="relative">
-                    <Camera className="w-5 h-5" />
-                    <Sparkles className="w-2.5 h-2.5 text-zari absolute -top-1 -right-1" />
+                    <Camera className="w-4 h-4 sm:w-5 sm:h-5" />
+                    <Sparkles className="w-2 h-2 text-zari absolute -top-1 -right-1" />
                   </div>
                 </button>
                 <button
@@ -276,7 +323,7 @@ export function HeroCarousel({ dbSlides }: { dbSlides?: any[] }) {
                     setSearchOpen(true);
                   }}
                 >
-                  <Mic className="w-5 h-5" />
+                  <Mic className="w-4 h-4 sm:w-5 sm:h-5" />
                 </button>
                 <button
                   type="button"
@@ -288,20 +335,20 @@ export function HeroCarousel({ dbSlides }: { dbSlides?: any[] }) {
                     setSearchOpen(true);
                   }}
                 >
-                  <ScanLine className="w-5 h-5" />
+                  <ScanLine className="w-4 h-4 sm:w-5 sm:h-5" />
                 </button>
               </div>
             </div>
 
             {/* Amazon-style Location / Quick Delivery Strip */}
-            <div className="flex items-center justify-between px-2 text-xs text-taupe font-medium">
+            <div className="flex items-center justify-between px-1 text-[11px] sm:text-xs text-taupe font-medium">
               <div className="flex items-center gap-1.5 truncate">
                 <MapPin className="w-3.5 h-3.5 text-zari-deep shrink-0" />
                 <span className="truncate">
                   Deliver to <strong className="text-ink font-semibold">India</strong> — All Pincodes Supported
                 </span>
               </div>
-              <div className="flex items-center gap-1 shrink-0 text-[11px] font-bold text-zari-deep uppercase tracking-wider">
+              <div className="flex items-center gap-1 shrink-0 text-[10px] sm:text-[11px] font-bold text-zari-deep uppercase tracking-wider">
                 <ShieldCheck className="w-3.5 h-3.5" />
                 <span>100% Authentic</span>
               </div>
@@ -309,7 +356,7 @@ export function HeroCarousel({ dbSlides }: { dbSlides?: any[] }) {
           </div>
 
           {/* ========================================================================= */}
-          {/* 1. MOBILE VIEW: EXACT AMAZON MULTI-CARD CAROUSEL WITH ADJACENT PEEK */}
+          {/* 1. MOBILE VIEW: COMPACT AMAZON CARD CAROUSEL WITH SIDE INSET & PEEK */}
           {/* ========================================================================= */}
           <div className="block md:hidden">
             <div
@@ -323,7 +370,7 @@ export function HeroCarousel({ dbSlides }: { dbSlides?: any[] }) {
                   isMobileInteracting.current = false;
                 }, 3000);
               }}
-              className="flex gap-3.5 overflow-x-auto snap-x snap-mandatory scrollbar-none pb-2 pt-1 -mx-3 px-3.5 scroll-smooth"
+              className="flex gap-3 overflow-x-auto snap-x snap-mandatory scrollbar-none pb-2 pt-0.5 px-4 scroll-smooth"
             >
               {slides.map((s, idx) => {
                 const sIsVideo = isVideoMediaUrl(s.image);
@@ -336,20 +383,17 @@ export function HeroCarousel({ dbSlides }: { dbSlides?: any[] }) {
                       if (!isActive) go(idx, idx > index ? 1 : -1);
                     }}
                     className={cn(
-                      "w-[84vw] max-w-[340px] shrink-0 snap-start h-[520px] rounded-3xl overflow-hidden border border-ink/10 shadow-lift relative bg-stone-900 transition-all duration-300",
-                      isActive ? "ring-1 ring-zari/30 shadow-xl" : "opacity-90"
+                      "w-[80vw] max-w-[310px] shrink-0 snap-start h-[330px] rounded-2xl overflow-hidden border border-ink/10 shadow-md relative bg-stone-900 transition-all duration-300",
+                      isActive ? "ring-1.5 ring-zari/40 shadow-lg" : "opacity-85"
                     )}
                   >
                     {/* Slide Background Media */}
                     <div className="absolute inset-0">
                       {sIsVideo ? (
-                        <video
+                        <SlideVideo
                           src={s.image}
-                          autoPlay={isActive}
-                          muted={isMuted}
-                          playsInline
-                          preload="metadata"
-                          onEnded={() => go(index + 1, 1)}
+                          isActive={isActive}
+                          isMuted={isMuted}
                           className="w-full h-full object-cover"
                         />
                       ) : (
@@ -358,48 +402,48 @@ export function HeroCarousel({ dbSlides }: { dbSlides?: any[] }) {
                           alt={s.title}
                           fill
                           priority={idx === 0}
-                          sizes="85vw"
+                          sizes="80vw"
                           className="object-cover"
                         />
                       )}
 
                       {/* Amazon-style High-Contrast Scrim Gradient */}
-                      <div className="absolute inset-0 bg-gradient-to-t from-ink/95 via-ink/40 to-ink/20" />
-                      <div className="absolute inset-0 bg-weave opacity-25 mix-blend-multiply" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-ink/95 via-ink/50 to-ink/20" />
+                      <div className="absolute inset-0 bg-weave opacity-20 mix-blend-multiply" />
                     </div>
 
                     {/* Card Content Overlay */}
-                    <div className="relative z-10 flex flex-col justify-between h-full p-5 text-white">
-                      {/* Top: Eyebrow + Title + Subtitle */}
-                      <div className="space-y-3">
-                        {/* Eyebrow Pill */}
-                        <div>
-                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-zari/25 text-zari-soft text-[11px] font-bold tracking-wider uppercase backdrop-blur-md border border-zari/40 shadow-xs">
-                            <Sparkles className="w-3 h-3 text-zari-soft" />
-                            {s.eyebrow}
-                          </span>
-                        </div>
+                    <div className="relative z-10 flex flex-col justify-between h-full p-4 text-white">
+                      {/* Top: Eyebrow Pill */}
+                      <div>
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-zari/25 text-zari-soft text-[10px] font-bold tracking-wider uppercase backdrop-blur-md border border-zari/40 shadow-xs">
+                          <Sparkles className="w-2.5 h-2.5 text-zari-soft" />
+                          {s.eyebrow}
+                        </span>
+                      </div>
 
+                      {/* Bottom Section: Title, Subtitle & CTA */}
+                      <div className="space-y-2">
                         {/* Title */}
-                        <h2 className="font-display text-2xl font-black text-white leading-tight drop-shadow-md">
+                        <h2 className="font-display text-xl font-bold text-white leading-tight drop-shadow-md line-clamp-2">
                           {s.title}
                         </h2>
 
                         {/* Subtitle */}
-                        <p className="text-xs text-white/85 leading-relaxed line-clamp-2 font-medium">
+                        <p className="text-[11px] text-white/85 leading-snug line-clamp-2 font-medium">
                           {s.subtitle}
                         </p>
 
-                        {/* CTA + Sound Toggle */}
-                        <div className="pt-2 flex items-center gap-2.5">
+                        {/* CTA Button + Sound Toggle */}
+                        <div className="pt-1 flex items-center gap-2">
                           <Button
                             variant="gold"
                             size="sm"
                             href={s.cta.href}
-                            className="rounded-full shadow-md text-xs font-bold px-4 py-2"
+                            className="rounded-full shadow-md text-xs font-bold px-3.5 py-1.5 h-8"
                           >
                             {s.cta.label}
-                            <ArrowRight size={14} />
+                            <ArrowRight size={13} />
                           </Button>
 
                           {sIsVideo && isActive && (
@@ -410,23 +454,11 @@ export function HeroCarousel({ dbSlides }: { dbSlides?: any[] }) {
                                 setIsMuted((prev) => !prev);
                               }}
                               aria-label={isMuted ? "Unmute video" : "Mute video"}
-                              className="p-2 rounded-full border border-white/30 bg-black/50 text-white backdrop-blur text-xs font-semibold hover:border-zari transition shadow-sm"
+                              className="p-1.5 rounded-full border border-white/30 bg-black/60 text-white backdrop-blur text-xs font-semibold hover:border-zari transition shadow-sm"
                             >
-                              {isMuted ? <VolumeX size={14} /> : <Volume2 size={14} />}
+                              {isMuted ? <VolumeX size={13} /> : <Volume2 size={13} />}
                             </button>
                           )}
-                        </div>
-                      </div>
-
-                      {/* Bottom Amazon-style Discount Offer Pill Strip */}
-                      <div className="pt-2">
-                        <div className="flex items-center gap-2 px-3 py-2 rounded-2xl bg-white text-ink text-xs font-semibold shadow-md border border-line/60 backdrop-blur w-full truncate">
-                          <div className="grid place-items-center w-5 h-5 rounded-full bg-zari/20 text-zari-deep shrink-0">
-                            <Tag className="w-3 h-3" />
-                          </div>
-                          <span className="truncate text-[11px] font-bold">
-                            {s.highlightOffer || "10% Instant Discount on First Order"}
-                          </span>
                         </div>
                       </div>
                     </div>
@@ -437,162 +469,149 @@ export function HeroCarousel({ dbSlides }: { dbSlides?: any[] }) {
           </div>
 
           {/* ========================================================================= */}
-          {/* 2. LAPTOP/DESKTOP VIEW: CURRENT POLISHED HERO SLIDE VIEW WITH PEEK */}
+          {/* 2. LAPTOP/DESKTOP VIEW: POLISHED HERO SLIDE VIEW (PRESERVED) */}
           {/* ========================================================================= */}
-          <div
-            className="hidden md:flex relative items-center justify-center"
-            onTouchStart={onTouchStart}
-            onTouchMove={onTouchMove}
-            onTouchEnd={onTouchEnd}
-          >
-            {/* Main Rounded Hero Card */}
-            <div className="relative w-full h-[540px] md:h-[600px] rounded-[32px] overflow-hidden border border-ink/10 shadow-lift bg-cream/30">
-              {/* Background Media with AnimatePresence */}
-              <AnimatePresence initial={false} custom={dir}>
-                <motion.div
-                  key={index}
-                  custom={dir}
-                  className="absolute inset-0"
-                  initial={reduce ? { opacity: 0 } : { opacity: 0, scale: 1.05 }}
-                  animate={reduce ? { opacity: 1 } : { opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: reduce ? 0.3 : 0.8, ease: [0.22, 1, 0.36, 1] }}
-                >
-                  {isVideo ? (
-                    <video
-                      key={slide.image}
-                      src={slide.image}
-                      autoPlay
-                      muted={isMuted}
-                      playsInline
-                      preload="auto"
-                      onEnded={() => go(index + 1, 1)}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <Image
-                      src={slide.image}
-                      alt={slide.title}
-                      fill
-                      priority={index === 0}
-                      sizes="(max-width: 1200px) 90vw, 1200px"
-                      className="object-cover"
-                    />
-                  )}
+          <div className="hidden md:block px-6">
+            <div
+              className="relative flex items-center justify-center"
+              onTouchStart={onTouchStart}
+              onTouchMove={onTouchMove}
+              onTouchEnd={onTouchEnd}
+            >
+              {/* Main Rounded Hero Card */}
+              <div className="relative w-full h-[520px] lg:h-[580px] rounded-[32px] overflow-hidden border border-ink/10 shadow-lift bg-cream/30">
+                {/* Background Media with AnimatePresence */}
+                <AnimatePresence initial={false} custom={dir}>
+                  <motion.div
+                    key={index}
+                    custom={dir}
+                    className="absolute inset-0"
+                    initial={reduce ? { opacity: 0 } : { opacity: 0, scale: 1.05 }}
+                    animate={reduce ? { opacity: 1 } : { opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: reduce ? 0.3 : 0.8, ease: [0.22, 1, 0.36, 1] }}
+                  >
+                    {isVideo ? (
+                      <SlideVideo
+                        key={slide.image}
+                        src={slide.image}
+                        isActive={true}
+                        isMuted={isMuted}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <Image
+                        src={slide.image}
+                        alt={slide.title}
+                        fill
+                        priority={index === 0}
+                        sizes="(max-width: 1200px) 90vw, 1200px"
+                        className="object-cover"
+                      />
+                    )}
 
-                  {/* Luxury Scrim Gradient: Keeps card bright, readable, and premium */}
-                  <div className="absolute inset-0 bg-gradient-to-r from-ivory/95 via-ivory/70 to-transparent" />
-                  <div className="absolute inset-0 bg-weave opacity-25 mix-blend-multiply" />
-                </motion.div>
-              </AnimatePresence>
+                    {/* Luxury Scrim Gradient */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-ivory/95 via-ivory/70 to-transparent" />
+                    <div className="absolute inset-0 bg-weave opacity-25 mix-blend-multiply" />
+                  </motion.div>
+                </AnimatePresence>
 
-              {/* Card Content Overlay */}
-              <div className="relative z-10 flex flex-col justify-between h-full p-8 md:p-12">
-                {/* Upper Content: Eyebrow + Title + Subtitle */}
-                <div className="max-w-xl">
-                  <AnimatePresence mode="wait">
-                    <motion.div
-                      key={index}
-                      initial={{ opacity: 0, y: 16 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-                    >
-                      {/* Eyebrow Pill */}
-                      <span className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-zari/20 text-zari-deep text-xs font-bold tracking-wider uppercase backdrop-blur-md border border-zari/30">
-                        <Sparkles className="w-3.5 h-3.5" />
-                        {slide.eyebrow}
-                      </span>
+                {/* Card Content Overlay */}
+                <div className="relative z-10 flex flex-col justify-between h-full p-8 lg:p-12">
+                  {/* Upper Content: Eyebrow + Title + Subtitle */}
+                  <div className="max-w-xl">
+                    <AnimatePresence mode="wait">
+                      <motion.div
+                        key={index}
+                        initial={{ opacity: 0, y: 16 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+                      >
+                        {/* Eyebrow Pill */}
+                        <span className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-zari/20 text-zari-deep text-xs font-bold tracking-wider uppercase backdrop-blur-md border border-zari/30">
+                          <Sparkles className="w-3.5 h-3.5" />
+                          {slide.eyebrow}
+                        </span>
 
-                      {/* Main Title */}
-                      <h1 className="mt-4 font-display text-4xl md:text-6xl font-extrabold tracking-tight text-ink leading-[1.08] drop-shadow-sm">
-                        {slide.title}
-                      </h1>
+                        {/* Main Title */}
+                        <h1 className="mt-4 font-display text-4xl lg:text-5xl xl:text-6xl font-extrabold tracking-tight text-ink leading-[1.08] drop-shadow-sm">
+                          {slide.title}
+                        </h1>
 
-                      {/* Subtitle / Description */}
-                      <p className="mt-3.5 max-w-md text-base md:text-lg leading-relaxed text-taupe font-medium">
-                        {slide.subtitle}
-                      </p>
+                        {/* Subtitle / Description */}
+                        <p className="mt-3.5 max-w-md text-base lg:text-lg leading-relaxed text-taupe font-medium">
+                          {slide.subtitle}
+                        </p>
 
-                      {/* CTA Button */}
-                      <div className="mt-6 flex items-center gap-3">
-                        <Button
-                          variant="gold"
-                          size="lg"
-                          href={slide.cta.href}
-                          className="rounded-full shadow-md hover:shadow-lg transition-transform active:scale-95"
-                        >
-                          {slide.cta.label}
-                          <ArrowRight size={18} />
-                        </Button>
-
-                        {isVideo && (
-                          <button
-                            onClick={() => setIsMuted((prev) => !prev)}
-                            aria-label={isMuted ? "Unmute video" : "Mute video"}
-                            className="flex items-center gap-1.5 px-3 py-2.5 rounded-full border border-ink/15 bg-ivory/80 text-ink backdrop-blur text-xs font-semibold hover:border-zari transition shadow-sm cursor-pointer"
+                        {/* CTA Button */}
+                        <div className="mt-6 flex items-center gap-3">
+                          <Button
+                            variant="gold"
+                            size="lg"
+                            href={slide.cta.href}
+                            className="rounded-full shadow-md hover:shadow-lg transition-transform active:scale-95"
                           >
-                            {isMuted ? <VolumeX size={15} /> : <Volume2 size={15} />}
-                            <span>{isMuted ? "Unmute" : "Mute"}</span>
-                          </button>
-                        )}
-                      </div>
-                    </motion.div>
-                  </AnimatePresence>
-                </div>
+                            {slide.cta.label}
+                            <ArrowRight size={18} />
+                          </Button>
 
-                {/* Bottom Amazon-style Offer Strip on the Card */}
-                <div className="pt-4">
-                  <div className="inline-flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-white text-ink text-sm font-semibold shadow-md border border-line/60 backdrop-blur max-w-full truncate">
-                    <div className="grid place-items-center w-6 h-6 rounded-full bg-zari/15 text-zari-deep shrink-0">
-                      <Tag className="w-3.5 h-3.5" />
-                    </div>
-                    <span className="truncate">
-                      {slide.highlightOffer || "10% Instant Discount on First Order • Code: WELCOME10"}
-                    </span>
+                          {isVideo && (
+                            <button
+                              onClick={() => setIsMuted((prev) => !prev)}
+                              aria-label={isMuted ? "Unmute video" : "Mute video"}
+                              className="flex items-center gap-1.5 px-3 py-2.5 rounded-full border border-ink/15 bg-ivory/80 text-ink backdrop-blur text-xs font-semibold hover:border-zari transition shadow-sm cursor-pointer"
+                            >
+                              {isMuted ? <VolumeX size={15} /> : <Volume2 size={15} />}
+                              <span>{isMuted ? "Unmute" : "Mute"}</span>
+                            </button>
+                          )}
+                        </div>
+                      </motion.div>
+                    </AnimatePresence>
                   </div>
                 </div>
+
+                {/* Desktop Next/Prev Arrow Controls */}
+                <div className="flex items-center justify-between absolute inset-x-4 top-1/2 -translate-y-1/2 z-20 pointer-events-none">
+                  <button
+                    aria-label="Previous Slide"
+                    onClick={() => go(index - 1, -1)}
+                    className="pointer-events-auto grid h-11 w-11 place-items-center rounded-full border border-line/50 bg-white/90 text-ink shadow-md backdrop-blur hover:bg-white hover:scale-105 active:scale-95 transition-all cursor-pointer"
+                  >
+                    <ChevronLeft size={20} />
+                  </button>
+                  <button
+                    aria-label="Next Slide"
+                    onClick={() => go(index + 1, 1)}
+                    className="pointer-events-auto grid h-11 w-11 place-items-center rounded-full border border-line/50 bg-white/90 text-ink shadow-md backdrop-blur hover:bg-white hover:scale-105 active:scale-95 transition-all cursor-pointer"
+                  >
+                    <ChevronRight size={20} />
+                  </button>
+                </div>
               </div>
 
-              {/* Desktop Next/Prev Arrow Controls */}
-              <div className="flex items-center justify-between absolute inset-x-4 top-1/2 -translate-y-1/2 z-20 pointer-events-none">
-                <button
-                  aria-label="Previous Slide"
-                  onClick={() => go(index - 1, -1)}
-                  className="pointer-events-auto grid h-11 w-11 place-items-center rounded-full border border-line/50 bg-white/90 text-ink shadow-md backdrop-blur hover:bg-white hover:scale-105 active:scale-95 transition-all cursor-pointer"
-                >
-                  <ChevronLeft size={20} />
-                </button>
-                <button
-                  aria-label="Next Slide"
-                  onClick={() => go(index + 1, 1)}
-                  className="pointer-events-auto grid h-11 w-11 place-items-center rounded-full border border-line/50 bg-white/90 text-ink shadow-md backdrop-blur hover:bg-white hover:scale-105 active:scale-95 transition-all cursor-pointer"
-                >
-                  <ChevronRight size={20} />
-                </button>
-              </div>
-            </div>
-
-            {/* Amazon-Style Adjacent Card Peek (Visual accent on larger screens) */}
-            <div
-              onClick={() => go(index + 1, 1)}
-              className="hidden xl:block absolute -right-24 top-1/2 -translate-y-1/2 w-20 h-[520px] rounded-l-3xl overflow-hidden border-l border-y border-ink/10 shadow-lift opacity-40 hover:opacity-75 transition-all duration-300 cursor-pointer"
-            >
-              <div className="relative w-full h-full">
-                <Image
-                  src={nextSlide.image}
-                  alt={nextSlide.title}
-                  fill
-                  sizes="100px"
-                  className="object-cover"
-                />
-                <div className="absolute inset-0 bg-ink/20 backdrop-blur-[1px]" />
+              {/* Amazon-Style Adjacent Card Peek (Visual accent on larger screens) */}
+              <div
+                onClick={() => go(index + 1, 1)}
+                className="hidden xl:block absolute -right-24 top-1/2 -translate-y-1/2 w-20 h-[500px] rounded-l-3xl overflow-hidden border-l border-y border-ink/10 shadow-lift opacity-40 hover:opacity-75 transition-all duration-300 cursor-pointer"
+              >
+                <div className="relative w-full h-full">
+                  <Image
+                    src={nextSlide.image}
+                    alt={nextSlide.title}
+                    fill
+                    sizes="100px"
+                    className="object-cover"
+                  />
+                  <div className="absolute inset-0 bg-ink/20 backdrop-blur-[1px]" />
+                </div>
               </div>
             </div>
           </div>
 
           {/* Amazon Progress Pill Indicator Bar */}
-          <div className="mt-4 flex items-center justify-center gap-2" role="tablist" aria-label="Choose slide">
+          <div className="mt-3 sm:mt-4 flex items-center justify-center gap-1.5 sm:gap-2" role="tablist" aria-label="Choose slide">
             {slides.map((s, i) => (
               <button
                 key={i}
@@ -601,13 +620,13 @@ export function HeroCarousel({ dbSlides }: { dbSlides?: any[] }) {
                 aria-label={s.eyebrow || `Slide ${i + 1}`}
                 onClick={() => go(i, i > index ? 1 : -1)}
                 className={cn(
-                  "h-2 rounded-full transition-all duration-500 ease-silk cursor-pointer",
-                  i === index ? "w-8 bg-zari-deep shadow-sm" : "w-2 bg-ink/20 hover:bg-ink/40"
+                  "h-1.5 sm:h-2 rounded-full transition-all duration-500 ease-silk cursor-pointer",
+                  i === index ? "w-6 sm:w-8 bg-zari-deep shadow-sm" : "w-1.5 sm:w-2 bg-ink/20 hover:bg-ink/40"
                 )}
               />
             ))}
           </div>
-        </Container>
+        </div>
       </section>
 
       {/* Global Interactive Search Overlay */}
