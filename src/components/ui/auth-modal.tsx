@@ -2,7 +2,21 @@
 
 import React, { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { X, Eye, EyeOff, Lock, Mail, User as UserIcon, Phone, Sparkles } from "lucide-react";
+import {
+  X,
+  Eye,
+  EyeOff,
+  Lock,
+  Mail,
+  User as UserIcon,
+  Phone,
+  Sparkles,
+  AlertCircle,
+  MailCheck,
+  CheckCircle2,
+  ArrowRight,
+  RefreshCw,
+} from "lucide-react";
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -39,7 +53,8 @@ export function AuthModal({
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState("");
-  const [signupSuccessMsg, setSignupSuccessMsg] = useState("");
+  const [emailVerificationSent, setEmailVerificationSent] = useState(false);
+  const [resendingLink, setResendingLink] = useState(false);
 
   if (!isOpen) return null;
 
@@ -64,18 +79,21 @@ export function AuthModal({
     setError("");
 
     try {
-      const supabase = createClient();
-      const { data, error: authError } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password,
+      const res = await fetch("/api/auth/sign-in", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim(), password }),
       });
 
-      if (authError) {
-        throw authError;
+      const resData = await res.json();
+      if (!res.ok) {
+        throw new Error(resData.error || "Invalid email or password.");
       }
 
-      if (data?.user) {
-        onSuccess(data.user);
+      if (resData.user) {
+        const supabase = createClient();
+        await supabase.auth.getUser();
+        onSuccess(resData.user);
         onClose();
       }
     } catch (err: any) {
@@ -89,7 +107,6 @@ export function AuthModal({
     e.preventDefault();
     setLoading(true);
     setError("");
-    setSignupSuccessMsg("");
 
     const cleanPhone = phone.trim().replace(/\D/g, "");
     if (cleanPhone.length !== 10) {
@@ -115,24 +132,36 @@ export function AuthModal({
         throw new Error(resData.error || "Failed to create account.");
       }
 
-      // Automatically sign in after registration
-      const supabase = createClient();
-      const { data: signinData, error: signinError } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password,
-      });
-
-      if (signinError || !signinData?.user) {
-        setSignupSuccessMsg("Account created! Please enter your password to sign in.");
-        setTab("signin");
-      } else {
-        onSuccess(signinData.user);
-        onClose();
-      }
+      // Show dedicated verification link screen
+      setEmailVerificationSent(true);
     } catch (err: any) {
       setError(err.message || "Failed to register account.");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleResendVerification() {
+    if (!email.trim() || !name.trim() || !phone.trim() || !password) return;
+    try {
+      setResendingLink(true);
+      const res = await fetch("/api/auth/sign-up", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: email.trim(),
+          password,
+          name: name.trim(),
+          phone: phone.trim().replace(/\D/g, ""),
+        }),
+      });
+      if (res.ok) {
+        alert("Verification link resent to " + email);
+      }
+    } catch {
+      // ignore
+    } finally {
+      setResendingLink(false);
     }
   }
 
@@ -188,35 +217,133 @@ export function AuthModal({
 
         {/* Modal Body */}
         <div className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
-          {error && (
-            <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl">
-              {error}
+          {emailVerificationSent ? (
+            /* VERIFICATION LINK SENT SCREEN */
+            <div className="py-2 text-center space-y-5 animate-fade-in">
+              <div className="w-16 h-16 rounded-full bg-emerald-50 border-2 border-emerald-200 text-emerald-600 flex items-center justify-center mx-auto shadow-soft">
+                <MailCheck size={32} />
+              </div>
+
+              <div className="space-y-1.5">
+                <h4 className="font-display text-lg text-ink font-bold">
+                  Verification Link Sent to Your Email!
+                </h4>
+                <p className="text-xs text-taupe leading-relaxed max-w-sm mx-auto">
+                  We have sent an activation link to:
+                  <br />
+                  <strong className="text-ink font-mono text-sm underline">{email}</strong>
+                </p>
+              </div>
+
+              <div className="p-4 bg-cream/40 border border-line rounded-2xl text-left space-y-2 text-xs">
+                <span className="font-bold text-ink flex items-center gap-1.5">
+                  <Sparkles size={14} className="text-zari" />
+                  Next Steps to Activate Your Account:
+                </span>
+                <ol className="list-decimal list-inside space-y-1.5 text-taupe text-[11px] leading-relaxed">
+                  <li>Check your inbox (and spam/promotions folder).</li>
+                  <li>Click the <strong>&quot;Confirm Email Address&quot;</strong> button inside.</li>
+                  <li>After verifying, click the button below to sign in and claim your <strong>₹100 Gift Card</strong>!</li>
+                </ol>
+              </div>
+
+              <div className="space-y-2.5 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEmailVerificationSent(false);
+                    setTab("signin");
+                    setError("");
+                  }}
+                  className="w-full py-3.5 px-4 bg-gradient-to-r from-ink via-ink to-[#1a1612] hover:from-zari hover:via-zari-deep hover:to-[#8C6D2D] text-ivory text-xs font-bold uppercase tracking-wider rounded-xl transition-all duration-300 shadow-md cursor-pointer flex items-center justify-center gap-2"
+                >
+                  <span>I&apos;ve Verified — Sign In & Continue</span>
+                  <ArrowRight size={15} />
+                </button>
+
+                <div className="flex items-center justify-between pt-1 px-1 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEmailVerificationSent(false);
+                      setTab("signup");
+                    }}
+                    className="text-[11px] text-taupe hover:text-ink underline cursor-pointer"
+                  >
+                    Edit details / Change email
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleResendVerification}
+                    disabled={resendingLink}
+                    className="text-[11px] font-bold text-zari-deep hover:text-ink flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                  >
+                    <RefreshCw size={11} className={resendingLink ? "animate-spin" : ""} />
+                    <span>{resendingLink ? "Resending..." : "Resend Email Link"}</span>
+                  </button>
+                </div>
+              </div>
             </div>
-          )}
+          ) : (
+            <>
+              {error && (
+                error.toLowerCase().includes("invalid login credentials") ||
+                error.toLowerCase().includes("invalid_grant") ||
+                error.toLowerCase().includes("user not found") ||
+                error.toLowerCase().includes("invalid email or password") ? (
+                  <div className="p-3.5 bg-amber-50/95 border border-amber-300 text-amber-950 text-xs rounded-2xl space-y-2.5 shadow-xs">
+                    <div className="flex items-start gap-2.5">
+                      <AlertCircle size={16} className="text-amber-700 shrink-0 mt-0.5" />
+                      <div className="space-y-0.5">
+                        <p className="font-bold text-amber-900">
+                          No Account Found or Incorrect Password
+                        </p>
+                        <p className="text-[11px] text-amber-800 leading-relaxed">
+                          We couldn&apos;t find an active account for <strong className="text-ink font-bold">{email || "this email"}</strong>.
+                        </p>
+                      </div>
+                    </div>
 
-          {signupSuccessMsg && (
-            <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs rounded-xl font-medium">
-              {signupSuccessMsg}
-            </div>
-          )}
+                    <div className="pt-2 border-t border-amber-200/80 flex items-center justify-between gap-2">
+                      <span className="text-[11px] text-amber-800 font-medium">Don&apos;t have an account yet?</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTab("signup");
+                          setError("");
+                        }}
+                        className="text-xs font-bold text-zari-deep hover:text-ink underline flex items-center gap-1 cursor-pointer transition-colors bg-white px-3 py-1 rounded-lg border border-amber-300 shadow-xs"
+                      >
+                        Create Account &rarr;
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl flex items-center gap-2">
+                    <AlertCircle size={15} className="shrink-0" />
+                    <span>{error}</span>
+                  </div>
+                )
+              )}
 
-          {/* Google 1-Click Login */}
-          <button
-            type="button"
-            onClick={handleGoogleSignIn}
-            disabled={googleLoading}
-            className="w-full flex items-center justify-center gap-3 py-2.5 px-4 rounded-xl border border-line bg-white hover:bg-cream/40 text-xs font-bold text-ink shadow-sm transition-all duration-200 hover:border-zari/60 cursor-pointer disabled:opacity-50"
-          >
-            <GoogleIcon />
-            {googleLoading ? "Connecting with Google..." : "Continue with Google"}
-          </button>
+              {/* Google 1-Click Login */}
+              <button
+                type="button"
+                onClick={handleGoogleSignIn}
+                disabled={googleLoading}
+                className="w-full flex items-center justify-center gap-3 py-2.5 px-4 rounded-xl border border-line bg-white hover:bg-cream/40 text-xs font-bold text-ink shadow-sm transition-all duration-200 hover:border-zari/60 cursor-pointer disabled:opacity-50"
+              >
+                <GoogleIcon />
+                {googleLoading ? "Connecting with Google..." : "Continue with Google"}
+              </button>
 
-          <div className="relative flex items-center justify-center my-3">
-            <div className="border-t border-line w-full" />
-            <span className="bg-white px-3 text-[10px] uppercase font-bold text-taupe tracking-wider absolute">
-              or with email
-            </span>
-          </div>
+              <div className="relative flex items-center justify-center my-3">
+                <div className="border-t border-line w-full" />
+                <span className="bg-white px-3 text-[10px] uppercase font-bold text-taupe tracking-wider absolute">
+                  or with email
+                </span>
+              </div>
 
           {/* SIGN IN FORM */}
           {tab === "signin" ? (
@@ -358,6 +485,8 @@ export function AuthModal({
                 {loading ? "Creating Account..." : "Create Account & Continue"}
               </button>
             </form>
+          )}
+            </>
           )}
         </div>
       </div>

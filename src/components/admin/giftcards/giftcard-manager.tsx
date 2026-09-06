@@ -29,9 +29,11 @@ import {
   FileImage,
   Layers,
   ArrowUpDown,
-  Package
+  Package,
+  Video
 } from "lucide-react";
 import { PlatformOrdersManager } from "./platform-orders-manager";
+import { TutorialVideoManager } from "./tutorial-video-manager";
 
 interface GiftCardRecord {
   id: string;
@@ -71,7 +73,7 @@ export function GiftCardManager() {
   const [error, setError] = useState("");
 
   // Sub-tab state
-  const [subTab, setSubTab] = useState<"cards" | "orders">("cards");
+  const [subTab, setSubTab] = useState<"cards" | "orders" | "tutorial">("cards");
 
   // Filter & Search states
   const [searchQuery, setSearchQuery] = useState("");
@@ -339,10 +341,28 @@ export function GiftCardManager() {
             Auto-Verify
           </span>
         </button>
+
+        <button
+          type="button"
+          onClick={() => setSubTab("tutorial")}
+          className={`px-4 py-2.5 rounded-2xl font-bold text-xs flex items-center gap-2 transition-all cursor-pointer ${
+            subTab === "tutorial"
+              ? "bg-ink text-ivory shadow-sm"
+              : "bg-white border border-line text-taupe hover:text-ink"
+          }`}
+        >
+          <Video size={16} className={subTab === "tutorial" ? "text-zari" : ""} />
+          <span>&quot;How to Review&quot; Tutorial Video</span>
+          <span className="px-2 py-0.5 rounded-full text-[10px] bg-emerald-500/20 text-emerald-800 font-bold">
+            Video Setup
+          </span>
+        </button>
       </div>
 
       {subTab === "orders" ? (
         <PlatformOrdersManager />
+      ) : subTab === "tutorial" ? (
+        <TutorialVideoManager />
       ) : (
         <>
           {/* Top Header & Actions */}

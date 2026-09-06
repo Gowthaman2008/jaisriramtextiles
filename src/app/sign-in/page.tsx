@@ -35,17 +35,24 @@ function SignInPageContent() {
     setLoading(true);
     setError("");
 
-    const supabase = createClient();
-    const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
+    try {
+      const res = await fetch("/api/auth/sign-in", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim(), password }),
+      });
 
-    if (authError) {
-      setError(authError.message);
+      const resData = await res.json();
+      if (!res.ok) {
+        throw new Error(resData.error || "Failed to sign in.");
+      }
+
+      // Full page navigation so middleware sees the new session cookie immediately
+      window.location.href = next;
+    } catch (err: any) {
+      setError(err.message || "Failed to sign in.");
       setLoading(false);
-      return;
     }
-
-    // Full page navigation so middleware sees the new session cookie immediately
-    window.location.href = next;
   }
 
   async function handleGoogleSignIn() {
@@ -134,7 +141,23 @@ function SignInPageContent() {
               </div>
             </div>
 
-            {error && <p className="text-sm text-danger">{error}</p>}
+            {error && (
+              error.toLowerCase().includes("invalid login credentials") ||
+              error.toLowerCase().includes("invalid_grant") ||
+              error.toLowerCase().includes("user not found") ? (
+                <div className="p-3 bg-amber-50 border border-amber-200 text-amber-950 text-xs rounded-xl space-y-1.5">
+                  <p className="font-bold text-amber-900">No account found or password incorrect.</p>
+                  <p className="text-[11px] text-amber-800">
+                    Don&apos;t have an account yet?{" "}
+                    <Link href={`/sign-up?email=${encodeURIComponent(email)}`} className="font-bold text-zari-deep underline hover:text-ink">
+                      Create a new account now &rarr;
+                    </Link>
+                  </p>
+                </div>
+              ) : (
+                <p className="text-sm text-danger">{error}</p>
+              )
+            )}
 
             <Button
               type="submit"

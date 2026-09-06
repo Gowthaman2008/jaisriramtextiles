@@ -18,6 +18,12 @@ import {
   ExternalLink,
   Lock,
   Clock,
+  Play,
+  Video,
+  HelpCircle,
+  ShieldAlert,
+  AlertTriangle,
+  RotateCcw,
 } from "lucide-react";
 import { Container } from "@/components/ui/container";
 import { useNotification } from "@/components/providers/notification-provider";
@@ -133,6 +139,24 @@ export default function ClaimGiftCardPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
 
+  // Tutorial Video Modal & data state
+  const [showVideoModal, setShowVideoModal] = useState(false);
+  const [tutorialVideo, setTutorialVideo] = useState<{
+    video_url: string;
+    title: string;
+    description: string;
+    enabled: boolean;
+  }>({
+    video_url: "",
+    title: "How to Review on Amazon, Flipkart & Google for ₹100 Gift Card",
+    description: "Follow these simple steps: leave your positive review, take the 2 required screenshots with your Order ID, and claim your instant ₹100 Gift Card!",
+    enabled: true,
+  });
+
+  // AI Verification Failure Modal state
+  const [showAiFailureModal, setShowAiFailureModal] = useState(false);
+  const [aiFailureReason, setAiFailureReason] = useState("");
+
   // Result state
   const [generatedCard, setGeneratedCard] = useState<GeneratedGiftCard | null>(null);
   const [copied, setCopied] = useState(false);
@@ -141,6 +165,22 @@ export default function ClaimGiftCardPage() {
   const fileInputRef2 = useRef<HTMLInputElement>(null);
 
   const isGoogle = selectedPlatform === "google";
+
+  // Fetch tutorial video data on mount
+  useEffect(() => {
+    async function fetchTutorialVideo() {
+      try {
+        const res = await fetch("/api/giftcards/tutorial-video");
+        if (res.ok) {
+          const data = await res.json();
+          setTutorialVideo(data);
+        }
+      } catch (err) {
+        console.error("Failed to load tutorial video:", err);
+      }
+    }
+    fetchTutorialVideo();
+  }, []);
 
   // Debounced live verification of Amazon/Flipkart Order ID against Admin registry
   useEffect(() => {
@@ -378,6 +418,15 @@ export default function ClaimGiftCardPage() {
       }
 
       if (!res.ok) {
+        if (
+          data.isAiVerificationFailed ||
+          data.error?.toLowerCase().includes("ai verification failed") ||
+          data.error?.toLowerCase().includes("rejected by ai")
+        ) {
+          const reason = data.aiReason || data.error?.replace("AI Verification Failed: ", "") || "The uploaded screenshot was not recognized as an authentic review.";
+          setAiFailureReason(reason);
+          setShowAiFailureModal(true);
+        }
         throw new Error(data.error || "Failed to generate gift card. Please try again.");
       }
 
@@ -425,8 +474,177 @@ export default function ClaimGiftCardPage() {
   const amazonOrFlipkartReady = !isGoogle && !!screenshot1 && !!screenshot2;
   const googleReady = isGoogle && !!screenshot1;
 
+  function getYouTubeEmbedUrl(url: string): string {
+    if (!url) return "";
+    if (url.includes("youtu.be/")) {
+      const id = url.split("youtu.be/")[1]?.split("?")[0];
+      return `https://www.youtube.com/embed/${id}?autoplay=1&rel=0`;
+    }
+    if (url.includes("watch?v=")) {
+      const id = url.split("watch?v=")[1]?.split("&")[0];
+      return `https://www.youtube.com/embed/${id}?autoplay=1&rel=0`;
+    }
+    return url;
+  }
+
   return (
     <main className="min-h-screen bg-ivory text-ink pb-20">
+      {/* Centered Animated AI Verification Failure Modal */}
+      {showAiFailureModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-950/80 backdrop-blur-md animate-fade-in">
+          <div className="relative w-full max-w-lg bg-white rounded-3xl border-2 border-red-200/90 shadow-2xl overflow-hidden animate-scale-up text-ink text-center p-6 sm:p-8 space-y-5">
+            <button
+              type="button"
+              onClick={() => setShowAiFailureModal(false)}
+              className="absolute top-4 right-4 w-8 h-8 rounded-full bg-stone-100 hover:bg-stone-200 text-taupe hover:text-ink flex items-center justify-center transition-colors cursor-pointer"
+            >
+              <X size={16} />
+            </button>
+
+            {/* Pulsing Animated Warning Icon */}
+            <div className="relative mx-auto w-20 h-20 flex items-center justify-center">
+              <div className="absolute inset-0 rounded-full bg-red-200 animate-ping opacity-50" />
+              <div className="relative w-20 h-20 rounded-full bg-gradient-to-br from-rose-500 to-red-600 text-white flex items-center justify-center shadow-lg shadow-red-500/20">
+                <AlertTriangle size={36} />
+              </div>
+            </div>
+
+            {/* Heading */}
+            <div className="space-y-1.5">
+              <span className="inline-block px-3 py-1 rounded-full bg-red-100 text-red-800 text-[10px] font-extrabold uppercase tracking-wider">
+                ✕ AI Review Verification Failed
+              </span>
+              <h3 className="font-display text-xl sm:text-2xl text-ink font-bold">
+                Screenshot Rejected by AI
+              </h3>
+            </div>
+
+            {/* Specific AI Rejection Reason Card */}
+            <div className="p-4 sm:p-5 bg-red-50/90 border border-red-200 rounded-2xl text-left space-y-2 text-xs shadow-inner">
+              <span className="font-bold text-red-900 flex items-center gap-1.5">
+                <ShieldAlert size={15} className="text-red-600 shrink-0" />
+                Why was your screenshot rejected?
+              </span>
+              <p className="text-red-800 leading-relaxed font-medium">
+                {aiFailureReason || "The uploaded image does not appear to be a real review screenshot from Amazon, Flipkart, or Google Reviews."}
+              </p>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="space-y-2.5 pt-1">
+              {/* Button 1: Watch Video */}
+              <button
+                type="button"
+                onClick={() => {
+                  setShowAiFailureModal(false);
+                  setShowVideoModal(true);
+                }}
+                className="w-full py-3.5 px-5 bg-gradient-to-r from-zari-deep via-zari to-zari-deep hover:brightness-110 text-ivory text-xs font-bold uppercase tracking-wider rounded-2xl shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer hover:scale-[1.02]"
+              >
+                <Play size={14} className="fill-ivory" />
+                <span>Watch Video Tutorial (How to Review)</span>
+              </button>
+
+              {/* Button 2: Dismiss & Re-upload */}
+              <button
+                type="button"
+                onClick={() => setShowAiFailureModal(false)}
+                className="w-full py-3 px-4 bg-stone-100 hover:bg-stone-200 text-ink text-xs font-bold rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                <RotateCcw size={13} />
+                <span>Upload Correct Screenshots</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Centered 'How to Review' Video Tutorial Modal */}
+      {showVideoModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-950/75 backdrop-blur-sm animate-fade-in">
+          <div className="relative w-full max-w-2xl bg-white rounded-3xl border border-line shadow-2xl overflow-hidden animate-scale-up text-ink">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-line bg-cream/30">
+              <div className="flex items-center gap-2.5">
+                <span className="w-8 h-8 rounded-full bg-zari/15 text-zari-deep flex items-center justify-center">
+                  <Video size={16} />
+                </span>
+                <div>
+                  <h3 className="font-display text-base sm:text-lg text-ink font-bold">
+                    {tutorialVideo.title || "How to Review & Claim ₹100 Gift Card"}
+                  </h3>
+                  <p className="text-[11px] text-taupe">Step-by-step video guide</p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowVideoModal(false)}
+                className="w-8 h-8 rounded-full bg-white hover:bg-stone-100 border border-line flex items-center justify-center text-taupe hover:text-ink transition-colors cursor-pointer"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Video Player Section */}
+            <div className="bg-stone-950 aspect-video relative flex items-center justify-center overflow-hidden">
+              {tutorialVideo.video_url ? (
+                tutorialVideo.video_url.includes("youtube.com") || tutorialVideo.video_url.includes("youtu.be") ? (
+                  <iframe
+                    src={getYouTubeEmbedUrl(tutorialVideo.video_url)}
+                    title="How to Review Video"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                    className="w-full h-full border-0"
+                  />
+                ) : (
+                  <video
+                    src={tutorialVideo.video_url}
+                    controls
+                    autoPlay
+                    playsInline
+                    className="w-full h-full object-contain"
+                  />
+                )
+              ) : (
+                <div className="p-8 text-center text-stone-300 space-y-3">
+                  <div className="w-14 h-14 rounded-full bg-white/10 flex items-center justify-center mx-auto text-zari">
+                    <Play size={24} className="fill-zari ml-1" />
+                  </div>
+                  <h4 className="font-bold text-sm text-ivory">How to Submit Your Review</h4>
+                  <p className="text-xs text-stone-400 max-w-md mx-auto leading-relaxed">
+                    1. Open Amazon or Flipkart & go to your delivered orders.<br />
+                    2. Submit a 5-star rating with positive feedback.<br />
+                    3. Upload 2 screenshots (Rating form & Submitted confirmation).<br />
+                    4. Enter your Order ID below to generate your ₹100 Gift Card instantly!
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Description & Action */}
+            <div className="p-5 sm:p-6 bg-white space-y-4">
+              <div className="space-y-1">
+                <span className="text-[10px] font-bold text-taupe uppercase tracking-wider block">Instructions:</span>
+                <p className="text-xs text-taupe leading-relaxed">
+                  {tutorialVideo.description || "Follow these simple steps: leave your positive review, take the 2 required screenshots with your Order ID, and claim your instant ₹100 Gift Card!"}
+                </p>
+              </div>
+
+              <div className="pt-2 flex items-center justify-end">
+                <button
+                  type="button"
+                  onClick={() => setShowVideoModal(false)}
+                  className="px-6 py-2.5 bg-gradient-to-r from-ink to-stone-900 hover:from-zari hover:to-zari-deep text-ivory text-xs font-bold uppercase tracking-wider rounded-xl shadow-md transition-all cursor-pointer"
+                >
+                  Got It, Start Claiming &rarr;
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Auth Modal Popup */}
       <AuthModal
         isOpen={showAuthModal}
@@ -454,6 +672,25 @@ export default function ClaimGiftCardPage() {
             <p className="text-sm sm:text-base text-taupe leading-relaxed max-w-2xl mx-auto">
               Share your positive review on Amazon, Flipkart, or Google Reviews to earn an instant ₹100 Gift Card redeemable into your wallet as cashback!
             </p>
+
+            {/* 'How to Review' Button */}
+            {tutorialVideo?.enabled !== false && (
+              <div className="pt-2 flex justify-center">
+                <button
+                  type="button"
+                  onClick={() => setShowVideoModal(true)}
+                  className="group relative inline-flex items-center gap-2.5 px-5 py-2.5 rounded-full bg-white/95 hover:bg-white text-ink border border-zari/40 hover:border-zari shadow-sm hover:shadow-md transition-all duration-300 font-bold text-xs cursor-pointer hover:scale-105"
+                >
+                  <span className="w-6 h-6 rounded-full bg-gradient-to-tr from-zari to-zari-deep text-ivory flex items-center justify-center shadow-xs group-hover:scale-110 transition-transform">
+                    <Play size={11} className="fill-ivory ml-0.5" />
+                  </span>
+                  <span className="tracking-wide">How to Review</span>
+                  <span className="text-[10px] uppercase font-extrabold px-2 py-0.5 rounded-full bg-zari/15 text-zari-deep">
+                    Watch Video
+                  </span>
+                </button>
+              </div>
+            )}
           </div>
         </Container>
       </section>
@@ -911,6 +1148,12 @@ export default function ClaimGiftCardPage() {
                 <div className="flex items-center justify-center gap-1.5 text-[11px] text-taupe">
                   <Clock size={12} className="text-zari" />
                   <span>Valid for 1 Year (Expires: {generatedCard.expires_at ? new Date(generatedCard.expires_at).toLocaleDateString("en-IN", { dateStyle: "medium" }) : "365 days from issue"})</span>
+                </div>
+
+                {/* Email Dispatched Confirmation Notice */}
+                <div className="flex items-center justify-center gap-1.5 p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-[11px] text-emerald-800 font-medium">
+                  <CheckCircle2 size={14} className="text-emerald-600 shrink-0" />
+                  <span>✉️ Voucher code &amp; 1-click redemption link sent to your email!</span>
                 </div>
 
                 {/* Action 1: Manual Copy Button */}

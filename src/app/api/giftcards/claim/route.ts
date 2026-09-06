@@ -209,7 +209,9 @@ export async function POST(request: Request) {
 
     if (!aiVerification.isValid) {
       return NextResponse.json({
+        isAiVerificationFailed: true,
         error: `AI Verification Failed: ${aiVerification.reason || "The uploaded screenshot does not appear to be a valid review. Please ensure you upload clear screenshot(s) of your submitted review."}`,
+        aiReason: aiVerification.reason || "Uploaded image is not a recognized review screenshot.",
       }, { status: 400 });
     }
 
@@ -270,10 +272,27 @@ export async function POST(request: Request) {
 
     // 8. Send Gift Card Email to the User
     try {
-      const recipientEmail = user.email;
-      const recipientName = user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split("@")[0] || "Valued Customer";
+      let recipientEmail = user.email;
+      let recipientName = user.user_metadata?.full_name || user.user_metadata?.name;
+
+      if (!recipientEmail || !recipientName) {
+        const { data: profile } = await serviceClient
+          .from("profiles")
+          .select("email, full_name")
+          .eq("id", user.id)
+          .maybeSingle();
+
+        if (profile) {
+          if (!recipientEmail && profile.email) recipientEmail = profile.email;
+          if (!recipientName && profile.full_name) recipientName = profile.full_name;
+        }
+      }
+
+      recipientName = recipientName || recipientEmail?.split("@")[0] || "Valued Customer";
+
       if (recipientEmail) {
-        sendEmail({
+        console.log(`[giftcards/claim] Sending gift card email to ${recipientEmail} for code ${giftCard.code}...`);
+        await sendEmail({
           to: recipientEmail,
           subject: `🎉 Here is your ₹100 Gift Card Code (${giftCard.code}) — JAI SRI RAM TEXTILES`,
           html: giftCardIssuedEmailHtml({
@@ -283,12 +302,13 @@ export async function POST(request: Request) {
             platform,
             expiresAt: giftCard.expires_at,
           }),
-        }).catch((emailErr) => {
-          console.error("[giftcards/claim] Background email dispatch error:", emailErr);
         });
+        console.log(`[giftcards/claim] Gift card email sent successfully to ${recipientEmail}`);
+      } else {
+        console.warn("[giftcards/claim] No recipient email found for user ID:", user.id);
       }
     } catch (emailErr) {
-      console.error("[giftcards/claim] Failed to trigger gift card email:", emailErr);
+      console.error("[giftcards/claim] Failed to send gift card email:", emailErr);
     }
 
     return NextResponse.json({
