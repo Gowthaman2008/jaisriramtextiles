@@ -202,6 +202,17 @@ export async function GET(request: Request) {
       })
     );
 
+    // 6.6. Fetch user gift cards (generated, assigned, or redeemed by user)
+    const { data: giftCards, error: giftCardsError } = await supabase
+      .from("gift_cards")
+      .select("*")
+      .or(`created_by.eq.${profile.id},user_id.eq.${profile.id},redeemed_by.eq.${profile.id}`)
+      .order("created_at", { ascending: false });
+
+    if (giftCardsError) {
+      console.error("Fetch user gift cards error:", giftCardsError);
+    }
+
     // 7. Compute lifetime stats
     const ordersList = orders || [];
     const lifetimeOrders = ordersList.length;
@@ -220,6 +231,7 @@ export async function GET(request: Request) {
       addresses: addresses || [],
       orders: ordersList,
       tickets: ticketsWithReplies,
+      giftCards: giftCards || [],
       sessions: sessionList,
       usage: {
         totalSessions,

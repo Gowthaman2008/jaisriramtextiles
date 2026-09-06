@@ -12,6 +12,7 @@ import { WishlistProvider } from "@/components/providers/wishlist-provider";
 import { NotificationProvider } from "@/components/providers/notification-provider";
 import { AIChatbot } from "@/components/layout/ai-chatbot";
 import { BUSINESS } from "@/lib/constants";
+import { AuthModalProvider } from "@/components/providers/auth-modal-provider";
 import { ProfilePrompt } from "@/components/providers/profile-prompt";
 import { Analytics } from "@vercel/analytics/react";
 
@@ -92,17 +93,19 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
         <SmoothScroll>
           <NotificationProvider>
-            <WishlistProvider>
-              <CartProvider>
-                <AnalyticsTracker />
-                <AnnouncementBar />
-                <Navbar />
-                <main>{children}</main>
-                <ConditionalFooter />
-                <AIChatbot />
-                <ProfilePrompt />
-              </CartProvider>
-            </WishlistProvider>
+            <AuthModalProvider>
+              <WishlistProvider>
+                <CartProvider>
+                  <AnalyticsTracker />
+                  <AnnouncementBar />
+                  <Navbar />
+                  <main>{children}</main>
+                  <ConditionalFooter />
+                  <AIChatbot />
+                  <ProfilePrompt />
+                </CartProvider>
+              </WishlistProvider>
+            </AuthModalProvider>
           </NotificationProvider>
         </SmoothScroll>
         {/* Phase 2: pass eligible={user has 0 completed orders} */}

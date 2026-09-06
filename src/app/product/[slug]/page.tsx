@@ -9,6 +9,7 @@ import { formatINR } from "@/lib/utils";
 import { getProductBySlug, getProductReviews, getAllProductSlugs } from "@/lib/supabase/queries";
 import { ProductActions } from "@/components/product/product-actions";
 import { ProductGallery } from "@/components/product/product-gallery";
+import { ProductAuthGate } from "@/components/product/product-auth-gate";
 import { ChevronLeft } from "lucide-react";
 
 type Props = { params: Promise<{ slug: string }> };
@@ -220,6 +221,10 @@ export default async function ProductPage({ params }: Props) {
             Bulk Orders
           </Button>
         </div>
+
+        {/* Auth Gate Banner for unauthenticated visitors */}
+        <ProductAuthGate slug={product.slug} productName={product.name} />
+
         <div className="grid gap-6 sm:gap-10 lg:grid-cols-2 lg:gap-16 w-full min-w-0">
           {/* Gallery */}
           <div className="w-full min-w-0 overflow-hidden">

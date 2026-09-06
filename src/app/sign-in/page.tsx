@@ -174,7 +174,7 @@ function SignInPageContent() {
 
           <p className="text-center text-sm text-taupe">
             No account?{" "}
-            <Link href="/sign-up" className="font-medium text-zari-deep hover:underline">
+            <Link href={next ? `/sign-up?next=${encodeURIComponent(next)}` : "/sign-up"} className="font-medium text-zari-deep hover:underline">
               Create one
             </Link>
           </p>

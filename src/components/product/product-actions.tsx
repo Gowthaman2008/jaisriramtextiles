@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useCart } from "@/components/providers/cart-provider";
+import { useAuth } from "@/components/providers/auth-modal-provider";
 import { Button } from "@/components/ui/button";
 import { Plus, Minus, ShoppingBag, Check, Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -30,6 +31,7 @@ type ProductActionsProps = {
 export function ProductActions({ product }: ProductActionsProps) {
   const { addToCart } = useCart();
   const { toggleWishlist, isWished } = useWishlist();
+  const { user, requireAuth } = useAuth();
   const wished = isWished(product.id);
   const variants = product.variants || [];
 
@@ -65,9 +67,36 @@ export function ProductActions({ product }: ProductActionsProps) {
 
   function handleAddToBag() {
     if (isOutOfStock) return;
+    if (!user) {
+      requireAuth({
+        title: "Sign In to Add to Cart",
+        subtitle: `Please sign in or create an account to add ${product.name} to your cart.`,
+        nextUrl: `/product/${product.slug}`,
+        onSuccess: () => {
+          addToCart(product, quantity, matchedVariant);
+          setAdded(true);
+          setTimeout(() => setAdded(false), 2000);
+        },
+      });
+      return;
+    }
     addToCart(product, quantity, matchedVariant);
     setAdded(true);
     setTimeout(() => setAdded(false), 2000);
+  }
+
+  function handleWishlistToggle() {
+    if (!user) {
+      requireAuth({
+        title: "Sign In for Wishlist",
+        subtitle: `Please sign in to save ${product.name} to your wishlist.`,
+        onSuccess: () => {
+          toggleWishlist(product as any);
+        },
+      });
+      return;
+    }
+    toggleWishlist(product as any);
   }
 
   return (
@@ -193,7 +222,7 @@ export function ProductActions({ product }: ProductActionsProps) {
 
         {/* Wishlist Toggle Button */}
         <button
-          onClick={() => toggleWishlist(product as any)}
+          onClick={handleWishlistToggle}
           className={cn(
             "h-[52px] w-[52px] rounded-full border grid place-items-center transition-all duration-200 cursor-pointer shadow-soft shrink-0",
             wished

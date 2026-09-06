@@ -24,6 +24,7 @@ interface AuthModalProps {
   onSuccess: (user: any) => void;
   title?: string;
   subtitle?: string;
+  nextUrl?: string;
 }
 
 function GoogleIcon() {
@@ -43,6 +44,7 @@ export function AuthModal({
   onSuccess,
   title = "Sign In to Claim ₹100 Gift Card",
   subtitle = "Please sign in or create an account so we can link your ₹100 gift card code.",
+  nextUrl,
 }: AuthModalProps) {
   const [tab, setTab] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
@@ -62,7 +64,8 @@ export function AuthModal({
     setGoogleLoading(true);
     setError("");
     const supabase = createClient();
-    const callbackUrl = typeof window !== "undefined" ? window.location.href : "/";
+    const nextPath = nextUrl || (typeof window !== "undefined" ? window.location.pathname + window.location.search : "/");
+    const callbackUrl = `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}`;
     const { error: authError } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo: callbackUrl },
@@ -486,6 +489,15 @@ export function AuthModal({
               </button>
             </form>
           )}
+
+          <div className="pt-2 text-center border-t border-line/60">
+            <a
+              href={`/sign-in?next=${encodeURIComponent(nextUrl || (typeof window !== "undefined" ? window.location.pathname + window.location.search : "/"))}`}
+              className="text-[11px] text-taupe hover:text-ink underline transition-colors"
+            >
+              Prefer dedicated page? Open Sign In page &rarr;
+            </a>
+          </div>
             </>
           )}
         </div>

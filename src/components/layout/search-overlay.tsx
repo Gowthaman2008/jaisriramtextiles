@@ -7,6 +7,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Search, X, Loader2, ShoppingBag } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { formatINR } from "@/lib/utils";
+import { useAuth } from "@/components/providers/auth-modal-provider";
 
 type SearchResult = {
   id: string;
@@ -18,6 +19,7 @@ type SearchResult = {
 };
 
 export function SearchOverlay({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { user, requireAuth } = useAuth();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
@@ -149,7 +151,20 @@ export function SearchOverlay({ open, onClose }: { open: boolean; onClose: () =>
                       <Link
                         key={p.id}
                         href={`/product/${p.slug}`}
-                        onClick={onClose}
+                        onClick={(e) => {
+                          onClose();
+                          if (!user) {
+                            e.preventDefault();
+                            requireAuth({
+                              title: "Sign In to View Product",
+                              subtitle: `Please sign in to view ${p.name}.`,
+                              nextUrl: `/product/${p.slug}`,
+                              onSuccess: () => {
+                                window.location.href = `/product/${p.slug}`;
+                              },
+                            });
+                          }
+                        }}
                         className="flex items-center gap-3 p-3.5 hover:bg-cream/50 transition-colors"
                       >
                         <div className="relative w-14 h-14 rounded-lg overflow-hidden bg-cream border border-line shrink-0">

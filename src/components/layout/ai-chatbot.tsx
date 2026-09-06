@@ -57,7 +57,37 @@ export function AIChatbot() {
   const pathname = usePathname();
 
   const [isOpen, setIsOpen] = useState(false);
+  const [isBotHidden, setIsBotHidden] = useState(false);
   const [dbCategories, setDbCategories] = useState<any[]>([]);
+
+  useEffect(() => {
+    function checkHidden() {
+      if (typeof window === "undefined") return;
+      const isContactRoute = pathname === "/contact" || pathname === "/support";
+      const params = new URLSearchParams(window.location.search);
+      const isAccountContact =
+        pathname === "/account" &&
+        (params.get("tab") === "contact" || params.get("tab") === "support");
+      const isDomFlagged =
+        document.body.dataset.hideAiBot === "true" ||
+        !!document.querySelector("[data-support-desk='true']");
+
+      setIsBotHidden(isContactRoute || isAccountContact || isDomFlagged);
+    }
+
+    checkHidden();
+
+    window.addEventListener("popstate", checkHidden);
+    window.addEventListener("ai-bot-visibility-change", checkHidden);
+    const observer = new MutationObserver(checkHidden);
+    observer.observe(document.body, { attributes: true, childList: true, subtree: true });
+
+    return () => {
+      window.removeEventListener("popstate", checkHidden);
+      window.removeEventListener("ai-bot-visibility-change", checkHidden);
+      observer.disconnect();
+    };
+  }, [pathname]);
 
   useEffect(() => {
     async function loadChatbotCategories() {
@@ -103,10 +133,12 @@ export function AIChatbot() {
     if (text.includes("vanakkam! i am your")) {
       return [
         { label: "🛍️ Explore Products", action: "explore_products" },
+        { label: "🎁 ₹100 Gift Card", href: "/claim-giftcard" },
         { label: "📦 Track Orders", action: "track_orders" },
         { label: "💰 Wallet Balance", action: "wallet_balance" },
+        { label: "🏭 Bulk Orders", href: "/bulk-orders" },
+        { label: "🎧 Support Desk", href: "/account?tab=support" },
         { label: "🛡️ Return Policy", query: "What is your return and replacement policy?" },
-        { label: "💬 Contact Support", action: "support" },
         { label: "❓ Other", action: "other" }
       ];
     }
@@ -170,7 +202,7 @@ export function AIChatbot() {
     }
 
     if (m.orderNumber) {
-      const opts = [];
+      const opts: any[] = [];
       if (m.trackingUrl) {
         opts.push({ label: "🌐 Track Courier", action: "track_courier", trackingUrl: m.trackingUrl });
       }
@@ -185,10 +217,30 @@ export function AIChatbot() {
         { label: "🏠 Main Menu", action: "main_menu" }
       ];
     }
+
+    const dynamicChips: any[] = [];
+    if (text.includes("gift card") || text.includes("review") || text.includes("claim")) {
+      dynamicChips.push({ label: "🎁 Claim ₹100 Gift Card", href: "/claim-giftcard" });
+    }
+    if (text.includes("wallet") || text.includes("cashback")) {
+      dynamicChips.push({ label: "💰 Open Wallet", href: "/account?tab=wallet" });
+    }
+    if (text.includes("shop") || text.includes("dhoti") || text.includes("towel") || text.includes("veshti") || text.includes("scarf") || text.includes("bag")) {
+      dynamicChips.push({ label: "🛍️ Explore Shop", href: "/shop" });
+    }
+    if (text.includes("bulk") || text.includes("wholesale") || text.includes("custom")) {
+      dynamicChips.push({ label: "🏭 Bulk Orders", href: "/bulk-orders" });
+    }
+    if (text.includes("order") || text.includes("track") || text.includes("delivery") || text.includes("shipping")) {
+      dynamicChips.push({ label: "📦 My Orders", href: "/account?tab=orders" });
+    }
+    if (text.includes("support") || text.includes("ticket") || text.includes("contact")) {
+      dynamicChips.push({ label: "🎧 Support Desk", href: "/account?tab=support" });
+    }
+
+    dynamicChips.push({ label: "🏠 Main Menu", action: "main_menu" });
     
-    return [
-      { label: "🏠 Main Menu", action: "main_menu" }
-    ];
+    return dynamicChips;
   }
 
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -316,6 +368,10 @@ export function AIChatbot() {
   }
 
   async function handleOptionClick(opt: any) {
+    if (opt.href) {
+      window.location.href = opt.href;
+      return;
+    }
     if (opt.action === "support") {
       handleChatNow();
     } else if (opt.action === "wallet_balance") {
@@ -549,7 +605,7 @@ ${itemsList || "- No items listed"}`;
     }
   }
 
-  if (pathname?.startsWith("/admin")) {
+  if (pathname?.startsWith("/admin") || (isBotHidden && !isOpen)) {
     return null;
   }
 
@@ -780,15 +836,58 @@ function parseMarkdown(text: string) {
 }
 
 function renderInlineMarkdown(text: string) {
-  const parts = text.split(/(\*\*.*?\*\*)/g);
+  const pattern = /(\[.*?\]\(.*?\)|\*\*.*?\*\*|`.*?`|\*.*?\*)/g;
+  const parts = text.split(pattern);
+
   return parts.map((part, idx) => {
-    if (part.startsWith("**") && part.endsWith("**")) {
+    if (!part) return null;
+
+    // Link: [text](url)
+    if (part.startsWith("[") && part.includes("](") && part.endsWith(")")) {
+      const match = part.match(/^\[(.*?)\]\((.*?)\)$/);
+      if (match) {
+        const [, linkText, href] = match;
+        return (
+          <a
+            key={idx}
+            href={href}
+            target={href.startsWith("http") ? "_blank" : undefined}
+            rel={href.startsWith("http") ? "noopener noreferrer" : undefined}
+            className="text-zari-deep underline hover:text-ink font-semibold transition-colors duration-150 inline-flex items-center gap-0.5"
+          >
+            {linkText}
+          </a>
+        );
+      }
+    }
+
+    // Bold: **text**
+    if (part.startsWith("**") && part.endsWith("**") && part.length >= 4) {
       return (
-        <strong key={idx} className="font-bold">
+        <strong key={idx} className="font-bold text-ink">
           {part.slice(2, -2)}
         </strong>
       );
     }
+
+    // Code: `code`
+    if (part.startsWith("`") && part.endsWith("`") && part.length >= 2) {
+      return (
+        <code key={idx} className="px-1.5 py-0.5 rounded bg-cream/70 text-zari-deep font-mono text-[11px] border border-zari/20">
+          {part.slice(1, -1)}
+        </code>
+      );
+    }
+
+    // Italic: *text*
+    if (part.startsWith("*") && part.endsWith("*") && part.length >= 2) {
+      return (
+        <em key={idx} className="italic text-ink/90">
+          {part.slice(1, -1)}
+        </em>
+      );
+    }
+
     return part;
   });
 }

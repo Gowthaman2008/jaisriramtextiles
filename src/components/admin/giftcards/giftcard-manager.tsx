@@ -136,6 +136,18 @@ export function GiftCardManager() {
     }
   }
 
+  // Lock background body scroll when modals are open
+  useEffect(() => {
+    const isAnyModalOpen = !!selectedScreenshotCard || showCreateModal;
+    if (isAnyModalOpen) {
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = originalOverflow;
+      };
+    }
+  }, [selectedScreenshotCard, showCreateModal]);
+
   // Copy code to clipboard
   async function handleCopy(code: string) {
     try {
@@ -726,13 +738,16 @@ export function GiftCardManager() {
 
       {/* ================= COMPREHENSIVE GIFT CARD & USER INSPECTOR MODAL ================= */}
       {selectedScreenshotCard && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink/80 backdrop-blur-md animate-fade-in">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-ink/80 backdrop-blur-md animate-fade-in overflow-y-auto"
+          onClick={() => setSelectedScreenshotCard(null)}
+        >
           <div
-            className="relative w-full max-w-3xl bg-white rounded-3xl shadow-2xl border border-line overflow-hidden animate-scale-up max-h-[92vh] flex flex-col"
+            className="relative w-full max-w-3xl bg-white rounded-3xl shadow-2xl border border-line overflow-hidden animate-scale-up max-h-[92vh] flex flex-col my-auto"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
-            <div className="bg-ink text-ivory p-5 sm:p-6 flex items-center justify-between border-b border-zari/30">
+            <div className="shrink-0 bg-ink text-ivory p-5 sm:p-6 flex items-center justify-between border-b border-zari/30">
               <div className="flex items-center gap-3">
                 <span className="w-11 h-11 rounded-2xl bg-zari/20 text-zari-soft flex items-center justify-center shrink-0 shadow-inner">
                   <Gift size={22} />
@@ -763,14 +778,14 @@ export function GiftCardManager() {
               </div>
               <button
                 onClick={() => setSelectedScreenshotCard(null)}
-                className="text-ivory/70 hover:text-white bg-white/10 hover:bg-white/20 rounded-full p-2 transition-colors cursor-pointer"
+                className="text-ivory/70 hover:text-white bg-white/10 hover:bg-white/20 rounded-full p-2 transition-colors cursor-pointer shrink-0"
               >
                 <X size={18} />
               </button>
             </div>
 
             {/* Modal Body */}
-            <div className="p-6 overflow-y-auto space-y-6 flex-1 bg-cream/15">
+            <div className="flex-1 min-h-0 p-5 sm:p-6 overflow-y-auto overscroll-contain space-y-6 bg-cream/15">
               {/* 1. Gift Card Code & Value Box */}
               <div className="bg-gradient-to-r from-cream via-white to-cream p-4 rounded-2xl border border-zari/30 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="space-y-1">
@@ -1046,7 +1061,7 @@ export function GiftCardManager() {
             </div>
 
             {/* Modal Footer */}
-            <div className="p-4 bg-cream/30 border-t border-line flex items-center justify-between gap-3">
+            <div className="shrink-0 p-4 bg-cream/30 border-t border-line flex items-center justify-between gap-3">
               <div className="flex items-center gap-2">
                 <span className="text-xs text-taupe font-medium">
                   Current Status:
@@ -1069,12 +1084,15 @@ export function GiftCardManager() {
 
       {/* ================= CREATE GIFT CARD MODAL ================= */}
       {showCreateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink/75 backdrop-blur-sm animate-fade-in">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-ink/75 backdrop-blur-sm animate-fade-in overflow-y-auto"
+          onClick={() => setShowCreateModal(false)}
+        >
           <div
-            className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-line overflow-hidden animate-scale-up"
+            className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-line overflow-hidden animate-scale-up max-h-[90vh] flex flex-col my-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="bg-ink text-ivory p-5 flex items-center justify-between border-b border-zari/40">
+            <div className="shrink-0 bg-ink text-ivory p-5 flex items-center justify-between border-b border-zari/40">
               <div className="flex items-center gap-2">
                 <span className="p-1.5 rounded-lg bg-zari/20 text-zari-soft">
                   <Plus size={18} />
@@ -1086,13 +1104,13 @@ export function GiftCardManager() {
               </div>
               <button
                 onClick={() => setShowCreateModal(false)}
-                className="text-ivory/70 hover:text-white bg-white/10 hover:bg-white/20 rounded-full p-1.5 transition-colors"
+                className="text-ivory/70 hover:text-white bg-white/10 hover:bg-white/20 rounded-full p-1.5 transition-colors cursor-pointer shrink-0"
               >
                 <X size={18} />
               </button>
             </div>
 
-            <form onSubmit={handleCreateCard} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+            <form onSubmit={handleCreateCard} className="flex-1 min-h-0 p-6 space-y-4 overflow-y-auto overscroll-contain">
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[10px] font-bold text-taupe uppercase tracking-wider mb-1">

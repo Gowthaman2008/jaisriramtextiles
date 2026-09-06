@@ -10,6 +10,7 @@ import { formatINR, cn } from "@/lib/utils";
 import type { Product } from "@/lib/types";
 import { useWishlist } from "@/components/providers/wishlist-provider";
 import { useCart } from "@/components/providers/cart-provider";
+import { useAuth } from "@/components/providers/auth-modal-provider";
 import { isVideoMediaUrl } from "@/components/home/hero-carousel";
 
 const badgeStyles: Record<string, string> = {
@@ -23,6 +24,7 @@ export function ProductCard({ product, index = 0 }: { product: Product; index?: 
   const [loaded, setLoaded] = useState(false);
   const { toggleWishlist, isWished } = useWishlist();
   const { addToCart, cart, updateQuantity } = useCart();
+  const { user, requireAuth } = useAuth();
   const wished = isWished(product.id);
   const isVideo = isVideoMediaUrl(product.image);
 
@@ -40,8 +42,48 @@ export function ProductCard({ product, index = 0 }: { product: Product; index?: 
               ((!item.variant && !defaultVariant) || (item.variant?.sku === defaultVariant?.sku))
   );
 
+  const handleProductClick = (e: React.MouseEvent) => {
+    if (!user) {
+      e.preventDefault();
+      requireAuth({
+        title: "Sign In to View Product",
+        subtitle: `Please sign in or create an account to view ${product.name} and explore handloom details.`,
+        nextUrl: `/product/${product.slug}`,
+        onSuccess: () => {
+          window.location.href = `/product/${product.slug}`;
+        },
+      });
+    }
+  };
+
   const handleQuickAdd = () => {
+    if (!user) {
+      requireAuth({
+        title: "Sign In to Add to Cart",
+        subtitle: `Please sign in or create an account to add ${product.name} to your cart.`,
+        nextUrl: `/product/${product.slug}`,
+        onSuccess: () => {
+          addToCart(product, 1, defaultVariant);
+        },
+      });
+      return;
+    }
     addToCart(product, 1, defaultVariant);
+  };
+
+  const handleWishlistClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (!user) {
+      requireAuth({
+        title: "Sign In for Wishlist",
+        subtitle: `Please sign in to save ${product.name} to your wishlist.`,
+        onSuccess: () => {
+          toggleWishlist(product);
+        },
+      });
+      return;
+    }
+    toggleWishlist(product);
   };
 
   return (
@@ -51,7 +93,7 @@ export function ProductCard({ product, index = 0 }: { product: Product; index?: 
       transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1], delay: (index % 4) * 0.04 }}
       className="group relative flex flex-col"
     >
-      <Link href={`/product/${product.slug}`} className="relative block">
+      <Link href={`/product/${product.slug}`} onClick={handleProductClick} className="relative block">
         <div className="zari-frame relative aspect-[4/5] overflow-hidden rounded-card bg-cream">
           {!loaded && <div className="skeleton absolute inset-0 rounded-card" />}
           {isVideo ? (
@@ -163,7 +205,7 @@ export function ProductCard({ product, index = 0 }: { product: Product; index?: 
       <button
         aria-label={wished ? "Remove from wishlist" : "Add to wishlist"}
         aria-pressed={wished}
-        onClick={() => toggleWishlist(product)}
+        onClick={handleWishlistClick}
         className="absolute right-3 top-3 grid h-9 w-9 place-items-center rounded-full bg-ivory/85 text-ink backdrop-blur transition hover:text-danger"
       >
         <Heart size={16} className={cn(wished && "fill-danger text-danger")} />
@@ -174,6 +216,7 @@ export function ProductCard({ product, index = 0 }: { product: Product; index?: 
         <span className="eyebrow text-[10px]">{product.categoryLabel}</span>
         <Link
           href={`/product/${product.slug}`}
+          onClick={handleProductClick}
           className="line-clamp-1 font-display text-[17px] leading-tight text-ink transition-colors hover:text-zari-deep"
         >
           {product.name}

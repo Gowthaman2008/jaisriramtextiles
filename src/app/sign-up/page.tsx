@@ -1,13 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Container } from "@/components/ui/container";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 import { Eye, EyeOff } from "lucide-react";
 
-export default function SignUpPage() {
+function SignUpPageContent() {
+  const searchParams = useSearchParams();
+  const next = searchParams.get("next") || "";
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -83,6 +87,8 @@ export default function SignUpPage() {
     }
   }
 
+  const signInHref = next ? `/sign-in?next=${encodeURIComponent(next)}` : "/sign-in";
+
   if (done) {
     return (
       <div className="flex min-h-[calc(100vh-76px)] items-center py-16">
@@ -94,7 +100,7 @@ export default function SignUpPage() {
               account, then sign in.
             </p>
             <div className="mt-6">
-              <Button href="/sign-in" variant="gold" size="md">
+              <Button href={signInHref} variant="gold" size="md">
                 Go to sign in
               </Button>
             </div>
@@ -194,12 +200,27 @@ export default function SignUpPage() {
 
           <p className="text-center text-sm text-taupe">
             Already have an account?{" "}
-            <Link href="/sign-in" className="font-medium text-zari-deep hover:underline">
+            <Link href={signInHref} className="font-medium text-zari-deep hover:underline">
               Sign in
             </Link>
           </p>
         </div>
       </Container>
     </div>
+  );
+}
+
+export default function SignUpPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-[70vh] flex-col items-center justify-center bg-ivory">
+          <div className="animate-spin text-zari w-10 h-10 mb-3" />
+          <p className="font-display text-lg text-ink">Loading...</p>
+        </div>
+      }
+    >
+      <SignUpPageContent />
+    </Suspense>
   );
 }
