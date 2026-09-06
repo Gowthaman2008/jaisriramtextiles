@@ -121,9 +121,16 @@ function SlideVideo({
   useEffect(() => {
     const el = videoRef.current;
     if (!el) return;
+    el.muted = isMuted;
+  }, [isMuted]);
+
+  useEffect(() => {
+    const el = videoRef.current;
+    if (!el) return;
 
     if (isActive) {
       el.currentTime = 0;
+      el.muted = isMuted;
       const playPromise = el.play();
       if (playPromise !== undefined) {
         playPromise.catch(() => {
@@ -134,14 +141,15 @@ function SlideVideo({
       }
     } else {
       el.pause();
+      el.muted = true; // Hard mute when inactive
     }
-  }, [isActive]);
+  }, [isActive, isMuted]);
 
   return (
     <video
       ref={videoRef}
       src={src}
-      autoPlay
+      autoPlay={isActive}
       muted={isMuted}
       playsInline
       loop
@@ -169,9 +177,17 @@ export function HeroCarousel({ dbSlides }: { dbSlides?: any[] }) {
   const [[index, dir], setState] = useState<[number, number]>([0, 1]);
   const [isMuted, setIsMuted] = useState(true);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(false);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
   const mobileScrollRef = useRef<HTMLDivElement>(null);
   const isMobileInteracting = useRef(false);
+
+  useEffect(() => {
+    const check = () => setIsDesktop(window.innerWidth >= 768);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
 
   useEffect(() => {
     if (dbSlides) {
@@ -356,7 +372,7 @@ export function HeroCarousel({ dbSlides }: { dbSlides?: any[] }) {
           </div>
 
           {/* ========================================================================= */}
-          {/* 1. MOBILE VIEW: COMPACT AMAZON CARD CAROUSEL WITH SIDE INSET & PEEK */}
+          {/* 1. MOBILE VIEW: EXACT AMAZON PORTRAIT CARD CAROUSEL (72vw width, 410px height) */}
           {/* ========================================================================= */}
           <div className="block md:hidden">
             <div
@@ -383,13 +399,13 @@ export function HeroCarousel({ dbSlides }: { dbSlides?: any[] }) {
                       if (!isActive) go(idx, idx > index ? 1 : -1);
                     }}
                     className={cn(
-                      "w-[80vw] max-w-[310px] shrink-0 snap-start h-[330px] rounded-2xl overflow-hidden border border-ink/10 shadow-md relative bg-stone-900 transition-all duration-300",
+                      "w-[72vw] max-w-[290px] shrink-0 snap-start h-[410px] sm:h-[440px] rounded-2xl overflow-hidden border border-ink/10 shadow-md relative bg-stone-900 transition-all duration-300",
                       isActive ? "ring-1.5 ring-zari/40 shadow-lg" : "opacity-85"
                     )}
                   >
                     {/* Slide Background Media */}
                     <div className="absolute inset-0">
-                      {sIsVideo ? (
+                      {sIsVideo && isActive && !isDesktop ? (
                         <SlideVideo
                           src={s.image}
                           isActive={isActive}
@@ -402,64 +418,63 @@ export function HeroCarousel({ dbSlides }: { dbSlides?: any[] }) {
                           alt={s.title}
                           fill
                           priority={idx === 0}
-                          sizes="80vw"
+                          sizes="75vw"
                           className="object-cover"
                         />
                       )}
 
                       {/* Amazon-style High-Contrast Scrim Gradient */}
-                      <div className="absolute inset-0 bg-gradient-to-t from-ink/95 via-ink/50 to-ink/20" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-ink/95 via-ink/40 to-ink/20" />
                       <div className="absolute inset-0 bg-weave opacity-20 mix-blend-multiply" />
                     </div>
 
-                    {/* Card Content Overlay */}
+                    {/* Card Content Overlay: Top Title/Eyebrow + Bottom CTA (Amazon Layout) */}
                     <div className="relative z-10 flex flex-col justify-between h-full p-4 text-white">
-                      {/* Top: Eyebrow Pill */}
-                      <div>
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-zari/25 text-zari-soft text-[10px] font-bold tracking-wider uppercase backdrop-blur-md border border-zari/40 shadow-xs">
-                          <Sparkles className="w-2.5 h-2.5 text-zari-soft" />
-                          {s.eyebrow}
-                        </span>
-                      </div>
-
-                      {/* Bottom Section: Title, Subtitle & CTA */}
+                      {/* Top Section: Eyebrow + Bold Title + Subtitle */}
                       <div className="space-y-2">
+                        <div>
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-zari/25 text-zari-soft text-[10px] font-bold tracking-wider uppercase backdrop-blur-md border border-zari/40 shadow-xs">
+                            <Sparkles className="w-2.5 h-2.5 text-zari-soft" />
+                            {s.eyebrow}
+                          </span>
+                        </div>
+
                         {/* Title */}
-                        <h2 className="font-display text-xl font-bold text-white leading-tight drop-shadow-md line-clamp-2">
+                        <h2 className="font-display text-2xl font-black text-white leading-tight drop-shadow-md">
                           {s.title}
                         </h2>
 
                         {/* Subtitle */}
-                        <p className="text-[11px] text-white/85 leading-snug line-clamp-2 font-medium">
+                        <p className="text-xs text-white/85 leading-snug line-clamp-3 font-medium">
                           {s.subtitle}
                         </p>
+                      </div>
 
-                        {/* CTA Button + Sound Toggle */}
-                        <div className="pt-1 flex items-center gap-2">
-                          <Button
-                            variant="gold"
-                            size="sm"
-                            href={s.cta.href}
-                            className="rounded-full shadow-md text-xs font-bold px-3.5 py-1.5 h-8"
+                      {/* Bottom Section: CTA Button + Sound Toggle */}
+                      <div className="pt-2 flex items-center gap-2">
+                        <Button
+                          variant="gold"
+                          size="sm"
+                          href={s.cta.href}
+                          className="rounded-full shadow-md text-xs font-bold px-4 py-2 h-8"
+                        >
+                          {s.cta.label}
+                          <ArrowRight size={13} />
+                        </Button>
+
+                        {sIsVideo && isActive && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setIsMuted((prev) => !prev);
+                            }}
+                            aria-label={isMuted ? "Unmute video" : "Mute video"}
+                            className="p-1.5 rounded-full border border-white/30 bg-black/60 text-white backdrop-blur text-xs font-semibold hover:border-zari transition shadow-sm"
                           >
-                            {s.cta.label}
-                            <ArrowRight size={13} />
-                          </Button>
-
-                          {sIsVideo && isActive && (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setIsMuted((prev) => !prev);
-                              }}
-                              aria-label={isMuted ? "Unmute video" : "Mute video"}
-                              className="p-1.5 rounded-full border border-white/30 bg-black/60 text-white backdrop-blur text-xs font-semibold hover:border-zari transition shadow-sm"
-                            >
-                              {isMuted ? <VolumeX size={13} /> : <Volume2 size={13} />}
-                            </button>
-                          )}
-                        </div>
+                            {isMuted ? <VolumeX size={14} /> : <Volume2 size={14} />}
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -491,7 +506,7 @@ export function HeroCarousel({ dbSlides }: { dbSlides?: any[] }) {
                     exit={{ opacity: 0 }}
                     transition={{ duration: reduce ? 0.3 : 0.8, ease: [0.22, 1, 0.36, 1] }}
                   >
-                    {isVideo ? (
+                    {isVideo && isDesktop ? (
                       <SlideVideo
                         key={slide.image}
                         src={slide.image}
