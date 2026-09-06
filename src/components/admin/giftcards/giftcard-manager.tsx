@@ -321,18 +321,18 @@ export function GiftCardManager() {
   return (
     <div className="space-y-6 max-w-full min-w-0">
       {/* Sub-Tab Navigation Switcher */}
-      <div className="flex items-center gap-2 border-b border-line pb-3 overflow-x-auto whitespace-nowrap">
+      <div className="flex items-center gap-2 border-b border-line pb-3 overflow-x-auto whitespace-nowrap scrollbar-none">
         <button
           type="button"
           onClick={() => setSubTab("cards")}
-          className={`px-4 py-2.5 rounded-2xl font-bold text-xs flex items-center gap-2 transition-all cursor-pointer ${
+          className={`shrink-0 whitespace-nowrap px-4 py-2.5 rounded-2xl font-bold text-xs flex items-center gap-2 transition-all cursor-pointer ${
             subTab === "cards"
               ? "bg-ink text-ivory shadow-sm"
               : "bg-white border border-line text-taupe hover:text-ink"
           }`}
         >
           <Gift size={16} className={subTab === "cards" ? "text-zari" : ""} />
-          <span>Gift Card Registry & Review Submissions</span>
+          <span>Gift Card Registry &amp; Review Submissions</span>
           <span className="px-2 py-0.5 rounded-full text-[10px] bg-white/20 font-mono">
             {cards.length}
           </span>
@@ -341,14 +341,14 @@ export function GiftCardManager() {
         <button
           type="button"
           onClick={() => setSubTab("orders")}
-          className={`px-4 py-2.5 rounded-2xl font-bold text-xs flex items-center gap-2 transition-all cursor-pointer ${
+          className={`shrink-0 whitespace-nowrap px-4 py-2.5 rounded-2xl font-bold text-xs flex items-center gap-2 transition-all cursor-pointer ${
             subTab === "orders"
               ? "bg-ink text-ivory shadow-sm"
               : "bg-white border border-line text-taupe hover:text-ink"
           }`}
         >
           <Package size={16} className={subTab === "orders" ? "text-zari" : ""} />
-          <span>Verified Order IDs (Amazon & Flipkart)</span>
+          <span>Verified Order IDs (Amazon &amp; Flipkart)</span>
           <span className="px-2 py-0.5 rounded-full text-[10px] bg-zari text-ink font-bold">
             Auto-Verify
           </span>
@@ -357,7 +357,7 @@ export function GiftCardManager() {
         <button
           type="button"
           onClick={() => setSubTab("tutorial")}
-          className={`px-4 py-2.5 rounded-2xl font-bold text-xs flex items-center gap-2 transition-all cursor-pointer ${
+          className={`shrink-0 whitespace-nowrap px-4 py-2.5 rounded-2xl font-bold text-xs flex items-center gap-2 transition-all cursor-pointer ${
             subTab === "tutorial"
               ? "bg-ink text-ivory shadow-sm"
               : "bg-white border border-line text-taupe hover:text-ink"
@@ -1221,9 +1221,12 @@ export function GiftCardManager() {
 
       {/* ================= EDIT MODAL ================= */}
       {editingCard && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink/75 backdrop-blur-sm animate-fade-in">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-ink/75 backdrop-blur-sm animate-fade-in overflow-y-auto overscroll-contain"
+          onClick={() => setEditingCard(null)}
+        >
           <div
-            className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl border border-line overflow-hidden animate-scale-up"
+            className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl border border-line overflow-hidden animate-scale-up my-auto max-h-[92vh] flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="bg-ink text-ivory p-5 flex items-center justify-between border-b border-zari/40">

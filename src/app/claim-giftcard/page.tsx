@@ -645,19 +645,19 @@ export default function ClaimGiftCardPage() {
         </div>
       )}
 
-      {/* Centered 'How to Review' Video Tutorial Modal (Luxury Mobile UI/UX) */}
+      {/* Centered 'How to Review' Video Tutorial Modal (Luxury Light Theme) */}
       {showVideoModal && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-stone-950/85 backdrop-blur-md animate-fade-in overflow-y-auto"
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-stone-950/60 backdrop-blur-md animate-fade-in overflow-y-auto"
           onClick={() => setShowVideoModal(false)}
         >
           <div
-            className="relative w-full max-w-md sm:max-w-lg bg-white rounded-3xl border border-zari/30 shadow-2xl overflow-hidden animate-scale-up text-ink max-h-[92vh] flex flex-col my-auto"
+            className="relative w-full max-w-md sm:max-w-lg bg-white rounded-3xl border border-line/80 shadow-2xl overflow-hidden animate-scale-up text-ink max-h-[92vh] flex flex-col my-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Luxury Modal Header */}
-            <div className="shrink-0 relative px-5 sm:px-6 py-4 border-b border-line bg-gradient-to-r from-stone-950 via-ink to-stone-950 text-ivory overflow-hidden">
-              <div className="absolute top-0 right-0 w-48 h-full bg-gradient-to-l from-zari/25 via-zari/10 to-transparent pointer-events-none" />
+            {/* Luxury Light Modal Header */}
+            <div className="shrink-0 relative px-5 sm:px-6 py-4 border-b border-line bg-gradient-to-r from-cream/90 via-ivory to-amber-50/60 text-ink overflow-hidden">
+              <div className="absolute top-0 right-0 w-48 h-full bg-gradient-to-l from-zari/15 via-zari/5 to-transparent pointer-events-none" />
 
               <div className="relative flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -665,18 +665,18 @@ export default function ClaimGiftCardPage() {
                     <div className="w-10 sm:w-11 h-10 sm:h-11 rounded-2xl bg-gradient-to-tr from-zari via-amber-400 to-zari-deep text-stone-950 flex items-center justify-center shadow-md font-bold">
                       <Video size={20} className="text-stone-950 fill-stone-950" />
                     </div>
-                    <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-stone-900 animate-pulse" />
+                    <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-white animate-pulse" />
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <h3 className="font-display text-base sm:text-lg text-ivory font-bold tracking-tight">
+                      <h3 className="font-display text-base sm:text-lg text-ink font-bold tracking-tight">
                         How to Review &amp; Claim
                       </h3>
-                      <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-zari/20 border border-zari/30 text-zari-soft text-[9px] font-extrabold uppercase tracking-wider">
+                      <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-zari/15 border border-zari/30 text-zari-deep text-[9px] font-extrabold uppercase tracking-wider">
                         ₹100 Reward
                       </span>
                     </div>
-                    <p className="text-[11px] text-stone-300 mt-0.5">
+                    <p className="text-[11px] text-taupe mt-0.5 font-medium">
                       Quick Visual Walkthrough for Amazon, Flipkart &amp; Google
                     </p>
                   </div>
@@ -685,19 +685,19 @@ export default function ClaimGiftCardPage() {
                 <button
                   type="button"
                   onClick={() => setShowVideoModal(false)}
-                  className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 border border-white/10 flex items-center justify-center text-stone-300 hover:text-white transition-colors cursor-pointer shrink-0"
+                  className="w-8 h-8 rounded-full bg-cream hover:bg-stone-200 border border-line flex items-center justify-center text-taupe hover:text-ink transition-colors cursor-pointer shrink-0"
                 >
                   <X size={16} />
                 </button>
               </div>
             </div>
 
-            {/* Scrollable Content */}
-            <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain bg-gradient-to-b from-stone-900 via-stone-950 to-stone-900 text-ivory p-4 sm:p-5 space-y-4">
+            {/* Scrollable Content (Light Theme) */}
+            <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain bg-stone-50/60 p-4 sm:p-5 space-y-4">
               {/* If real video URL is present */}
               {tutorialVideo.video_url ? (
                 <div className="flex justify-center">
-                  <div className="w-full max-w-[320px] aspect-[9/16] max-h-[52vh] rounded-3xl overflow-hidden border-2 border-zari/40 bg-black shadow-2xl relative">
+                  <div className="w-full max-w-[320px] aspect-[9/16] max-h-[52vh] rounded-3xl overflow-hidden border-2 border-zari/40 bg-black shadow-xl relative">
                     {tutorialVideo.video_url.includes("youtube.com") || tutorialVideo.video_url.includes("youtu.be") ? (
                       <iframe
                         src={getYouTubeEmbedUrl(tutorialVideo.video_url)}
@@ -718,59 +718,59 @@ export default function ClaimGiftCardPage() {
                   </div>
                 </div>
               ) : (
-                /* Luxury Visual Walkthrough Mockup */
-                <div className="relative mx-auto w-full max-w-sm rounded-3xl border border-stone-800 bg-gradient-to-b from-stone-950 via-stone-900 to-stone-950 p-4 sm:p-5 shadow-2xl space-y-3.5">
+                /* Luxury Visual Walkthrough Mockup (Light Theme) */
+                <div className="relative mx-auto w-full max-w-sm rounded-3xl border border-line/80 bg-white p-4 sm:p-5 shadow-sm space-y-3.5">
                   {/* Top Header Badge */}
-                  <div className="flex items-center justify-between pb-3 border-b border-stone-800 text-[10px] text-stone-400">
-                    <span className="font-mono font-bold text-zari-soft">● STEP-BY-STEP GUIDE</span>
+                  <div className="flex items-center justify-between pb-3 border-b border-line text-[10px] text-taupe">
+                    <span className="font-mono font-bold text-zari-deep">● STEP-BY-STEP GUIDE</span>
                     <div className="flex items-center gap-1.5">
-                      <span className="px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 font-bold text-[9px]">
+                      <span className="px-2 py-0.5 rounded-full bg-amber-50 text-amber-900 border border-amber-200/80 font-bold text-[9px]">
                         4 Easy Steps
                       </span>
                     </div>
                   </div>
 
                   {/* Step 1: Open Order */}
-                  <div className="flex items-start gap-3 bg-white/5 hover:bg-white/10 p-3 rounded-2xl border border-white/5 transition-all">
-                    <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold text-xs shrink-0 border border-amber-500/30">
+                  <div className="flex items-start gap-3 bg-stone-50/80 hover:bg-stone-100/80 p-3 rounded-2xl border border-line/60 transition-all">
+                    <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-900 flex items-center justify-center font-bold text-xs shrink-0 border border-amber-200">
                       1
                     </div>
                     <div className="space-y-0.5">
-                      <h4 className="text-xs font-bold text-ivory flex items-center gap-1.5">
+                      <h4 className="text-xs font-bold text-ink flex items-center gap-1.5">
                         <span>Open Your Platform Order</span>
                       </h4>
-                      <p className="text-[11px] text-stone-400 leading-snug">
-                        Go to your delivered orders on <strong className="text-stone-200">Amazon</strong> or <strong className="text-stone-200">Flipkart</strong>.
+                      <p className="text-[11px] text-taupe leading-snug">
+                        Go to your delivered orders on <strong className="text-ink font-semibold">Amazon</strong> or <strong className="text-ink font-semibold">Flipkart</strong>.
                       </p>
                     </div>
                   </div>
 
                   {/* Step 2: Rate 5 Stars */}
-                  <div className="flex items-start gap-3 bg-white/5 hover:bg-white/10 p-3 rounded-2xl border border-white/5 transition-all">
-                    <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold text-xs shrink-0 border border-amber-500/30">
+                  <div className="flex items-start gap-3 bg-stone-50/80 hover:bg-stone-100/80 p-3 rounded-2xl border border-line/60 transition-all">
+                    <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-900 flex items-center justify-center font-bold text-xs shrink-0 border border-amber-200">
                       2
                     </div>
                     <div className="space-y-0.5">
-                      <h4 className="text-xs font-bold text-ivory flex items-center gap-1.5">
+                      <h4 className="text-xs font-bold text-ink flex items-center gap-1.5">
                         <span>Leave a 5-Star Positive Review</span>
-                        <div className="flex text-amber-400 text-[10px]">★★★★★</div>
+                        <div className="flex text-amber-500 text-[10px]">★★★★★</div>
                       </h4>
-                      <p className="text-[11px] text-stone-400 leading-snug">
+                      <p className="text-[11px] text-taupe leading-snug">
                         Write your genuine positive feedback with high rating.
                       </p>
                     </div>
                   </div>
 
                   {/* Step 3: Take 2 Screenshots */}
-                  <div className="flex items-start gap-3 bg-gradient-to-r from-zari/15 to-amber-500/10 p-3 rounded-2xl border border-zari/30 transition-all">
-                    <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-zari to-amber-400 text-stone-950 flex items-center justify-center font-extrabold text-xs shrink-0 shadow-sm">
+                  <div className="flex items-start gap-3 bg-gradient-to-r from-amber-50 via-amber-100/40 to-orange-50/30 p-3 rounded-2xl border border-zari/40 shadow-xs transition-all">
+                    <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-zari to-amber-400 text-stone-950 flex items-center justify-center font-extrabold text-xs shrink-0 shadow-xs">
                       3
                     </div>
                     <div className="space-y-0.5">
-                      <h4 className="text-xs font-bold text-zari-soft flex items-center gap-1.5">
+                      <h4 className="text-xs font-bold text-zari-deep flex items-center gap-1.5">
                         <span>Take Both 2 Screenshots (Compulsory)</span>
                       </h4>
-                      <p className="text-[11px] text-stone-300 leading-snug">
+                      <p className="text-[11px] text-stone-700 leading-snug">
                         📸 <strong>Screenshot 1:</strong> Star rating form.<br />
                         📸 <strong>Screenshot 2:</strong> Submitted review confirmation.
                       </p>
@@ -778,16 +778,16 @@ export default function ClaimGiftCardPage() {
                   </div>
 
                   {/* Step 4: Enter Order ID & Claim ₹100 */}
-                  <div className="flex items-start gap-3 bg-white/5 hover:bg-white/10 p-3 rounded-2xl border border-white/5 transition-all">
-                    <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-xs shrink-0 border border-emerald-500/30">
+                  <div className="flex items-start gap-3 bg-stone-50/80 hover:bg-stone-100/80 p-3 rounded-2xl border border-line/60 transition-all">
+                    <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-900 flex items-center justify-center font-bold text-xs shrink-0 border border-emerald-200">
                       4
                     </div>
                     <div className="space-y-0.5">
-                      <h4 className="text-xs font-bold text-ivory flex items-center gap-1.5">
+                      <h4 className="text-xs font-bold text-ink flex items-center gap-1.5">
                         <span>Paste Order ID &amp; Get ₹100 Code</span>
-                        <span className="text-emerald-400 text-[10px] font-bold bg-emerald-500/20 px-1.5 py-0.5 rounded">INSTANT</span>
+                        <span className="text-emerald-800 text-[10px] font-bold bg-emerald-100 border border-emerald-200 px-1.5 py-0.5 rounded">INSTANT</span>
                       </h4>
-                      <p className="text-[11px] text-stone-400 leading-snug">
+                      <p className="text-[11px] text-taupe leading-snug">
                         Upload screenshots &amp; Platform Order ID above to get your instant ₹100 Gift Card redeemable to wallet!
                       </p>
                     </div>
@@ -795,19 +795,19 @@ export default function ClaimGiftCardPage() {
                 </div>
               )}
 
-              {/* Supported Platforms Strip */}
-              <div className="bg-white/5 rounded-2xl p-3 border border-white/10 flex items-center justify-around text-center text-xs">
-                <div className="flex items-center gap-1.5 text-stone-300">
+              {/* Supported Platforms Strip (Light Theme) */}
+              <div className="bg-white rounded-2xl p-3 border border-line shadow-xs flex items-center justify-around text-center text-xs">
+                <div className="flex items-center gap-1.5 text-ink font-medium">
                   <span className="text-base">📦</span>
                   <span className="font-semibold text-[11px]">Amazon</span>
                 </div>
-                <span className="text-stone-700">•</span>
-                <div className="flex items-center gap-1.5 text-stone-300">
+                <span className="text-stone-300">•</span>
+                <div className="flex items-center gap-1.5 text-ink font-medium">
                   <span className="text-base">🛍️</span>
                   <span className="font-semibold text-[11px]">Flipkart</span>
                 </div>
-                <span className="text-stone-700">•</span>
-                <div className="flex items-center gap-1.5 text-stone-300">
+                <span className="text-stone-300">•</span>
+                <div className="flex items-center gap-1.5 text-ink font-medium">
                   <span className="text-base">⭐</span>
                   <span className="font-semibold text-[11px]">Google Reviews</span>
                 </div>
@@ -833,20 +833,20 @@ export default function ClaimGiftCardPage() {
         </div>
       )}
 
-      {/* Centered 'Customer Support' Modal with Luxury UI/UX */}
+      {/* Centered 'Customer Support' Modal with Luxury Light UI/UX */}
       {showSupportModal && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-stone-950/80 backdrop-blur-md animate-fade-in overflow-y-auto"
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-stone-950/60 backdrop-blur-md animate-fade-in overflow-y-auto"
           onClick={() => setShowSupportModal(false)}
         >
           <div
-            className="relative w-full max-w-lg bg-white rounded-3xl border border-zari/30 shadow-2xl overflow-hidden animate-scale-up text-ink max-h-[90vh] sm:max-h-[85vh] flex flex-col my-auto"
+            className="relative w-full max-w-lg bg-white rounded-3xl border border-line/80 shadow-2xl overflow-hidden animate-scale-up text-ink max-h-[90vh] sm:max-h-[85vh] flex flex-col my-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Modal Header */}
-            <div className="shrink-0 relative px-5 sm:px-6 py-4 sm:py-5 border-b border-line bg-gradient-to-r from-stone-900 via-ink to-stone-900 text-ivory">
+            {/* Modal Header (Light Theme) */}
+            <div className="shrink-0 relative px-5 sm:px-6 py-4 sm:py-5 border-b border-line bg-gradient-to-r from-cream/90 via-ivory to-amber-50/60 text-ink">
               {/* Subtle gold decorative flare */}
-              <div className="absolute top-0 right-0 w-40 h-full bg-gradient-to-l from-zari/20 to-transparent pointer-events-none" />
+              <div className="absolute top-0 right-0 w-40 h-full bg-gradient-to-l from-zari/15 to-transparent pointer-events-none" />
 
               <div className="relative flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -854,18 +854,18 @@ export default function ClaimGiftCardPage() {
                     <div className="w-10 sm:w-11 h-10 sm:h-11 rounded-2xl bg-gradient-to-tr from-zari via-amber-400 to-zari-deep text-ink flex items-center justify-center shadow-md font-bold">
                       <Headphones size={20} className="text-stone-950" />
                     </div>
-                    <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-stone-900 animate-pulse" />
+                    <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-white animate-pulse" />
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <h3 className="font-display text-base sm:text-lg text-ivory font-bold tracking-tight">
+                      <h3 className="font-display text-base sm:text-lg text-ink font-bold tracking-tight">
                         Customer Support Desk
                       </h3>
-                      <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 text-[9px] font-extrabold uppercase tracking-wider">
+                      <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 border border-emerald-200 text-emerald-800 text-[9px] font-extrabold uppercase tracking-wider">
                         ● Online
                       </span>
                     </div>
-                    <p className="text-[11px] sm:text-xs text-stone-300 mt-0.5 font-sans">
+                    <p className="text-[11px] sm:text-xs text-taupe mt-0.5 font-sans font-medium">
                       Official help desk for review rewards &amp; orders
                     </p>
                   </div>
@@ -874,7 +874,7 @@ export default function ClaimGiftCardPage() {
                 <button
                   type="button"
                   onClick={() => setShowSupportModal(false)}
-                  className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 border border-white/10 flex items-center justify-center text-stone-300 hover:text-white transition-colors cursor-pointer shrink-0"
+                  className="w-8 h-8 rounded-full bg-cream hover:bg-stone-200 border border-line flex items-center justify-center text-taupe hover:text-ink transition-colors cursor-pointer shrink-0"
                 >
                   <X size={16} />
                 </button>
@@ -1204,112 +1204,126 @@ export default function ClaimGiftCardPage() {
 
 
 
-                {/* 2. File Upload Section */}
+                {/* 2. File Upload / Actions Section */}
                 {isGoogle ? (
-                  /* GOOGLE REVIEWS: SINGLE SCREENSHOT UPLOAD */
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <label className="block text-xs font-bold text-ink uppercase tracking-wider">
-                        2. Upload Google Review Screenshot *
-                      </label>
-                      <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 uppercase tracking-wide">
-                        1 Screenshot Only
-                      </span>
-                    </div>
-
-                    {/* Google Map Review Direct Link CTA */}
-                    <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-amber-50/90 via-white to-amber-50/60 border border-amber-300/80 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                      <div className="flex items-center gap-2.5">
-                        <span className="w-8 h-8 rounded-xl bg-amber-100 border border-amber-300 text-amber-800 flex items-center justify-center shrink-0 shadow-xs text-sm font-bold">
-                          ⭐
-                        </span>
-                        <div>
-                          <p className="text-xs font-bold text-ink">Haven&apos;t posted your Google Review yet?</p>
-                          <p className="text-[11px] text-stone-600 mt-0.5">Click below to open our Google Maps review page and leave your 5-star review</p>
-                        </div>
-                      </div>
-                      <a
-                        href="https://g.page/r/CQDt5_ECdeuOEBI/review"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 hover:brightness-105 text-stone-950 font-bold text-xs shadow-xs hover:shadow-sm transition-all duration-200 cursor-pointer active:scale-95 whitespace-nowrap"
-                      >
-                        <span>Review Here</span>
-                        <ExternalLink size={13} className="text-stone-950" />
-                      </a>
-                    </div>
-
-                    <input
-                      ref={fileInputRef1}
-                      type="file"
-                      accept="image/png,image/jpeg,image/webp,image/jpg"
-                      onChange={handleFileChange1}
-                      className="hidden"
-                      disabled={googleClaimed}
-                    />
-
-                    {!preview1 ? (
-                      <div
-                        onClick={handleTriggerUpload1}
-                        className={`border-2 border-dashed border-zari/40 hover:border-zari bg-cream/20 hover:bg-cream/40 rounded-2xl p-6 text-center transition-all duration-200 group flex flex-col items-center justify-center space-y-2 min-h-[160px] ${
-                          googleClaimed ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
-                        }`}
-                      >
-                        <div className="w-12 h-12 rounded-xl bg-zari/10 group-hover:bg-zari/20 text-zari flex items-center justify-center transition-colors">
-                          <UploadCloud size={24} />
-                        </div>
-                        <p className="font-bold text-xs text-ink group-hover:text-zari transition-colors">
-                          Upload Google Review Screenshot (Compulsory)
-                        </p>
-                        <span className="text-[10px] text-taupe">Upload 1 clear screenshot of your Google Review (Max 5MB)</span>
-                        <span className="inline-flex items-center gap-1 px-3 py-1 bg-ink text-ivory text-[10px] font-bold rounded-lg group-hover:bg-zari transition-colors">
-                          <FileImage size={12} /> Choose Image
+                  /* GOOGLE REVIEWS: STEP 2 DIRECT LINK & STEP 3 SCREENSHOT UPLOAD */
+                  <div className="space-y-6">
+                    {/* STEP 2: Google Map Direct Review Link */}
+                    <div className="space-y-2.5">
+                      <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2">
+                        <label className="block text-xs font-bold text-ink uppercase tracking-wider">
+                          2. Post Your Review on Google Maps *
+                        </label>
+                        <span className="shrink-0 whitespace-nowrap text-[10px] sm:text-[11px] font-bold px-3 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-900 uppercase tracking-wide shadow-xs">
+                          Step 2: Direct Link
                         </span>
                       </div>
-                    ) : (
-                      <div className="relative rounded-2xl border border-line bg-cream/15 p-4 flex items-center gap-4 min-h-[140px]">
-                        <div className="relative w-24 h-24 rounded-xl overflow-hidden border border-line shrink-0 bg-white shadow-sm">
-                          <img
-                            src={preview1}
-                            alt="Google Review Screenshot Preview"
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                        <div className="flex-1 min-w-0 space-y-1 text-left">
-                          <span className="inline-block px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[9px] font-extrabold uppercase">
-                            ✓ Google Review Screenshot Ready
+
+                      <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-amber-50/90 via-white to-amber-50/60 border border-amber-300/80 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3.5">
+                        <div className="flex items-center gap-3">
+                          <span className="w-10 h-10 rounded-xl bg-amber-100 border border-amber-300 text-amber-800 flex items-center justify-center shrink-0 shadow-xs text-base font-bold">
+                            ⭐
                           </span>
-                          <p className="font-bold text-xs text-ink truncate">{screenshot1?.name}</p>
-                          <p className="text-[10px] text-taupe">
-                            Size: {screenshot1 ? (screenshot1.size / 1024).toFixed(1) + " KB" : ""}
-                          </p>
-                          <button
-                            type="button"
-                            onClick={handleRemoveFile1}
-                            className="mt-1 px-2.5 py-1 rounded-lg border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 text-[10px] font-bold flex items-center gap-1 transition-colors cursor-pointer"
-                          >
-                            <X size={12} /> Remove
-                          </button>
+                          <div>
+                            <p className="text-xs sm:text-sm font-bold text-ink">Haven&apos;t posted your Google Review yet?</p>
+                            <p className="text-[11px] sm:text-xs text-stone-600 mt-0.5">Click below to open our Google Maps review page and leave your 5-star review</p>
+                          </div>
                         </div>
+                        <a
+                          href="https://g.page/r/CQDt5_ECdeuOEBI/review"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 hover:brightness-105 text-stone-950 font-bold text-xs shadow-xs hover:shadow-sm transition-all duration-200 cursor-pointer active:scale-95 whitespace-nowrap shrink-0"
+                        >
+                          <span>Review Here</span>
+                          <ExternalLink size={13} className="text-stone-950" />
+                        </a>
                       </div>
-                    )}
+                    </div>
 
-                    {googleReady && !googleClaimed && (
-                      <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold rounded-xl flex items-center gap-2">
-                        <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
-                        <span>✓ Google Review screenshot uploaded & ready for ₹100 gift card generation!</span>
+                    {/* STEP 3: Upload Google Review Screenshot */}
+                    <div className="space-y-2.5">
+                      <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2">
+                        <label className="block text-xs font-bold text-ink uppercase tracking-wider">
+                          3. Upload Google Review Screenshot *
+                        </label>
+                        <span className="shrink-0 whitespace-nowrap text-[10px] sm:text-[11px] font-bold px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 uppercase tracking-wide shadow-xs">
+                          1 Screenshot Only
+                        </span>
                       </div>
-                    )}
+
+                      <input
+                        ref={fileInputRef1}
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp,image/jpg"
+                        onChange={handleFileChange1}
+                        className="hidden"
+                        disabled={googleClaimed}
+                      />
+
+                      {!preview1 ? (
+                        <div
+                          onClick={handleTriggerUpload1}
+                          className={`border-2 border-dashed border-zari/40 hover:border-zari bg-cream/20 hover:bg-cream/40 rounded-2xl p-6 text-center transition-all duration-200 group flex flex-col items-center justify-center space-y-2 min-h-[160px] ${
+                            googleClaimed ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
+                          }`}
+                        >
+                          <div className="w-12 h-12 rounded-xl bg-zari/10 group-hover:bg-zari/20 text-zari flex items-center justify-center transition-colors">
+                            <UploadCloud size={24} />
+                          </div>
+                          <p className="font-bold text-xs text-ink group-hover:text-zari transition-colors">
+                            Upload Google Review Screenshot (Compulsory)
+                          </p>
+                          <span className="text-[10px] text-taupe">Upload 1 clear screenshot of your Google Review (Max 5MB)</span>
+                          <span className="inline-flex items-center gap-1 px-3 py-1 bg-ink text-ivory text-[10px] font-bold rounded-lg group-hover:bg-zari transition-colors">
+                            <FileImage size={12} /> Choose Image
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="relative rounded-2xl border border-line bg-cream/15 p-4 flex items-center gap-4 min-h-[140px]">
+                          <div className="relative w-24 h-24 rounded-xl overflow-hidden border border-line shrink-0 bg-white shadow-sm">
+                            <img
+                              src={preview1}
+                              alt="Google Review Screenshot Preview"
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                          <div className="flex-1 min-w-0 space-y-1 text-left">
+                            <span className="inline-block px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[9px] font-extrabold uppercase">
+                              ✓ Google Review Screenshot Ready
+                            </span>
+                            <p className="font-bold text-xs text-ink truncate">{screenshot1?.name}</p>
+                            <p className="text-[10px] text-taupe">
+                              Size: {screenshot1 ? (screenshot1.size / 1024).toFixed(1) + " KB" : ""}
+                            </p>
+                            <button
+                              type="button"
+                              onClick={handleRemoveFile1}
+                              className="mt-1 px-2.5 py-1 rounded-lg border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 text-[10px] font-bold flex items-center gap-1 transition-colors cursor-pointer"
+                            >
+                              <X size={12} /> Remove
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {googleReady && !googleClaimed && (
+                        <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold rounded-xl flex items-center gap-2">
+                          <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+                          <span>✓ Google Review screenshot uploaded & ready for ₹100 gift card generation!</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 ) : (
                   /* AMAZON / FLIPKART: 2 COMPULSORY SCREENSHOTS */
                   <div className="space-y-3">
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2">
                       <label className="block text-xs font-bold text-ink uppercase tracking-wider">
                         2. Upload 2 Required Screenshots (Compulsory) *
                       </label>
-                      <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-800 uppercase tracking-wide">
-                        2 Images Required
+                      <span className="shrink-0 whitespace-nowrap text-[10px] sm:text-[11px] font-bold px-3 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-800 uppercase tracking-wide shadow-xs">
+                        2 Screenshots Required
                       </span>
                     </div>
 

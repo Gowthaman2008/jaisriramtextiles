@@ -511,16 +511,23 @@ export function PlatformOrdersManager() {
 
       {/* MODAL 1: ADD SINGLE ORDER ID */}
       {showAddSingleModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-ink/50 backdrop-blur-sm p-4 animate-fade-in">
-          <div className="bg-white border border-line rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl space-y-6">
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-ink/60 backdrop-blur-md p-3 sm:p-4 overflow-y-auto overscroll-contain animate-fade-in"
+          onClick={() => setShowAddSingleModal(false)}
+        >
+          <div
+            className="relative bg-white border border-line rounded-3xl p-5 sm:p-7 max-w-md w-full shadow-2xl space-y-5 my-auto max-h-[92vh] overflow-y-auto overscroll-contain animate-scale-up"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between border-b border-line/60 pb-3">
               <h3 className="font-display text-lg text-ink flex items-center gap-2">
                 <Plus size={18} className="text-zari" />
                 Add Verified Platform Order ID
               </h3>
               <button
+                type="button"
                 onClick={() => setShowAddSingleModal(false)}
-                className="text-taupe hover:text-ink cursor-pointer"
+                className="w-8 h-8 rounded-full bg-cream hover:bg-stone-200 text-taupe hover:text-ink flex items-center justify-center transition-colors cursor-pointer"
               >
                 <X size={18} />
               </button>
@@ -607,16 +614,23 @@ export function PlatformOrdersManager() {
 
       {/* MODAL 2: BULK IMPORT ORDER IDS */}
       {showBulkModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-ink/50 backdrop-blur-sm p-4 animate-fade-in">
-          <div className="bg-white border border-line rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl space-y-6">
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-ink/60 backdrop-blur-md p-3 sm:p-4 overflow-y-auto overscroll-contain animate-fade-in"
+          onClick={() => setShowBulkModal(false)}
+        >
+          <div
+            className="relative bg-white border border-line rounded-3xl p-5 sm:p-7 max-w-lg w-full shadow-2xl space-y-5 my-auto max-h-[92vh] overflow-y-auto overscroll-contain animate-scale-up"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between border-b border-line/60 pb-3">
               <h3 className="font-display text-lg text-ink flex items-center gap-2">
                 <Upload size={18} className="text-zari" />
                 Bulk Import Verified Order IDs
               </h3>
               <button
+                type="button"
                 onClick={() => setShowBulkModal(false)}
-                className="text-taupe hover:text-ink cursor-pointer"
+                className="w-8 h-8 rounded-full bg-cream hover:bg-stone-200 text-taupe hover:text-ink flex items-center justify-center transition-colors cursor-pointer"
               >
                 <X size={18} />
               </button>
@@ -662,7 +676,7 @@ export function PlatformOrdersManager() {
                 </label>
                 <textarea
                   required
-                  rows={6}
+                  rows={5}
                   placeholder={`402-1234567-8901234\n403-9876543-2109876\n404-5554443-1122334`}
                   value={bulkText}
                   onChange={(e) => setBulkText(e.target.value)}
@@ -706,8 +720,14 @@ export function PlatformOrdersManager() {
 
       {/* DELETE CONFIRMATION MODAL */}
       {deletingId && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-ink/50 backdrop-blur-sm p-4 animate-fade-in">
-          <div className="bg-white border border-line rounded-3xl p-6 max-w-sm w-full shadow-2xl space-y-4">
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-ink/60 backdrop-blur-md p-3 sm:p-4 overflow-y-auto overscroll-contain animate-fade-in"
+          onClick={() => setDeletingId(null)}
+        >
+          <div
+            className="relative bg-white border border-line rounded-3xl p-6 max-w-sm w-full shadow-2xl space-y-4 my-auto max-h-[92vh] overflow-y-auto overscroll-contain animate-scale-up"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center gap-2.5 text-red-600">
               <AlertTriangle size={20} />
               <h3 className="font-display text-base text-ink">Delete Platform Order ID?</h3>
@@ -717,12 +737,14 @@ export function PlatformOrdersManager() {
             </p>
             <div className="flex items-center gap-2 pt-2">
               <button
+                type="button"
                 onClick={() => handleDeleteOrder(deletingId)}
                 className="flex-1 py-2.5 px-3 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl cursor-pointer"
               >
                 Delete ID
               </button>
               <button
+                type="button"
                 onClick={() => setDeletingId(null)}
                 className="py-2.5 px-3 border border-line text-xs font-bold text-taupe hover:text-ink rounded-xl cursor-pointer"
               >

@@ -71,10 +71,10 @@ function SignInPageContent() {
   }
 
   return (
-    <div className="flex min-h-[calc(100vh-76px)] items-center py-16">
-      <Container className="max-w-[420px]">
-        <div className="zari-frame rounded-card bg-ivory p-8 shadow-soft">
-          <h1 className="font-display text-2xl text-ink">Sign in</h1>
+    <main className="flex min-h-[calc(100vh-80px)] w-full items-center justify-center p-4 py-8 sm:py-16 bg-cream/20">
+      <div className="w-full max-w-[440px] mx-auto">
+        <div className="zari-frame rounded-3xl bg-ivory p-6 sm:p-8 shadow-lift border border-line/70">
+          <h1 className="font-display text-2xl sm:text-3xl text-ink font-bold">Sign in</h1>
           <p className="mt-1 text-sm text-taupe">Welcome back to JAI SRI RAM TEXTILES</p>
 
           {/* Google OAuth */}
@@ -82,7 +82,7 @@ function SignInPageContent() {
             type="button"
             onClick={handleGoogleSignIn}
             disabled={googleLoading || loading}
-            className="mt-6 flex w-full items-center justify-center gap-3 rounded-pill border border-line bg-white py-2.5 text-sm font-medium text-ink shadow-soft transition hover:border-zari hover:shadow-lift disabled:opacity-60"
+            className="mt-6 flex w-full items-center justify-center gap-3 rounded-pill border border-line bg-white py-2.5 text-sm font-medium text-ink shadow-soft transition hover:border-zari hover:shadow-lift disabled:opacity-60 cursor-pointer"
           >
             <GoogleIcon />
             {googleLoading ? "Redirecting…" : "Continue with Google"}
@@ -133,7 +133,7 @@ function SignInPageContent() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-taupe hover:text-ink focus:outline-none"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-taupe hover:text-ink focus:outline-none cursor-pointer"
                   title={showPassword ? "Hide password" : "Show password"}
                 >
                   {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -179,8 +179,8 @@ function SignInPageContent() {
             </Link>
           </p>
         </div>
-      </Container>
-    </div>
+      </div>
+    </main>
   );
 }
 

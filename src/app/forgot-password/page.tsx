@@ -41,10 +41,10 @@ export default function ForgotPasswordPage() {
 
   if (sent) {
     return (
-      <div className="flex min-h-[calc(100vh-76px)] items-center py-16">
-        <Container className="max-w-[420px]">
-          <div className="zari-frame rounded-card bg-ivory p-8 shadow-soft text-center">
-            <h1 className="font-display text-2xl text-ink">Check your email</h1>
+      <main className="flex min-h-[calc(100vh-80px)] w-full items-center justify-center p-4 py-8 sm:py-16 bg-cream/20">
+        <div className="w-full max-w-[440px] mx-auto">
+          <div className="zari-frame rounded-3xl bg-ivory p-6 sm:p-8 shadow-lift border border-line/70 text-center">
+            <h1 className="font-display text-2xl sm:text-3xl text-ink font-bold">Check your email</h1>
             <p className="mt-2 text-sm text-taupe">
               We&apos;ve sent a password reset link to <strong className="text-ink">{email}</strong>. Click the link in the email to choose a new password.
             </p>
@@ -52,16 +52,16 @@ export default function ForgotPasswordPage() {
               Back to sign in
             </Button>
           </div>
-        </Container>
-      </div>
+        </div>
+      </main>
     );
   }
 
   return (
-    <div className="flex min-h-[calc(100vh-76px)] items-center py-16">
-      <Container className="max-w-[420px]">
-        <div className="zari-frame rounded-card bg-ivory p-8 shadow-soft">
-          <h1 className="font-display text-2xl text-ink">Forgot password</h1>
+    <main className="flex min-h-[calc(100vh-80px)] w-full items-center justify-center p-4 py-8 sm:py-16 bg-cream/20">
+      <div className="w-full max-w-[440px] mx-auto">
+        <div className="zari-frame rounded-3xl bg-ivory p-6 sm:p-8 shadow-lift border border-line/70">
+          <h1 className="font-display text-2xl sm:text-3xl text-ink font-bold">Forgot password</h1>
           <p className="mt-1 text-sm text-taupe">Enter your email and we&apos;ll send you a reset code.</p>
 
           <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
@@ -96,7 +96,7 @@ export default function ForgotPasswordPage() {
             </Link>
           </p>
         </div>
-      </Container>
-    </div>
+      </div>
+    </main>
   );
 }

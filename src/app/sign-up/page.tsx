@@ -91,30 +91,30 @@ function SignUpPageContent() {
 
   if (done) {
     return (
-      <div className="flex min-h-[calc(100vh-76px)] items-center py-16">
-        <Container className="max-w-[420px]">
-          <div className="zari-frame rounded-card bg-white p-8 shadow-soft text-center">
-            <p className="font-display text-xl text-ink">Check your email</p>
+      <main className="flex min-h-[calc(100vh-80px)] w-full items-center justify-center p-4 py-8 sm:py-16 bg-cream/20">
+        <div className="w-full max-w-[440px] mx-auto">
+          <div className="zari-frame rounded-3xl bg-white p-6 sm:p-8 shadow-lift border border-line/70 text-center">
+            <p className="font-display text-xl sm:text-2xl text-ink font-bold">Check your email</p>
             <p className="mt-2 text-sm text-taupe">
               We sent a confirmation link to <strong>{email}</strong>. Click it to activate your
               account, then sign in.
             </p>
             <div className="mt-6">
-              <Button href={signInHref} variant="gold" size="md">
+              <Button href={signInHref} variant="gold" size="md" className="w-full">
                 Go to sign in
               </Button>
             </div>
           </div>
-        </Container>
-      </div>
+        </div>
+      </main>
     );
   }
 
   return (
-    <div className="flex min-h-[calc(100vh-76px)] items-center py-16">
-      <Container className="max-w-[420px]">
-        <div className="zari-frame rounded-card bg-white p-8 shadow-soft">
-          <h1 className="font-display text-2xl text-ink">Create account</h1>
+    <main className="flex min-h-[calc(100vh-80px)] w-full items-center justify-center p-4 py-8 sm:py-16 bg-cream/20">
+      <div className="w-full max-w-[440px] mx-auto">
+        <div className="zari-frame rounded-3xl bg-white p-6 sm:p-8 shadow-lift border border-line/70">
+          <h1 className="font-display text-2xl sm:text-3xl text-ink font-bold">Create account</h1>
           <p className="mt-1 text-sm text-taupe">Join JAI SRI RAM TEXTILES</p>
 
           <form onSubmit={handleSubmit} className="mt-8 flex flex-col gap-4">
@@ -205,8 +205,8 @@ function SignUpPageContent() {
             </Link>
           </p>
         </div>
-      </Container>
-    </div>
+      </div>
+    </main>
   );
 }
 
