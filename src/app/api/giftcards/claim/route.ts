@@ -7,6 +7,9 @@ import { generateGiftCardCode } from "@/lib/gift-cards";
 import { verifyReviewScreenshotsWithAI } from "@/lib/ai-review-verifier";
 import { sendEmail, giftCardIssuedEmailHtml } from "@/lib/email";
 
+export const dynamic = "force-dynamic";
+export const maxDuration = 60;
+
 const MAX_FILE_BYTES = 5 * 1024 * 1024; // 5MB limit per screenshot
 
 async function uploadToCloudinary(file: File): Promise<string> {

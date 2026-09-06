@@ -43,6 +43,57 @@ const PLATFORMS = [
   { id: "google", name: "Google Reviews", icon: "⭐", color: "from-red-500/10 to-green-500/10", border: "border-emerald-300" },
 ];
 
+// Helper to compress large screenshots on the client-side before upload
+async function compressImageFile(file: File, maxDimension = 1400, quality = 0.85): Promise<File> {
+  if (!file.type.startsWith("image/") || file.size < 400 * 1024) {
+    return file;
+  }
+  return new Promise((resolve) => {
+    try {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        let { width, height } = img;
+        if (width > maxDimension || height > maxDimension) {
+          if (width > height) {
+            height = Math.round((height * maxDimension) / width);
+            width = maxDimension;
+          } else {
+            width = Math.round((width * maxDimension) / height);
+            height = maxDimension;
+          }
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return resolve(file);
+        ctx.drawImage(img, 0, 0, width, height);
+        canvas.toBlob(
+          (blob) => {
+            if (!blob) return resolve(file);
+            const compressedFile = new File([blob], file.name.replace(/\.[^/.]+$/, ".jpg"), {
+              type: "image/jpeg",
+              lastModified: Date.now(),
+            });
+            resolve(compressedFile);
+          },
+          "image/jpeg",
+          quality
+        );
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        resolve(file);
+      };
+      img.src = url;
+    } catch {
+      resolve(file);
+    }
+  });
+}
+
 export default function ClaimGiftCardPage() {
   const router = useRouter();
   const { notify } = useNotification();
@@ -294,10 +345,16 @@ export default function ClaimGiftCardPage() {
     setSubmitError("");
 
     try {
+      // Compress large images on client side for fast and reliable upload
+      const [compressed1, compressed2] = await Promise.all([
+        compressImageFile(screenshot1),
+        screenshot2 ? compressImageFile(screenshot2) : Promise.resolve(null),
+      ]);
+
       const formData = new FormData();
-      formData.append("screenshot1", screenshot1);
-      if (!isGoogle && screenshot2) {
-        formData.append("screenshot2", screenshot2);
+      formData.append("screenshot1", compressed1);
+      if (!isGoogle && compressed2) {
+        formData.append("screenshot2", compressed2);
       }
       formData.append("platform", selectedPlatform);
       if (!isGoogle && orderReference.trim()) {
@@ -309,7 +366,17 @@ export default function ClaimGiftCardPage() {
         body: formData,
       });
 
-      const data = await res.json();
+      let data: any = {};
+      try {
+        data = await res.json();
+      } catch (jsonErr) {
+        throw new Error(
+          res.status === 413
+            ? "Uploaded screenshots are too large. Please try smaller files."
+            : `Server response error (${res.status}). Please try again in a few moments.`
+        );
+      }
+
       if (!res.ok) {
         throw new Error(data.error || "Failed to generate gift card. Please try again.");
       }
@@ -332,8 +399,11 @@ export default function ClaimGiftCardPage() {
         }
       }
     } catch (err: any) {
-      setSubmitError(err.message || "An error occurred while uploading screenshot.");
-      notify(err.message || "Upload failed", "error");
+      const errMsg = err.name === "TypeError" && err.message.includes("fetch")
+        ? "Network connection issue or request timed out. Please check your internet connection and try submitting again."
+        : err.message || "An error occurred while uploading screenshot.";
+      setSubmitError(errMsg);
+      notify(errMsg, "error");
     } finally {
       setIsSubmitting(false);
     }
@@ -797,7 +867,7 @@ export default function ClaimGiftCardPage() {
                     ) : (
                       <>
                         <Gift size={18} />
-                        {isGoogle ? "Submit Google Review & Generate ₹100 Code" : "Submit 2 Screenshots & Generate ₹100 Code"}
+                        Generate ₹100 Card
                       </>
                     )}
                   </button>

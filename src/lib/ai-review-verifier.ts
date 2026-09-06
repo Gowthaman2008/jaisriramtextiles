@@ -121,7 +121,7 @@ Respond ONLY with valid JSON in this exact structure:
           temperature: 0.1,
           max_tokens: 300,
         }),
-        signal: AbortSignal.timeout(10000),
+        signal: AbortSignal.timeout(25000),
       });
 
       if (response.ok) {
@@ -132,7 +132,7 @@ Respond ONLY with valid JSON in this exact structure:
         if (parsed && typeof parsed.isValid === "boolean") {
           return {
             isValid: parsed.isValid,
-            confidence: Number(parsed.confidence) || 0.9,
+            confidence: Number(parsed.confidence) || 0.95,
             reason: parsed.reason || (parsed.isValid ? `Screenshot ${index + 1} verified as valid review.` : `Screenshot ${index + 1} is not a valid review screenshot.`),
             detectedPlatform: parsed.detectedPlatform || platform,
             detectedRating: parsed.detectedRating,
@@ -153,7 +153,7 @@ Respond ONLY with valid JSON in this exact structure:
 }
 
 /**
- * Verifies all uploaded review screenshots using AI Vision.
+ * Verifies all uploaded review screenshots concurrently using AI Vision.
  * If any uploaded image is NOT a review screenshot, the claim is rejected.
  */
 export async function verifyReviewScreenshotsWithAI(options: {
@@ -199,16 +199,21 @@ export async function verifyReviewScreenshotsWithAI(options: {
     };
   }
 
-  // 2. Verify each uploaded screenshot with AI Vision
-  for (let i = 0; i < imageUrls.length; i++) {
-    const singleResult = await verifySingleScreenshot({
-      imageUrl: imageUrls[i],
-      index: i,
-      platform,
-      orderReference,
-      apiKey,
-    });
+  // 2. Verify all screenshots concurrently in parallel
+  const verificationResults = await Promise.all(
+    imageUrls.map((url, i) =>
+      verifySingleScreenshot({
+        imageUrl: url,
+        index: i,
+        platform,
+        orderReference,
+        apiKey,
+      })
+    )
+  );
 
+  for (let i = 0; i < verificationResults.length; i++) {
+    const singleResult = verificationResults[i];
     if (!singleResult.isValid) {
       return {
         isValid: false,
@@ -221,7 +226,7 @@ export async function verifyReviewScreenshotsWithAI(options: {
 
   return {
     isValid: true,
-    confidence: 0.95,
+    confidence: 0.98,
     reason: `All ${imageUrls.length} screenshot(s) verified successfully as authentic review proof!`,
     detectedPlatform: platform,
   };
