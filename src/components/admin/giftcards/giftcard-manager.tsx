@@ -307,7 +307,7 @@ export function GiftCardManager() {
   });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-full min-w-0">
       {/* Sub-Tab Navigation Switcher */}
       <div className="flex items-center gap-2 border-b border-line pb-3 overflow-x-auto whitespace-nowrap">
         <button
@@ -604,20 +604,25 @@ export function GiftCardManager() {
                         )}
                       </td>
 
-                      {/* Customer / Creator */}
+                      {/* Customer / Creator & User ID */}
                       <td className="px-4 py-3.5 text-ink">
-                        {card.creator ? (
+                        {card.creator || card.created_by || card.user_id ? (
                           <div
                             onClick={() => setSelectedScreenshotCard(card)}
-                            className="cursor-pointer group"
+                            className="cursor-pointer group space-y-1"
                             title="Click to view full user audit"
                           >
-                            <p className="font-semibold text-xs text-ink group-hover:text-zari truncate max-w-[160px] transition-colors">
-                              {card.creator.full_name || "Registered User"}
+                            <p className="font-bold text-xs text-ink group-hover:text-zari truncate max-w-[180px] transition-colors">
+                              {card.creator?.full_name || "Registered Customer"}
                             </p>
-                            <p className="text-[10px] text-taupe group-hover:text-ink truncate max-w-[160px] font-mono transition-colors mt-0.5">
-                              {card.creator.email || card.creator.phone}
+                            <p className="text-[10px] text-taupe group-hover:text-ink truncate max-w-[180px] font-mono transition-colors">
+                              {card.creator?.email || card.creator?.phone || "No email"}
                             </p>
+                            <div className="flex items-center gap-1 pt-0.5">
+                              <span className="font-mono text-[9px] bg-stone-100 group-hover:bg-amber-50 group-hover:border-amber-200 text-stone-600 group-hover:text-amber-900 px-1.5 py-0.5 rounded border border-stone-200 transition-colors truncate max-w-[180px]" title={card.creator?.id || card.created_by || card.user_id}>
+                                UID: {(card.creator?.id || card.created_by || card.user_id)?.slice(0, 13)}...
+                              </span>
+                            </div>
                           </div>
                         ) : (
                           <span className="text-[11px] text-taupe font-medium">Store Admin</span>
@@ -857,9 +862,21 @@ export function GiftCardManager() {
                       </div>
                     )}
 
-                    {selectedScreenshotCard.creator?.id && (
-                      <div className="pt-1 text-[10px] text-muted truncate border-t border-line/40">
-                        User ID: {selectedScreenshotCard.creator.id}
+                    {(selectedScreenshotCard.creator?.id || selectedScreenshotCard.created_by || selectedScreenshotCard.user_id) && (
+                      <div className="pt-2 border-t border-line/60">
+                        <span className="text-[10px] font-bold text-taupe block mb-1">User ID (UUID):</span>
+                        <div className="flex items-center gap-1.5 bg-stone-50 p-1.5 rounded-lg border border-line">
+                          <code className="text-[10px] font-mono text-ink select-all flex-1 truncate">
+                            {selectedScreenshotCard.creator?.id || selectedScreenshotCard.created_by || selectedScreenshotCard.user_id}
+                          </code>
+                          <button
+                            type="button"
+                            onClick={() => handleCopy(selectedScreenshotCard.creator?.id || selectedScreenshotCard.created_by || selectedScreenshotCard.user_id || "")}
+                            className="text-[10px] font-bold text-zari-deep hover:text-ink px-2 py-0.5 rounded bg-white border border-line hover:bg-cream transition-colors cursor-pointer"
+                          >
+                            Copy
+                          </button>
+                        </div>
                       </div>
                     )}
                   </div>

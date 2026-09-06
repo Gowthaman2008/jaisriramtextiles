@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limiter";
+import { sendEmail, newTicketAdminEmailHtml } from "@/lib/email";
 
 export async function POST(request: Request) {
   try {
@@ -44,6 +45,37 @@ export async function POST(request: Request) {
       .single();
 
     if (error) throw error;
+
+    const ticketId = data?.id || "";
+
+    // Immediate admin notification email
+    try {
+      const emailHtml = newTicketAdminEmailHtml({
+        ticketId,
+        name: name.trim(),
+        email: email.trim().toLowerCase(),
+        subject: subject.trim(),
+        message: message.trim(),
+        userId: validatedUserId,
+      });
+
+      const emailSubject = `[New Ticket Raised] #${ticketId ? ticketId.substring(0, 8).toUpperCase() : "SUPPORT"} - ${subject.trim()}`;
+
+      await Promise.allSettled([
+        sendEmail({
+          to: "gowthamandharshan4@mail.com",
+          subject: emailSubject,
+          html: emailHtml,
+        }),
+        sendEmail({
+          to: "gowthamandharshan4@gmail.com",
+          subject: emailSubject,
+          html: emailHtml,
+        }),
+      ]);
+    } catch (mailErr) {
+      console.error("Failed to send admin ticket alert email:", mailErr);
+    }
 
     return NextResponse.json({
       success: true,

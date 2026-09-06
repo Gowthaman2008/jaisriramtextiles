@@ -200,7 +200,7 @@ export async function sendEmail({
   html,
   attachments,
 }: {
-  to: string;
+  to: string | string[];
   subject: string;
   html: string;
   attachments?: Array<{ filename: string; content: string }>;
@@ -522,6 +522,189 @@ export function ticketClosedEmailHtml({
           <p style="margin: 24px 0 0 0; font-size: 13px; color: #6E655A; line-height: 1.5; font-family: Arial, sans-serif;">
             If you have any further questions or if your issue is not fully resolved, feel free to reply directly to this email or open a new ticket from your customer dashboard.
           </p>
+        </div>
+
+        ${renderEmailFooter()}
+      </div>
+    </div>
+  `;
+}
+
+export function newTicketAdminEmailHtml({
+  ticketId,
+  name,
+  email,
+  subject,
+  message,
+  userId,
+}: {
+  ticketId: string;
+  name: string;
+  email: string;
+  subject: string;
+  message: string;
+  userId?: string | null;
+}) {
+  const fullId = ticketId || "N/A";
+  const dateStr = new Date().toLocaleString("en-IN", {
+    timeZone: "Asia/Kolkata",
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+
+  return `
+    <div class="email-bg" style="background-color: #F5F2EB; padding: 24px 10px; font-family: Georgia, 'Times New Roman', serif;">
+      <div class="email-card" style="width: 100%; max-width: 580px; margin: 0 auto; background-color: #FBF9F4; border: 1px solid #E5DFD2; border-radius: 12px; box-shadow: 0 4px 15px rgba(42, 38, 34, 0.05); overflow: hidden;">
+        ${renderEmailHeader("Support Desk Alert", "New Ticket Raised")}
+        
+        <div class="mobile-body" style="padding: 24px 16px; color: #2A2622; font-size: 13px; line-height: 1.6;">
+          <!-- Alert Banner -->
+          <div style="background-color: #EBF7EE; border: 1px solid #A3D9B1; border-left: 4px solid #2E7D32; border-radius: 8px; padding: 14px 16px; margin-bottom: 20px;">
+            <div style="font-family: Arial, sans-serif; font-size: 13px; font-weight: bold; color: #1E4620; text-transform: uppercase; letter-spacing: 0.5px;">
+              🚨 New Support Ticket Raised by Customer
+            </div>
+            <p style="margin: 4px 0 0 0; font-size: 12px; color: #2E5A30; font-family: Arial, sans-serif;">
+              A customer has submitted a new support inquiry on your store. Please review and respond.
+            </p>
+          </div>
+
+          <p class="email-heading" style="font-size: 14px; font-weight: bold; margin: 0 0 16px 0;">Hello <b>Admin (Gowthaman)</b>,</p>
+          <p style="margin: 0 0 20px 0; color: #4A4238;">
+            A new customer support ticket has been registered. Below are the inquiry details:
+          </p>
+
+          <!-- Ticket Summary Table -->
+          <div class="light-card" style="background-color: #FFFFFF; border: 1px solid #E5DFD2; border-radius: 8px; padding: 16px 18px; margin-bottom: 20px; font-family: Arial, sans-serif; font-size: 12.5px;">
+            <table style="width: 100%; border-collapse: collapse;">
+              <tr>
+                <td style="padding: 6px 0; color: #6E655A; width: 35%;"><b>Ticket ID:</b></td>
+                <td style="padding: 6px 0; font-family: monospace; font-weight: bold; color: #B08D4C; text-align: right;">${fullId}</td>
+              </tr>
+              <tr>
+                <td style="padding: 6px 0; color: #6E655A;"><b>Customer Name:</b></td>
+                <td style="padding: 6px 0; font-weight: bold; color: #2A2622; text-align: right;">${name}</td>
+              </tr>
+              <tr>
+                <td style="padding: 6px 0; color: #6E655A;"><b>Customer Email:</b></td>
+                <td style="padding: 6px 0; font-weight: bold; color: #2A2622; text-align: right;"><a href="mailto:${email}" style="color: #8A6D33; text-decoration: none;">${email}</a></td>
+              </tr>
+              ${userId ? `
+              <tr>
+                <td style="padding: 6px 0; color: #6E655A;"><b>Customer UID:</b></td>
+                <td style="padding: 6px 0; font-family: monospace; color: #6E655A; text-align: right;">${userId}</td>
+              </tr>
+              ` : ""}
+              <tr>
+                <td style="padding: 6px 0; color: #6E655A;"><b>Submitted At:</b></td>
+                <td style="padding: 6px 0; color: #2A2622; text-align: right;">${dateStr}</td>
+              </tr>
+              <tr>
+                <td style="padding: 6px 0; color: #6E655A;"><b>Subject:</b></td>
+                <td style="padding: 6px 0; font-weight: bold; color: #2A2622; text-align: right;">${subject}</td>
+              </tr>
+            </table>
+          </div>
+
+          <!-- Customer Inquiry Message Body -->
+          <div style="margin-bottom: 24px;">
+            <div style="font-family: Arial, sans-serif; font-weight: bold; font-size: 11px; text-transform: uppercase; color: #6E655A; letter-spacing: 1px; margin-bottom: 8px;">
+              Customer Message
+            </div>
+            <div style="background-color: #FFFFFF; border: 1px solid #E5DFD2; border-left: 4px solid #B08D4C; border-radius: 8px; padding: 16px; font-size: 13.5px; color: #2A2622; line-height: 1.6; white-space: pre-line;">
+              ${message}
+            </div>
+          </div>
+
+          <!-- Direct CTA Button -->
+          <div style="text-align: center; margin: 26px 0 20px 0;">
+            <a href="https://jaisriramtextiles.in/admin" target="_blank" style="display: inline-block; background-color: #8A6D33; color: #FFFFFF; font-family: Arial, sans-serif; font-weight: bold; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; padding: 14px 28px; border-radius: 8px; text-decoration: none; box-shadow: 0 2px 8px rgba(138, 109, 51, 0.3);">
+              View &amp; Reply in Admin Portal &rarr;
+            </a>
+          </div>
+
+          <p style="margin: 0; font-size: 11.5px; color: #8A7E72; text-align: center; font-family: Arial, sans-serif;">
+            You can also reply directly to the customer at <a href="mailto:${email}" style="color: #8A6D33; font-weight: bold;">${email}</a>.
+          </p>
+        </div>
+
+        ${renderEmailFooter()}
+      </div>
+    </div>
+  `;
+}
+
+export function ticketUserReplyAdminEmailHtml({
+  ticketId,
+  subject,
+  replyMessage,
+  userEmail,
+}: {
+  ticketId: string;
+  subject: string;
+  replyMessage: string;
+  userEmail?: string;
+}) {
+  const fullId = ticketId || "N/A";
+  const dateStr = new Date().toLocaleString("en-IN", {
+    timeZone: "Asia/Kolkata",
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+
+  return `
+    <div class="email-bg" style="background-color: #F5F2EB; padding: 24px 10px; font-family: Georgia, 'Times New Roman', serif;">
+      <div class="email-card" style="width: 100%; max-width: 580px; margin: 0 auto; background-color: #FBF9F4; border: 1px solid #E5DFD2; border-radius: 12px; box-shadow: 0 4px 15px rgba(42, 38, 34, 0.05); overflow: hidden;">
+        ${renderEmailHeader("Support Desk Alert", "New Customer Reply")}
+        
+        <div class="mobile-body" style="padding: 24px 16px; color: #2A2622; font-size: 13px; line-height: 1.6;">
+          <div style="background-color: #EBF4F7; border: 1px solid #A3CBD9; border-left: 4px solid #1E708E; border-radius: 8px; padding: 14px 16px; margin-bottom: 20px;">
+            <div style="font-family: Arial, sans-serif; font-size: 13px; font-weight: bold; color: #103E50; text-transform: uppercase; letter-spacing: 0.5px;">
+              💬 Customer Replied to Support Ticket
+            </div>
+            <p style="margin: 4px 0 0 0; font-size: 12px; color: #1E5166; font-family: Arial, sans-serif;">
+              A customer has replied to an ongoing support ticket #${fullId.substring(0, 8).toUpperCase()}.
+            </p>
+          </div>
+
+          <p class="email-heading" style="font-size: 14px; font-weight: bold; margin: 0 0 16px 0;">Hello <b>Admin (Gowthaman)</b>,</p>
+
+          <div class="light-card" style="background-color: #FFFFFF; border: 1px solid #E5DFD2; border-radius: 8px; padding: 16px 18px; margin-bottom: 20px; font-family: Arial, sans-serif; font-size: 12.5px;">
+            <table style="width: 100%; border-collapse: collapse;">
+              <tr>
+                <td style="padding: 6px 0; color: #6E655A; width: 35%;"><b>Ticket ID:</b></td>
+                <td style="padding: 6px 0; font-family: monospace; font-weight: bold; color: #B08D4C; text-align: right;">${fullId}</td>
+              </tr>
+              <tr>
+                <td style="padding: 6px 0; color: #6E655A;"><b>Subject:</b></td>
+                <td style="padding: 6px 0; font-weight: bold; color: #2A2622; text-align: right;">${subject}</td>
+              </tr>
+              ${userEmail ? `
+              <tr>
+                <td style="padding: 6px 0; color: #6E655A;"><b>Customer:</b></td>
+                <td style="padding: 6px 0; color: #2A2622; text-align: right;">${userEmail}</td>
+              </tr>
+              ` : ""}
+              <tr>
+                <td style="padding: 6px 0; color: #6E655A;"><b>Replied At:</b></td>
+                <td style="padding: 6px 0; color: #2A2622; text-align: right;">${dateStr}</td>
+              </tr>
+            </table>
+          </div>
+
+          <div style="margin-bottom: 24px;">
+            <div style="font-family: Arial, sans-serif; font-weight: bold; font-size: 11px; text-transform: uppercase; color: #6E655A; letter-spacing: 1px; margin-bottom: 8px;">
+              New Customer Message
+            </div>
+            <div style="background-color: #FFFFFF; border: 1px solid #E5DFD2; border-left: 4px solid #1E708E; border-radius: 8px; padding: 16px; font-size: 13.5px; color: #2A2622; line-height: 1.6; white-space: pre-line;">
+              ${replyMessage}
+            </div>
+          </div>
+
+          <div style="text-align: center; margin: 26px 0 20px 0;">
+            <a href="https://jaisriramtextiles.in/admin" target="_blank" style="display: inline-block; background-color: #8A6D33; color: #FFFFFF; font-family: Arial, sans-serif; font-weight: bold; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; padding: 14px 28px; border-radius: 8px; text-decoration: none; box-shadow: 0 2px 8px rgba(138, 109, 51, 0.3);">
+              Open Admin Support Desk &rarr;
+            </a>
+          </div>
         </div>
 
         ${renderEmailFooter()}

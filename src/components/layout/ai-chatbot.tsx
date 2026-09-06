@@ -79,6 +79,14 @@ export function AIChatbot() {
       loadChatbotCategories();
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    function handleOpenChat() {
+      setIsOpen(true);
+    }
+    window.addEventListener("open-ai-chat", handleOpenChat);
+    return () => window.removeEventListener("open-ai-chat", handleOpenChat);
+  }, []);
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "assistant",

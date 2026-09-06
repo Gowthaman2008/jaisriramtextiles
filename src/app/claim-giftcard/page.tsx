@@ -24,6 +24,10 @@ import {
   ShieldAlert,
   AlertTriangle,
   RotateCcw,
+  Headphones,
+  Mail,
+  MessageSquare,
+  LifeBuoy,
 } from "lucide-react";
 import { Container } from "@/components/ui/container";
 import { useNotification } from "@/components/providers/notification-provider";
@@ -156,6 +160,10 @@ export default function ClaimGiftCardPage() {
   // AI Verification Failure Modal state
   const [showAiFailureModal, setShowAiFailureModal] = useState(false);
   const [aiFailureReason, setAiFailureReason] = useState("");
+
+  // Customer Support Modal state
+  const [showSupportModal, setShowSupportModal] = useState(false);
+  const [copiedEmail, setCopiedEmail] = useState(false);
 
   // Result state
   const [generatedCard, setGeneratedCard] = useState<GeneratedGiftCard | null>(null);
@@ -539,17 +547,30 @@ export default function ClaimGiftCardPage() {
                   setShowAiFailureModal(false);
                   setShowVideoModal(true);
                 }}
-                className="w-full py-3.5 px-5 bg-gradient-to-r from-zari-deep via-zari to-zari-deep hover:brightness-110 text-ivory text-xs font-bold uppercase tracking-wider rounded-2xl shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer hover:scale-[1.02]"
+                className="w-full py-3.5 px-5 bg-gradient-to-r from-zari-deep via-zari to-zari-deep hover:brightness-110 text-ivory text-xs font-bold uppercase tracking-wider rounded-2xl shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer hover:scale-[1.01]"
               >
                 <Play size={14} className="fill-ivory" />
                 <span>Watch Video Tutorial (How to Review)</span>
               </button>
 
-              {/* Button 2: Dismiss & Re-upload */}
+              {/* Button 2: Customer Support */}
+              <button
+                type="button"
+                onClick={() => {
+                  setShowAiFailureModal(false);
+                  setShowSupportModal(true);
+                }}
+                className="w-full py-3 px-4 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-300/80 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 hover:scale-[1.01]"
+              >
+                <Headphones size={14} className="text-emerald-700" />
+                <span>Contact Customer Support</span>
+              </button>
+
+              {/* Button 3: Dismiss & Re-upload */}
               <button
                 type="button"
                 onClick={() => setShowAiFailureModal(false)}
-                className="w-full py-3 px-4 bg-stone-100 hover:bg-stone-200 text-ink text-xs font-bold rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                className="w-full py-2.5 px-4 bg-stone-100 hover:bg-stone-200 text-ink text-xs font-semibold rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-1.5"
               >
                 <RotateCcw size={13} />
                 <span>Upload Correct Screenshots</span>
@@ -559,86 +580,233 @@ export default function ClaimGiftCardPage() {
         </div>
       )}
 
-      {/* Centered 'How to Review' Video Tutorial Modal */}
+      {/* Centered 'How to Review' Video Tutorial Modal (Vertical Mobile Format) */}
       {showVideoModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-950/75 backdrop-blur-sm animate-fade-in">
-          <div className="relative w-full max-w-2xl bg-white rounded-3xl border border-line shadow-2xl overflow-hidden animate-scale-up text-ink">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-stone-950/80 backdrop-blur-md animate-fade-in overflow-y-auto">
+          <div className="relative w-full max-w-sm sm:max-w-md bg-white rounded-3xl border border-line shadow-2xl overflow-hidden animate-scale-up text-ink my-auto">
             {/* Modal Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-line bg-cream/30">
-              <div className="flex items-center gap-2.5">
-                <span className="w-8 h-8 rounded-full bg-zari/15 text-zari-deep flex items-center justify-center">
-                  <Video size={16} />
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-line bg-cream/30">
+              <div className="flex items-center gap-2">
+                <span className="w-7 h-7 rounded-full bg-zari/15 text-zari-deep flex items-center justify-center">
+                  <Video size={14} />
                 </span>
                 <div>
-                  <h3 className="font-display text-base sm:text-lg text-ink font-bold">
+                  <h3 className="font-display text-sm sm:text-base text-ink font-bold leading-tight">
                     {tutorialVideo.title || "How to Review & Claim ₹100 Gift Card"}
                   </h3>
-                  <p className="text-[11px] text-taupe">Step-by-step video guide</p>
+                  <p className="text-[10px] text-taupe">Mobile Screen Recording Guide</p>
                 </div>
               </div>
 
               <button
                 type="button"
                 onClick={() => setShowVideoModal(false)}
-                className="w-8 h-8 rounded-full bg-white hover:bg-stone-100 border border-line flex items-center justify-center text-taupe hover:text-ink transition-colors cursor-pointer"
+                className="w-7 h-7 rounded-full bg-white hover:bg-stone-100 border border-line flex items-center justify-center text-taupe hover:text-ink transition-colors cursor-pointer"
               >
-                <X size={16} />
+                <X size={15} />
               </button>
             </div>
 
-            {/* Video Player Section */}
-            <div className="bg-stone-950 aspect-video relative flex items-center justify-center overflow-hidden">
-              {tutorialVideo.video_url ? (
-                tutorialVideo.video_url.includes("youtube.com") || tutorialVideo.video_url.includes("youtu.be") ? (
-                  <iframe
-                    src={getYouTubeEmbedUrl(tutorialVideo.video_url)}
-                    title="How to Review Video"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                    className="w-full h-full border-0"
-                  />
+            {/* Vertical Video Player Section */}
+            <div className="bg-stone-950 p-3 sm:p-4 flex items-center justify-center">
+              <div className="w-full max-w-[280px] sm:max-w-[300px] aspect-[9/16] max-h-[60vh] rounded-2xl overflow-hidden border border-stone-800 bg-black shadow-2xl relative flex items-center justify-center">
+                {tutorialVideo.video_url ? (
+                  tutorialVideo.video_url.includes("youtube.com") || tutorialVideo.video_url.includes("youtu.be") ? (
+                    <iframe
+                      src={getYouTubeEmbedUrl(tutorialVideo.video_url)}
+                      title="How to Review Video"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                      className="w-full h-full border-0 object-cover"
+                    />
+                  ) : (
+                    <video
+                      src={tutorialVideo.video_url}
+                      controls
+                      autoPlay
+                      playsInline
+                      className="w-full h-full object-cover"
+                    />
+                  )
                 ) : (
-                  <video
-                    src={tutorialVideo.video_url}
-                    controls
-                    autoPlay
-                    playsInline
-                    className="w-full h-full object-contain"
-                  />
-                )
-              ) : (
-                <div className="p-8 text-center text-stone-300 space-y-3">
-                  <div className="w-14 h-14 rounded-full bg-white/10 flex items-center justify-center mx-auto text-zari">
-                    <Play size={24} className="fill-zari ml-1" />
+                  <div className="p-6 text-center text-stone-300 space-y-3">
+                    <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center mx-auto text-zari">
+                      <Play size={22} className="fill-zari ml-0.5" />
+                    </div>
+                    <h4 className="font-bold text-sm text-ivory">How to Submit Your Review</h4>
+                    <p className="text-[11px] text-stone-400 max-w-xs mx-auto leading-relaxed">
+                      1. Open Amazon or Flipkart &amp; find your order.<br />
+                      2. Submit a 5-star rating with positive feedback.<br />
+                      3. Take 2 screenshots (Rating form &amp; Confirmation).<br />
+                      4. Enter your Order ID &amp; generate your ₹100 Gift Card!
+                    </p>
                   </div>
-                  <h4 className="font-bold text-sm text-ivory">How to Submit Your Review</h4>
-                  <p className="text-xs text-stone-400 max-w-md mx-auto leading-relaxed">
-                    1. Open Amazon or Flipkart & go to your delivered orders.<br />
-                    2. Submit a 5-star rating with positive feedback.<br />
-                    3. Upload 2 screenshots (Rating form & Submitted confirmation).<br />
-                    4. Enter your Order ID below to generate your ₹100 Gift Card instantly!
-                  </p>
-                </div>
-              )}
+                )}
+              </div>
             </div>
 
             {/* Description & Action */}
-            <div className="p-5 sm:p-6 bg-white space-y-4">
-              <div className="space-y-1">
+            <div className="p-4 sm:p-5 bg-white space-y-3">
+              <div className="space-y-0.5">
                 <span className="text-[10px] font-bold text-taupe uppercase tracking-wider block">Instructions:</span>
                 <p className="text-xs text-taupe leading-relaxed">
                   {tutorialVideo.description || "Follow these simple steps: leave your positive review, take the 2 required screenshots with your Order ID, and claim your instant ₹100 Gift Card!"}
                 </p>
               </div>
 
-              <div className="pt-2 flex items-center justify-end">
+              <div className="pt-1 flex items-center justify-end">
                 <button
                   type="button"
                   onClick={() => setShowVideoModal(false)}
-                  className="px-6 py-2.5 bg-gradient-to-r from-ink to-stone-900 hover:from-zari hover:to-zari-deep text-ivory text-xs font-bold uppercase tracking-wider rounded-xl shadow-md transition-all cursor-pointer"
+                  className="w-full sm:w-auto px-6 py-2.5 bg-gradient-to-r from-ink to-stone-900 hover:from-zari hover:to-zari-deep text-ivory text-xs font-bold uppercase tracking-wider rounded-xl shadow-md transition-all cursor-pointer text-center"
                 >
                   Got It, Start Claiming &rarr;
                 </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Centered 'Customer Support' Modal */}
+      {showSupportModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-stone-950/80 backdrop-blur-md animate-fade-in overflow-y-auto">
+          <div className="relative w-full max-w-md bg-white rounded-3xl border border-line shadow-2xl overflow-hidden animate-scale-up text-ink my-auto">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-line bg-gradient-to-r from-emerald-500/10 via-cream/40 to-transparent">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-white flex items-center justify-center shadow-sm">
+                  <Headphones size={18} />
+                </div>
+                <div>
+                  <h3 className="font-display text-base sm:text-lg text-ink font-bold leading-tight">
+                    Customer Support Desk
+                  </h3>
+                  <p className="text-xs text-taupe">We are here to assist with your claims &amp; orders</p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowSupportModal(false)}
+                className="w-8 h-8 rounded-full bg-stone-100 hover:bg-stone-200 border border-line flex items-center justify-center text-taupe hover:text-ink transition-colors cursor-pointer"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
+              {/* Option 1: Direct Email Support */}
+              <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200 hover:border-emerald-300 transition-all space-y-2.5">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                      <Mail size={16} />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-xs text-ink">Official Email Support</h4>
+                      <p className="text-[11px] text-taupe">Quick response for verification &amp; order inquiries</p>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                    Primary
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-white border border-stone-200 text-xs font-mono text-ink">
+                  <span className="truncate select-all">jaisriramtextilekpm@gmail.com</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText("jaisriramtextilekpm@gmail.com");
+                      setCopiedEmail(true);
+                      notify("Support email copied to clipboard!", "success");
+                      setTimeout(() => setCopiedEmail(false), 2500);
+                    }}
+                    className="shrink-0 px-2.5 py-1 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 font-sans text-[11px] font-bold transition-colors flex items-center gap-1 cursor-pointer"
+                  >
+                    {copiedEmail ? <Check size={12} className="text-emerald-600" /> : <Copy size={12} />}
+                    <span>{copiedEmail ? "Copied" : "Copy"}</span>
+                  </button>
+                </div>
+
+                <a
+                  href="mailto:jaisriramtextilekpm@gmail.com?subject=Gift%20Card%20Claim%20Support%20Request"
+                  className="w-full inline-flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition-colors"
+                >
+                  <Mail size={13} />
+                  <span>Send Direct Email</span>
+                </a>
+              </div>
+
+              {/* Option 2: Account Support Tickets */}
+              <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200 hover:border-zari transition-all space-y-2.5">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
+                      <LifeBuoy size={16} />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-xs text-ink">Raise a Support Ticket</h4>
+                      <p className="text-[11px] text-taupe">Track your issues &amp; resolutions in real-time</p>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
+                    Dashboard
+                  </span>
+                </div>
+
+                <Link
+                  href="/account?tab=support"
+                  onClick={() => setShowSupportModal(false)}
+                  className="w-full inline-flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-white hover:bg-stone-100 text-ink border border-line font-bold text-xs shadow-xs transition-colors"
+                >
+                  <ExternalLink size={13} />
+                  <span>Open Support Tickets in My Account</span>
+                </Link>
+              </div>
+
+              {/* Option 3: Live 24/7 AI Assistant */}
+              <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200 hover:border-zari transition-all space-y-2.5">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-zari/15 text-zari-deep flex items-center justify-center shrink-0">
+                      <Sparkles size={16} />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-xs text-ink">Instant AI Assistant</h4>
+                      <p className="text-[11px] text-taupe">24/7 help with claim rules, tracking &amp; questions</p>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-zari/15 text-zari-deep">
+                    24/7 Instant
+                  </span>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowSupportModal(false);
+                    if (typeof window !== "undefined") {
+                      window.dispatchEvent(new CustomEvent("open-ai-chat"));
+                    }
+                  }}
+                  className="w-full inline-flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-gradient-to-r from-ink to-stone-900 hover:from-zari hover:to-zari-deep text-white font-bold text-xs shadow-xs transition-all cursor-pointer"
+                >
+                  <MessageSquare size={13} />
+                  <span>Start Live AI Chat</span>
+                </button>
+              </div>
+
+              {/* Support Info Footer */}
+              <div className="pt-2 text-center text-[11px] text-taupe space-y-1 border-t border-line/60">
+                <p className="font-medium text-ink/80">
+                  📍 Kumarapalayam, Namakkal, Tamil Nadu - 638183
+                </p>
+                <p className="text-[10px] text-taupe/80">
+                  Support Hours: Monday – Saturday (9:00 AM – 7:00 PM IST)
+                </p>
               </div>
             </div>
           </div>
@@ -673,9 +841,9 @@ export default function ClaimGiftCardPage() {
               Share your positive review on Amazon, Flipkart, or Google Reviews to earn an instant ₹100 Gift Card redeemable into your wallet as cashback!
             </p>
 
-            {/* 'How to Review' Button */}
-            {tutorialVideo?.enabled !== false && (
-              <div className="pt-2 flex justify-center">
+            {/* Action Buttons: 'How to Review' & 'Customer Support' */}
+            <div className="pt-2 flex flex-wrap items-center justify-center gap-3">
+              {tutorialVideo?.enabled !== false && (
                 <button
                   type="button"
                   onClick={() => setShowVideoModal(true)}
@@ -689,8 +857,22 @@ export default function ClaimGiftCardPage() {
                     Watch Video
                   </span>
                 </button>
-              </div>
-            )}
+              )}
+
+              <button
+                type="button"
+                onClick={() => setShowSupportModal(true)}
+                className="group relative inline-flex items-center gap-2.5 px-5 py-2.5 rounded-full bg-white/95 hover:bg-white text-ink border border-emerald-300/80 hover:border-emerald-500 shadow-sm hover:shadow-md transition-all duration-300 font-bold text-xs cursor-pointer hover:scale-105"
+              >
+                <span className="w-6 h-6 rounded-full bg-gradient-to-tr from-emerald-500 to-teal-600 text-white flex items-center justify-center shadow-xs group-hover:scale-110 transition-transform">
+                  <Headphones size={12} className="text-white" />
+                </span>
+                <span className="tracking-wide">Customer Support</span>
+                <span className="text-[10px] uppercase font-extrabold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/60">
+                  Help &amp; Queries
+                </span>
+              </button>
+            </div>
           </div>
         </Container>
       </section>

@@ -181,10 +181,10 @@ export function TutorialVideoManager() {
         </button>
       </div>
 
-      <form onSubmit={handleSave} className="space-y-6">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <form onSubmit={handleSave} className="space-y-6 max-w-full overflow-hidden">
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
           {/* Left Column: Video Upload & Link */}
-          <div className="lg:col-span-7 space-y-5">
+          <div className="xl:col-span-7 space-y-5 min-w-0 w-full">
             {/* Direct Video File Upload */}
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-ink mb-2">
@@ -201,10 +201,10 @@ export function TutorialVideoManager() {
 
               <div
                 onClick={() => fileInputRef.current?.click()}
-                className="border-2 border-dashed border-zari/40 hover:border-zari bg-cream/20 hover:bg-cream/40 rounded-2xl p-6 text-center transition-all duration-200 group flex flex-col items-center justify-center space-y-2 cursor-pointer"
+                className="border-2 border-dashed border-zari/40 hover:border-zari bg-cream/20 hover:bg-cream/40 rounded-2xl p-5 sm:p-6 text-center transition-all duration-200 group flex flex-col items-center justify-center space-y-2 cursor-pointer"
               >
-                <div className="w-12 h-12 rounded-xl bg-zari/10 group-hover:bg-zari/20 text-zari flex items-center justify-center transition-colors">
-                  <UploadCloud size={24} />
+                <div className="w-11 h-11 rounded-xl bg-zari/10 group-hover:bg-zari/20 text-zari flex items-center justify-center transition-colors">
+                  <UploadCloud size={22} />
                 </div>
                 <p className="font-bold text-xs text-ink group-hover:text-zari transition-colors">
                   {selectedFile ? `Selected: ${selectedFile.name}` : "Click to select and upload video from your device"}
@@ -293,10 +293,10 @@ export function TutorialVideoManager() {
           </div>
 
           {/* Right Column: Live Video Preview */}
-          <div className="lg:col-span-5 space-y-3">
-            <div className="flex items-center justify-between">
+          <div className="xl:col-span-5 space-y-3 min-w-0 w-full flex flex-col items-center">
+            <div className="flex items-center justify-between w-full max-w-[290px]">
               <label className="block text-xs font-bold uppercase tracking-wider text-ink">
-                Live Video Preview
+                Mobile Video Preview (9:16)
               </label>
               {activeVideoUrl && (
                 <span className="text-[10px] text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
@@ -305,37 +305,43 @@ export function TutorialVideoManager() {
               )}
             </div>
 
-            <div className="rounded-2xl border border-line bg-stone-950 overflow-hidden shadow-inner flex flex-col items-center justify-center min-h-[260px] relative aspect-video">
-              {activeVideoUrl ? (
-                isYouTube ? (
-                  <iframe
-                    src={getYouTubeEmbedUrl(activeVideoUrl)}
-                    title="Tutorial Video Preview"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                    className="w-full h-full border-0"
-                  />
+            {/* Vertical Phone Screen Mockup Frame */}
+            <div className="w-full max-w-[280px] aspect-[9/16] rounded-[2rem] border-4 border-stone-800 bg-stone-950 overflow-hidden shadow-2xl flex flex-col items-center justify-center relative p-1">
+              {/* Phone Speaker / Camera Notch */}
+              <div className="absolute top-2 w-16 h-3 bg-stone-800 rounded-full z-10 pointer-events-none opacity-80" />
+
+              <div className="w-full h-full rounded-[1.6rem] overflow-hidden flex items-center justify-center bg-black">
+                {activeVideoUrl ? (
+                  isYouTube ? (
+                    <iframe
+                      src={getYouTubeEmbedUrl(activeVideoUrl)}
+                      title="Tutorial Video Preview"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                      className="w-full h-full border-0 object-cover"
+                    />
+                  ) : (
+                    <video
+                      src={activeVideoUrl}
+                      controls
+                      playsInline
+                      className="w-full h-full object-cover"
+                    />
+                  )
                 ) : (
-                  <video
-                    src={activeVideoUrl}
-                    controls
-                    playsInline
-                    className="w-full h-full object-contain"
-                  />
-                )
-              ) : (
-                <div className="p-6 text-center text-stone-400 space-y-2">
-                  <FileVideo size={40} className="mx-auto text-stone-600" />
-                  <p className="text-xs font-semibold">No video selected or linked yet</p>
-                  <p className="text-[10px] text-stone-500 max-w-xs">
-                    Upload a video file or enter a YouTube/Cloudinary URL on the left to see live preview.
-                  </p>
-                </div>
-              )}
+                  <div className="p-6 text-center text-stone-400 space-y-3">
+                    <FileVideo size={40} className="mx-auto text-stone-600" />
+                    <p className="text-xs font-semibold text-stone-300">Vertical Screen Recording</p>
+                    <p className="text-[10px] text-stone-500 max-w-xs leading-relaxed">
+                      Upload your mobile screen recording (MP4/WebM) or enter a video link to see vertical preview.
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Popup Info Box */}
-            <div className="p-4 bg-cream/30 border border-line rounded-2xl space-y-1.5 text-xs">
+            <div className="w-full max-w-[290px] p-4 bg-cream/30 border border-line rounded-2xl space-y-1.5 text-xs">
               <span className="font-bold text-ink flex items-center gap-1">
                 <Eye size={13} className="text-zari" />
                 Preview in Customer Modal:
