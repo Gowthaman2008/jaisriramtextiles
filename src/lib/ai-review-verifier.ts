@@ -58,25 +58,46 @@ async function verifySingleScreenshot(options: {
     "qwen/qwen3.6-27b",
   ];
 
-  const systemPrompt = `You are a strict AI Review Verification System for JAI SRI RAM TEXTILES.
-The user uploaded this image as Screenshot ${index + 1} to claim a ₹100 Gift Card reward for leaving a positive review on ${platform.toUpperCase()}${orderReference ? ` (Platform Order ID: ${orderReference})` : ""}.
+  const systemPrompt = `You are an expert AI Vision Review Verification System for JAI SRI RAM TEXTILES.
+Your job is to inspect the uploaded image and determine if it is a REAL, GENUINE e-commerce review screenshot from Amazon, Flipkart, Google Reviews, or similar platforms.
 
-CRITICAL VERIFICATION RULES:
-1. REJECT (isValid: false) if the image is:
-   - A random photo, landscape, personal selfie, or scenery.
-   - A logo, company banner, promotional poster, or meme.
-   - A blank, black, or unreadable screenshot.
-   - A product catalog image or product photo with no user rating or written review.
-   - A payment receipt or invoice that does NOT contain a customer review or rating.
+VALID REFERENCE PATTERNS TO ACCEPT (isValid: true):
+1. FLIPKART REVIEW SUBMITTED:
+   - Mascot illustration (person/man celebrating with confetti)
+   - Heading: "Thank you for the review!"
+   - Text: "Your valuable feedback helps India shop better everyday"
+   - May show "More products to review" with other items below and blue "Close" button.
 
-2. ACCEPT (isValid: true) if the image shows:
-   - An e-commerce or Google review screen (Amazon, Flipkart, Google Reviews, etc.).
-   - A star rating interface (e.g. 4 or 5 stars).
-   - A submitted review text or "Review submitted / pending approval / Live" confirmation.
-   - An order details screen displaying the customer's rating/feedback.
+2. FLIPKART REVIEW FORM / SHARE EXPERIENCE:
+   - Title: "Share your experience" or "Review this product"
+   - 5 stars with emotion labels ("Terrible", "Bad", "Okay", "Good", "Great" with smiling star)
+   - "Add photo/video" camera box ("The top 5% of our best reviewers usually add a photo/video")
+   - Aspect ratings ("What did you love about it?": Quality, Design & Features, Look & Feel, Value for Money, Service)
+   - Blue "Submit" button or "Tell us more" text field.
 
-Respond ONLY with a JSON object in this exact format (no other text, no markdown):
-{"isValid": false, "confidence": 0.95, "reason": "The uploaded image is a random photo, not an online review screenshot."}`;
+3. AMAZON REVIEW FORM:
+   - Heading: "How was the item?" with product thumbnail
+   - 5 orange/gold stars selected
+   - Text fields: "Write a review", "Title your review", "Share a video or photo"
+   - Yellow pill-shaped "Submit" button.
+
+4. AMAZON REVIEW SUBMITTED / CONFIRMATION:
+   - Green checkmark with "✓ Review Submitted"
+   - Header: "Review Your Purchases" (even if it shows a progress circle like "And now the last one..." and list of other purchased items with unrated stars below).
+
+5. GOOGLE REVIEWS & OTHERS:
+   - Google Maps or Google Search review dialog with star ratings and review text/photos.
+
+REJECTION CRITERIA (isValid: false):
+- Random personal photos, selfies, scenery, animals, food, memes, wallpapers.
+- Bare product photos or marketing banners without ANY review UI, stars, submission message, or feedback form.
+- Screenshots of unrelated apps (chat messengers, payment UPI screens, social media feeds without review content).
+
+CRITICAL NOTE:
+Always accept legitimate review confirmation screens even if they show recommendations to review other items below the success banner.
+
+Respond ONLY with valid JSON in this exact structure:
+{"isValid": true, "confidence": 0.98, "reason": "Verified as genuine review submission screenshot.", "detectedPlatform": "${platform}"}`;
 
   for (const model of visionModels) {
     try {
