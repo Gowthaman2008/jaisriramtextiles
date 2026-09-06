@@ -36,8 +36,7 @@ export function Navbar() {
             { slug: "all", label: "All" },
             ...dbCategories.map(c => ({ slug: c.slug, label: c.name })),
             { slug: "sale", label: "Live On Sale" },
-            { slug: "bulk-orders", label: "Bulk Orders" },
-            { slug: "claim-giftcard", label: "₹100 Gift Card" }
+            { slug: "bulk-orders", label: "Bulk Orders" }
           ];
           setNavCategories(finalCategories);
         }

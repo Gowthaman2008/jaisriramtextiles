@@ -120,7 +120,8 @@ export async function POST(request: Request) {
     const platform = (body.platform as string) || "direct";
     const customCode = body.customCode ? body.customCode.trim().toUpperCase() : null;
     const notes = body.notes ? body.notes.trim() : null;
-    const expiresAt = body.expiresAt ? new Date(body.expiresAt).toISOString() : null;
+    const defaultOneYear = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString();
+    const expiresAt = body.expiresAt ? new Date(body.expiresAt).toISOString() : defaultOneYear;
     const quantity = Math.min(Math.max(Number(body.quantity) || 1, 1), 50); // cap batch at 50
 
     const cardsToInsert: any[] = [];

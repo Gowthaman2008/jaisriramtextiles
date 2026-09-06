@@ -28,8 +28,10 @@ import {
   AlertTriangle,
   FileImage,
   Layers,
-  ArrowUpDown
+  ArrowUpDown,
+  Package
 } from "lucide-react";
+import { PlatformOrdersManager } from "./platform-orders-manager";
 
 interface GiftCardRecord {
   id: string;
@@ -67,6 +69,9 @@ export function GiftCardManager() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
+
+  // Sub-tab state
+  const [subTab, setSubTab] = useState<"cards" | "orders">("cards");
 
   // Filter & Search states
   const [searchQuery, setSearchQuery] = useState("");
@@ -301,19 +306,58 @@ export function GiftCardManager() {
 
   return (
     <div className="space-y-6">
-      {/* Top Header & Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white border border-line rounded-card p-5 shadow-soft">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="p-2 rounded-xl bg-zari/10 text-zari-deep">
-              <Gift size={20} />
-            </span>
+      {/* Sub-Tab Navigation Switcher */}
+      <div className="flex items-center gap-2 border-b border-line pb-3 overflow-x-auto whitespace-nowrap">
+        <button
+          type="button"
+          onClick={() => setSubTab("cards")}
+          className={`px-4 py-2.5 rounded-2xl font-bold text-xs flex items-center gap-2 transition-all cursor-pointer ${
+            subTab === "cards"
+              ? "bg-ink text-ivory shadow-sm"
+              : "bg-white border border-line text-taupe hover:text-ink"
+          }`}
+        >
+          <Gift size={16} className={subTab === "cards" ? "text-zari" : ""} />
+          <span>Gift Card Registry & Review Submissions</span>
+          <span className="px-2 py-0.5 rounded-full text-[10px] bg-white/20 font-mono">
+            {cards.length}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setSubTab("orders")}
+          className={`px-4 py-2.5 rounded-2xl font-bold text-xs flex items-center gap-2 transition-all cursor-pointer ${
+            subTab === "orders"
+              ? "bg-ink text-ivory shadow-sm"
+              : "bg-white border border-line text-taupe hover:text-ink"
+          }`}
+        >
+          <Package size={16} className={subTab === "orders" ? "text-zari" : ""} />
+          <span>Verified Order IDs (Amazon & Flipkart)</span>
+          <span className="px-2 py-0.5 rounded-full text-[10px] bg-zari text-ink font-bold">
+            Auto-Verify
+          </span>
+        </button>
+      </div>
+
+      {subTab === "orders" ? (
+        <PlatformOrdersManager />
+      ) : (
+        <>
+          {/* Top Header & Actions */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white border border-line rounded-card p-5 shadow-soft">
             <div>
-              <h2 className="font-display text-xl text-ink">Gift Card Management & Review Rewards</h2>
-              <p className="text-xs text-taupe mt-0.5">Manage ₹100 review reward codes, custom gift cards, and review screenshot submissions</p>
+              <div className="flex items-center gap-2">
+                <span className="p-2 rounded-xl bg-zari/10 text-zari-deep">
+                  <Gift size={20} />
+                </span>
+                <div>
+                  <h2 className="font-display text-xl text-ink">Gift Card Management & Review Rewards</h2>
+                  <p className="text-xs text-taupe mt-0.5">Manage ₹100 review reward codes, custom gift cards, and review screenshot submissions</p>
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
 
         <div className="flex items-center gap-2.5 flex-wrap">
           <button
@@ -419,8 +463,6 @@ export function GiftCardManager() {
               <option value="amazon">Amazon</option>
               <option value="flipkart">Flipkart</option>
               <option value="google">Google Reviews</option>
-              <option value="meesho">Meesho</option>
-              <option value="myntra">Myntra</option>
               <option value="direct">Direct / Store</option>
             </select>
           </div>
@@ -659,18 +701,43 @@ export function GiftCardManager() {
             </div>
 
             {/* Modal Image Body */}
-            <div className="p-6 overflow-y-auto space-y-4 flex-1 text-center bg-cream/10">
-              {selectedScreenshotCard.review_screenshot_url ? (
-                <div className="rounded-2xl border border-line overflow-hidden bg-white shadow-inner max-h-[500px] flex items-center justify-center">
-                  <img
-                    src={selectedScreenshotCard.review_screenshot_url}
-                    alt="Customer Review Screenshot"
-                    className="max-h-[500px] w-auto object-contain mx-auto"
-                  />
-                </div>
-              ) : (
-                <p className="text-xs text-taupe py-10">No screenshot URL found for this card.</p>
-              )}
+            <div className="p-6 overflow-y-auto space-y-4 flex-1 bg-cream/10">
+              {(() => {
+                const urls = selectedScreenshotCard.review_screenshot_url
+                  ? selectedScreenshotCard.review_screenshot_url.split(",").map((u) => u.trim()).filter(Boolean)
+                  : [];
+
+                if (urls.length === 0) {
+                  return <p className="text-xs text-taupe py-10 text-center">No screenshot URL found for this card.</p>;
+                }
+
+                return (
+                  <div className={`grid gap-4 ${urls.length > 1 ? "grid-cols-1 md:grid-cols-2" : "grid-cols-1"}`}>
+                    {urls.map((url, idx) => (
+                      <div key={idx} className="space-y-2">
+                        <div className="flex items-center justify-between text-[11px] font-bold text-taupe uppercase">
+                          <span>Screenshot {idx + 1} of {urls.length}</span>
+                          <a
+                            href={url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-zari-deep hover:underline flex items-center gap-1 font-bold text-[10px]"
+                          >
+                            <ExternalLink size={12} /> Full Image
+                          </a>
+                        </div>
+                        <div className="rounded-2xl border border-line overflow-hidden bg-white shadow-inner max-h-[380px] flex items-center justify-center p-2">
+                          <img
+                            src={url}
+                            alt={`Review Proof ${idx + 1}`}
+                            className="max-h-[360px] w-auto object-contain mx-auto rounded-lg"
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
 
               {/* Submitter details */}
               <div className="bg-white border border-line rounded-2xl p-4 text-left grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
@@ -694,22 +761,12 @@ export function GiftCardManager() {
               <span className="text-[11px] text-taupe">
                 Status: <strong className="uppercase text-ink">{selectedScreenshotCard.status}</strong>
               </span>
-              <div className="flex items-center gap-2">
-                <a
-                  href={selectedScreenshotCard.review_screenshot_url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="px-3.5 py-1.5 rounded-xl border border-line bg-white hover:bg-cream/60 text-xs font-bold text-ink flex items-center gap-1.5 transition-colors"
-                >
-                  <ExternalLink size={13} /> Open Full Image
-                </a>
-                <button
-                  onClick={() => setSelectedScreenshotCard(null)}
-                  className="px-4 py-1.5 rounded-xl bg-ink text-ivory text-xs font-bold hover:bg-zari transition-colors"
-                >
-                  Close
-                </button>
-              </div>
+              <button
+                onClick={() => setSelectedScreenshotCard(null)}
+                className="px-5 py-2 rounded-xl bg-ink text-ivory text-xs font-bold hover:bg-zari transition-colors cursor-pointer"
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>
@@ -785,9 +842,6 @@ export function GiftCardManager() {
                   <option value="amazon">Amazon Review Reward</option>
                   <option value="flipkart">Flipkart Review Reward</option>
                   <option value="google">Google Review Reward</option>
-                  <option value="meesho">Meesho Review Reward</option>
-                  <option value="myntra">Myntra Review Reward</option>
-                  <option value="influencer">Influencer / PR</option>
                 </select>
               </div>
 
@@ -933,6 +987,8 @@ export function GiftCardManager() {
             </form>
           </div>
         </div>
+      )}
+        </>
       )}
     </div>
   );
