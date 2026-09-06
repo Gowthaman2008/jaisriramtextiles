@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import {
   X,
@@ -57,6 +57,17 @@ export function AuthModal({
   const [error, setError] = useState("");
   const [emailVerificationSent, setEmailVerificationSent] = useState(false);
   const [resendingLink, setResendingLink] = useState(false);
+
+  // Lock body scroll when modal is open
+  useEffect(() => {
+    if (isOpen && typeof document !== "undefined") {
+      const prevOverflow = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = prevOverflow;
+      };
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -169,84 +180,96 @@ export function AuthModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink/70 backdrop-blur-sm animate-fade-in">
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-stone-900/60 backdrop-blur-md animate-fade-in"
+      data-lenis-prevent
+    >
       <div 
-        className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl border border-line overflow-hidden animate-scale-up"
+        className="relative w-full max-w-md bg-gradient-to-b from-[#FFFDF9] via-white to-[#FAF7F0] rounded-3xl shadow-2xl border border-amber-200/90 overflow-hidden animate-scale-up max-h-[92dvh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
+        data-lenis-prevent
       >
         {/* Header Ribbon */}
-        <div className="bg-gradient-to-r from-ink via-ink to-[#1a1612] text-ivory p-6 relative border-b border-zari/40">
+        <div className="bg-gradient-to-r from-amber-50/90 via-white to-amber-50/70 p-5 sm:p-6 relative border-b border-amber-200/60 flex-shrink-0">
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 text-ivory/70 hover:text-white bg-white/10 hover:bg-white/20 rounded-full p-1.5 transition-colors"
+            className="absolute top-4 right-4 text-stone-400 hover:text-stone-800 bg-white hover:bg-stone-100 rounded-full p-1.5 transition-colors cursor-pointer border border-stone-200 shadow-xs"
+            aria-label="Close Modal"
           >
-            <X size={18} />
+            <X size={17} />
           </button>
           <div className="flex items-center gap-2 mb-1.5">
-            <span className="p-1 rounded-md bg-zari/20 text-zari-soft">
-              <Sparkles size={16} />
+            <span className="w-6 h-6 rounded-lg bg-gradient-to-br from-amber-500 via-amber-400 to-amber-500 text-stone-950 flex items-center justify-center shadow-xs">
+              <Sparkles size={13} />
             </span>
-            <span className="text-[11px] uppercase tracking-widest font-bold text-zari-soft">Authentication</span>
+            <span className="text-[10px] uppercase tracking-widest font-extrabold text-amber-900 font-sans">
+              Member Sign In
+            </span>
           </div>
-          <h3 className="font-display text-lg text-ivory">{title}</h3>
-          <p className="text-xs text-taupe/80 mt-1 leading-relaxed">{subtitle}</p>
+          <h3 className="font-display text-base sm:text-lg text-stone-900 font-bold leading-tight">{title}</h3>
+          <p className="text-xs text-stone-600 mt-1 leading-relaxed line-clamp-2">{subtitle}</p>
         </div>
 
         {/* Tab Switcher */}
-        <div className="flex border-b border-line bg-cream/30">
-          <button
-            type="button"
-            onClick={() => { setTab("signin"); setError(""); }}
-            className={`flex-1 py-3 text-xs font-bold transition-colors text-center border-b-2 ${
-              tab === "signin"
-                ? "border-zari text-ink bg-white"
-                : "border-transparent text-taupe hover:text-ink"
-            }`}
-          >
-            Sign In
-          </button>
-          <button
-            type="button"
-            onClick={() => { setTab("signup"); setError(""); }}
-            className={`flex-1 py-3 text-xs font-bold transition-colors text-center border-b-2 ${
-              tab === "signup"
-                ? "border-zari text-ink bg-white"
-                : "border-transparent text-taupe hover:text-ink"
-            }`}
-          >
-            Create New Account
-          </button>
+        <div className="px-5 pt-4 pb-1 flex-shrink-0">
+          <div className="p-1 bg-stone-100/90 rounded-2xl border border-stone-200/80 flex gap-1">
+            <button
+              type="button"
+              onClick={() => { setTab("signin"); setError(""); }}
+              className={`flex-1 py-2.5 text-xs font-bold transition-all text-center rounded-xl cursor-pointer ${
+                tab === "signin"
+                  ? "bg-white text-stone-950 shadow-xs border border-amber-300/70"
+                  : "text-stone-500 hover:text-stone-800"
+              }`}
+            >
+              Sign In
+            </button>
+            <button
+              type="button"
+              onClick={() => { setTab("signup"); setError(""); }}
+              className={`flex-1 py-2.5 text-xs font-bold transition-all text-center rounded-xl cursor-pointer ${
+                tab === "signup"
+                  ? "bg-white text-stone-950 shadow-xs border border-amber-300/70"
+                  : "text-stone-500 hover:text-stone-800"
+              }`}
+            >
+              Create Account
+            </button>
+          </div>
         </div>
 
         {/* Modal Body */}
-        <div className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+        <div 
+          className="p-5 sm:p-6 pt-3 space-y-4 flex-1 min-h-0 overflow-y-auto overscroll-contain"
+          data-lenis-prevent
+        >
           {emailVerificationSent ? (
             /* VERIFICATION LINK SENT SCREEN */
             <div className="py-2 text-center space-y-5 animate-fade-in">
-              <div className="w-16 h-16 rounded-full bg-emerald-50 border-2 border-emerald-200 text-emerald-600 flex items-center justify-center mx-auto shadow-soft">
+              <div className="w-16 h-16 rounded-2xl bg-emerald-50 border-2 border-emerald-200 text-emerald-600 flex items-center justify-center mx-auto shadow-soft">
                 <MailCheck size={32} />
               </div>
 
               <div className="space-y-1.5">
-                <h4 className="font-display text-lg text-ink font-bold">
+                <h4 className="font-display text-lg text-stone-900 font-bold">
                   Verification Link Sent to Your Email!
                 </h4>
-                <p className="text-xs text-taupe leading-relaxed max-w-sm mx-auto">
+                <p className="text-xs text-stone-600 leading-relaxed max-w-sm mx-auto">
                   We have sent an activation link to:
                   <br />
-                  <strong className="text-ink font-mono text-sm underline">{email}</strong>
+                  <strong className="text-stone-900 font-mono text-sm underline">{email}</strong>
                 </p>
               </div>
 
-              <div className="p-4 bg-cream/40 border border-line rounded-2xl text-left space-y-2 text-xs">
-                <span className="font-bold text-ink flex items-center gap-1.5">
-                  <Sparkles size={14} className="text-zari" />
+              <div className="p-4 bg-amber-50/60 border border-amber-200/80 rounded-2xl text-left space-y-2 text-xs">
+                <span className="font-bold text-stone-900 flex items-center gap-1.5">
+                  <Sparkles size={14} className="text-amber-600" />
                   Next Steps to Activate Your Account:
                 </span>
-                <ol className="list-decimal list-inside space-y-1.5 text-taupe text-[11px] leading-relaxed">
+                <ol className="list-decimal list-inside space-y-1.5 text-stone-600 text-[11px] leading-relaxed">
                   <li>Check your inbox (and spam/promotions folder).</li>
                   <li>Click the <strong>&quot;Confirm Email Address&quot;</strong> button inside.</li>
-                  <li>After verifying, click the button below to sign in and claim your <strong>₹100 Gift Card</strong>!</li>
+                  <li>After verifying, click the button below to sign in and continue!</li>
                 </ol>
               </div>
 
@@ -258,7 +281,7 @@ export function AuthModal({
                     setTab("signin");
                     setError("");
                   }}
-                  className="w-full py-3.5 px-4 bg-gradient-to-r from-ink via-ink to-[#1a1612] hover:from-zari hover:via-zari-deep hover:to-[#8C6D2D] text-ivory text-xs font-bold uppercase tracking-wider rounded-xl transition-all duration-300 shadow-md cursor-pointer flex items-center justify-center gap-2"
+                  className="w-full py-3.5 px-4 bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 hover:from-amber-600 hover:to-amber-500 text-stone-950 text-xs font-bold uppercase tracking-wider rounded-xl transition-all duration-300 shadow-sm hover:shadow-md cursor-pointer flex items-center justify-center gap-2 active:scale-[0.99]"
                 >
                   <span>I&apos;ve Verified — Sign In & Continue</span>
                   <ArrowRight size={15} />
@@ -271,7 +294,7 @@ export function AuthModal({
                       setEmailVerificationSent(false);
                       setTab("signup");
                     }}
-                    className="text-[11px] text-taupe hover:text-ink underline cursor-pointer"
+                    className="text-[11px] text-stone-500 hover:text-stone-900 underline cursor-pointer"
                   >
                     Edit details / Change email
                   </button>
@@ -280,7 +303,7 @@ export function AuthModal({
                     type="button"
                     onClick={handleResendVerification}
                     disabled={resendingLink}
-                    className="text-[11px] font-bold text-zari-deep hover:text-ink flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                    className="text-[11px] font-bold text-amber-800 hover:text-amber-900 flex items-center gap-1 cursor-pointer disabled:opacity-50"
                   >
                     <RefreshCw size={11} className={resendingLink ? "animate-spin" : ""} />
                     <span>{resendingLink ? "Resending..." : "Resend Email Link"}</span>
@@ -303,7 +326,7 @@ export function AuthModal({
                           No Account Found or Incorrect Password
                         </p>
                         <p className="text-[11px] text-amber-800 leading-relaxed">
-                          We couldn&apos;t find an active account for <strong className="text-ink font-bold">{email || "this email"}</strong>.
+                          We couldn&apos;t find an active account for <strong className="text-stone-900 font-bold">{email || "this email"}</strong>.
                         </p>
                       </div>
                     </div>
@@ -316,7 +339,7 @@ export function AuthModal({
                           setTab("signup");
                           setError("");
                         }}
-                        className="text-xs font-bold text-zari-deep hover:text-ink underline flex items-center gap-1 cursor-pointer transition-colors bg-white px-3 py-1 rounded-lg border border-amber-300 shadow-xs"
+                        className="text-xs font-bold text-amber-900 hover:text-stone-950 underline flex items-center gap-1 cursor-pointer transition-colors bg-white px-3 py-1 rounded-lg border border-amber-300 shadow-xs"
                       >
                         Create Account &rarr;
                       </button>
@@ -335,169 +358,169 @@ export function AuthModal({
                 type="button"
                 onClick={handleGoogleSignIn}
                 disabled={googleLoading}
-                className="w-full flex items-center justify-center gap-3 py-2.5 px-4 rounded-xl border border-line bg-white hover:bg-cream/40 text-xs font-bold text-ink shadow-sm transition-all duration-200 hover:border-zari/60 cursor-pointer disabled:opacity-50"
+                className="w-full flex items-center justify-center gap-3 py-2.5 px-4 rounded-xl border border-stone-200 bg-white hover:bg-stone-50 text-xs font-bold text-stone-800 shadow-xs transition-all duration-200 hover:border-amber-400 cursor-pointer disabled:opacity-50 active:scale-[0.99]"
               >
                 <GoogleIcon />
-                {googleLoading ? "Connecting with Google..." : "Continue with Google"}
+                <span>{googleLoading ? "Connecting with Google..." : "Continue with Google"}</span>
               </button>
 
               <div className="relative flex items-center justify-center my-3">
-                <div className="border-t border-line w-full" />
-                <span className="bg-white px-3 text-[10px] uppercase font-bold text-taupe tracking-wider absolute">
+                <div className="border-t border-stone-200 w-full" />
+                <span className="bg-[#FAF8F3] px-3 text-[10px] uppercase font-bold text-stone-400 tracking-wider absolute">
                   or with email
                 </span>
               </div>
 
-          {/* SIGN IN FORM */}
-          {tab === "signin" ? (
-            <form onSubmit={handleSignIn} className="space-y-3.5">
-              <div>
-                <label className="block text-[10px] font-bold text-taupe uppercase tracking-wider mb-1">
-                  Email Address
-                </label>
-                <div className="relative">
-                  <Mail size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-taupe" />
-                  <input
-                    type="email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="you@example.com"
-                    className="w-full pl-10 pr-3.5 py-2.5 bg-white border border-line rounded-xl text-xs text-ink placeholder:text-muted/60 focus:outline-none focus:border-zari focus:ring-1 focus:ring-zari/40 shadow-sm"
-                  />
-                </div>
-              </div>
+              {/* SIGN IN FORM */}
+              {tab === "signin" ? (
+                <form onSubmit={handleSignIn} className="space-y-3.5">
+                  <div>
+                    <label className="block text-[10px] font-bold text-stone-600 uppercase tracking-wider mb-1">
+                      Email Address
+                    </label>
+                    <div className="relative">
+                      <Mail size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400" />
+                      <input
+                        type="email"
+                        required
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="you@example.com"
+                        className="w-full pl-10 pr-3.5 py-2.5 bg-stone-50/60 hover:bg-white focus:bg-white border border-stone-200 rounded-xl text-xs text-stone-900 placeholder:text-stone-400 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 shadow-xs transition-all"
+                      />
+                    </div>
+                  </div>
 
-              <div>
-                <label className="block text-[10px] font-bold text-taupe uppercase tracking-wider mb-1">
-                  Password
-                </label>
-                <div className="relative">
-                  <Lock size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-taupe" />
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    required
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="w-full pl-10 pr-10 py-2.5 bg-white border border-line rounded-xl text-xs text-ink placeholder:text-muted/60 focus:outline-none focus:border-zari focus:ring-1 focus:ring-zari/40 shadow-sm"
-                  />
+                  <div>
+                    <label className="block text-[10px] font-bold text-stone-600 uppercase tracking-wider mb-1">
+                      Password
+                    </label>
+                    <div className="relative">
+                      <Lock size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400" />
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        required
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="••••••••"
+                        className="w-full pl-10 pr-10 py-2.5 bg-stone-50/60 hover:bg-white focus:bg-white border border-stone-200 rounded-xl text-xs text-stone-900 placeholder:text-stone-400 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 shadow-xs transition-all"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-800 cursor-pointer"
+                      >
+                        {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                      </button>
+                    </div>
+                  </div>
+
                   <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-taupe hover:text-ink"
+                    type="submit"
+                    disabled={loading}
+                    className="w-full mt-2 py-3.5 px-4 bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 hover:from-amber-600 hover:to-amber-500 text-stone-950 text-xs font-bold uppercase tracking-wider rounded-xl transition-all duration-200 shadow-sm hover:shadow-md cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2 active:scale-[0.99]"
                   >
-                    {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                    {loading ? "Signing In..." : "Sign In & Continue"}
                   </button>
-                </div>
-              </div>
+                </form>
+              ) : (
+                /* SIGN UP FORM */
+                <form onSubmit={handleSignUp} className="space-y-3">
+                  <div>
+                    <label className="block text-[10px] font-bold text-stone-600 uppercase tracking-wider mb-1">
+                      Full Name *
+                    </label>
+                    <div className="relative">
+                      <UserIcon size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400" />
+                      <input
+                        type="text"
+                        required
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        placeholder="Your Full Name"
+                        className="w-full pl-10 pr-3.5 py-2.5 bg-stone-50/60 hover:bg-white focus:bg-white border border-stone-200 rounded-xl text-xs text-stone-900 placeholder:text-stone-400 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 shadow-xs transition-all"
+                      />
+                    </div>
+                  </div>
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full mt-2 py-3 px-4 bg-ink hover:bg-zari text-ivory text-xs font-bold rounded-xl transition-all duration-300 shadow-soft cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
-              >
-                {loading ? "Signing In..." : "Sign In & Continue"}
-              </button>
-            </form>
-          ) : (
-            /* SIGN UP FORM */
-            <form onSubmit={handleSignUp} className="space-y-3">
-              <div>
-                <label className="block text-[10px] font-bold text-taupe uppercase tracking-wider mb-1">
-                  Full Name *
-                </label>
-                <div className="relative">
-                  <UserIcon size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-taupe" />
-                  <input
-                    type="text"
-                    required
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Your Full Name"
-                    className="w-full pl-10 pr-3.5 py-2.5 bg-white border border-line rounded-xl text-xs text-ink placeholder:text-muted/60 focus:outline-none focus:border-zari focus:ring-1 focus:ring-zari/40 shadow-sm"
-                  />
-                </div>
-              </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-stone-600 uppercase tracking-wider mb-1">
+                      Mobile Number (10 digits) *
+                    </label>
+                    <div className="relative">
+                      <Phone size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400" />
+                      <input
+                        type="tel"
+                        required
+                        maxLength={10}
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value.replace(/\D/g, ""))}
+                        placeholder="9876543210"
+                        className="w-full pl-10 pr-3.5 py-2.5 bg-stone-50/60 hover:bg-white focus:bg-white border border-stone-200 rounded-xl text-xs text-stone-900 placeholder:text-stone-400 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 shadow-xs transition-all"
+                      />
+                    </div>
+                  </div>
 
-              <div>
-                <label className="block text-[10px] font-bold text-taupe uppercase tracking-wider mb-1">
-                  Mobile Number (10 digits) *
-                </label>
-                <div className="relative">
-                  <Phone size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-taupe" />
-                  <input
-                    type="tel"
-                    required
-                    maxLength={10}
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value.replace(/\D/g, ""))}
-                    placeholder="9876543210"
-                    className="w-full pl-10 pr-3.5 py-2.5 bg-white border border-line rounded-xl text-xs text-ink placeholder:text-muted/60 focus:outline-none focus:border-zari focus:ring-1 focus:ring-zari/40 shadow-sm"
-                  />
-                </div>
-              </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-stone-600 uppercase tracking-wider mb-1">
+                      Email Address *
+                    </label>
+                    <div className="relative">
+                      <Mail size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400" />
+                      <input
+                        type="email"
+                        required
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="you@example.com"
+                        className="w-full pl-10 pr-3.5 py-2.5 bg-stone-50/60 hover:bg-white focus:bg-white border border-stone-200 rounded-xl text-xs text-stone-900 placeholder:text-stone-400 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 shadow-xs transition-all"
+                      />
+                    </div>
+                  </div>
 
-              <div>
-                <label className="block text-[10px] font-bold text-taupe uppercase tracking-wider mb-1">
-                  Email Address *
-                </label>
-                <div className="relative">
-                  <Mail size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-taupe" />
-                  <input
-                    type="email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="you@example.com"
-                    className="w-full pl-10 pr-3.5 py-2.5 bg-white border border-line rounded-xl text-xs text-ink placeholder:text-muted/60 focus:outline-none focus:border-zari focus:ring-1 focus:ring-zari/40 shadow-sm"
-                  />
-                </div>
-              </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-stone-600 uppercase tracking-wider mb-1">
+                      Create Password (min 6 chars) *
+                    </label>
+                    <div className="relative">
+                      <Lock size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400" />
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        required
+                        minLength={6}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="••••••••"
+                        className="w-full pl-10 pr-10 py-2.5 bg-stone-50/60 hover:bg-white focus:bg-white border border-stone-200 rounded-xl text-xs text-stone-900 placeholder:text-stone-400 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 shadow-xs transition-all"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-800 cursor-pointer"
+                      >
+                        {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                      </button>
+                    </div>
+                  </div>
 
-              <div>
-                <label className="block text-[10px] font-bold text-taupe uppercase tracking-wider mb-1">
-                  Create Password (min 6 chars) *
-                </label>
-                <div className="relative">
-                  <Lock size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-taupe" />
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    required
-                    minLength={6}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="w-full pl-10 pr-10 py-2.5 bg-white border border-line rounded-xl text-xs text-ink placeholder:text-muted/60 focus:outline-none focus:border-zari focus:ring-1 focus:ring-zari/40 shadow-sm"
-                  />
                   <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-taupe hover:text-ink"
+                    type="submit"
+                    disabled={loading}
+                    className="w-full mt-2 py-3.5 px-4 bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 hover:from-amber-600 hover:to-amber-500 text-stone-950 text-xs font-bold uppercase tracking-wider rounded-xl transition-all duration-200 shadow-sm hover:shadow-md cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2 active:scale-[0.99]"
                   >
-                    {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                    {loading ? "Creating Account..." : "Create Account & Continue"}
                   </button>
-                </div>
+                </form>
+              )}
+
+              <div className="pt-2 text-center border-t border-stone-200/80">
+                <a
+                  href={`/sign-in?next=${encodeURIComponent(nextUrl || (typeof window !== "undefined" ? window.location.pathname + window.location.search : "/"))}`}
+                  className="text-[11px] text-stone-500 hover:text-amber-800 font-medium underline transition-colors"
+                >
+                  Prefer dedicated page? Open Sign In page &rarr;
+                </a>
               </div>
-
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full mt-2 py-3 px-4 bg-ink hover:bg-zari text-ivory text-xs font-bold rounded-xl transition-all duration-300 shadow-soft cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
-              >
-                {loading ? "Creating Account..." : "Create Account & Continue"}
-              </button>
-            </form>
-          )}
-
-          <div className="pt-2 text-center border-t border-line/60">
-            <a
-              href={`/sign-in?next=${encodeURIComponent(nextUrl || (typeof window !== "undefined" ? window.location.pathname + window.location.search : "/"))}`}
-              className="text-[11px] text-taupe hover:text-ink underline transition-colors"
-            >
-              Prefer dedicated page? Open Sign In page &rarr;
-            </a>
-          </div>
             </>
           )}
         </div>

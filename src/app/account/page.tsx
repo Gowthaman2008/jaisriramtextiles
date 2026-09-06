@@ -75,7 +75,11 @@ export default function AccountPage() {
         window.history.replaceState({}, "", cleanUrl.pathname + (newSearch ? `?${newSearch}` : ""));
       }
     } else if (tab) {
-      setActiveTab(tab);
+      if (tab === "support" || tab === "contact") {
+        setActiveTab("contact");
+      } else {
+        setActiveTab(tab);
+      }
     }
   }, []);
 
@@ -1688,7 +1692,7 @@ export default function AccountPage() {
         )}
 
         {/* TAB 6: CONTACT SUPPORT */}
-        {activeTab === "contact" && (
+        {(activeTab === "contact" || activeTab === "support") && (
           <div className="space-y-5 animate-fade-up">
 
             {/* — Hero Header — */}

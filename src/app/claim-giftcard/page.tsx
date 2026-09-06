@@ -936,22 +936,22 @@ export default function ClaimGiftCardPage() {
               </div>
 
               {/* CHANNEL 2: Live 24/7 AI Shopping & Claim Assistant */}
-              <div className="group relative rounded-2xl bg-gradient-to-br from-ink to-stone-900 border border-stone-800 text-ivory p-4 sm:p-5 shadow-md transition-all duration-300 hover:shadow-lg">
+              <div className="group relative rounded-2xl bg-gradient-to-br from-amber-50/70 via-white to-orange-50/50 border border-amber-200/90 text-ink p-4 sm:p-5 shadow-soft hover:shadow-md transition-all duration-300">
                 <div className="flex items-start justify-between gap-3 mb-3">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-zari/20 text-zari-soft border border-zari/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                    <div className="w-10 h-10 rounded-xl bg-amber-100/80 text-amber-900 border border-amber-300/70 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform shadow-xs">
                       <Sparkles size={20} />
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <h4 className="font-display text-sm sm:text-base font-bold text-ivory">
+                        <h4 className="font-display text-sm sm:text-base font-bold text-ink">
                           Instant AI Assistant
                         </h4>
-                        <span className="px-2 py-0.5 rounded-full bg-zari/25 text-zari-soft font-extrabold text-[9px] uppercase tracking-wider">
+                        <span className="px-2 py-0.5 rounded-full bg-amber-200/70 text-amber-950 font-extrabold text-[9px] uppercase tracking-wider border border-amber-300/60">
                           24/7 Instant
                         </span>
                       </div>
-                      <p className="text-[11px] text-stone-300 mt-0.5">
+                      <p className="text-[11px] text-stone-600 mt-0.5">
                         Ask about review rules, tracking IDs, wallet cashback, &amp; order queries
                       </p>
                     </div>
@@ -970,7 +970,7 @@ export default function ClaimGiftCardPage() {
                           window.dispatchEvent(new CustomEvent("open-ai-chat"));
                         }
                       }}
-                      className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-stone-200 border border-white/10 text-[10px] font-medium transition-colors cursor-pointer"
+                      className="px-2.5 py-1 rounded-lg bg-white hover:bg-amber-100/60 text-stone-700 border border-stone-200/80 text-[10px] font-medium transition-colors cursor-pointer shadow-xs active:scale-95"
                     >
                       💬 {chip}
                     </button>
@@ -985,9 +985,9 @@ export default function ClaimGiftCardPage() {
                       window.dispatchEvent(new CustomEvent("open-ai-chat"));
                     }
                   }}
-                  className="w-full inline-flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-gradient-to-r from-zari via-amber-400 to-zari-deep hover:brightness-110 text-stone-950 font-bold text-xs shadow-md transition-all duration-300 cursor-pointer group-hover:scale-[1.01]"
+                  className="w-full inline-flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 hover:from-amber-600 hover:to-amber-500 text-stone-950 font-bold text-xs shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer group-hover:scale-[1.01] active:scale-98"
                 >
-                  <MessageSquare size={14} />
+                  <MessageSquare size={14} className="text-stone-950" />
                   <span>Start Live AI Chat (No Waiting)</span>
                 </button>
               </div>
@@ -1215,6 +1215,28 @@ export default function ClaimGiftCardPage() {
                       <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 uppercase tracking-wide">
                         1 Screenshot Only
                       </span>
+                    </div>
+
+                    {/* Google Map Review Direct Link CTA */}
+                    <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-amber-50/90 via-white to-amber-50/60 border border-amber-300/80 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                      <div className="flex items-center gap-2.5">
+                        <span className="w-8 h-8 rounded-xl bg-amber-100 border border-amber-300 text-amber-800 flex items-center justify-center shrink-0 shadow-xs text-sm font-bold">
+                          ⭐
+                        </span>
+                        <div>
+                          <p className="text-xs font-bold text-ink">Haven&apos;t posted your Google Review yet?</p>
+                          <p className="text-[11px] text-stone-600 mt-0.5">Click below to open our Google Maps review page and leave your 5-star review</p>
+                        </div>
+                      </div>
+                      <a
+                        href="https://g.page/r/CQDt5_ECdeuOEBI/review"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 hover:brightness-105 text-stone-950 font-bold text-xs shadow-xs hover:shadow-sm transition-all duration-200 cursor-pointer active:scale-95 whitespace-nowrap"
+                      >
+                        <span>Review Here</span>
+                        <ExternalLink size={13} className="text-stone-950" />
+                      </a>
                     </div>
 
                     <input

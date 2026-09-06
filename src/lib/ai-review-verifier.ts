@@ -54,50 +54,63 @@ async function verifySingleScreenshot(options: {
   const optimizedUrl = optimizeImageUrl(imageUrl);
 
   const visionModels = [
-    "qwen/qwen3.8-27b",
-    "qwen/qwen3.6-27b",
+    "llama-3.2-11b-vision-preview",
+    "llama-3.2-90b-vision-preview",
   ];
 
   const systemPrompt = `You are an expert AI Vision Review Verification System for JAI SRI RAM TEXTILES.
-Your job is to inspect the uploaded image and determine if it is a REAL, GENUINE e-commerce review screenshot from Amazon, Flipkart, Google Reviews, or similar platforms.
+Your job is to inspect the uploaded image and determine if it is a REAL, GENUINE e-commerce or Google Maps review screenshot from Amazon, Flipkart, Google Reviews / Maps, or similar platforms.
 
 VALID REFERENCE PATTERNS TO ACCEPT (isValid: true):
-1. FLIPKART REVIEW SUBMITTED:
+
+1. GOOGLE REVIEWS CONFIRMATION / POSTED SCREEN:
+   - Header/URL: "search.google.com" or Google Maps app
+   - Graphic: Colorful celebration confetti / dots (blue, orange, green, yellow shapes)
+   - Heading: "Thanks for your post"
+   - Subheading: "People like you make Maps more helpful"
+   - Button: "Done" or "View your review"
+   - Profile avatar with username (e.g. "Posting publicly across Google").
+
+2. GOOGLE REVIEWS RATING & FEEDBACK FORM:
+   - Header: "Jai Sri Ram Textiles" or business name, "search.google.com"
+   - User info: Profile photo and "Posting publicly across Google"
+   - 5 Yellow/Gold Stars selected (⭐⭐⭐⭐⭐ with label like "Exceptional", "Great", "Good")
+   - Review text box or aspect prompts
+   - Buttons: "Add photos", "Post".
+
+3. FLIPKART REVIEW SUBMITTED:
    - Mascot illustration (person/man celebrating with confetti)
    - Heading: "Thank you for the review!"
    - Text: "Your valuable feedback helps India shop better everyday"
    - May show "More products to review" with other items below and blue "Close" button.
 
-2. FLIPKART REVIEW FORM / SHARE EXPERIENCE:
+4. FLIPKART REVIEW FORM / SHARE EXPERIENCE:
    - Title: "Share your experience" or "Review this product"
    - 5 stars with emotion labels ("Terrible", "Bad", "Okay", "Good", "Great" with smiling star)
    - "Add photo/video" camera box ("The top 5% of our best reviewers usually add a photo/video")
    - Aspect ratings ("What did you love about it?": Quality, Design & Features, Look & Feel, Value for Money, Service)
    - Blue "Submit" button or "Tell us more" text field.
 
-3. AMAZON REVIEW FORM:
+5. AMAZON REVIEW FORM:
    - Heading: "How was the item?" with product thumbnail
    - 5 orange/gold stars selected
    - Text fields: "Write a review", "Title your review", "Share a video or photo"
    - Yellow pill-shaped "Submit" button.
 
-4. AMAZON REVIEW SUBMITTED / CONFIRMATION:
+6. AMAZON REVIEW SUBMITTED / CONFIRMATION:
    - Green checkmark with "✓ Review Submitted"
    - Header: "Review Your Purchases" (even if it shows a progress circle like "And now the last one..." and list of other purchased items with unrated stars below).
 
-5. GOOGLE REVIEWS & OTHERS:
-   - Google Maps or Google Search review dialog with star ratings and review text/photos.
-
 REJECTION CRITERIA (isValid: false):
-- Random personal photos, selfies, scenery, animals, food, memes, wallpapers.
+- Random personal selfies, scenery, animals, food, memes, wallpapers with no review UI.
 - Bare product photos or marketing banners without ANY review UI, stars, submission message, or feedback form.
 - Screenshots of unrelated apps (chat messengers, payment UPI screens, social media feeds without review content).
 
 CRITICAL NOTE:
-Always accept legitimate review confirmation screens even if they show recommendations to review other items below the success banner.
+Always accept legitimate review confirmation screens or rating forms. If the image matches any of the above patterns, set isValid: true.
 
 Respond ONLY with valid JSON in this exact structure:
-{"isValid": true, "confidence": 0.98, "reason": "Verified as genuine review submission screenshot.", "detectedPlatform": "${platform}"}`;
+{"isValid": true, "confidence": 0.98, "reason": "Verified as genuine Google/Amazon/Flipkart review screenshot.", "detectedPlatform": "${platform}"}`;
 
   for (const model of visionModels) {
     try {
