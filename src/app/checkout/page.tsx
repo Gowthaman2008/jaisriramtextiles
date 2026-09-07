@@ -339,6 +339,13 @@ export default function CheckoutPage() {
         }
       }
 
+      // Check mutual exclusivity with wallet balance (WELCOME10 and first order promo codes)
+      if (useWallet && (coupon.code.toUpperCase() === "WELCOME10" || coupon.first_order_only)) {
+        setCouponError(`Coupon ${coupon.code} cannot be combined with Wallet Cashback redemption. Please uncheck wallet balance to use this coupon.`);
+        setAppliedCoupon(null);
+        return;
+      }
+
       // Valid coupon!
       setAppliedCoupon(coupon);
       setCouponError("");
@@ -370,11 +377,13 @@ export default function CheckoutPage() {
     }
   }
 
+  const isWelcome10OrFirstOrder = appliedCoupon && (appliedCoupon.code.toUpperCase() === "WELCOME10" || appliedCoupon.first_order_only);
+
   // Capped at 20% of subtotal order value (max ₹50 / 5000 paise) as per store rules — rounded down to
   // the nearest whole rupee so every on-site transaction is a whole number.
   const walletCap = Math.min(Math.floor(cartSubtotalPaise / 5 / 100) * 100, 5000);
   const maxRedeemableWallet = Math.min(walletBalance, walletCap);
-  const walletUsedPaise = useWallet ? Math.min(maxRedeemableWallet, cartSubtotalPaise - discountPaise) : 0;
+  const walletUsedPaise = (useWallet && !isWelcome10OrFirstOrder) ? Math.min(maxRedeemableWallet, cartSubtotalPaise - discountPaise) : 0;
 
   const qualifiesFree = cartSubtotalPaise >= shippingThreshold;
   const shippingPaise = qualifiesFree ? 0 : shippingCharge;
@@ -838,12 +847,26 @@ export default function CheckoutPage() {
                     <input
                       type="checkbox"
                       checked={useWallet}
-                      onChange={(e) => setUseWallet(e.target.checked)}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        if (checked && appliedCoupon && (appliedCoupon.code.toUpperCase() === "WELCOME10" || appliedCoupon.first_order_only)) {
+                          notify(`Coupon ${appliedCoupon.code} was removed because it cannot be combined with Wallet Cashback redemption.`, "error");
+                          setAppliedCoupon(null);
+                          setCouponCode("");
+                          setCouponError("");
+                        }
+                        setUseWallet(checked);
+                      }}
                       className="sr-only peer"
                     />
                     <div className="w-9 h-5 bg-cream peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-line after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-zari" />
                   </label>
                 </div>
+                {appliedCoupon && (appliedCoupon.code.toUpperCase() === "WELCOME10" || appliedCoupon.first_order_only) && !useWallet && (
+                  <p className="text-[11px] text-amber-700 bg-amber-50/80 border border-amber-200/80 rounded px-2.5 py-1.5 leading-tight">
+                    Notice: Activating Wallet Cashback will unapply first-order coupon <strong>{appliedCoupon.code}</strong> as they cannot be combined.
+                  </p>
+                )}
                 {useWallet && (
                   <p className="text-xs text-success font-semibold">
                     Deducting {formatINR(walletUsedPaise, true)} credit from your wallet

@@ -312,6 +312,14 @@ export async function POST(request: Request) {
         }
       }
 
+      // Check mutual exclusivity with wallet balance (WELCOME10 and first-order coupons)
+      if (useWallet && (coupon.code.toUpperCase() === "WELCOME10" || coupon.first_order_only)) {
+        return NextResponse.json(
+          { error: `Coupon ${coupon.code} cannot be combined with Wallet Cashback redemption.` },
+          { status: 400 }
+        );
+      }
+
       couponId = coupon.id;
       // Calculate discount amount
       if (coupon.type === "flat") {
@@ -330,6 +338,16 @@ export async function POST(request: Request) {
     let walletUsedPaise = 0;
     let activeBalance = 0;
     if (useWallet) {
+      if (couponId) {
+        const { data: cData } = await supabase.from("coupons").select("code, first_order_only").eq("id", couponId).maybeSingle();
+        if (cData && (cData.code.toUpperCase() === "WELCOME10" || cData.first_order_only)) {
+          return NextResponse.json(
+            { error: `Coupon ${cData.code} cannot be combined with Wallet Cashback redemption.` },
+            { status: 400 }
+          );
+        }
+      }
+
       try {
         const recon = await reconcileUserWallet(user.id, supabase);
         activeBalance = recon.activeBalancePaise;
