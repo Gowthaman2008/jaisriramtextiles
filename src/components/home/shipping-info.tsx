@@ -1,29 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { Container } from "@/components/ui/container";
 import { Reveal } from "@/components/ui/reveal";
 import { Truck, PackageCheck, RefreshCw, ShieldCheck } from "lucide-react";
+import { useCart } from "@/components/providers/cart-provider";
 
 export function ShippingInfo() {
-  const [shippingThreshold, setShippingThreshold] = useState(699);
-  const [shippingCharge, setShippingCharge] = useState(99);
-
-  useEffect(() => {
-    fetch("/api/shipping-settings")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data) {
-          if (typeof data.free_shipping_threshold_paise === "number") {
-            setShippingThreshold(data.free_shipping_threshold_paise / 100);
-          }
-          if (typeof data.shipping_charge_paise === "number") {
-            setShippingCharge(data.shipping_charge_paise / 100);
-          }
-        }
-      })
-      .catch((err) => console.error("Failed to load shipping settings:", err));
-  }, []);
+  const { shippingThreshold: rawThreshold, shippingCharge: rawCharge } = useCart();
+  const shippingThreshold = Math.round(rawThreshold / 100);
+  const shippingCharge = Math.round(rawCharge / 100);
 
   const items = [
     { icon: Truck, title: `Free shipping over ₹${shippingThreshold}`, text: `A flat ₹${shippingCharge} applies below that. Delivered in 4–7 business days.` },

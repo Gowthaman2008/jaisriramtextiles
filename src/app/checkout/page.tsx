@@ -13,7 +13,7 @@ import { ShieldCheck, MapPin, Tag, Wallet, AlertTriangle, RefreshCw, CreditCard,
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { cart, clearCart, cartSubtotalPaise } = useCart();
+  const { cart, clearCart, cartSubtotalPaise, shippingThreshold: defaultThreshold, shippingCharge: defaultCharge } = useCart();
   const { notify } = useNotification();
   const supabase = createClient();
   // Prevents the empty-cart redirect below from racing against and hijacking
@@ -66,9 +66,14 @@ export default function CheckoutPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [checkoutError, setCheckoutError] = useState("");
 
-  // Dynamic shipping states
-  const [shippingThreshold, setShippingThreshold] = useState(69900); // default ₹699
-  const [shippingCharge, setShippingCharge] = useState(9900);       // default ₹99
+  // Dynamic shipping states (instant from CartContext cache)
+  const [shippingThreshold, setShippingThreshold] = useState(defaultThreshold);
+  const [shippingCharge, setShippingCharge] = useState(defaultCharge);
+
+  useEffect(() => {
+    setShippingThreshold(defaultThreshold);
+    setShippingCharge(defaultCharge);
+  }, [defaultThreshold, defaultCharge]);
 
   // 1. Authenticate user and fetch address/wallet lists
   useEffect(() => {

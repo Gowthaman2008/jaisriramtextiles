@@ -1,32 +1,18 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Plus } from "lucide-react";
 import { Container } from "@/components/ui/container";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { cn } from "@/lib/utils";
+import { useCart } from "@/components/providers/cart-provider";
 
 export function Faq() {
   const [open, setOpen] = useState<number | null>(0);
-  const [shippingThreshold, setShippingThreshold] = useState(699);
-  const [shippingCharge, setShippingCharge] = useState(99);
-
-  useEffect(() => {
-    fetch("/api/shipping-settings")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data) {
-          if (typeof data.free_shipping_threshold_paise === "number") {
-            setShippingThreshold(data.free_shipping_threshold_paise / 100);
-          }
-          if (typeof data.shipping_charge_paise === "number") {
-            setShippingCharge(data.shipping_charge_paise / 100);
-          }
-        }
-      })
-      .catch((err) => console.error("Failed to load shipping settings:", err));
-  }, []);
+  const { shippingThreshold: rawThreshold, shippingCharge: rawCharge } = useCart();
+  const shippingThreshold = Math.round(rawThreshold / 100);
+  const shippingCharge = Math.round(rawCharge / 100);
 
   const faqs = [
     { q: "How long does delivery take?", a: "Orders are delivered within 4–7 business days across India. You'll receive a tracking ID as soon as your order ships." },

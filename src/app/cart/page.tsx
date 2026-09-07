@@ -34,7 +34,7 @@ function cartItemToProduct(item: CartItem): Product {
 }
 
 export default function CartPage() {
-  const { cart, updateQuantity, removeFromCart, addFreeGift, cartSubtotalPaise } = useCart();
+  const { cart, updateQuantity, removeFromCart, addFreeGift, cartSubtotalPaise, shippingThreshold, shippingCharge, isShippingLoaded } = useCart();
   const { toggleWishlist, isWished } = useWishlist();
   const [confirmDelete, setConfirmDelete] = useState<CartItem | null>(null);
   const [activeCampaigns, setActiveCampaigns] = useState<any[]>([]);
@@ -56,25 +56,6 @@ export default function CartPage() {
         }
       })
       .catch((e) => console.error("Error fetching campaigns:", e));
-  }, []);
-
-  const [shippingThreshold, setShippingThreshold] = useState(69900); // default ₹699
-  const [shippingCharge, setShippingCharge] = useState(9900);       // default ₹99
-
-  useEffect(() => {
-    fetch("/api/shipping-settings")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data) {
-          if (typeof data.free_shipping_threshold_paise === "number") {
-            setShippingThreshold(data.free_shipping_threshold_paise);
-          }
-          if (typeof data.shipping_charge_paise === "number") {
-            setShippingCharge(data.shipping_charge_paise);
-          }
-        }
-      })
-      .catch((err) => console.error("Failed to load shipping settings:", err));
   }, []);
 
   if (cart.length === 0) {
@@ -495,20 +476,27 @@ export default function CartPage() {
           <div className="lg:col-span-4 space-y-6">
             {/* Free shipping progress card */}
             <div className="bg-white border border-line rounded-card p-5 shadow-soft space-y-3">
-              <div className="flex items-center gap-2.5 text-sm text-ink">
-                <Truck className="w-5 h-5 text-zari" />
-                {qualifiesFree ? (
-                  <span className="font-semibold text-success">You qualify for free shipping!</span>
-                ) : (
-                  <span>
-                    Add <strong className="font-bold">{formatINR(remainingForFreePaise, true)}</strong> more for free shipping
-                  </span>
-                )}
-              </div>
+              {!isShippingLoaded ? (
+                <div className="flex items-center gap-2.5 text-sm">
+                  <Truck className="w-5 h-5 text-zari animate-pulse" />
+                  <div className="h-4 bg-cream animate-pulse rounded w-44" />
+                </div>
+              ) : (
+                <div className="flex items-center gap-2.5 text-sm text-ink">
+                  <Truck className="w-5 h-5 text-zari" />
+                  {qualifiesFree ? (
+                    <span className="font-semibold text-success">You qualify for free shipping!</span>
+                  ) : (
+                    <span>
+                      Add <strong className="font-bold">{formatINR(remainingForFreePaise, true)}</strong> more for free shipping
+                    </span>
+                  )}
+                </div>
+              )}
               <div className="w-full bg-cream h-2 rounded-full overflow-hidden">
                 <div
-                  className="bg-zari h-full transition-all duration-500 ease-silk"
-                  style={{ width: `${progressPercent}%` }}
+                  className={`bg-zari h-full transition-all duration-500 ease-silk ${!isShippingLoaded ? "animate-pulse opacity-40" : ""}`}
+                  style={{ width: `${!isShippingLoaded ? 30 : progressPercent}%` }}
                 />
               </div>
             </div>
@@ -522,16 +510,24 @@ export default function CartPage() {
                   <span>Bag Subtotal:</span>
                   <span className="text-ink font-medium">{formatINR(cartSubtotalPaise, true)}</span>
                 </div>
-                <div className="flex justify-between">
+                <div className="flex justify-between items-center">
                   <span>Standard Shipping Charge:</span>
-                  <span className="text-ink font-medium">
-                    {shippingPaise === 0 ? "FREE" : formatINR(shippingPaise, true)}
-                  </span>
+                  {!isShippingLoaded ? (
+                    <span className="h-4 w-12 bg-cream animate-pulse rounded inline-block" />
+                  ) : (
+                    <span className="text-ink font-medium">
+                      {shippingPaise === 0 ? "FREE" : formatINR(shippingPaise, true)}
+                    </span>
+                  )}
                 </div>
                 
-                <div className="border-t border-line pt-3 flex justify-between font-display text-lg text-ink font-bold">
+                <div className="border-t border-line pt-3 flex justify-between items-center font-display text-lg text-ink font-bold">
                   <span>Grand Total:</span>
-                  <span className="text-zari-deep">{formatINR(grandTotalPaise, true)}</span>
+                  {!isShippingLoaded ? (
+                    <span className="h-6 w-20 bg-cream animate-pulse rounded inline-block" />
+                  ) : (
+                    <span className="text-zari-deep">{formatINR(grandTotalPaise, true)}</span>
+                  )}
                 </div>
               </div>
 

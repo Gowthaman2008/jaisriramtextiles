@@ -32,6 +32,9 @@ type CartContextType = {
   clearCart: () => void;
   addFreeGift: (campaign: any) => void;
   cartSubtotalPaise: number;
+  shippingThreshold: number;
+  shippingCharge: number;
+  isShippingLoaded: boolean;
 };
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -39,6 +42,9 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [shippingThreshold, setShippingThreshold] = useState(69900);
+  const [shippingCharge, setShippingCharge] = useState(9900);
+  const [isShippingLoaded, setIsShippingLoaded] = useState(false);
   const [toast, setToast] = useState<{
     show: boolean;
     productName: string;
@@ -54,6 +60,47 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       return () => clearTimeout(timer);
     }
   }, [toast.show]);
+
+  // Load shipping settings from localStorage cache immediately, then refresh from API
+  useEffect(() => {
+    try {
+      const cached = localStorage.getItem("jsr_shipping_settings");
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (typeof parsed.free_shipping_threshold_paise === "number") {
+          setShippingThreshold(parsed.free_shipping_threshold_paise);
+        }
+        if (typeof parsed.shipping_charge_paise === "number") {
+          setShippingCharge(parsed.shipping_charge_paise);
+        }
+        setIsShippingLoaded(true);
+      }
+    } catch (e) {
+      console.warn("Failed to load cached shipping settings:", e);
+    }
+
+    fetch("/api/shipping-settings")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data) {
+          if (typeof data.free_shipping_threshold_paise === "number") {
+            setShippingThreshold(data.free_shipping_threshold_paise);
+          }
+          if (typeof data.shipping_charge_paise === "number") {
+            setShippingCharge(data.shipping_charge_paise);
+          }
+          try {
+            localStorage.setItem("jsr_shipping_settings", JSON.stringify(data));
+          } catch {
+            // ignore localStorage quota error
+          }
+        }
+      })
+      .catch((err) => console.error("Failed to fetch shipping settings:", err))
+      .finally(() => {
+        setIsShippingLoaded(true);
+      });
+  }, []);
 
   // Load cart from localStorage on mount
   useEffect(() => {
@@ -227,6 +274,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         clearCart,
         addFreeGift,
         cartSubtotalPaise,
+        shippingThreshold,
+        shippingCharge,
+        isShippingLoaded,
       }}
     >
       {children}

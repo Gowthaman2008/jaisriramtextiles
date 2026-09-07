@@ -3,15 +3,16 @@
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
-
-const defaultMessages = [
-  "Free shipping on orders above ₹699",
-  "Earn cashback on every order — credited after delivery",
-  "Bulk & wholesale enquiries welcome",
-];
+import { useCart } from "@/components/providers/cart-provider";
 
 export function AnnouncementBar() {
-  const [messages, setMessages] = useState<string[]>(defaultMessages);
+  const { shippingThreshold: rawThreshold } = useCart();
+  const dynamicThreshold = Math.round(rawThreshold / 100);
+  const [messages, setMessages] = useState<string[]>([
+    `Free shipping on orders above ₹${dynamicThreshold}`,
+    "Earn cashback on every order — credited after delivery",
+    "Bulk & wholesale enquiries welcome",
+  ]);
   const [i, setI] = useState(0);
 
   useEffect(() => {
@@ -19,12 +20,6 @@ export function AnnouncementBar() {
       try {
         const supabase = createClient();
         
-        // Fetch shipping settings for dynamic banner text
-        const shippingRes = await fetch("/api/shipping-settings").then((r) => r.json()).catch(() => null);
-        const dynamicThreshold = shippingRes && typeof shippingRes.free_shipping_threshold_paise === "number"
-          ? shippingRes.free_shipping_threshold_paise / 100
-          : 699;
-
         const updatedDefaults = [
           `Free shipping on orders above ₹${dynamicThreshold}`,
           "Earn cashback on every order — credited after delivery",

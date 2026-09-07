@@ -21,8 +21,8 @@ export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
-  const [shippingThreshold, setShippingThreshold] = useState(699); // default ₹699
-  const { cart } = useCart();
+  const { cart, shippingThreshold: rawThreshold } = useCart();
+  const shippingThreshold = Math.round(rawThreshold / 100);
 
   const handleBack = () => {
     if (typeof window !== "undefined" && window.history.length > 1) {
@@ -50,12 +50,6 @@ export function Navbar() {
             { slug: "bulk-orders", label: "Bulk Orders" }
           ];
           setNavCategories(finalCategories);
-        }
-
-        // Fetch shipping settings for dynamic nav banner text
-        const shippingRes = await fetch("/api/shipping-settings").then((r) => r.json()).catch(() => null);
-        if (shippingRes && typeof shippingRes.free_shipping_threshold_paise === "number") {
-          setShippingThreshold(shippingRes.free_shipping_threshold_paise / 100);
         }
       } catch (err) {
         console.error("Failed to load nav categories:", err);
