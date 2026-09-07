@@ -497,6 +497,14 @@ export default function ClaimGiftCardPage() {
       if (data.giftCard) {
         setGeneratedCard(data.giftCard);
 
+        if (typeof window !== "undefined") {
+          window.scrollToTop ? window.scrollToTop("instant") : window.scrollTo(0, 0);
+          setTimeout(() => {
+            if (window.scrollToTop) window.scrollToTop("instant");
+            else window.scrollTo(0, 0);
+          }, 60);
+        }
+
         if (isGoogle) {
           setGoogleClaimed(true);
           setGoogleCardInfo(data.giftCard);
@@ -1065,61 +1073,63 @@ export default function ClaimGiftCardPage() {
         }}
       />
 
-      {/* Hero Header */}
-      <section className="bg-gradient-to-b from-cream via-cream/50 to-ivory border-b border-line/60 pt-12 pb-14 sm:pb-18">
-        <Container>
-          <div className="max-w-3xl mx-auto text-center space-y-4">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-zari/10 border border-zari/30 text-zari-deep text-xs font-bold uppercase tracking-wider">
-              <Gift size={15} className="text-zari" />
-              <span>Customer Review Rewards</span>
-            </div>
+      {/* Hero Header - Only shown before generating card */}
+      {!generatedCard && (
+        <section className="bg-gradient-to-b from-cream via-cream/50 to-ivory border-b border-line/60 pt-12 pb-14 sm:pb-18">
+          <Container>
+            <div className="max-w-3xl mx-auto text-center space-y-4">
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-zari/10 border border-zari/30 text-zari-deep text-xs font-bold uppercase tracking-wider">
+                <Gift size={15} className="text-zari" />
+                <span>Customer Review Rewards</span>
+              </div>
 
-            <h1 className="font-display text-3xl sm:text-5xl text-ink tracking-tight font-normal">
-              Claim Your <span className="italic text-zari font-serif">₹100 Gift Card</span>
-            </h1>
+              <h1 className="font-display text-3xl sm:text-5xl text-ink tracking-tight font-normal">
+                Claim Your <span className="italic text-zari font-serif">₹100 Gift Card</span>
+              </h1>
 
-            <p className="text-sm sm:text-base text-taupe leading-relaxed max-w-2xl mx-auto">
-              Share your positive review on Amazon, Flipkart, or Google Reviews to earn an instant ₹100 Gift Card redeemable into your wallet as cashback!
-            </p>
+              <p className="text-sm sm:text-base text-taupe leading-relaxed max-w-2xl mx-auto">
+                Share your positive review on Amazon, Flipkart, or Google Reviews to earn an instant ₹100 Gift Card redeemable into your wallet as cashback!
+              </p>
 
-            {/* Action Buttons: 'How to Review' & 'Customer Support' */}
-            <div className="pt-2 flex flex-wrap items-center justify-center gap-3">
-              {tutorialVideo?.enabled !== false && (
+              {/* Action Buttons: 'How to Review' & 'Customer Support' */}
+              <div className="pt-2 flex flex-wrap items-center justify-center gap-3">
+                {tutorialVideo?.enabled !== false && (
+                  <button
+                    type="button"
+                    onClick={() => setShowVideoModal(true)}
+                    className="group relative inline-flex items-center gap-2.5 px-5 py-2.5 rounded-full bg-white/95 hover:bg-white text-ink border border-zari/40 hover:border-zari shadow-sm hover:shadow-md transition-all duration-300 font-bold text-xs cursor-pointer hover:scale-105"
+                  >
+                    <span className="w-6 h-6 rounded-full bg-gradient-to-tr from-zari to-zari-deep text-ivory flex items-center justify-center shadow-xs group-hover:scale-110 transition-transform">
+                      <Play size={11} className="fill-ivory ml-0.5" />
+                    </span>
+                    <span className="tracking-wide">How to Review</span>
+                    <span className="text-[10px] uppercase font-extrabold px-2 py-0.5 rounded-full bg-zari/15 text-zari-deep">
+                      Watch Video
+                    </span>
+                  </button>
+                )}
+
                 <button
                   type="button"
-                  onClick={() => setShowVideoModal(true)}
-                  className="group relative inline-flex items-center gap-2.5 px-5 py-2.5 rounded-full bg-white/95 hover:bg-white text-ink border border-zari/40 hover:border-zari shadow-sm hover:shadow-md transition-all duration-300 font-bold text-xs cursor-pointer hover:scale-105"
+                  onClick={() => setShowSupportModal(true)}
+                  className="group relative inline-flex items-center gap-2.5 px-5 py-2.5 rounded-full bg-white/95 hover:bg-white text-ink border border-emerald-300/80 hover:border-emerald-500 shadow-sm hover:shadow-md transition-all duration-300 font-bold text-xs cursor-pointer hover:scale-105"
                 >
-                  <span className="w-6 h-6 rounded-full bg-gradient-to-tr from-zari to-zari-deep text-ivory flex items-center justify-center shadow-xs group-hover:scale-110 transition-transform">
-                    <Play size={11} className="fill-ivory ml-0.5" />
+                  <span className="w-6 h-6 rounded-full bg-gradient-to-tr from-emerald-500 to-teal-600 text-white flex items-center justify-center shadow-xs group-hover:scale-110 transition-transform">
+                    <Headphones size={12} className="text-white" />
                   </span>
-                  <span className="tracking-wide">How to Review</span>
-                  <span className="text-[10px] uppercase font-extrabold px-2 py-0.5 rounded-full bg-zari/15 text-zari-deep">
-                    Watch Video
+                  <span className="tracking-wide">Customer Support</span>
+                  <span className="text-[10px] uppercase font-extrabold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/60">
+                    Help &amp; Queries
                   </span>
                 </button>
-              )}
-
-              <button
-                type="button"
-                onClick={() => setShowSupportModal(true)}
-                className="group relative inline-flex items-center gap-2.5 px-5 py-2.5 rounded-full bg-white/95 hover:bg-white text-ink border border-emerald-300/80 hover:border-emerald-500 shadow-sm hover:shadow-md transition-all duration-300 font-bold text-xs cursor-pointer hover:scale-105"
-              >
-                <span className="w-6 h-6 rounded-full bg-gradient-to-tr from-emerald-500 to-teal-600 text-white flex items-center justify-center shadow-xs group-hover:scale-110 transition-transform">
-                  <Headphones size={12} className="text-white" />
-                </span>
-                <span className="tracking-wide">Customer Support</span>
-                <span className="text-[10px] uppercase font-extrabold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/60">
-                  Help &amp; Queries
-                </span>
-              </button>
+              </div>
             </div>
-          </div>
-        </Container>
-      </section>
+          </Container>
+        </section>
+      )}
 
       {/* Main Container */}
-      <Container className="mt-8 sm:mt-10">
+      <Container className={generatedCard ? "pt-10 sm:pt-14 pb-16" : "mt-8 sm:mt-10"}>
         <div className="max-w-2xl mx-auto">
           {!generatedCard ? (
             /* ================= STEP 1: UPLOAD FORM ================= */
@@ -1552,363 +1562,375 @@ export default function ClaimGiftCardPage() {
               </form>
             </div>
           ) : (
-            /* ================= STEP 2: RESULT CARD ================= */
-            <div className="bg-white border-2 border-zari/50 rounded-3xl p-6 sm:p-10 shadow-2xl space-y-8 animate-scale-up text-center relative overflow-hidden">
-              <div className="absolute -top-12 -right-12 w-40 h-40 bg-zari/10 rounded-full blur-2xl pointer-events-none" />
-              <div className="absolute -bottom-12 -left-12 w-40 h-40 bg-zari/10 rounded-full blur-2xl pointer-events-none" />
-
-              {/* Reward Icon & Header */}
-              <div className="space-y-3">
-                <div className="w-20 h-20 mx-auto rounded-full bg-gradient-to-br from-zari-soft via-zari to-zari-deep text-ivory flex items-center justify-center shadow-lg animate-bounce">
-                  <Gift size={36} />
-                </div>
-                <span className="inline-block px-3.5 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-bold uppercase tracking-wider">
-                  ✓ {isGoogle ? "Google Review Verified & Code Generated" : "2 Screenshots Verified & Code Generated"}
-                </span>
-                <h2 className="font-display text-2xl sm:text-4xl text-ink">
-                  Here is Your ₹100 Gift Card!
-                </h2>
-                <p className="text-xs sm:text-sm text-taupe max-w-md mx-auto">
-                  This code is ready for one-time use. It has been automatically copied to your clipboard.
-                </p>
+            /* ================= STEP 2: COMPACT LUXURY GIFT CARD ================= */
+            <div className="max-w-md mx-auto space-y-4 animate-scale-up">
+              {/* Top Success Pill */}
+              <div className="flex items-center justify-center gap-1.5 px-3.5 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-semibold w-fit mx-auto shadow-xs">
+                <CheckCircle2 size={13} className="text-emerald-600" />
+                <span>{isGoogle ? "Google Review Verified" : "Review Verified"} &bull; ₹100 Gift Card Ready</span>
               </div>
 
-              {/* Generated Code Highlight Box */}
-              <div className="max-w-lg mx-auto bg-gradient-to-br from-cream/40 via-white to-cream/20 border-2 border-dashed border-zari rounded-2xl p-6 shadow-soft space-y-4">
-                <div className="flex items-center justify-between text-xs text-taupe uppercase tracking-wider font-bold">
-                  <span>Gift Card Code</span>
-                  <span className="text-zari-deep font-extrabold">Value: ₹100.00</span>
+              {/* The Luxury Physical-Style Digital Gift Voucher Card */}
+              <div className="relative rounded-2xl bg-gradient-to-br from-[#1b1714] via-[#241e18] to-[#120f0d] border-2 border-zari/60 shadow-xl p-5 sm:p-6 text-ivory overflow-hidden transition-all duration-300">
+                {/* Background Zari Shimmer Ornaments */}
+                <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-bl from-zari/25 via-zari/5 to-transparent rounded-full blur-xl pointer-events-none" />
+                <div className="absolute -bottom-8 -left-8 w-32 h-32 bg-gradient-to-tr from-amber-500/20 to-transparent rounded-full blur-lg pointer-events-none" />
+                
+                {/* Top Row: Brand & Value */}
+                <div className="flex items-start justify-between gap-2 relative z-10">
+                  <div className="space-y-0.5">
+                    <span className="text-[10px] tracking-widest text-zari uppercase font-bold flex items-center gap-1">
+                      <Sparkles size={11} className="text-zari" />
+                      JAI SRI RAM TEXTILES
+                    </span>
+                    <h3 className="font-display text-sm tracking-wide text-stone-200">Heritage Loom Voucher</h3>
+                  </div>
+
+                  <div className="text-right">
+                    <span className="block text-xl sm:text-2xl font-display font-extrabold text-amber-300 drop-shadow-sm leading-tight">
+                      ₹100
+                    </span>
+                    <span className="text-[9px] uppercase tracking-widest text-zari/80 font-bold">GIFT CARD</span>
+                  </div>
                 </div>
 
-                {/* Code string with highlight */}
-                <div className="bg-ink text-zari-soft font-mono text-xl sm:text-3xl font-extrabold tracking-widest py-4 px-6 rounded-xl select-all flex items-center justify-center shadow-inner">
-                  {generatedCard.code}
+                {/* Middle: Clean One-Line Code Box with Copy Button */}
+                <div className="my-4 bg-black/45 backdrop-blur-md border border-zari/40 rounded-xl p-2.5 sm:p-3 flex items-center justify-between gap-2 shadow-inner relative z-10">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[8px] sm:text-[9px] uppercase tracking-wider text-zari/70 font-semibold">VOUCHER CODE</p>
+                    <p className="font-mono text-sm sm:text-base font-bold tracking-wider text-amber-100 truncate select-all">
+                      {generatedCard.code}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleManualCopy}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 flex items-center gap-1.5 cursor-pointer shrink-0 shadow-xs active:scale-95 ${
+                      copied
+                        ? "bg-emerald-600 text-white"
+                        : "bg-gradient-to-r from-zari to-amber-400 text-stone-950 hover:brightness-110"
+                    }`}
+                  >
+                    {copied ? (
+                      <>
+                        <Check size={13} />
+                        <span>Copied!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy size={13} />
+                        <span>Copy</span>
+                      </>
+                    )}
+                  </button>
                 </div>
 
-                <div className="flex items-center justify-center gap-1.5 text-[11px] text-taupe">
-                  <Clock size={12} className="text-zari" />
-                  <span>Valid for 1 Year (Expires: {generatedCard.expires_at ? new Date(generatedCard.expires_at).toLocaleDateString("en-IN", { dateStyle: "medium" }) : "365 days from issue"})</span>
+                {/* Bottom Row: Platform Badge & Expiry */}
+                <div className="flex items-center justify-between text-[10px] text-stone-300/80 pt-1.5 border-t border-white/10 relative z-10">
+                  <span className="inline-flex items-center gap-1 font-medium text-amber-200/90">
+                    <span>{isGoogle ? "⭐ Google Review" : selectedPlatform === "flipkart" ? "🛍️ Flipkart" : "📦 Amazon"}</span>
+                  </span>
+                  <span className="font-mono text-stone-400">
+                    Valid 365 Days
+                  </span>
                 </div>
-
-                {/* Email Dispatched Confirmation Notice */}
-                <div className="flex items-center justify-center gap-1.5 p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-[11px] text-emerald-800 font-medium">
-                  <CheckCircle2 size={14} className="text-emerald-600 shrink-0" />
-                  <span>✉️ Voucher code &amp; 1-click redemption link sent to your email!</span>
-                </div>
-
-                {/* Action 1: Manual Copy Button */}
-                <button
-                  type="button"
-                  onClick={handleManualCopy}
-                  className={`w-full py-3 px-4 rounded-xl border font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all duration-200 cursor-pointer ${
-                    copied
-                      ? "bg-emerald-600 text-white border-emerald-600 shadow-md"
-                      : "bg-white hover:bg-cream/40 text-ink border-line hover:border-zari shadow-sm"
-                  }`}
-                >
-                  {copied ? (
-                    <>
-                      <Check size={16} /> Code Copied to Clipboard!
-                    </>
-                  ) : (
-                    <>
-                      <Copy size={16} /> Copy Gift Card Code
-                    </>
-                  )}
-                </button>
               </div>
 
-              {/* Action 2: Redeem Gift Code as Cashback Button */}
-              <div className="max-w-lg mx-auto space-y-3 pt-2">
+              {/* Action Buttons */}
+              <div className="space-y-2.5 pt-1">
                 <Link
                   href={`/account?tab=wallet&redeem=${encodeURIComponent(generatedCard.code)}`}
-                  className="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-zari-deep via-zari to-zari-deep hover:brightness-110 text-white font-bold text-sm uppercase tracking-wider shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer"
+                  className="w-full py-3.5 px-5 rounded-xl bg-gradient-to-r from-zari-deep via-zari to-zari-deep hover:brightness-110 text-white font-bold text-xs sm:text-sm uppercase tracking-wider shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98"
                 >
-                  <Wallet size={18} />
-                  Redeem Gift Code as Cashback &rarr;
+                  <Wallet size={16} />
+                  <span>Redeem ₹100 as Cashback to Wallet &rarr;</span>
                 </Link>
-                <p className="text-[11px] text-taupe">
-                  Clicking will redirect to your Wallet section where you can convert this code into instant ₹100 wallet balance.
-                </p>
-              </div>
 
-              {/* Claim Another Reset Button */}
-              <div className="border-t border-line/60 pt-6 flex items-center justify-center gap-4 text-xs font-semibold text-taupe">
-                <button
-                  onClick={() => {
-                    setGeneratedCard(null);
-                    handleRemoveFile1();
-                    handleRemoveFile2();
-                    setOrderReference("");
-                    setOrderVerificationResult(null);
-                  }}
-                  className="hover:text-ink underline cursor-pointer"
-                >
-                  Submit another review verification
-                </button>
-                <span>•</span>
-                <Link href="/shop" className="hover:text-ink underline">
-                  Browse Textile Collection
-                </Link>
+                <div className="flex items-center justify-center gap-3 text-xs font-medium text-taupe pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setGeneratedCard(null);
+                      handleRemoveFile1();
+                      handleRemoveFile2();
+                      setOrderReference("");
+                      setOrderVerificationResult(null);
+                      if (typeof window !== "undefined") {
+                        window.scrollToTop ? window.scrollToTop("instant") : window.scrollTo(0, 0);
+                      }
+                    }}
+                    className="hover:text-ink underline cursor-pointer"
+                  >
+                    Claim another card
+                  </button>
+                  <span>&bull;</span>
+                  <Link href="/shop" className="hover:text-ink underline">
+                    Browse Textile Shop
+                  </Link>
+                </div>
               </div>
             </div>
           )}
 
-          {/* ================= GIFT CARD HISTORY ================= */}
-          <div className="mt-12 bg-white border border-line rounded-3xl p-6 sm:p-8 shadow-soft space-y-6">
-            {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-line">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-cream flex items-center justify-center text-zari-deep border border-zari/20 shadow-xs">
-                  <History className="w-5 h-5" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-display text-lg sm:text-xl text-ink">My Gift Cards History</h3>
-                    {user && historyCards.length > 0 && (
-                      <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-cream text-zari-deep border border-zari/30">
-                        {historyCards.length} {historyCards.length === 1 ? "Card" : "Cards"}
-                      </span>
-                    )}
+          {/* ================= GIFT CARD HISTORY (Only shown before generating card) ================= */}
+          {!generatedCard && (
+            <div className="mt-12 bg-white border border-line rounded-3xl p-6 sm:p-8 shadow-soft space-y-6">
+              {/* Header */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-line">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-cream flex items-center justify-center text-zari-deep border border-zari/20 shadow-xs">
+                    <History className="w-5 h-5" />
                   </div>
-                  <p className="text-xs text-taupe mt-0.5">
-                    All ₹100 gift cards claimed and generated on your account
-                  </p>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-display text-lg sm:text-xl text-ink">My Gift Cards History</h3>
+                      {user && historyCards.length > 0 && (
+                        <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-cream text-zari-deep border border-zari/30">
+                          {historyCards.length} {historyCards.length === 1 ? "Card" : "Cards"}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-taupe mt-0.5">
+                      All ₹100 gift cards claimed and generated on your account
+                    </p>
+                  </div>
                 </div>
+
+                {user && (
+                  <button
+                    onClick={fetchGiftCardHistory}
+                    disabled={loadingHistory}
+                    className="inline-flex items-center gap-1.5 self-start sm:self-auto text-xs font-semibold text-taupe hover:text-ink px-3 py-1.5 rounded-xl border border-line hover:border-zari/50 hover:bg-cream/40 transition-all duration-200 cursor-pointer disabled:opacity-50"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${loadingHistory ? "animate-spin text-zari" : ""}`} />
+                    <span>{loadingHistory ? "Refreshing..." : "Refresh"}</span>
+                  </button>
+                )}
               </div>
 
-              {user && (
-                <button
-                  onClick={fetchGiftCardHistory}
-                  disabled={loadingHistory}
-                  className="inline-flex items-center gap-1.5 self-start sm:self-auto text-xs font-semibold text-taupe hover:text-ink px-3 py-1.5 rounded-xl border border-line hover:border-zari/50 hover:bg-cream/40 transition-all duration-200 cursor-pointer disabled:opacity-50"
-                >
-                  <RefreshCw className={`w-3.5 h-3.5 ${loadingHistory ? "animate-spin text-zari" : ""}`} />
-                  <span>{loadingHistory ? "Refreshing..." : "Refresh"}</span>
-                </button>
-              )}
-            </div>
-
-            {/* Body Content */}
-            {!user ? (
-              <div className="py-8 px-4 text-center rounded-2xl bg-cream/30 border border-dashed border-line space-y-3">
-                <div className="w-12 h-12 mx-auto rounded-full bg-cream flex items-center justify-center text-taupe">
-                  <Lock className="w-6 h-6" />
+              {/* Body Content */}
+              {!user ? (
+                <div className="py-8 px-4 text-center rounded-2xl bg-cream/30 border border-dashed border-line space-y-3">
+                  <div className="w-12 h-12 mx-auto rounded-full bg-cream flex items-center justify-center text-taupe">
+                    <Lock className="w-6 h-6" />
+                  </div>
+                  <div className="space-y-1 max-w-sm mx-auto">
+                    <p className="text-sm font-semibold text-ink">Sign in to view your history</p>
+                    <p className="text-xs text-taupe">
+                      Log in with your phone or email to see all your claimed ₹100 gift cards and active balances.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setShowAuthModal(true)}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-ink text-cream hover:bg-ink/90 text-xs font-bold uppercase tracking-wider shadow-sm transition-all duration-200 cursor-pointer"
+                  >
+                    Sign In / Register
+                  </button>
                 </div>
-                <div className="space-y-1 max-w-sm mx-auto">
-                  <p className="text-sm font-semibold text-ink">Sign in to view your history</p>
-                  <p className="text-xs text-taupe">
-                    Log in with your phone or email to see all your claimed ₹100 gift cards and active balances.
-                  </p>
+              ) : loadingHistory && historyCards.length === 0 ? (
+                <div className="py-12 text-center space-y-3">
+                  <RefreshCw className="w-6 h-6 animate-spin mx-auto text-zari" />
+                  <p className="text-xs text-taupe">Loading your gift cards history...</p>
                 </div>
-                <button
-                  onClick={() => setShowAuthModal(true)}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-ink text-cream hover:bg-ink/90 text-xs font-bold uppercase tracking-wider shadow-sm transition-all duration-200 cursor-pointer"
-                >
-                  Sign In / Register
-                </button>
-              </div>
-            ) : loadingHistory && historyCards.length === 0 ? (
-              <div className="py-12 text-center space-y-3">
-                <RefreshCw className="w-6 h-6 animate-spin mx-auto text-zari" />
-                <p className="text-xs text-taupe">Loading your gift cards history...</p>
-              </div>
-            ) : historyCards.length === 0 ? (
-              <div className="py-10 px-4 text-center rounded-2xl bg-cream/30 border border-dashed border-line space-y-3">
-                <div className="w-12 h-12 mx-auto rounded-full bg-cream flex items-center justify-center text-zari-deep">
-                  <Gift className="w-6 h-6" />
+              ) : historyCards.length === 0 ? (
+                <div className="py-10 px-4 text-center rounded-2xl bg-cream/30 border border-dashed border-line space-y-3">
+                  <div className="w-12 h-12 mx-auto rounded-full bg-cream flex items-center justify-center text-zari-deep">
+                    <Gift className="w-6 h-6" />
+                  </div>
+                  <div className="space-y-1 max-w-md mx-auto">
+                    <p className="text-sm font-semibold text-ink">No gift cards claimed yet</p>
+                    <p className="text-xs text-taupe">
+                      Submit your positive review for Amazon, Flipkart, or Google Reviews above to generate your first ₹100 gift card!
+                    </p>
+                  </div>
                 </div>
-                <div className="space-y-1 max-w-md mx-auto">
-                  <p className="text-sm font-semibold text-ink">No gift cards claimed yet</p>
-                  <p className="text-xs text-taupe">
-                    Submit your positive review for Amazon, Flipkart, or Google Reviews above to generate your first ₹100 gift card!
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {historyCards.map((card) => {
-                  const isRedeemed = card.status === "redeemed" || !!card.redeemed_at;
-                  const isExpired = card.status === "expired" || (card.expires_at && new Date(card.expires_at) < new Date());
-                  const isActive = !isRedeemed && !isExpired && card.status === "active";
+              ) : (
+                <div className="space-y-3">
+                  {historyCards.map((card) => {
+                    const isRedeemed = card.status === "redeemed" || !!card.redeemed_at;
+                    const isExpired = card.status === "expired" || (card.expires_at && new Date(card.expires_at) < new Date());
+                    const isActive = !isRedeemed && !isExpired && card.status === "active";
 
-                  const platformBadge = PLATFORMS.find((p) => p.id === card.platform) || {
-                    name: card.platform ? card.platform.toUpperCase() : "Review Reward",
-                    icon: "🎁",
-                  };
+                    const platformBadge = PLATFORMS.find((p) => p.id === card.platform) || {
+                      name: card.platform ? card.platform.toUpperCase() : "Review Reward",
+                      icon: "🎁",
+                    };
 
-                  const createdDateStr = card.created_at
-                    ? new Date(card.created_at).toLocaleDateString("en-IN", {
-                        day: "numeric",
-                        month: "short",
-                        year: "numeric",
-                      })
-                    : "—";
+                    const createdDateStr = card.created_at
+                      ? new Date(card.created_at).toLocaleDateString("en-IN", {
+                          day: "numeric",
+                          month: "short",
+                          year: "numeric",
+                        })
+                      : "—";
 
-                  const expiresDateStr = card.expires_at
-                    ? new Date(card.expires_at).toLocaleDateString("en-IN", {
-                        day: "numeric",
-                        month: "short",
-                        year: "numeric",
-                      })
-                    : "1 Year Validity";
+                    const expiresDateStr = card.expires_at
+                      ? new Date(card.expires_at).toLocaleDateString("en-IN", {
+                          day: "numeric",
+                          month: "short",
+                          year: "numeric",
+                        })
+                      : "1 Year Validity";
 
-                  return (
-                    <div
-                      key={card.id}
-                      className={`p-4 sm:p-5 rounded-2xl border transition-all duration-200 ${
-                        isActive
-                          ? "bg-white hover:bg-cream/10 border-line hover:border-zari/50 shadow-xs"
-                          : "bg-cream/20 border-line/70 opacity-90"
-                      }`}
-                    >
-                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                        {/* Left info */}
-                        <div className="space-y-2">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-cream text-ink border border-line">
-                              <span>{platformBadge.icon}</span> {platformBadge.name}
-                            </span>
-
-                            {isActive && (
-                              <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                                ACTIVE • Available
+                    return (
+                      <div
+                        key={card.id}
+                        className={`p-4 sm:p-5 rounded-2xl border transition-all duration-200 ${
+                          isActive
+                            ? "bg-white hover:bg-cream/10 border-line hover:border-zari/50 shadow-xs"
+                            : "bg-cream/20 border-line/70 opacity-90"
+                        }`}
+                      >
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                          {/* Left info */}
+                          <div className="space-y-2">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-cream text-ink border border-line">
+                                <span>{platformBadge.icon}</span> {platformBadge.name}
                               </span>
-                            )}
 
-                            {isRedeemed && (
-                              <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-neutral-100 text-neutral-600 border border-neutral-200">
-                                <Check className="w-3 h-3 text-neutral-500" />
-                                Redeemed to Wallet
+                              {isActive && (
+                                <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                  ACTIVE • Available
+                                </span>
+                              )}
+
+                              {isRedeemed && (
+                                <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-neutral-100 text-neutral-600 border border-neutral-200">
+                                  <Check className="w-3 h-3 text-neutral-500" />
+                                  Redeemed to Wallet
+                                </span>
+                              )}
+
+                              {isExpired && (
+                                <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-600 border border-rose-200">
+                                  <Clock className="w-3 h-3 text-rose-500" />
+                                  Expired
+                                </span>
+                              )}
+
+                              <span className="text-xs font-bold text-zari-deep ml-1">
+                                ₹{((card.amount_paise || 10000) / 100).toFixed(0)} Gift Card
                               </span>
-                            )}
-
-                            {isExpired && (
-                              <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-600 border border-rose-200">
-                                <Clock className="w-3 h-3 text-rose-500" />
-                                Expired
-                              </span>
-                            )}
-
-                            <span className="text-xs font-bold text-zari-deep ml-1">
-                              ₹{((card.amount_paise || 10000) / 100).toFixed(0)} Gift Card
-                            </span>
-                          </div>
-
-                          {/* Code container with 1-click copy */}
-                          <div className="flex items-center gap-2">
-                            <div className="px-3 py-1.5 rounded-xl bg-cream/70 border border-line font-mono font-black text-sm tracking-wider text-ink selection:bg-zari/20">
-                              {card.code}
                             </div>
-                            <button
-                              onClick={() => handleCopyHistoryCode(card.code)}
-                              title="Copy Code"
-                              className={`p-2 rounded-xl border text-xs font-semibold flex items-center gap-1 transition-all duration-200 cursor-pointer ${
-                                copiedHistoryCode === card.code
-                                  ? "bg-emerald-600 text-white border-emerald-600 shadow-xs"
-                                  : "bg-white hover:bg-cream/60 text-taupe hover:text-ink border-line"
-                              }`}
-                            >
-                              {copiedHistoryCode === card.code ? (
+
+                            {/* Code container with 1-click copy */}
+                            <div className="flex items-center gap-2">
+                              <div className="px-3 py-1.5 rounded-xl bg-cream/70 border border-line font-mono font-black text-sm tracking-wider text-ink selection:bg-zari/20">
+                                {card.code}
+                              </div>
+                              <button
+                                onClick={() => handleCopyHistoryCode(card.code)}
+                                title="Copy Code"
+                                className={`p-2 rounded-xl border text-xs font-semibold flex items-center gap-1 transition-all duration-200 cursor-pointer ${
+                                  copiedHistoryCode === card.code
+                                    ? "bg-emerald-600 text-white border-emerald-600 shadow-xs"
+                                    : "bg-white hover:bg-cream/60 text-taupe hover:text-ink border-line"
+                                }`}
+                              >
+                                {copiedHistoryCode === card.code ? (
+                                  <>
+                                    <Check className="w-3.5 h-3.5" />
+                                    <span className="hidden sm:inline">Copied</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Copy className="w-3.5 h-3.5" />
+                                    <span className="hidden sm:inline">Copy</span>
+                                  </>
+                                )}
+                              </button>
+                            </div>
+
+                            {/* Metadata details */}
+                            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-taupe">
+                              <span>Claimed: <strong className="text-ink font-medium">{createdDateStr}</strong></span>
+                              <span>•</span>
+                              <span>Expires: <strong className="text-ink font-medium">{expiresDateStr}</strong></span>
+                              {card.order_reference && (
                                 <>
-                                  <Check className="w-3.5 h-3.5" />
-                                  <span className="hidden sm:inline">Copied</span>
-                                </>
-                              ) : (
-                                <>
-                                  <Copy className="w-3.5 h-3.5" />
-                                  <span className="hidden sm:inline">Copy</span>
+                                  <span>•</span>
+                                  <span>Order Ref: <strong className="text-ink font-medium font-mono">#{card.order_reference}</strong></span>
                                 </>
                               )}
-                            </button>
+                            </div>
                           </div>
 
-                          {/* Metadata details */}
-                          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-taupe">
-                            <span>Claimed: <strong className="text-ink font-medium">{createdDateStr}</strong></span>
-                            <span>•</span>
-                            <span>Expires: <strong className="text-ink font-medium">{expiresDateStr}</strong></span>
-                            {card.order_reference && (
-                              <>
-                                <span>•</span>
-                                <span>Order Ref: <strong className="text-ink font-medium font-mono">#{card.order_reference}</strong></span>
-                              </>
-                            )}
+                          {/* Right Action */}
+                          <div className="flex items-center gap-2 self-start md:self-center shrink-0">
+                            {isActive ? (
+                              <Link
+                                href={`/account?tab=wallet&redeem=${encodeURIComponent(card.code)}`}
+                                className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-gradient-to-r from-zari-deep to-zari hover:brightness-110 text-white font-bold text-xs uppercase tracking-wider shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer"
+                              >
+                                <Wallet className="w-4 h-4" />
+                                <span>Redeem to Wallet &rarr;</span>
+                              </Link>
+                            ) : isRedeemed ? (
+                              <Link
+                                href="/account?tab=wallet"
+                                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white hover:bg-cream text-taupe hover:text-ink text-xs font-semibold border border-line transition-all duration-200"
+                              >
+                                <Wallet className="w-3.5 h-3.5 text-taupe" />
+                                <span>View in Wallet</span>
+                              </Link>
+                            ) : null}
                           </div>
-                        </div>
-
-                        {/* Right Action */}
-                        <div className="flex items-center gap-2 self-start md:self-center shrink-0">
-                          {isActive ? (
-                            <Link
-                              href={`/account?tab=wallet&redeem=${encodeURIComponent(card.code)}`}
-                              className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-gradient-to-r from-zari-deep to-zari hover:brightness-110 text-white font-bold text-xs uppercase tracking-wider shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer"
-                            >
-                              <Wallet className="w-4 h-4" />
-                              <span>Redeem to Wallet &rarr;</span>
-                            </Link>
-                          ) : isRedeemed ? (
-                            <Link
-                              href="/account?tab=wallet"
-                              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white hover:bg-cream text-taupe hover:text-ink text-xs font-semibold border border-line transition-all duration-200"
-                            >
-                              <Wallet className="w-3.5 h-3.5 text-taupe" />
-                              <span>View in Wallet</span>
-                            </Link>
-                          ) : null}
                         </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          {/* ================= TERMS & CONDITIONS ================= */}
-          <div className="mt-12 bg-white border border-line rounded-3xl p-6 sm:p-8 shadow-soft space-y-4">
-            <div className="flex items-center gap-2 text-ink">
-              <ShieldCheck className="w-5 h-5 text-zari" />
-              <h3 className="font-display text-lg">Terms & Conditions — ₹100 Gift Card</h3>
+                    );
+                  })}
+                </div>
+              )}
             </div>
+          )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-taupe leading-relaxed">
-              <div className="space-y-2">
-                <div className="flex items-start gap-2">
-                  <span className="font-bold text-zari-deep">•</span>
-                  <p><strong className="text-ink">1-Year Expiry:</strong> All generated ₹100 gift card codes are valid for <strong className="text-ink font-semibold">1 full year (365 days)</strong> from the date of issue.</p>
-                </div>
-                <div className="flex items-start gap-2">
-                  <span className="font-bold text-zari-deep">•</span>
-                  <p><strong className="text-ink">One-Time Use:</strong> Each code is valid for a single redemption per customer and review.</p>
-                </div>
-                <div className="flex items-start gap-2">
-                  <span className="font-bold text-zari-deep">•</span>
-                  <p><strong className="text-ink">Wallet Redemption:</strong> Users can redeem the code into their JAI SRI RAM TEXTILES Wallet as cashback balance.</p>
-                </div>
-                <div className="flex items-start gap-2">
-                  <span className="font-bold text-zari-deep">•</span>
-                  <p><strong className="text-ink">Checkout Rule:</strong> Wallet cashback balance is redeemable during checkout up to <strong className="text-ink font-semibold">20% of the cart subtotal, with a maximum limit of ₹50 per order</strong>.</p>
-                </div>
+          {/* ================= TERMS & CONDITIONS (Only shown before generating card) ================= */}
+          {!generatedCard && (
+            <div className="mt-12 bg-white border border-line rounded-3xl p-6 sm:p-8 shadow-soft space-y-4">
+              <div className="flex items-center gap-2 text-ink">
+                <ShieldCheck className="w-5 h-5 text-zari" />
+                <h3 className="font-display text-lg">Terms & Conditions — ₹100 Gift Card</h3>
               </div>
 
-              <div className="space-y-2">
-                <div className="flex items-start gap-2">
-                  <span className="font-bold text-zari-deep">•</span>
-                  <p><strong className="text-ink">Proof Screenshots:</strong> Amazon & Flipkart reviews require 2 screenshots and verified Platform Order ID. Google Reviews require 1 screenshot.</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-taupe leading-relaxed">
+                <div className="space-y-2">
+                  <div className="flex items-start gap-2">
+                    <span className="font-bold text-zari-deep">•</span>
+                    <p><strong className="text-ink">1-Year Expiry:</strong> All generated ₹100 gift card codes are valid for <strong className="text-ink font-semibold">1 full year (365 days)</strong> from the date of issue.</p>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="font-bold text-zari-deep">•</span>
+                    <p><strong className="text-ink">One-Time Use:</strong> Each code is valid for a single redemption per customer and review.</p>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="font-bold text-zari-deep">•</span>
+                    <p><strong className="text-ink">Wallet Redemption:</strong> Users can redeem the code into their JAI SRI RAM TEXTILES Wallet as cashback balance.</p>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="font-bold text-zari-deep">•</span>
+                    <p><strong className="text-ink">Checkout Rule:</strong> Wallet cashback balance is redeemable during checkout up to <strong className="text-ink font-semibold">20% of the cart subtotal, with a maximum limit of ₹50 per order</strong>.</p>
+                  </div>
                 </div>
-                <div className="flex items-start gap-2">
-                  <span className="font-bold text-zari-deep">•</span>
-                  <p><strong className="text-ink">Google Review 1-Time Limit:</strong> Google Reviews reward is strictly limited to 1 claim per customer account.</p>
-                </div>
-                <div className="flex items-start gap-2">
-                  <span className="font-bold text-zari-deep">•</span>
-                  <p><strong className="text-ink">Store Moderation:</strong> JAI SRI RAM TEXTILES reserves the right to verify submissions and deactivate fraudulent entries.</p>
+
+                <div className="space-y-2">
+                  <div className="flex items-start gap-2">
+                    <span className="font-bold text-zari-deep">•</span>
+                    <p><strong className="text-ink">Proof Screenshots:</strong> Amazon & Flipkart reviews require 2 screenshots and verified Platform Order ID. Google Reviews require 1 screenshot.</p>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="font-bold text-zari-deep">•</span>
+                    <p><strong className="text-ink">Google Review 1-Time Limit:</strong> Google Reviews reward is strictly limited to 1 claim per customer account.</p>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="font-bold text-zari-deep">•</span>
+                    <p><strong className="text-ink">Store Moderation:</strong> JAI SRI RAM TEXTILES reserves the right to verify submissions and deactivate fraudulent entries.</p>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
       </Container>
     </main>

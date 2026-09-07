@@ -83,7 +83,7 @@ export default function AccountPage() {
     }
   }, []);
 
-  // Synchronize AI Bot visibility on Support Desk tab
+  // Synchronize AI Bot visibility on Support Desk tab & scroll to top on tab switch
   useEffect(() => {
     if (typeof document !== "undefined") {
       if (activeTab === "contact" || activeTab === "support") {
@@ -92,6 +92,9 @@ export default function AccountPage() {
         delete document.body.dataset.hideAiBot;
       }
       window.dispatchEvent(new CustomEvent("ai-bot-visibility-change"));
+    }
+    if (typeof window !== "undefined") {
+      window.scrollToTop ? window.scrollToTop("instant") : window.scrollTo(0, 0);
     }
     return () => {
       if (typeof document !== "undefined") {

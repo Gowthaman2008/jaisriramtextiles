@@ -604,7 +604,7 @@ export function HeroCarousel({ dbSlides }: { dbSlides?: any[] }) {
 
                   {/* Video Mute Toggle */}
                   {isVideo && (
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 pl-14">
                       <button
                         type="button"
                         onClick={(e) => {
@@ -623,8 +623,8 @@ export function HeroCarousel({ dbSlides }: { dbSlides?: any[] }) {
                 </div>
               </Link>
 
-              {/* Desktop Next/Prev Arrow Controls */}
-              <div className="flex items-center justify-between absolute inset-x-4 top-1/2 -translate-y-1/2 z-20 pointer-events-none">
+              {/* Desktop Next/Prev Arrow Controls - Positioned in the 2 bottom corners */}
+              <div className="flex items-center justify-between absolute inset-x-6 bottom-6 z-20 pointer-events-none">
                 <button
                   type="button"
                   aria-label="Previous Slide"
@@ -633,7 +633,7 @@ export function HeroCarousel({ dbSlides }: { dbSlides?: any[] }) {
                     e.stopPropagation();
                     go(index - 1, -1);
                   }}
-                  className="pointer-events-auto grid h-11 w-11 place-items-center rounded-full border border-line/50 bg-white/90 text-ink shadow-md backdrop-blur hover:bg-white hover:scale-105 active:scale-95 transition-all cursor-pointer"
+                  className="pointer-events-auto grid h-11 w-11 place-items-center rounded-full border border-line/60 bg-white/90 text-ink shadow-md backdrop-blur hover:bg-white hover:border-zari hover:scale-105 active:scale-95 transition-all cursor-pointer"
                 >
                   <ChevronLeft size={20} />
                 </button>
@@ -645,7 +645,7 @@ export function HeroCarousel({ dbSlides }: { dbSlides?: any[] }) {
                     e.stopPropagation();
                     go(index + 1, 1);
                   }}
-                  className="pointer-events-auto grid h-11 w-11 place-items-center rounded-full border border-line/50 bg-white/90 text-ink shadow-md backdrop-blur hover:bg-white hover:scale-105 active:scale-95 transition-all cursor-pointer"
+                  className="pointer-events-auto grid h-11 w-11 place-items-center rounded-full border border-line/60 bg-white/90 text-ink shadow-md backdrop-blur hover:bg-white hover:border-zari hover:scale-105 active:scale-95 transition-all cursor-pointer"
                 >
                   <ChevronRight size={20} />
                 </button>
