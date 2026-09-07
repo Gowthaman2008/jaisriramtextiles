@@ -37,7 +37,8 @@ import {
   HelpCircle,
   Gift,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  ChevronDown
 } from "lucide-react";
 
 export default function AccountPage() {
@@ -115,6 +116,7 @@ export default function AccountPage() {
   const [orders, setOrders] = useState<any[]>([]);
   const [walletBalance, setWalletBalance] = useState(0);
   const [walletHistory, setWalletHistory] = useState<any[]>([]);
+  const [showWalletLogs, setShowWalletLogs] = useState(false);
   const [addresses, setAddresses] = useState<any[]>([]);
   const [userReviews, setUserReviews] = useState<any[]>([]);
 
@@ -1363,69 +1365,99 @@ export default function AccountPage() {
               </form>
             </div>
 
-            {/* Audit Logs Table */}
-            <div className="bg-white border border-line rounded-card overflow-hidden shadow-soft">
-              <div className="p-4 bg-cream/15 border-b border-line">
-                <h3 className="font-bold text-sm sm:text-base flex items-center gap-2 text-ink">
-                  <History className="w-4 h-4 text-zari" /> Wallet Transaction Logs
-                </h3>
-              </div>
-              {walletHistory.length === 0 ? (
-                <div className="p-8 text-center text-xs sm:text-sm text-taupe italic">
-                  No cashback transactions logged yet. Credits are earned automatically after order shipments deliver.
+            {/* Audit Logs Collapsible Section */}
+            <div className="bg-white border border-line rounded-card overflow-hidden shadow-soft transition-all duration-300">
+              <button
+                type="button"
+                onClick={() => setShowWalletLogs(!showWalletLogs)}
+                className="w-full p-4 sm:p-5 flex items-center justify-between gap-4 text-left hover:bg-cream/20 transition-colors cursor-pointer bg-cream/15"
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <History className="w-4 h-4 text-zari shrink-0" />
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="font-bold text-sm sm:text-base text-ink">
+                      Wallet Transaction Logs
+                    </h3>
+                    <span className="text-[10px] sm:text-[11px] font-bold px-2 py-0.5 rounded-full bg-cream text-zari-deep border border-zari/30">
+                      {walletHistory.length} {walletHistory.length === 1 ? "Log" : "Logs"}
+                    </span>
+                  </div>
                 </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs">
-                    <thead>
-                      <tr className="bg-cream/45 border-b border-line text-taupe font-bold text-[9px] sm:text-[10px] md:text-xs uppercase tracking-wider">
-                        <th className="px-2.5 py-2 sm:px-4 sm:py-3 min-w-[90px] sm:min-w-[120px]">Reference / Note</th>
-                        <th className="px-2 py-2 sm:px-3 sm:py-3 text-center whitespace-nowrap">Type</th>
-                        <th className="px-2 py-2 sm:px-3 sm:py-3 text-right whitespace-nowrap">Credit / Debit</th>
-                        <th className="px-2.5 py-2 sm:px-4 sm:py-3 text-center whitespace-nowrap">Timestamp</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-line/60">
-                      {walletHistory.map((t) => (
-                        <tr key={t.id} className="hover:bg-cream/10 transition-colors">
-                          <td className="px-2.5 py-2 sm:px-4 sm:py-3 text-ink">
-                            <span className="font-semibold text-[11px] sm:text-xs text-ink block leading-snug">{t.note}</span>
-                            {t.type === "cashback_credit" && t.expires_at && (
-                              <span className="block text-[9px] sm:text-[10px] text-taupe mt-0.5 whitespace-nowrap">
-                                {new Date(t.expires_at) < new Date() ? (
-                                  <span className="text-danger font-semibold">Expired</span>
-                                ) : (
-                                  <>Expires: {new Date(t.expires_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "2-digit" })}</>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-xs font-bold text-zari-deep hidden sm:inline">
+                    {showWalletLogs ? "Hide Logs" : "View Logs"}
+                  </span>
+                  <div
+                    className={`w-7 h-7 rounded-lg bg-cream/80 border border-line flex items-center justify-center text-taupe transition-transform duration-300 ${
+                      showWalletLogs ? "rotate-180 text-ink bg-amber-100/60 border-amber-300" : ""
+                    }`}
+                  >
+                    <ChevronDown className="w-4 h-4" />
+                  </div>
+                </div>
+              </button>
+
+              {showWalletLogs && (
+                <div className="border-t border-line animate-fade-in">
+                  {walletHistory.length === 0 ? (
+                    <div className="p-8 text-center text-xs sm:text-sm text-taupe italic">
+                      No cashback transactions logged yet. Credits are earned automatically after order shipments deliver.
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs">
+                        <thead>
+                          <tr className="bg-cream/45 border-b border-line text-taupe font-bold text-[9px] sm:text-[10px] md:text-xs uppercase tracking-wider">
+                            <th className="px-2.5 py-2 sm:px-4 sm:py-3 min-w-[90px] sm:min-w-[120px]">Reference / Note</th>
+                            <th className="px-2 py-2 sm:px-3 sm:py-3 text-center whitespace-nowrap">Type</th>
+                            <th className="px-2 py-2 sm:px-3 sm:py-3 text-right whitespace-nowrap">Credit / Debit</th>
+                            <th className="px-2.5 py-2 sm:px-4 sm:py-3 text-center whitespace-nowrap">Timestamp</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-line/60">
+                          {walletHistory.map((t) => (
+                            <tr key={t.id} className="hover:bg-cream/10 transition-colors">
+                              <td className="px-2.5 py-2 sm:px-4 sm:py-3 text-ink">
+                                <span className="font-semibold text-[11px] sm:text-xs text-ink block leading-snug">{t.note}</span>
+                                {t.type === "cashback_credit" && t.expires_at && (
+                                  <span className="block text-[9px] sm:text-[10px] text-taupe mt-0.5 whitespace-nowrap">
+                                    {new Date(t.expires_at) < new Date() ? (
+                                      <span className="text-danger font-semibold">Expired</span>
+                                    ) : (
+                                      <>Expires: {new Date(t.expires_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "2-digit" })}</>
+                                    )}
+                                  </span>
                                 )}
-                              </span>
-                            )}
-                          </td>
-                          <td className="px-2 py-2 sm:px-3 sm:py-3 text-center">
-                            <span className={`inline-block px-1.5 py-0.5 sm:px-2 rounded-full text-[9px] sm:text-[10px] font-bold tracking-wider uppercase whitespace-nowrap ${
-                              t.amount_paise > 0 
-                                ? "bg-success/10 text-success border border-success/20" 
-                                : "bg-danger/10 text-danger border border-danger/20"
-                            }`}>
-                              {t.type.replace(/_/g, " ")}
-                            </span>
-                          </td>
-                          <td className={`px-2 py-2 sm:px-3 sm:py-3 text-right font-bold text-[11px] sm:text-xs md:text-sm whitespace-nowrap ${
-                            t.amount_paise > 0 ? "text-success" : "text-danger"
-                          }`}>
-                            {t.amount_paise > 0 ? "+" : ""}{formatINR(t.amount_paise, true)}
-                          </td>
-                          <td className="px-2.5 py-2 sm:px-4 sm:py-3 text-center whitespace-nowrap">
-                            <span className="block font-medium text-ink text-[10px] sm:text-[11px] md:text-xs">
-                              {new Date(t.created_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "2-digit" })}
-                            </span>
-                            <span className="block text-[8px] sm:text-[9px] md:text-[10px] text-taupe mt-0.5">
-                              {new Date(t.created_at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true }).toLowerCase()}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                              </td>
+                              <td className="px-2 py-2 sm:px-3 sm:py-3 text-center">
+                                <span className={`inline-block px-1.5 py-0.5 sm:px-2 rounded-full text-[9px] sm:text-[10px] font-bold tracking-wider uppercase whitespace-nowrap ${
+                                  t.amount_paise > 0 
+                                    ? "bg-success/10 text-success border border-success/20" 
+                                    : "bg-danger/10 text-danger border border-danger/20"
+                                }`}>
+                                  {t.type.replace(/_/g, " ")}
+                                </span>
+                              </td>
+                              <td className={`px-2 py-2 sm:px-3 sm:py-3 text-right font-bold text-[11px] sm:text-xs md:text-sm whitespace-nowrap ${
+                                t.amount_paise > 0 ? "text-success" : "text-danger"
+                              }`}>
+                                {t.amount_paise > 0 ? "+" : ""}{formatINR(t.amount_paise, true)}
+                              </td>
+                              <td className="px-2.5 py-2 sm:px-4 sm:py-3 text-center whitespace-nowrap">
+                                <span className="block font-medium text-ink text-[10px] sm:text-[11px] md:text-xs">
+                                  {new Date(t.created_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "2-digit" })}
+                                </span>
+                                <span className="block text-[8px] sm:text-[9px] md:text-[10px] text-taupe mt-0.5">
+                                  {new Date(t.created_at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true }).toLowerCase()}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
