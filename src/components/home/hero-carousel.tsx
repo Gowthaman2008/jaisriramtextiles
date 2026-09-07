@@ -112,11 +112,13 @@ function SlideVideo({
   src,
   isActive,
   isMuted,
+  isHeroInView = true,
   className,
 }: {
   src: string;
   isActive: boolean;
   isMuted: boolean;
+  isHeroInView?: boolean;
   className?: string;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -131,8 +133,7 @@ function SlideVideo({
     const el = videoRef.current;
     if (!el) return;
 
-    if (isActive) {
-      el.currentTime = 0;
+    if (isActive && isHeroInView) {
       el.muted = isMuted;
       const playPromise = el.play();
       if (playPromise !== undefined) {
@@ -144,15 +145,14 @@ function SlideVideo({
       }
     } else {
       el.pause();
-      el.muted = true; // Hard mute when inactive
     }
-  }, [isActive, isMuted]);
+  }, [isActive, isMuted, isHeroInView]);
 
   return (
     <video
       ref={videoRef}
       src={src}
-      autoPlay={isActive}
+      autoPlay={isActive && isHeroInView}
       muted={isMuted}
       playsInline
       loop
@@ -184,9 +184,46 @@ export function HeroCarousel({ dbSlides }: { dbSlides?: any[] }) {
   const [userAddress, setUserAddress] = useState<Address | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isDesktop, setIsDesktop] = useState(false);
+  const heroSectionRef = useRef<HTMLElement>(null);
+  const [isHeroInView, setIsHeroInView] = useState(true);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
   const mobileScrollRef = useRef<HTMLDivElement>(null);
   const isMobileInteracting = useRef(false);
+
+  // Monitor when the Hero section is scrolled out of viewport
+  useEffect(() => {
+    const el = heroSectionRef.current;
+    if (!el || typeof IntersectionObserver === "undefined") return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsHeroInView(entry.isIntersecting);
+      },
+      {
+        threshold: 0.1, // Trigger as soon as the hero section scrolls out of view
+      }
+    );
+
+    observer.observe(el);
+
+    // Also handle tab switching / page visibility change
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        setIsHeroInView(false);
+      } else if (el) {
+        const rect = el.getBoundingClientRect();
+        const inView = rect.bottom > 60 && rect.top < window.innerHeight;
+        setIsHeroInView(inView);
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      observer.disconnect();
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, []);
 
   useEffect(() => {
     const check = () => setIsDesktop(window.innerWidth >= 768);
@@ -252,16 +289,16 @@ export function HeroCarousel({ dbSlides }: { dbSlides?: any[] }) {
   const nextSlide = slides[(index + 1) % slides.length];
   const isVideo = isVideoMediaUrl(slide?.image);
 
-  // Auto-advance timer: active for photo slides
+  // Auto-advance timer: active for photo slides when hero is in view
   useEffect(() => {
-    if (reduce) return;
+    if (reduce || !isHeroInView) return;
     if (isVideo) {
       if (timer.current) clearInterval(timer.current);
       return;
     }
 
     timer.current = setInterval(() => {
-      if (!isMobileInteracting.current) {
+      if (!isMobileInteracting.current && isHeroInView) {
         go(index + 1, 1);
       }
     }, AUTO_MS);
@@ -269,7 +306,7 @@ export function HeroCarousel({ dbSlides }: { dbSlides?: any[] }) {
     return () => {
       if (timer.current) clearInterval(timer.current);
     };
-  }, [reduce, slides.length, index, isVideo, go]);
+  }, [reduce, slides.length, index, isVideo, isHeroInView, go]);
 
   // Handle Mobile Scroll Event to sync active index indicator
   const handleMobileScroll = () => {
@@ -320,6 +357,7 @@ export function HeroCarousel({ dbSlides }: { dbSlides?: any[] }) {
   return (
     <>
       <section
+        ref={heroSectionRef}
         aria-roledescription="carousel"
         aria-label="Featured highlights"
         className="relative bg-gradient-to-b from-cream/40 via-cream/10 to-transparent pt-1 pb-2 sm:pb-4 overflow-hidden"
@@ -456,6 +494,7 @@ export function HeroCarousel({ dbSlides }: { dbSlides?: any[] }) {
                           src={s.image}
                           isActive={isActive}
                           isMuted={isMuted}
+                          isHeroInView={isHeroInView}
                           className="w-full h-full object-cover"
                         />
                       ) : (
@@ -552,6 +591,7 @@ export function HeroCarousel({ dbSlides }: { dbSlides?: any[] }) {
                         src={slide.image}
                         isActive={true}
                         isMuted={isMuted}
+                        isHeroInView={isHeroInView}
                         className="w-full h-full object-cover"
                       />
                     ) : (

@@ -63,16 +63,13 @@ export function AIChatbot() {
   useEffect(() => {
     function checkHidden() {
       if (typeof window === "undefined") return;
+      const isAccountRoute = pathname === "/account" || pathname?.startsWith("/account");
       const isContactRoute = pathname === "/contact" || pathname === "/support";
-      const params = new URLSearchParams(window.location.search);
-      const isAccountContact =
-        pathname === "/account" &&
-        (params.get("tab") === "contact" || params.get("tab") === "support");
       const isDomFlagged =
         document.body.dataset.hideAiBot === "true" ||
         !!document.querySelector("[data-support-desk='true']");
 
-      setIsBotHidden(isContactRoute || isAccountContact || isDomFlagged);
+      setIsBotHidden(isAccountRoute || isContactRoute || isDomFlagged);
     }
 
     checkHidden();
@@ -606,7 +603,7 @@ ${itemsList || "- No items listed"}`;
     }
   }
 
-  if (pathname?.startsWith("/admin") || (isBotHidden && !isOpen)) {
+  if (pathname?.startsWith("/admin") || pathname?.startsWith("/account") || (isBotHidden && !isOpen)) {
     return null;
   }
 
