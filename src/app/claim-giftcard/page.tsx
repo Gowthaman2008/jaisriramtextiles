@@ -557,13 +557,12 @@ export default function ClaimGiftCardPage() {
           // Refresh gift card history list
           fetchGiftCardHistory();
 
-          // Auto copy code to clipboard
+          // Auto copy code to clipboard silently (no intrusive popup)
           try {
             navigator.clipboard.writeText(data.giftCard.code);
             setCopied(true);
-            notify("🎉 ₹100 Gift Card code generated & automatically copied to clipboard!", "success");
           } catch {
-            notify("🎉 ₹100 Gift Card code generated successfully!", "success");
+            // Silently catch clipboard permission errors
           }
         }, 2650);
       }
@@ -2034,69 +2033,69 @@ export default function ClaimGiftCardPage() {
             </div>
           )}
 
-          {/* ================= TERMS & CONDITIONS (Collapsible Accordion — Hidden by default) ================= */}
+          {/* ================= TERMS & CONDITIONS (Collapsible Accordion — Small & Compact) ================= */}
           {generatedCard && (
-            <div className="mt-8 bg-white border border-line rounded-3xl overflow-hidden shadow-soft transition-all duration-300">
+            <div className="mt-4 bg-white/90 border border-line/80 rounded-xl overflow-hidden shadow-xs hover:border-zari/40 transition-all duration-200">
               <button
                 type="button"
                 onClick={() => setShowTerms(!showTerms)}
-                className="w-full p-4 sm:p-5 flex items-center justify-between gap-4 text-left hover:bg-cream/20 transition-colors cursor-pointer bg-cream/10"
+                className="w-full px-3.5 py-2.5 flex items-center justify-between gap-3 text-left hover:bg-cream/30 transition-colors cursor-pointer bg-cream/10"
               >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <ShieldCheck className="w-5 h-5 text-zari shrink-0" />
-                  <h3 className="font-display text-sm sm:text-base text-ink font-bold">
+                <div className="flex items-center gap-2 min-w-0">
+                  <ShieldCheck className="w-3.5 h-3.5 text-zari shrink-0" />
+                  <span className="text-xs font-semibold text-ink">
                     Terms & Conditions — ₹100 Gift Card
-                  </h3>
+                  </span>
                 </div>
 
-                <div className="flex items-center gap-2 shrink-0">
-                  <span className="text-xs font-bold text-zari-deep hidden sm:inline">
-                    {showTerms ? "Hide Terms" : "View Terms"}
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <span className="text-[11px] font-medium text-taupe hidden sm:inline">
+                    {showTerms ? "Hide" : "View"}
                   </span>
                   <div
-                    className={`w-7 h-7 rounded-lg bg-cream/80 border border-line flex items-center justify-center text-taupe transition-transform duration-300 ${
+                    className={`w-5 h-5 rounded bg-cream/80 border border-line/80 flex items-center justify-center text-taupe transition-transform duration-300 ${
                       showTerms ? "rotate-180 text-ink bg-amber-100/60 border-amber-300" : ""
                     }`}
                   >
-                    <ChevronDown className="w-4 h-4" />
+                    <ChevronDown className="w-3 h-3" />
                   </div>
                 </div>
               </button>
 
               {showTerms && (
-                <div className="p-5 sm:p-7 pt-4 border-t border-line/60 animate-fade-in">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-taupe leading-relaxed">
-                    <div className="space-y-2">
-                      <div className="flex items-start gap-2">
-                        <span className="font-bold text-zari-deep">•</span>
-                        <p><strong className="text-ink">1-Year Expiry:</strong> All generated ₹100 gift card codes are valid for <strong className="text-ink font-semibold">1 full year (365 days)</strong> from the date of issue.</p>
+                <div className="p-3.5 pt-2.5 border-t border-line/60 bg-cream/5 animate-fade-in">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-[11px] text-taupe leading-relaxed">
+                    <div className="space-y-1.5">
+                      <div className="flex items-start gap-1.5">
+                        <span className="font-bold text-zari-deep text-[10px] mt-0.5">•</span>
+                        <p><strong className="text-ink">1-Year Expiry:</strong> Valid for <strong className="text-ink font-medium">1 full year (365 days)</strong> from issue date.</p>
                       </div>
-                      <div className="flex items-start gap-2">
-                        <span className="font-bold text-zari-deep">•</span>
-                        <p><strong className="text-ink">One-Time Use:</strong> Each code is valid for a single redemption per customer and review.</p>
+                      <div className="flex items-start gap-1.5">
+                        <span className="font-bold text-zari-deep text-[10px] mt-0.5">•</span>
+                        <p><strong className="text-ink">One-Time Use:</strong> Valid for single redemption per customer/review.</p>
                       </div>
-                      <div className="flex items-start gap-2">
-                        <span className="font-bold text-zari-deep">•</span>
-                        <p><strong className="text-ink">Wallet Redemption:</strong> Users can redeem the code into their JAI SRI RAM TEXTILES Wallet as cashback balance.</p>
+                      <div className="flex items-start gap-1.5">
+                        <span className="font-bold text-zari-deep text-[10px] mt-0.5">•</span>
+                        <p><strong className="text-ink">Wallet Redemption:</strong> Redeem into JAI SRI RAM TEXTILES Wallet as cashback.</p>
                       </div>
-                      <div className="flex items-start gap-2">
-                        <span className="font-bold text-zari-deep">•</span>
-                        <p><strong className="text-ink">Checkout Rule:</strong> Wallet cashback balance is redeemable during checkout up to <strong className="text-ink font-semibold">20% of the cart subtotal, with a maximum limit of ₹50 per order</strong>.</p>
+                      <div className="flex items-start gap-1.5">
+                        <span className="font-bold text-zari-deep text-[10px] mt-0.5">•</span>
+                        <p><strong className="text-ink">Checkout Rule:</strong> Redeemable up to <strong className="text-ink font-medium">20% of subtotal, max ₹50 per order</strong>.</p>
                       </div>
                     </div>
 
-                    <div className="space-y-2">
-                      <div className="flex items-start gap-2">
-                        <span className="font-bold text-zari-deep">•</span>
-                        <p><strong className="text-ink">Proof Screenshots:</strong> Amazon & Flipkart reviews require 2 screenshots and verified Platform Order ID. Google Reviews require 1 screenshot.</p>
+                    <div className="space-y-1.5">
+                      <div className="flex items-start gap-1.5">
+                        <span className="font-bold text-zari-deep text-[10px] mt-0.5">•</span>
+                        <p><strong className="text-ink">Screenshots:</strong> Amazon/Flipkart require 2 screenshots & Order ID. Google requires 1 screenshot.</p>
                       </div>
-                      <div className="flex items-start gap-2">
-                        <span className="font-bold text-zari-deep">•</span>
-                        <p><strong className="text-ink">Google Review 1-Time Limit:</strong> Google Reviews reward is strictly limited to 1 claim per customer account.</p>
+                      <div className="flex items-start gap-1.5">
+                        <span className="font-bold text-zari-deep text-[10px] mt-0.5">•</span>
+                        <p><strong className="text-ink">Google Review:</strong> Strictly limited to 1 claim per customer account.</p>
                       </div>
-                      <div className="flex items-start gap-2">
-                        <span className="font-bold text-zari-deep">•</span>
-                        <p><strong className="text-ink">Store Moderation:</strong> JAI SRI RAM TEXTILES reserves the right to verify submissions and deactivate fraudulent entries.</p>
+                      <div className="flex items-start gap-1.5">
+                        <span className="font-bold text-zari-deep text-[10px] mt-0.5">•</span>
+                        <p><strong className="text-ink">Moderation:</strong> We reserve the right to verify submissions & void fraudulent entries.</p>
                       </div>
                     </div>
                   </div>

@@ -42,7 +42,8 @@ import {
   AlertCircle,
   ChevronDown,
   Shuffle,
-  Sparkles
+  Sparkles,
+  ExternalLink
 } from "lucide-react";
 
 export default function AccountPage() {
@@ -127,6 +128,7 @@ export default function AccountPage() {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [addresses, setAddresses] = useState<any[]>([]);
   const [userReviews, setUserReviews] = useState<any[]>([]);
+  const [selectedOrderDetails, setSelectedOrderDetails] = useState<{ order: any; item?: any } | null>(null);
 
   // Review Modal States
   const [showReviewModal, setShowReviewModal] = useState(false);
@@ -1102,21 +1104,41 @@ export default function AccountPage() {
                 </Link>
               </div>
             ) : (
-              <div className="space-y-5">
+              <div className="space-y-4">
                 {orders.map((o) => (
-                  <div key={o.id} className="bg-white border border-line/60 rounded-2xl shadow-soft overflow-hidden hover:shadow-md transition-shadow duration-200">
-
+                  <div
+                    key={o.id}
+                    className="bg-white border border-line/70 rounded-2xl shadow-soft overflow-hidden hover:shadow-md transition-all duration-200"
+                  >
                     {/* ── ORDER HEADER ── */}
                     <div className="px-4 py-3.5 bg-gradient-to-r from-cream/50 to-transparent border-b border-line/40">
                       {/* Row 1: Order number + status */}
                       <div className="flex items-start justify-between gap-2">
                         <div>
-                          <p className="text-[10px] text-taupe uppercase tracking-widest font-bold">Order</p>
-                          <p className="font-mono text-sm text-ink font-bold italic select-all mt-0.5 hover:text-zari transition-colors">
-                            {o.order_number}
-                          </p>
+                          <p className="text-[10px] text-taupe uppercase tracking-widest font-bold">Order ID</p>
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            <p className="font-mono text-sm text-ink font-bold italic select-all">
+                              {o.order_number}
+                            </p>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                navigator.clipboard.writeText(o.order_number);
+                                setCopiedId(o.id);
+                                setTimeout(() => setCopiedId(""), 2000);
+                              }}
+                              className="text-taupe hover:text-ink transition-colors p-1 cursor-pointer"
+                              title="Copy Order ID"
+                            >
+                              {copiedId === o.id ? (
+                                <span className="text-[9px] text-success font-bold">Copied!</span>
+                              ) : (
+                                <Copy size={11} />
+                              )}
+                            </button>
+                          </div>
                         </div>
-                        <span className={`mt-1 shrink-0 px-2.5 py-1 rounded-full text-[10px] uppercase tracking-wide font-bold border ${
+                        <span className={`shrink-0 px-2.5 py-1 rounded-full text-[10px] uppercase tracking-wide font-bold border ${
                           o.status === "delivered" ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
                           o.status === "rejected"  ? "bg-red-50 text-red-600 border-red-200" :
                           o.status === "returned"  ? "bg-amber-50 text-amber-700 border-amber-200" :
@@ -1128,13 +1150,14 @@ export default function AccountPage() {
                       </div>
 
                       {/* Row 2: dates + invoice */}
-                      <div className="mt-2 flex items-end justify-between gap-2 flex-wrap">
-                        <div className="space-y-0.5">
-                          <p className="text-[11px] text-taupe flex items-center gap-1 font-semibold">
+                      <div className="mt-2.5 flex items-center justify-between gap-2 flex-wrap">
+                        <div className="flex items-center gap-3 text-[11px] text-taupe flex-wrap">
+                          <span className="flex items-center gap-1 font-semibold">
                             <Calendar size={11} />
-                            {new Date(o.placed_at).toLocaleDateString("en-IN", { dateStyle: "long" })}
-                          </p>
-                          <p className={`text-[11px] flex items-center gap-1 font-bold ${o.status === "out_for_delivery" ? "text-orange-500" : "text-success"}`}>
+                            {new Date(o.placed_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                          </span>
+                          <span className="text-line">•</span>
+                          <span className={`flex items-center gap-1 font-bold ${o.status === "out_for_delivery" ? "text-orange-500" : "text-success"}`}>
                             {o.status === "out_for_delivery" ? (
                               <>
                                 🛵{" "}
@@ -1154,7 +1177,7 @@ export default function AccountPage() {
                                   : new Date(new Date(o.placed_at).getTime() + 4 * 24 * 60 * 60 * 1000).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short", year: "numeric" })}
                               </>
                             )}
-                          </p>
+                          </span>
                         </div>
                         <button
                           onClick={() => handlePrintInvoice(o)}
@@ -1165,233 +1188,112 @@ export default function AccountPage() {
                       </div>
                     </div>
 
-                    {/* ── ORDER BODY ── */}
-                    <div className="p-4 space-y-4">
-
-                      {/* ORDERED ITEMS */}
-                      <div>
-                        <p className="text-[10px] text-taupe uppercase tracking-widest flex items-center gap-1.5 font-bold mb-3">
-                          <ShoppingBag size={12} /> Ordered Items
+                    {/* ── ORDERED PRODUCT ITEMS (Clickable -> Opens Full Details Popup) ── */}
+                    <div className="p-3.5 sm:p-4 space-y-2.5">
+                      <div className="flex items-center justify-between">
+                        <p className="text-[10px] text-taupe uppercase tracking-widest flex items-center gap-1.5 font-bold">
+                          <ShoppingBag size={12} /> Ordered Items ({o.order_items?.length || 0})
                         </p>
-                        <div className="space-y-3">
-                          {o.order_items?.map((item: any) => {
-                            const productSlug = item.products?.slug;
-                            const thumb = item.image_url ? (
-                              <img
-                                src={item.image_url}
-                                alt={item.name}
-                                className="h-14 w-14 rounded-xl border border-line object-cover shrink-0 bg-cream"
-                              />
-                            ) : (
-                              <div className="h-14 w-14 rounded-xl border border-line bg-cream flex items-center justify-center shrink-0">
-                                <ShoppingBag size={18} className="text-taupe" />
-                              </div>
-                            );
-                            return (
-                              <div key={item.id} className="flex items-start gap-3 py-3 border-b border-line/20 last:border-0 last:pb-0">
-                                {productSlug ? (
-                                  <Link href={`/product/${productSlug}`} className="shrink-0">{thumb}</Link>
-                                ) : thumb}
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-start justify-between gap-2">
-                                    <div className="flex-1 min-w-0">
-                                      {productSlug ? (
-                                        <Link href={`/product/${productSlug}`} className="text-sm text-ink font-bold leading-snug hover:text-zari-deep hover:underline line-clamp-2">
-                                          {item.name.replace(" (Free Gift)", "")}
-                                        </Link>
-                                      ) : (
-                                        <p className="text-sm text-ink font-bold leading-snug line-clamp-2">{item.name.replace(" (Free Gift)", "")}</p>
-                                      )}
-                                    </div>
-                                    <span className="text-sm text-ink font-bold shrink-0 whitespace-nowrap">
-                                      {formatINR(item.unit_price_paise * item.quantity, true)}
+                        <span className="text-[10.5px] text-zari-deep font-semibold">
+                          Click product for full details
+                        </span>
+                      </div>
+
+                      <div className="space-y-2">
+                        {o.order_items?.map((item: any) => {
+                          const thumb = item.image_url ? (
+                            <img
+                              src={item.image_url}
+                              alt={item.name}
+                              className="h-14 w-14 rounded-xl border border-line object-cover shrink-0 bg-cream group-hover:scale-105 transition-transform duration-200"
+                            />
+                          ) : (
+                            <div className="h-14 w-14 rounded-xl border border-line bg-cream flex items-center justify-center shrink-0">
+                              <ShoppingBag size={18} className="text-taupe" />
+                            </div>
+                          );
+
+                          return (
+                            <div
+                              key={item.id}
+                              onClick={() => setSelectedOrderDetails({ order: o, item })}
+                              className="group flex items-start gap-3 p-2.5 sm:p-3 rounded-xl border border-line/60 bg-cream/10 hover:bg-cream/40 hover:border-zari/60 transition-all duration-200 cursor-pointer shadow-2xs hover:shadow-xs"
+                            >
+                              <div className="shrink-0">{thumb}</div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-start justify-between gap-2">
+                                  <h4 className="text-sm text-ink font-bold leading-snug group-hover:text-zari-deep transition-colors line-clamp-1">
+                                    {item.name.replace(" (Free Gift)", "")}
+                                  </h4>
+                                  <span className="text-sm text-ink font-bold shrink-0 whitespace-nowrap">
+                                    {formatINR(item.unit_price_paise * item.quantity, true)}
+                                  </span>
+                                </div>
+
+                                <div className="flex flex-wrap items-center gap-1 mt-1">
+                                  {item.name.toLowerCase().includes("free gift") && (
+                                    <span className="inline-flex items-center gap-0.5 bg-[#FAF6EC] border border-[#E9DBB7]/60 text-[#8C6D2D] text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded">
+                                      🎁 Free Gift
                                     </span>
-                                  </div>
-                                  <div className="flex flex-wrap gap-1 mt-1.5">
-                                    {item.name.toLowerCase().includes("free gift") && (
-                                      <span className="inline-flex items-center gap-0.5 bg-[#FAF6EC] border border-[#E9DBB7]/60 text-[#8C6D2D] text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded">
-                                        🎁 Free Gift
-                                      </span>
-                                    )}
-                                    {item.variant && (
-                                      <span className="text-[10px] text-taupe bg-cream/70 inline-block px-1.5 py-0.5 rounded font-bold border border-line/40">
-                                        {item.variant}
-                                      </span>
-                                    )}
-                                    {item.products?.pieces_per_pack && item.products.pieces_per_pack > 1 && !item.name.includes("piece in 1 Pack") && (
-                                      <span className="inline-flex items-center gap-0.5 rounded bg-zari/10 border border-zari/25 px-1.5 py-0.5 text-[9px] font-bold text-zari-deep">
-                                        📦 {item.products.pieces_per_pack} Pieces in 1 Pack
-                                      </span>
-                                    )}
-                                  </div>
-                                  <p className="text-[11px] text-taupe mt-1 font-medium">
-                                    {formatINR(item.unit_price_paise, true)} × {item.quantity}
-                                  </p>
-                                  {o.status === "delivered" && item.product_id && (
-                                    <div className="mt-2.5">
-                                      {isReviewed(item.product_id, o.id) ? (
-                                        <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg">
-                                          ✓ Reviewed
-                                        </span>
-                                      ) : (
-                                        <button
-                                          type="button"
-                                          onClick={() => openReviewModal(o.id, item.product_id, item.name)}
-                                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-ink text-white hover:bg-zari text-[11px] font-bold rounded-lg transition-colors cursor-pointer border-0"
-                                        >
-                                          <Star size={11} className="fill-white" /> Write Review
-                                        </button>
-                                      )}
-                                    </div>
+                                  )}
+                                  {item.variant && (
+                                    <span className="text-[10px] text-taupe bg-white inline-block px-1.5 py-0.5 rounded font-bold border border-line/60">
+                                      {item.variant}
+                                    </span>
+                                  )}
+                                  {item.products?.pieces_per_pack && item.products.pieces_per_pack > 1 && !item.name.includes("piece in 1 Pack") && (
+                                    <span className="inline-flex items-center gap-0.5 rounded bg-zari/10 border border-zari/25 px-1.5 py-0.5 text-[9px] font-bold text-zari-deep">
+                                      📦 {item.products.pieces_per_pack} Pieces in 1 Pack
+                                    </span>
                                   )}
                                 </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
 
-                      {/* TRACKING */}
-                      {(o.tracking_id || o.courier_tracking_url) ? (
-                        <div className="p-3.5 bg-blue-50/70 border border-blue-100 rounded-xl space-y-2.5">
-                          <p className="text-[10px] text-blue-600 uppercase tracking-widest flex items-center gap-1.5 font-bold">
-                            🚚 Shipping &amp; Carrier Details
-                          </p>
-                          {o.tracking_id && (
-                            <div>
-                              <p className="text-[10px] text-taupe font-bold mb-1 uppercase tracking-wide">Tracking Number</p>
-                              <div className="flex items-center gap-2 bg-white border border-blue-100 rounded-lg px-2.5 py-2">
-                                <span className="font-mono text-xs text-ink font-bold flex-1 break-all select-all">
-                                  {o.tracking_id}
-                                </span>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    navigator.clipboard.writeText(o.tracking_id);
-                                    setCopiedId(o.id);
-                                    setTimeout(() => setCopiedId(""), 2000);
-                                  }}
-                                  className="shrink-0 text-taupe hover:text-ink transition-colors pl-2 border-l border-blue-100"
-                                  title="Copy"
-                                >
-                                  {copiedId === o.id ? (
-                                    <span className="text-[9px] text-success font-bold">Copied!</span>
-                                  ) : (
-                                    <Copy size={12} />
-                                  )}
-                                </button>
+                                <div className="flex items-center justify-between mt-1 pt-0.5">
+                                  <p className="text-[11px] text-taupe font-medium">
+                                    {formatINR(item.unit_price_paise, true)} × {item.quantity}
+                                  </p>
+                                  <span className="text-[11px] font-bold text-zari-deep group-hover:translate-x-0.5 transition-transform inline-flex items-center gap-0.5">
+                                    View Details &rarr;
+                                  </span>
+                                </div>
+
+                                {o.status === "delivered" && item.product_id && (
+                                  <div className="mt-2 pt-2 border-t border-line/30 flex items-center justify-between" onClick={(e) => e.stopPropagation()}>
+                                    {isReviewed(item.product_id, o.id) ? (
+                                      <span className="inline-flex items-center gap-1 text-[10.5px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-lg">
+                                        ✓ Reviewed
+                                      </span>
+                                    ) : (
+                                      <button
+                                        type="button"
+                                        onClick={() => openReviewModal(o.id, item.product_id, item.name)}
+                                        className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-ink text-white hover:bg-zari text-[10.5px] font-bold rounded-lg transition-colors cursor-pointer border-0"
+                                      >
+                                        <Star size={11} className="fill-white" /> Write Review
+                                      </button>
+                                    )}
+                                  </div>
+                                )}
                               </div>
                             </div>
-                          )}
-                          {o.courier_tracking_url && (
-                            <a href={o.courier_tracking_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-blue-600 text-xs font-bold hover:underline">
-                              Track Shipment Live →
-                            </a>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="p-3.5 bg-cream/30 border border-dashed border-line/50 rounded-xl text-xs text-taupe italic">
-                          Awaiting shipment dispatch. Courier details and live tracking will appear here once dispatched.
-                        </div>
-                      )}
-
-                      {/* REJECTION / RETURN */}
-                      {(o.status === "rejected" || o.status === "returned") && o.payment_status !== "refunded" && (
-                        <div className="p-3.5 bg-red-50 border border-red-200 rounded-xl text-sm space-y-3">
-                          <p className="text-red-600 uppercase text-[10px] tracking-wide font-bold">
-                            {o.status === "rejected" ? "⚠️ Order Rejected" : "⚠️ Order Returned"}
-                          </p>
-                          {o.rejection_reason && <p className="text-ink text-xs">{o.rejection_reason}</p>}
-                          <div className="border-t border-red-200 pt-3 flex flex-col gap-2.5">
-                            <p className="text-taupe leading-relaxed text-xs">Refund will be issued within 24hrs. Contact us if needed.</p>
-                            <a
-                              href={`https://wa.me/918608386872?text=${encodeURIComponent(
-                                `Hi, my order ${o.order_number} has been ${o.status === "rejected" ? "rejected" : "returned"}. Details:\n` +
-                                (o.order_items || []).map((item: any) => `- ${item.name} (Qty: ${item.quantity})`).join("\n") +
-                                `\nTotal Paid: ${formatINR(o.total_paise, true)}.\nI want to inquire about my refund status.`
-                              )}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="self-start inline-flex items-center gap-1.5 px-4 py-2 bg-[#25D366] hover:bg-[#128C7E] text-white rounded-xl text-xs transition-all shadow-sm cursor-pointer font-bold"
-                            >
-                              <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.517 2.266 2.27 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.5-5.739-1.453L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.825 1.451 5.436 0 9.86-4.413 9.863-9.83.001-2.624-1.013-5.092-2.859-6.937C16.643 1.98 14.184.962 11.56.962 6.119.962 1.694 5.375 1.691 10.793c-.001 1.782.469 3.52 1.358 5.071l-.951 3.474 3.559-.933zM18.23 15.25c-.34-.17-2.01-.99-2.32-1.1-.31-.11-.54-.17-.77.17-.23.34-.89 1.1-.1.17-.23.11-.46.06-.92-.17-1.8-1.6-2.5-2.22-.62-.55-1.03-1.22-1.14-1.42-.11-.2-.01-.31.09-.41.09-.09.2-.23.3-.34.1-.11.14-.19.21-.31.07-.12.03-.23-.02-.34-.05-.12-.46-1.11-.63-1.52-.17-.4-.36-.34-.5-.34-.13 0-.28 0-.43 0-.15 0-.4.06-.61.28-.21.22-.8.78-.8 1.9 0 1.12.82 2.2 1.05 2.5.23.3 1.62 2.48 3.93 3.48.55.24.98.38 1.32.49.56.18 1.07.15 1.47.09.45-.07 1.39-.57 1.59-1.12.2-.55.2-1.02.14-1.12-.06-.1-.23-.2-.57-.37z"/></svg>
-                              Chat on WhatsApp
-                            </a>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* REFUND */}
-                      {o.payment_status === "refunded" && o.refund_amount_paise && (
-                        <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl space-y-2">
-                          <p className="text-emerald-700 uppercase text-[10px] tracking-wide font-bold">✓ Refund Processed</p>
-                          <div className="text-ink space-y-1.5 text-xs">
-                            <p>Amount Refunded: <strong className="text-emerald-700 font-bold">{formatINR(o.refund_amount_paise, true)}</strong></p>
-                            {o.refund_transaction_id && <p>Transaction ID: <strong className="font-mono italic select-all bg-white px-1.5 py-0.5 rounded border border-emerald-200 cursor-pointer hover:text-emerald-800">{o.refund_transaction_id}</strong></p>}
-                            {o.refunded_at && <p>Refund Date: <strong>{new Date(o.refunded_at).toLocaleDateString()}</strong></p>}
-                            {o.refund_note && <p>Note: <em className="italic">{o.refund_note}</em></p>}
-                            {o.refund_screenshot_url && (
-                              <a href={o.refund_screenshot_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-emerald-700 hover:underline font-bold">
-                                View Refund Proof ↗
-                              </a>
-                            )}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* SHIPPING ADDRESS + PRICE SUMMARY */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        {/* Destination */}
-                        <div className="p-3.5 bg-cream/30 rounded-xl border border-line/60 space-y-1">
-                          <p className="text-[10px] text-zari-deep uppercase tracking-widest flex items-center gap-1.5 font-bold mb-2">
-                            <MapPin size={11} /> Shipment Destination
-                          </p>
-                          <p className="text-sm text-ink font-bold">{o.shipping_address.recipient}</p>
-                          <p className="text-taupe leading-relaxed text-xs">
-                            {o.shipping_address.line1},{" "}
-                            {o.shipping_address.line2 ? o.shipping_address.line2 + ", " : ""}
-                            {o.shipping_address.city},{" "}
-                            {o.shipping_address.district ? o.shipping_address.district + ", " : ""}
-                            {o.shipping_address.state} &ndash; {o.shipping_address.pincode}
-                          </p>
-                          {o.shipping_address.phone && (
-                            <p className="text-xs text-zari-deep flex items-center gap-1 font-semibold pt-0.5">
-                              📞 {o.shipping_address.phone}
-                              {o.shipping_address.alternate_phone ? ` / ${o.shipping_address.alternate_phone}` : ""}
-                            </p>
-                          )}
-                        </div>
-
-                        {/* Pricing */}
-                        <div className="p-3.5 bg-cream/30 rounded-xl border border-line/60 space-y-2 text-xs">
-                          <p className="text-[10px] text-taupe uppercase tracking-widest font-bold mb-2">Order Summary</p>
-                          <div className="flex justify-between text-taupe">
-                            <span className="font-semibold">Subtotal</span>
-                            <span className="text-ink font-bold">{formatINR(o.subtotal_paise, true)}</span>
-                          </div>
-                          {o.discount_paise > 0 && (
-                            <div className="flex justify-between text-danger">
-                              <span className="font-semibold">Coupon Discount</span>
-                              <span className="font-bold">-{formatINR(o.discount_paise, true)}</span>
-                            </div>
-                          )}
-                          {o.wallet_used_paise > 0 && (
-                            <div className="flex justify-between text-danger">
-                              <span className="font-semibold">Wallet Used</span>
-                              <span className="font-bold">-{formatINR(o.wallet_used_paise, true)}</span>
-                            </div>
-                          )}
-                          <div className="flex justify-between text-taupe">
-                            <span className="font-semibold">Shipping</span>
-                            <span className="text-ink font-bold">{o.shipping_paise === 0 ? "FREE" : formatINR(o.shipping_paise, true)}</span>
-                          </div>
-                          <div className="flex justify-between border-t border-line/50 pt-2 text-sm font-bold text-ink">
-                            <span>Total Paid</span>
-                            <span className="text-zari-deep">{formatINR(o.total_paise, true)}</span>
-                          </div>
-                        </div>
+                          );
+                        })}
                       </div>
 
+                      {/* Bottom Order Summary Strip */}
+                      <div className="flex items-center justify-between pt-2.5 border-t border-line/40 text-xs">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-taupe">Total Paid:</span>
+                          <span className="font-bold text-ink">{formatINR(o.total_paise, true)}</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedOrderDetails({ order: o, item: o.order_items?.[0] })}
+                          className="text-xs font-bold text-zari-deep hover:underline cursor-pointer inline-flex items-center gap-1"
+                        >
+                          View Full Details &rarr;
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -2535,6 +2437,287 @@ export default function AccountPage() {
                   </Button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* ================= ORDER & PRODUCT DETAILS MODAL POPUP ================= */}
+        {selectedOrderDetails && (
+          <div
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-3 sm:p-4 overflow-y-auto animate-fade-in"
+            onClick={() => setSelectedOrderDetails(null)}
+          >
+            <div
+              className="bg-white border border-line rounded-2xl max-w-lg w-full p-5 sm:p-6 shadow-2xl space-y-4 my-auto relative overflow-hidden max-h-[90vh] flex flex-col"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Modal Header */}
+              <div className="flex items-center justify-between pb-3 border-b border-line/60 shrink-0">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-zari-tint/70 text-zari-deep flex items-center justify-center font-bold">
+                    <ShoppingBag size={16} />
+                  </div>
+                  <div>
+                    <h3 className="font-display text-base sm:text-lg text-ink font-bold leading-tight">
+                      Product & Order Details
+                    </h3>
+                    <p className="text-[11px] font-mono text-taupe">
+                      Order #{selectedOrderDetails.order.order_number}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSelectedOrderDetails(null)}
+                  className="w-8 h-8 rounded-full bg-cream hover:bg-cream/80 flex items-center justify-center text-taupe hover:text-ink transition-colors cursor-pointer border border-line"
+                  aria-label="Close"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              {/* Modal Scrollable Body */}
+              <div className="overflow-y-auto pr-1 space-y-4 text-xs text-taupe custom-scrollbar flex-1">
+                {/* 1. Selected Product Spotlight Card */}
+                {selectedOrderDetails.item && (
+                  <div className="bg-cream/20 border border-line/80 rounded-xl p-3.5 space-y-3">
+                    <div className="flex items-start gap-3">
+                      {selectedOrderDetails.item.image_url ? (
+                        <img
+                          src={selectedOrderDetails.item.image_url}
+                          alt={selectedOrderDetails.item.name}
+                          className="w-20 h-20 rounded-xl border border-line object-cover shrink-0 bg-white shadow-xs"
+                        />
+                      ) : (
+                        <div className="w-20 h-20 rounded-xl border border-line bg-white flex items-center justify-center shrink-0">
+                          <ShoppingBag size={24} className="text-taupe" />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0 space-y-1">
+                        <h4 className="text-sm font-bold text-ink leading-snug">
+                          {selectedOrderDetails.item.name.replace(" (Free Gift)", "")}
+                        </h4>
+                        
+                        {/* Variant / Pack Pills */}
+                        <div className="flex flex-wrap gap-1 pt-0.5">
+                          {selectedOrderDetails.item.variant && (
+                            <span className="bg-white border border-line text-ink font-bold text-[10px] px-2 py-0.5 rounded-full">
+                              Variant: {selectedOrderDetails.item.variant}
+                            </span>
+                          )}
+                          {selectedOrderDetails.item.products?.pieces_per_pack && selectedOrderDetails.item.products.pieces_per_pack > 1 && (
+                            <span className="bg-zari/10 border border-zari/25 text-zari-deep font-bold text-[10px] px-2 py-0.5 rounded-full">
+                              📦 {selectedOrderDetails.item.products.pieces_per_pack} Pieces / Pack
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Price Breakdown */}
+                        <div className="flex items-baseline gap-2 pt-1">
+                          <span className="text-base font-black text-ink">
+                            {formatINR(selectedOrderDetails.item.unit_price_paise * selectedOrderDetails.item.quantity, true)}
+                          </span>
+                          <span className="text-[11px] text-taupe">
+                            ({formatINR(selectedOrderDetails.item.unit_price_paise, true)} × {selectedOrderDetails.item.quantity} qty)
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Product Description */}
+                    {selectedOrderDetails.item.products?.description && (
+                      <div className="pt-2 border-t border-line/50 text-[11px] text-taupe leading-relaxed whitespace-pre-line line-clamp-3">
+                        {selectedOrderDetails.item.products.description}
+                      </div>
+                    )}
+
+                    {/* Actions: View in Shop & Write Review */}
+                    <div className="pt-2 border-t border-line/50 flex items-center justify-between gap-2 flex-wrap">
+                      {selectedOrderDetails.item.products?.slug && (
+                        <Link
+                          href={`/product/${selectedOrderDetails.item.products.slug}`}
+                          className="inline-flex items-center gap-1 text-[11px] font-bold text-zari-deep hover:underline"
+                        >
+                          View Full Product Page <ExternalLink size={11} />
+                        </Link>
+                      )}
+
+                      {selectedOrderDetails.order.status === "delivered" && selectedOrderDetails.item.product_id && (
+                        <div>
+                          {isReviewed(selectedOrderDetails.item.product_id, selectedOrderDetails.order.id) ? (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-lg">
+                              ✓ Reviewed
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const current = selectedOrderDetails;
+                                setSelectedOrderDetails(null);
+                                openReviewModal(current.order.id, current.item.product_id, current.item.name);
+                              }}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 bg-ink text-white hover:bg-zari text-[11px] font-bold rounded-lg transition-colors cursor-pointer"
+                            >
+                              <Star size={11} className="fill-white" /> Write Review
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Multi-item switcher if order has multiple items */}
+                {selectedOrderDetails.order.order_items?.length > 1 && (
+                  <div className="space-y-1.5">
+                    <p className="text-[10px] uppercase font-bold tracking-wider text-taupe">
+                      Other Items in this Order:
+                    </p>
+                    <div className="flex gap-2 overflow-x-auto pb-1">
+                      {selectedOrderDetails.order.order_items.map((it: any) => (
+                        <button
+                          key={it.id}
+                          type="button"
+                          onClick={() => setSelectedOrderDetails({ ...selectedOrderDetails, item: it })}
+                          className={`flex items-center gap-2 p-1.5 pr-2.5 rounded-xl border text-left shrink-0 transition-all cursor-pointer ${
+                            selectedOrderDetails.item?.id === it.id
+                              ? "border-zari bg-amber-50/80 ring-1 ring-zari/40 shadow-xs"
+                              : "border-line bg-white hover:bg-cream/40"
+                          }`}
+                        >
+                          <img
+                            src={it.image_url || "/placeholder.png"}
+                            alt={it.name}
+                            className="w-8 h-8 rounded-lg object-cover border border-line bg-cream"
+                          />
+                          <span className="text-[11px] font-bold text-ink max-w-[120px] truncate">
+                            {it.name.replace(" (Free Gift)", "")}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* 2. Delivery & Tracking Status */}
+                <div className="p-3 bg-cream/30 rounded-xl border border-line/60 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] text-taupe uppercase tracking-widest font-bold">Delivery Status</span>
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wide font-bold border ${
+                      selectedOrderDetails.order.status === "delivered" ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
+                      selectedOrderDetails.order.status === "rejected"  ? "bg-red-50 text-red-600 border-red-200" :
+                      selectedOrderDetails.order.status === "returned"  ? "bg-amber-50 text-amber-700 border-amber-200" :
+                      selectedOrderDetails.order.status === "pending"   ? "bg-amber-50 text-amber-800 border-amber-200" :
+                      "bg-blue-50 text-blue-700 border-blue-200"
+                    }`}>
+                      {selectedOrderDetails.order.status}
+                    </span>
+                  </div>
+                  <p className="text-xs text-ink font-semibold">
+                    📅 Order Placed: {new Date(selectedOrderDetails.order.placed_at).toLocaleDateString("en-IN", { dateStyle: "long" })}
+                  </p>
+                  {selectedOrderDetails.order.tracking_id && (
+                    <div className="pt-1 flex items-center justify-between bg-white border border-line/80 rounded-lg p-2">
+                      <div>
+                        <p className="text-[9px] uppercase tracking-wider text-taupe font-bold">Tracking ID</p>
+                        <p className="font-mono text-xs font-bold text-ink select-all">{selectedOrderDetails.order.tracking_id}</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(selectedOrderDetails.order.tracking_id);
+                          setCopiedId(selectedOrderDetails.order.id);
+                          setTimeout(() => setCopiedId(""), 2000);
+                        }}
+                        className="text-xs font-bold text-zari-deep px-2 py-1 rounded bg-cream hover:bg-cream/80 cursor-pointer"
+                      >
+                        {copiedId === selectedOrderDetails.order.id ? "Copied!" : "Copy"}
+                      </button>
+                    </div>
+                  )}
+                  {selectedOrderDetails.order.courier_tracking_url && (
+                    <a
+                      href={selectedOrderDetails.order.courier_tracking_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-blue-600 text-xs font-bold hover:underline"
+                    >
+                      Track Shipment Live &rarr;
+                    </a>
+                  )}
+                </div>
+
+                {/* 3. Shipping Address */}
+                {selectedOrderDetails.order.shipping_address && (
+                  <div className="p-3 bg-cream/30 rounded-xl border border-line/60 space-y-1">
+                    <p className="text-[10px] text-zari-deep uppercase tracking-widest flex items-center gap-1 font-bold">
+                      <MapPin size={11} /> Shipping Address
+                    </p>
+                    <p className="text-xs text-ink font-bold">{selectedOrderDetails.order.shipping_address.recipient}</p>
+                    <p className="text-[11px] text-taupe leading-relaxed">
+                      {selectedOrderDetails.order.shipping_address.line1},{" "}
+                      {selectedOrderDetails.order.shipping_address.line2 ? selectedOrderDetails.order.shipping_address.line2 + ", " : ""}
+                      {selectedOrderDetails.order.shipping_address.city},{" "}
+                      {selectedOrderDetails.order.shipping_address.district ? selectedOrderDetails.order.shipping_address.district + ", " : ""}
+                      {selectedOrderDetails.order.shipping_address.state} &ndash; {selectedOrderDetails.order.shipping_address.pincode}
+                    </p>
+                    {selectedOrderDetails.order.shipping_address.phone && (
+                      <p className="text-[11px] text-zari-deep font-semibold pt-0.5">
+                        📞 {selectedOrderDetails.order.shipping_address.phone}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* 4. Financial Breakdown */}
+                <div className="p-3 bg-cream/30 rounded-xl border border-line/60 space-y-1.5 text-xs">
+                  <p className="text-[10px] text-taupe uppercase tracking-widest font-bold">Payment Summary</p>
+                  <div className="flex justify-between text-taupe">
+                    <span>Subtotal</span>
+                    <span className="text-ink font-bold">{formatINR(selectedOrderDetails.order.subtotal_paise, true)}</span>
+                  </div>
+                  {selectedOrderDetails.order.discount_paise > 0 && (
+                    <div className="flex justify-between text-danger">
+                      <span>Coupon Discount</span>
+                      <span className="font-bold">-{formatINR(selectedOrderDetails.order.discount_paise, true)}</span>
+                    </div>
+                  )}
+                  {selectedOrderDetails.order.wallet_used_paise > 0 && (
+                    <div className="flex justify-between text-danger">
+                      <span>Wallet Used</span>
+                      <span className="font-bold">-{formatINR(selectedOrderDetails.order.wallet_used_paise, true)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-taupe">
+                    <span>Shipping Fee</span>
+                    <span className="text-ink font-bold">
+                      {selectedOrderDetails.order.shipping_paise === 0 ? "FREE" : formatINR(selectedOrderDetails.order.shipping_paise, true)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between border-t border-line/50 pt-1.5 text-sm font-bold text-ink">
+                    <span>Total Paid</span>
+                    <span className="text-zari-deep">{formatINR(selectedOrderDetails.order.total_paise, true)}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Modal Footer Actions */}
+              <div className="flex items-center justify-between gap-2 pt-3 border-t border-line/60 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => handlePrintInvoice(selectedOrderDetails.order)}
+                  className="flex items-center gap-1.5 px-3.5 py-2 bg-ink text-ivory rounded-xl text-xs font-bold hover:bg-zari transition-colors cursor-pointer shadow-sm"
+                >
+                  <Printer size={13} /> Download Invoice
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedOrderDetails(null)}
+                  className="px-4 py-2 border border-line rounded-xl text-xs font-semibold text-taupe hover:text-ink hover:bg-cream/40 transition-colors cursor-pointer"
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>
         )}

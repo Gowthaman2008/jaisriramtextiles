@@ -10,6 +10,7 @@ import { getProductBySlug, getProductReviews, getAllProductSlugs } from "@/lib/s
 import { ProductActions } from "@/components/product/product-actions";
 import { ProductGallery } from "@/components/product/product-gallery";
 import { ProductAuthGate } from "@/components/product/product-auth-gate";
+import { ProductSuggestions } from "@/components/product/product-suggestions";
 import { ChevronLeft } from "lucide-react";
 
 type Props = { params: Promise<{ slug: string }> };
@@ -308,6 +309,10 @@ export default async function ProductPage({ params }: Props) {
             )}
           </div>
         </div>
+
+        {/* ================= SUGGESTED PRODUCTS (Horizontally scrollable mini cards) ================= */}
+        <div className="zari-rule my-8" />
+        <ProductSuggestions currentProductId={product.id} title="You May Also Like" />
 
         {/* Customer Reviews Section */}
         <div className="zari-rule my-10" />
