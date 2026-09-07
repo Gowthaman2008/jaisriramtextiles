@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, Heart, ShoppingBag, User, Menu, X, ChevronRight, Package } from "lucide-react";
+import { Search, Heart, ShoppingBag, User, Menu, X, ChevronRight, Package, ArrowLeft } from "lucide-react";
 import { Container } from "@/components/ui/container";
 import { CATEGORIES, BUSINESS } from "@/lib/constants";
 import { cn } from "@/lib/utils";
@@ -14,12 +15,22 @@ import { SearchOverlay } from "@/components/layout/search-overlay";
 import { createClient } from "@/lib/supabase/client";
 
 export function Navbar() {
+  const pathname = usePathname();
+  const router = useRouter();
   const [navCategories, setNavCategories] = useState<any[]>([...CATEGORIES]);
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [shippingThreshold, setShippingThreshold] = useState(699); // default ₹699
   const { cart } = useCart();
+
+  const handleBack = () => {
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      router.back();
+    } else {
+      router.push("/");
+    }
+  };
 
   useEffect(() => {
     async function loadNavCategories() {
@@ -84,16 +95,31 @@ export function Navbar() {
         )}
       >
         <Container>
-        <div className="flex h-[76px] items-center justify-between gap-6">
-          {/* Logo — wordmark with woven-gold underline */}
-          <Link href="/" className="group shrink-0" aria-label="JAI SRI RAM TEXTILES home">
-            <span className="block font-display text-lg leading-none tracking-tight text-ink sm:text-xl">
-              JAI SRI RAM
-            </span>
-            <span className="mt-1 block text-[10px] font-semibold uppercase tracking-eyebrow text-zari-deep">
-              Textiles
-            </span>
-          </Link>
+        <div className="flex h-[76px] items-center justify-between gap-3 sm:gap-6">
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            {/* Universal Back Button for non-home pages */}
+            {pathname !== "/" && (
+              <button
+                type="button"
+                onClick={handleBack}
+                aria-label="Go back"
+                title="Go back"
+                className="flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 -ml-1 sm:ml-0 rounded-full text-ink hover:text-zari-deep hover:bg-cream/70 active:scale-90 transition-all cursor-pointer border border-line/40 hover:border-zari/50 shadow-2xs"
+              >
+                <ArrowLeft size={18} className="stroke-[2.2]" />
+              </button>
+            )}
+
+            {/* Logo — wordmark with woven-gold underline */}
+            <Link href="/" className="group shrink-0" aria-label="JAI SRI RAM TEXTILES home">
+              <span className="block font-display text-lg leading-none tracking-tight text-ink sm:text-xl">
+                JAI SRI RAM
+              </span>
+              <span className="mt-1 block text-[10px] font-semibold uppercase tracking-eyebrow text-zari-deep">
+                Textiles
+              </span>
+            </Link>
+          </div>
 
           {/* Desktop nav */}
           <nav className="hidden items-center gap-7 lg:flex" aria-label="Categories">

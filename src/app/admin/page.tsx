@@ -7407,10 +7407,11 @@ export default function AdminDashboardPage() {
                       <table className="w-full text-xs text-left">
                         <thead>
                           <tr className="bg-cream border-b border-line text-taupe font-medium">
-                            <th className="p-3">Visitor OS/Device</th>
+                            <th className="p-3">User / Visitor</th>
+                            <th className="p-3">OS / Device</th>
                             <th className="p-3">Date / Time</th>
                             <th className="p-3">Referrer</th>
-                            <th className="p-3 text-center">Country</th>
+                            <th className="p-3 text-center">Location</th>
                             <th className="p-3 text-center">Views</th>
                             <th className="p-3 text-center">Duration</th>
                             <th className="p-3 text-center w-12">Action</th>
@@ -7425,16 +7426,50 @@ export default function AdminDashboardPage() {
                             const durationRemainderSec = durationSec % 60;
                             const durationStr = durationMin > 0 ? `${durationMin}m ${durationRemainderSec}s` : `${durationRemainderSec}s`;
 
+                            const hasProfile = !!(session.profiles?.full_name || session.profiles?.email || session.profiles?.phone);
+                            const displayName = session.profiles?.full_name || (session.profiles?.email ? session.profiles.email.split("@")[0] : `Guest #${session.visitor_id?.slice(0, 6) || "User"}`);
+                            const displaySub = session.profiles?.email || session.profiles?.phone || `Guest #${session.visitor_id?.slice(0, 6) || "Visitor"}`;
+                            const userRole = session.profiles?.role || "guest";
+
                             return (
                               <tr 
                                 key={session.id} 
                                 onClick={() => setSelectedSession(session)}
                                 className={`border-b border-line hover:bg-ivory/50 cursor-pointer transition-colors duration-150 ${selectedSession?.id === session.id ? "bg-zari/5 font-semibold" : ""}`}
                               >
+                                <td className="p-3 max-w-[150px]">
+                                  <div className="flex items-center gap-1.5">
+                                    <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 text-[10px] font-bold ${
+                                      hasProfile 
+                                        ? "bg-zari/15 text-zari-deep border border-zari/30" 
+                                        : "bg-stone-100 text-taupe border border-line"
+                                    }`}>
+                                      {displayName.charAt(0).toUpperCase()}
+                                    </div>
+                                    <div className="min-w-0">
+                                      <div className="flex items-center gap-1">
+                                        <p className="font-bold text-ink truncate" title={displayName}>
+                                          {displayName}
+                                        </p>
+                                        {hasProfile ? (
+                                          <span className="px-1.5 py-0.2 rounded text-[8.5px] font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">
+                                            {userRole === "admin" ? "Admin" : "User"}
+                                          </span>
+                                        ) : (
+                                          <span className="px-1.5 py-0.2 rounded text-[8.5px] font-semibold bg-stone-100 text-taupe shrink-0">
+                                            Guest
+                                          </span>
+                                        )}
+                                      </div>
+                                      <p className="text-[10px] text-taupe truncate" title={displaySub}>
+                                        {displaySub}
+                                      </p>
+                                    </div>
+                                  </div>
+                                </td>
                                 <td className="p-3">
                                   <p className="font-semibold text-ink">{session.os} ({session.device})</p>
                                   <p className="text-taupe mt-0.5">{session.browser}</p>
-                                  {session.profiles?.email && <p className="text-[10px] text-zari-deep font-semibold mt-0.5">{session.profiles.full_name || session.profiles.email}</p>}
                                 </td>
                                 <td className="p-3 whitespace-nowrap">
                                   <span className="block font-medium text-ink">
@@ -7449,7 +7484,7 @@ export default function AdminDashboardPage() {
                                 <td className="p-3 text-center font-semibold text-ink">{session.page_views}</td>
                                 <td className="p-3 text-center font-mono">{durationStr}</td>
                                 <td className="p-3 text-center" onClick={(e) => e.stopPropagation()}>
-                                  <button onClick={() => setSelectedSession(session)} className="p-1 border border-line rounded bg-cream hover:bg-beige text-ink" title="View paths">
+                                  <button onClick={() => setSelectedSession(session)} className="p-1 border border-line rounded bg-cream hover:bg-beige text-ink cursor-pointer" title="View paths">
                                     <Eye className="w-3.5 h-3.5" />
                                   </button>
                                 </td>
@@ -7463,17 +7498,35 @@ export default function AdminDashboardPage() {
 
                   {/* Right: selected session pages history */}
                   <div className="md:col-span-5 bg-white border border-line rounded-card p-5 shadow-soft space-y-4 self-start">
-                    <h4 className="font-display text-base border-b border-line pb-2 text-ink">Session Page Views Path</h4>
+                    <h4 className="font-display text-base border-b border-line pb-2 text-ink">Session Visitor & Pages Detail</h4>
                     
                     {selectedSession ? (
                       <div className="space-y-4">
-                        <div className="text-xs text-taupe space-y-1">
-                          <p><strong>Visitor UUID:</strong> <span className="font-mono">{selectedSession.visitor_id.slice(0, 18)}...</span></p>
-                          <p><strong>Device details:</strong> {selectedSession.os} - {selectedSession.browser} ({selectedSession.device})</p>
-                          <p><strong>Started At:</strong> {new Date(selectedSession.started_at).toLocaleString("en-IN")}</p>
+                        {/* User Identity Box */}
+                        <div className="p-3 bg-cream/30 border border-line rounded-xl space-y-1 text-xs">
+                          <div className="flex items-center justify-between pb-1.5 border-b border-line/50">
+                            <span className="text-taupe font-medium">User Profile:</span>
+                            {selectedSession.profiles?.full_name || selectedSession.profiles?.email ? (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                                Registered ({selectedSession.profiles.role || "customer"})
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-stone-100 text-taupe border border-line">
+                                Guest Visitor
+                              </span>
+                            )}
+                          </div>
+                          <p><strong>Name:</strong> {selectedSession.profiles?.full_name || "Anonymous Guest"}</p>
+                          {selectedSession.profiles?.email && <p><strong>Email:</strong> {selectedSession.profiles.email}</p>}
+                          {selectedSession.profiles?.phone && <p><strong>Phone:</strong> {selectedSession.profiles.phone}</p>}
+                          <p><strong>Visitor UUID:</strong> <span className="font-mono text-[11px]">{selectedSession.visitor_id}</span></p>
+                          <p><strong>Device:</strong> {selectedSession.os} &bull; {selectedSession.browser} ({selectedSession.device})</p>
+                          <p><strong>Location:</strong> {selectedSession.country}</p>
+                          <p><strong>Started:</strong> {new Date(selectedSession.started_at).toLocaleString("en-IN")}</p>
                         </div>
 
-                        <div className="border-l-2 border-zari pl-4 space-y-3.5">
+                        <div className="border-l-2 border-zari pl-4 space-y-3.5 pt-1">
+                          <h5 className="text-xs font-bold text-ink uppercase tracking-wider">Page Views Flow</h5>
                           {selectedSession.page_views_list?.map((view: any, index: number) => (
                             <div key={view.id || index} className="relative text-xs">
                               <span className="absolute -left-[21px] top-1.5 w-2.5 h-2.5 bg-zari rounded-full border border-white" />
@@ -7485,7 +7538,7 @@ export default function AdminDashboardPage() {
                       </div>
                     ) : (
                       <div className="py-12 text-center text-xs text-taupe italic">
-                        Select a session from the list on the left to inspect the detailed visitor page-view sequence.
+                        Select a session from the list on the left to inspect user identity and page-view flow.
                       </div>
                     )}
                   </div>

@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ChevronLeft } from "lucide-react";
 import { Container } from "@/components/ui/container";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { ProductCard } from "@/components/home/product-card";
@@ -50,8 +52,18 @@ export default async function CategoryPage({ params }: Props) {
     (isSale ? "Our best prices, while stock lasts." : `Handloom ${title.toLowerCase()}, made to last.`);
 
   return (
-    <div className="py-14 sm:py-20">
+    <div className="py-8 sm:py-14">
       <Container>
+        {/* Back Link */}
+        <div className="mb-4">
+          <Link
+            href="/shop"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-taupe hover:text-ink transition-colors cursor-pointer"
+          >
+            <ChevronLeft size={16} /> Back to Shop
+          </Link>
+        </div>
+
         <SectionHeading eyebrow="Shop" title={title} intro={tagline} />
 
         {products.length > 0 ? (

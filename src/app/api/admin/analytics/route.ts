@@ -183,11 +183,41 @@ export async function GET(request: Request) {
 
     if (pvErr) throw pvErr;
 
-    // Preserve the historic sessionHistory logic (last 100 sessions with details)
+    // Fetch user profiles & orders to map session visitors to authenticated users / customers
+    const { data: allProfiles } = await supabase
+      .from("profiles")
+      .select("id, user_id, full_name, email, phone, role");
+
+    const profileMap = new Map<string, any>();
+    (allProfiles || []).forEach((p: any) => {
+      if (p.id) profileMap.set(p.id, p);
+    });
+
+    // Map visitor_id to user_id for visitors who logged in across any session
+    const visitorToUserIdMap = new Map<string, string>();
+    (allSessions || []).forEach((s: any) => {
+      if (s.visitor_id && s.user_id && !visitorToUserIdMap.has(s.visitor_id)) {
+        visitorToUserIdMap.set(s.visitor_id, s.user_id);
+      }
+    });
+
+    // Preserve the historic sessionHistory logic (last 100 sessions with details and resolved user profile)
     const sessionHistory = (allSessions || []).slice(0, 100).map((session: any) => {
       const pvsForSession = (allPageViews || []).filter(pv => pv.session_id === session.id);
+      const effectiveUserId = session.user_id || visitorToUserIdMap.get(session.visitor_id) || null;
+      const matchedProfile = effectiveUserId ? profileMap.get(effectiveUserId) : null;
+
       return {
         ...session,
+        user_id: effectiveUserId,
+        profiles: matchedProfile ? {
+          id: matchedProfile.id,
+          user_id: matchedProfile.user_id,
+          full_name: matchedProfile.full_name || "",
+          email: matchedProfile.email || "",
+          phone: matchedProfile.phone || "",
+          role: matchedProfile.role || "customer",
+        } : null,
         page_views_list: pvsForSession.slice(0, 50)
       };
     });

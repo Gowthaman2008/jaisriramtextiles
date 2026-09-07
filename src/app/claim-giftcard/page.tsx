@@ -31,6 +31,7 @@ import {
   History,
   RefreshCw,
   ChevronDown,
+  ChevronLeft,
 } from "lucide-react";
 import { Container } from "@/components/ui/container";
 import { useNotification } from "@/components/providers/notification-provider";
@@ -1162,8 +1163,16 @@ export default function ClaimGiftCardPage() {
 
       {/* Hero Header - Only shown before generating card */}
       {!generatedCard && (
-        <section className="bg-gradient-to-b from-cream via-cream/50 to-ivory border-b border-line/60 pt-12 pb-14 sm:pb-18">
+        <section className="bg-gradient-to-b from-cream via-cream/50 to-ivory border-b border-line/60 pt-6 pb-12 sm:pb-16">
           <Container>
+            <div className="max-w-3xl mx-auto mb-3 text-left">
+              <Link
+                href="/"
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-taupe hover:text-ink transition-colors cursor-pointer"
+              >
+                <ChevronLeft size={16} /> Back to Home
+              </Link>
+            </div>
             <div className="max-w-3xl mx-auto text-center space-y-4">
               <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-zari/10 border border-zari/30 text-zari-deep text-xs font-bold uppercase tracking-wider">
                 <Gift size={15} className="text-zari" />

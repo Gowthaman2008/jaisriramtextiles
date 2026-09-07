@@ -4,23 +4,38 @@ import { createClient as createServerClient } from "@/lib/supabase/server";
 
 export async function POST(request: NextRequest) {
   try {
-    const { path, referrer, visitorId, heartbeat } = await request.json();
+    const { path, referrer, visitorId, heartbeat, userId: clientUserId } = await request.json();
     if (!visitorId || !path) {
       return NextResponse.json({ error: "Missing visitorId or path" }, { status: 400 });
     }
 
-    // Attempt to identify current logged-in user (optional)
-    let userId: string | null = null;
-    try {
-      const userClient = await createServerClient();
-      const { data: { user } } = await userClient.auth.getUser();
-      if (user) userId = user.id;
-    } catch (e) {
-      // Ignore if session client fails
+    // Attempt to identify current logged-in user (from body or server session)
+    let userId: string | null = clientUserId || null;
+    if (!userId) {
+      try {
+        const userClient = await createServerClient();
+        const { data: { user } } = await userClient.auth.getUser();
+        if (user) userId = user.id;
+      } catch (e) {
+        // Ignore if session client fails
+      }
     }
 
     // Use service role client to bypass RLS for logging analytics
     const supabase = createServiceClient();
+
+    // If user is authenticated, backfill user_id on existing sessions for this visitorId
+    if (userId) {
+      try {
+        await supabase
+          .from("sessions")
+          .update({ user_id: userId })
+          .eq("visitor_id", visitorId)
+          .is("user_id", null);
+      } catch (e) {
+        // Ignore backfill errors
+      }
+    }
 
     // Parse User-Agent details
     const ua = userAgent(request);

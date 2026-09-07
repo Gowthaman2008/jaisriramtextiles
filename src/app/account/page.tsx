@@ -1579,56 +1579,15 @@ export default function AccountPage() {
             </div>
 
             {/* ================= SHOP NOW USING CASHBACK SECTION ================= */}
-            <div className="bg-white border border-line rounded-card p-5 sm:p-7 shadow-soft space-y-4">
-              {/* Header with Title, Badge and Shuffle/Arrow controls */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-line/60">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-zari via-amber-400 to-zari-deep text-stone-950 flex items-center justify-center shadow-xs">
-                      <ShoppingBag size={16} className="text-stone-950" />
-                    </div>
-                    <h3 className="font-display text-base sm:text-lg text-ink font-bold">
-                      Shop Now using cashback
-                    </h3>
-                    <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] font-extrabold uppercase tracking-wide">
-                      ⚡ Cashback Applicable
-                    </span>
-                  </div>
-                  <p className="text-xs text-taupe">
-                    Redeem your <strong className="text-ink font-semibold">₹{(walletBalance / 100).toFixed(0)} cashback balance</strong> directly at checkout on these curated handloom styles (up to 20% / max ₹50 per order).
-                  </p>
+            <div className="bg-white border border-line rounded-card p-4 sm:p-6 shadow-soft space-y-3">
+              {/* Clean Header with Title */}
+              <div className="flex items-center gap-2 pb-2.5 border-b border-line/60">
+                <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-zari via-amber-400 to-zari-deep text-stone-950 flex items-center justify-center shadow-xs">
+                  <ShoppingBag size={14} className="text-stone-950" />
                 </div>
-
-                <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
-                  <button
-                    type="button"
-                    onClick={handleReshuffle}
-                    title="Show different mixed products"
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-line hover:border-zari text-taupe hover:text-ink text-xs font-semibold hover:bg-cream/40 transition-all cursor-pointer shadow-2xs"
-                  >
-                    <Shuffle size={13} className="text-zari" />
-                    <span>Shuffle</span>
-                  </button>
-
-                  <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={handleScrollLeft}
-                      aria-label="Scroll left"
-                      className="w-8 h-8 rounded-xl border border-line hover:border-zari flex items-center justify-center text-taupe hover:text-ink hover:bg-cream/40 transition-all cursor-pointer"
-                    >
-                      <ChevronLeft size={16} />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleScrollRight}
-                      aria-label="Scroll right"
-                      className="w-8 h-8 rounded-xl border border-line hover:border-zari flex items-center justify-center text-taupe hover:text-ink hover:bg-cream/40 transition-all cursor-pointer"
-                    >
-                      <ChevronRight size={16} />
-                    </button>
-                  </div>
-                </div>
+                <h3 className="font-display text-base sm:text-lg text-ink font-bold">
+                  Shop Now using cashback
+                </h3>
               </div>
 
               {/* Sidely (Horizontally) Scrollable Row of Very Small Mini Product Cards */}
