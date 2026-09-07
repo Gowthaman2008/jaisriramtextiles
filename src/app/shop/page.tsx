@@ -14,7 +14,10 @@ export const metadata: Metadata = {
 };
 
 export default async function ShopPage() {
-  const products = await getAllProducts();
+  const allProducts = await getAllProducts();
+  const products = allProducts.filter(
+    (p) => p.category !== "jute-bags" && !p.category?.toLowerCase().includes("jute")
+  );
 
   return (
     <div className="py-8 sm:py-14">

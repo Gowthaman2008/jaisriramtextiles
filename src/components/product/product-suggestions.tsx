@@ -24,7 +24,14 @@ export function ProductSuggestions({
 
   function shuffleAndPick(pool: Product[]): Product[] {
     if (!pool || pool.length === 0) return [];
-    const filtered = currentProductId ? pool.filter((p) => p.id !== currentProductId) : pool;
+    const filtered = pool.filter((p) => {
+      const isCurrent = currentProductId && p.id === currentProductId;
+      const isJute =
+        p.category === "jute-bags" ||
+        p.category?.toLowerCase().includes("jute") ||
+        p.slug?.toLowerCase().includes("jute");
+      return !isCurrent && !isJute;
+    });
     const shuffled = [...filtered].sort(() => Math.random() - 0.5);
     return shuffled.slice(0, 12);
   }

@@ -352,7 +352,13 @@ export default function AccountPage() {
 
   function shuffleAndPickSuggestions(pool: Product[]) {
     if (!pool || pool.length === 0) return [];
-    const shuffled = [...pool].sort(() => Math.random() - 0.5);
+    const filtered = pool.filter(
+      (p) =>
+        p.category !== "jute-bags" &&
+        !p.category?.toLowerCase().includes("jute") &&
+        !p.slug?.toLowerCase().includes("jute")
+    );
+    const shuffled = [...filtered].sort(() => Math.random() - 0.5);
     return shuffled.slice(0, 10);
   }
 

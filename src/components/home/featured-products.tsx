@@ -49,7 +49,11 @@ export function FeaturedProducts({ products }: { products: Product[] }) {
 
   const list =
     tab === "all"
-      ? mixProductsByCategory(products)
+      ? mixProductsByCategory(
+          products.filter(
+            (p) => p.category !== "jute-bags" && !p.category?.toLowerCase().includes("jute")
+          )
+        )
       : tab === "featured"
       ? products.filter((p) => p.isFeatured)
       : products.filter((p) => p.badges?.includes(tab as never));
