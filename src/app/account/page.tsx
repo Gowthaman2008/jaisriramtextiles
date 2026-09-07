@@ -1631,44 +1631,95 @@ export default function AccountPage() {
                 </div>
               </div>
 
-              {/* Sidely (Horizontally) Scrollable Row of Mixed Products */}
+              {/* Sidely (Horizontally) Scrollable Row of Very Small Mini Product Cards */}
               {loadingSuggestions && suggestedProducts.length === 0 ? (
-                <div className="py-12 flex flex-col items-center justify-center gap-2 text-taupe">
-                  <RefreshCw size={22} className="animate-spin text-zari" />
-                  <span className="text-xs">Loading cashback recommendations...</span>
+                <div className="py-6 flex flex-col items-center justify-center gap-2 text-taupe">
+                  <RefreshCw size={16} className="animate-spin text-zari" />
+                  <span className="text-[11px]">Loading styles...</span>
                 </div>
               ) : suggestedProducts.length === 0 ? (
-                <div className="py-8 text-center text-xs text-taupe">
+                <div className="py-5 text-center text-xs text-taupe">
                   <p>Explore our catalog to use your cashback balance.</p>
-                  <Link href="/shop" className="mt-2 inline-block text-xs font-bold text-zari underline">
+                  <Link href="/shop" className="mt-1.5 inline-block text-xs font-bold text-zari underline">
                     Browse All Products &rarr;
                   </Link>
                 </div>
               ) : (
                 <div
                   ref={scrollContainerRef}
-                  className="flex gap-4 overflow-x-auto pb-3 pt-1 scroll-smooth snap-x snap-mandatory scrollbar-none overscroll-x-contain"
+                  className="flex gap-2.5 overflow-x-auto pb-2 pt-1 scroll-smooth snap-x snap-mandatory scrollbar-none overscroll-x-contain"
                   style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
                 >
-                  {suggestedProducts.map((p, idx) => (
-                    <div
-                      key={p.id}
-                      className="w-[240px] sm:w-[260px] md:w-[280px] shrink-0 snap-start"
-                    >
-                      <ProductCard product={p} index={idx} />
-                    </div>
-                  ))}
+                  {suggestedProducts.map((p) => {
+                    const discount =
+                      p.compareAtPaise && p.compareAtPaise > p.pricePaise
+                        ? Math.round((1 - p.pricePaise / p.compareAtPaise) * 100)
+                        : 0;
+
+                    return (
+                      <Link
+                        key={p.id}
+                        href={`/product/${p.slug}`}
+                        className="group w-[110px] sm:w-[130px] shrink-0 snap-start bg-cream/15 hover:bg-cream/40 border border-line hover:border-zari/70 rounded-xl p-1.5 transition-all duration-200 shadow-2xs hover:shadow-xs flex flex-col justify-between block"
+                      >
+                        {/* Mini Product Thumbnail */}
+                        <div className="relative w-full aspect-square rounded-lg overflow-hidden bg-stone-100 border border-line/40">
+                          {p.image ? (
+                            <img
+                              src={p.image}
+                              alt={p.name}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                              loading="lazy"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center bg-cream/40 text-taupe text-[9px]">
+                              No image
+                            </div>
+                          )}
+
+                          {/* Mini Discount Badge */}
+                          {discount > 0 && (
+                            <span className="absolute top-1 left-1 px-1 py-0.2 rounded bg-red-600 text-white text-[8px] font-extrabold tracking-tight shadow-2xs">
+                              -{discount}%
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Mini Details */}
+                        <div className="pt-1.5 space-y-0.5">
+                          <p className="text-[8px] uppercase tracking-wider text-taupe font-bold truncate">
+                            {p.categoryLabel || p.category}
+                          </p>
+                          <h4 className="text-[11px] font-bold text-ink leading-tight truncate group-hover:text-zari transition-colors" title={p.name}>
+                            {p.name}
+                          </h4>
+
+                          {/* Compact Price */}
+                          <div className="flex items-baseline gap-1 pt-0.5">
+                            <span className="text-[11.5px] font-black text-ink">
+                              {formatINR(p.pricePaise, true)}
+                            </span>
+                            {p.compareAtPaise && p.compareAtPaise > p.pricePaise && (
+                              <span className="text-[9px] text-taupe/80 line-through">
+                                {formatINR(p.compareAtPaise, true)}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </Link>
+                    );
+                  })}
                 </div>
               )}
 
               {/* Footer Quick Link */}
               <div className="pt-1 flex items-center justify-between text-xs border-t border-line/40">
-                <span className="text-taupe text-[11px]">Swipe sideways to explore more styles</span>
+                <span className="text-taupe text-[10.5px]">Swipe to explore &bull; Random mix</span>
                 <Link
                   href="/shop"
-                  className="inline-flex items-center gap-1 font-bold text-zari-deep hover:text-ink hover:underline"
+                  className="inline-flex items-center gap-1 text-[11px] font-bold text-zari-deep hover:text-ink hover:underline"
                 >
-                  <span>Explore All Products</span>
+                  <span>Explore Catalog</span>
                   <span>&rarr;</span>
                 </Link>
               </div>
