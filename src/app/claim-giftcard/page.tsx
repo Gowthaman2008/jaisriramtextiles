@@ -609,136 +609,115 @@ export default function ClaimGiftCardPage() {
     <main className="min-h-screen bg-ivory text-ink pb-20">
       {/* ================= FULL SCREEN CINEMATIC CARD GENERATION ANIMATION OVERLAY ================= */}
       {isGeneratingAnimation && (
-        <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center p-4 bg-stone-950/92 backdrop-blur-2xl text-ivory text-center select-none overflow-hidden animate-fade-in">
-          {/* Ambient Golden Radial Glows & Shimmer */}
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[380px] sm:w-[580px] h-[380px] sm:h-[580px] bg-gradient-to-tr from-zari/30 via-amber-500/15 to-transparent rounded-full blur-3xl animate-pulse pointer-events-none" />
-          
-          {/* Floating Subtle Sparkle Particles */}
+        <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center p-4 bg-[#0a0704] text-white text-center select-none overflow-hidden animate-fade-in">
+          {/* Ambient Deep Gold Radial Glow */}
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[450px] sm:w-[650px] h-[450px] sm:h-[650px] bg-[radial-gradient(circle,_rgba(217,171,94,0.25)_0%,_rgba(180,130,40,0.08)_45%,_transparent_70%)] blur-2xl pointer-events-none" />
+
+          {/* Floating Golden Embers / Shimmer Particles */}
           <div className="absolute inset-0 pointer-events-none overflow-hidden">
-            {[...Array(16)].map((_, i) => (
+            {[...Array(20)].map((_, i) => (
               <span
                 key={i}
-                className="absolute block rounded-full bg-amber-300 opacity-60 animate-ping"
+                className="absolute block rounded-full bg-[#fde68a] opacity-75 animate-ping"
                 style={{
                   width: `${(i % 3) * 2 + 3}px`,
                   height: `${(i % 3) * 2 + 3}px`,
-                  top: `${((i * 19) % 85) + 8}%`,
-                  left: `${((i * 27) % 90) + 5}%`,
-                  animationDuration: `${(i % 2) + 1.4}s`,
-                  animationDelay: `${(i * 0.15)}s`
+                  top: `${((i * 17) % 86) + 7}%`,
+                  left: `${((i * 23) % 88) + 6}%`,
+                  animationDuration: `${(i % 2) + 1.2}s`,
+                  animationDelay: `${i * 0.12}s`,
                 }}
               />
             ))}
           </div>
 
-          <div className="relative z-10 max-w-sm sm:max-w-md w-full space-y-6 flex flex-col items-center">
-            {/* Top Brand Watermark */}
-            <div className="flex items-center gap-2 px-3.5 py-1 rounded-full bg-white/5 border border-white/10 backdrop-blur-md">
-              <Sparkles className="w-3.5 h-3.5 text-zari" />
-              <span className="text-[10px] tracking-[0.25em] font-black uppercase text-amber-200">
-                JAI SRI RAM TEXTILES &bull; REWARDS ENGINE
+          <div className="relative z-10 max-w-sm sm:max-w-md w-full space-y-7 flex flex-col items-center">
+            {/* Top Luxury Brand Badge */}
+            <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#1c140c] border border-amber-500/40 shadow-lg">
+              <Sparkles className="w-3.5 h-3.5 text-amber-400 animate-spin" style={{ animationDuration: "3s" }} />
+              <span className="text-[10px] sm:text-[11px] font-mono font-black tracking-[0.25em] uppercase text-amber-300">
+                JAI SRI RAM TEXTILES
               </span>
             </div>
 
-            {/* Professional Central AI Verification Orbital Core (No Mockup Card) */}
-            <div className="relative w-36 h-36 sm:w-44 sm:h-44 flex items-center justify-center my-2">
-              {/* Outer Glowing Orbital Ring */}
-              <div 
-                className="absolute inset-0 rounded-full border-2 border-dashed border-amber-400/40 animate-[spin_10s_linear_infinite]" 
-              />
-              {/* Middle Counter-Rotating Ring */}
-              <div 
-                className="absolute inset-2.5 sm:inset-3 rounded-full border border-zari/60 border-t-amber-300 border-r-transparent animate-[spin_4s_linear_infinite_reverse]" 
-              />
-              {/* Inner Pulsing Radar Glow */}
-              <div className="absolute inset-5 sm:inset-6 rounded-full bg-gradient-to-tr from-amber-500/20 via-zari/30 to-amber-300/10 backdrop-blur-md border border-amber-300/50 shadow-[0_0_35px_rgba(217,171,94,0.5)] animate-pulse" />
+            {/* Central 3D Golden Medallion & Multi-Orbital Energy Rings */}
+            <div className="relative w-44 h-44 sm:w-52 sm:h-52 flex items-center justify-center my-2">
+              {/* Outer Golden Flare Ring */}
+              <div className="absolute -inset-4 rounded-full bg-gradient-to-tr from-amber-500/30 via-yellow-400/20 to-transparent blur-xl animate-pulse" />
 
-              {/* Dynamic Center Icon Badge */}
-              <div className="relative z-10 w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-br from-[#2c2115] via-[#1a140d] to-[#0f0b07] border border-amber-400/70 shadow-2xl flex items-center justify-center">
-                {generationStage === 1 && (
-                  <ShieldCheck className="w-8 h-8 sm:w-10 sm:h-10 text-amber-300 animate-bounce" />
-                )}
-                {generationStage === 2 && (
-                  <Sparkles className="w-8 h-8 sm:w-10 sm:h-10 text-amber-300 animate-spin" style={{ animationDuration: "3s" }} />
-                )}
-                {generationStage === 3 && (
-                  <CheckCircle2 className="w-8 h-8 sm:w-10 sm:h-10 text-emerald-400 animate-scale-up" />
-                )}
+              {/* Concentric Rotating Sacred Loom Rings */}
+              <div className="absolute inset-0 rounded-full border-2 border-dashed border-amber-400/50 animate-[spin_12s_linear_infinite]" />
+              <div className="absolute inset-3 sm:inset-4 rounded-full border border-amber-300/40 border-t-amber-200 border-b-transparent animate-[spin_5s_linear_infinite_reverse]" />
+              <div className="absolute inset-7 sm:inset-8 rounded-full border border-amber-500/30 animate-pulse" />
+
+              {/* Central Luxury 24K Gold Embossed Medallion */}
+              <div className="relative z-10 w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-gradient-to-br from-[#ffe89e] via-[#d4af37] via-50% to-[#8f6214] p-1 shadow-[0_0_40px_rgba(212,175,55,0.6),inset_0_2px_4px_rgba(255,255,255,0.8),inset_0_-3px_6px_rgba(0,0,0,0.4)] flex items-center justify-center animate-scale-up">
+                <div className="w-full h-full rounded-full bg-gradient-to-br from-[#24190c] via-[#150f07] to-[#0a0703] border border-amber-300/60 flex flex-col items-center justify-center text-center p-2 shadow-inner">
+                  {generationStage === 1 && (
+                    <div className="flex flex-col items-center justify-center space-y-1">
+                      <ShieldCheck className="w-9 h-9 sm:w-11 sm:h-11 text-amber-300 animate-bounce" />
+                      <span className="text-[8px] sm:text-[9px] font-mono font-bold tracking-widest text-amber-200 uppercase">
+                        VERIFYING
+                      </span>
+                    </div>
+                  )}
+                  {generationStage === 2 && (
+                    <div className="flex flex-col items-center justify-center space-y-0.5">
+                      <span className="text-xl sm:text-2xl font-serif font-black text-amber-300 leading-none">
+                        ₹100
+                      </span>
+                      <span className="text-[7.5px] sm:text-[8.5px] font-mono font-bold tracking-widest text-amber-100 uppercase mt-0.5">
+                        MINTING
+                      </span>
+                    </div>
+                  )}
+                  {generationStage === 3 && (
+                    <div className="flex flex-col items-center justify-center space-y-0.5">
+                      <CheckCircle2 className="w-9 h-9 sm:w-11 sm:h-11 text-emerald-400 animate-scale-up stroke-[2.5]" />
+                      <span className="text-[8px] sm:text-[9px] font-mono font-black tracking-widest text-emerald-300 uppercase">
+                        READY
+                      </span>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
-            {/* Stage Title & Dynamic Headline */}
-            <div className="space-y-2 w-full">
-              <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-amber-400/15 border border-amber-400/30 text-amber-300 text-xs font-extrabold uppercase tracking-wider">
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping" />
-                {generationStage === 1 && "Stage 1/3: AI Verification"}
-                {generationStage === 2 && "Stage 2/3: Authorizing Reward"}
-                {generationStage === 3 && "Stage 3/3: Voucher Ready"}
-              </span>
+            {/* Dynamic Stage Pill & High-Contrast Typography */}
+            <div className="space-y-2.5 w-full">
+              <div className="inline-flex items-center gap-2 px-4 py-1 rounded-full bg-amber-500/15 border border-amber-400/40 text-amber-300 text-xs font-bold tracking-wider uppercase">
+                <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
+                <span>
+                  {generationStage === 1 && "Step 1 of 3: AI Authentication"}
+                  {generationStage === 2 && "Step 2 of 3: Minting Voucher"}
+                  {generationStage === 3 && "Step 3 of 3: Gift Card Ready"}
+                </span>
+              </div>
 
-              <h3 className="font-display text-xl sm:text-2xl text-white font-bold tracking-tight">
+              <h2 className="font-display text-2xl sm:text-3xl font-black text-white tracking-tight drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]">
                 {generationStage === 1 && "Verifying Review Authenticity..."}
-                {generationStage === 2 && "Allocating ₹100 Gift Voucher..."}
+                {generationStage === 2 && "Minting Your ₹100 Gift Card..."}
                 {generationStage === 3 && "Gift Card Ready to Claim!"}
-              </h3>
+              </h2>
+
+              <p className="text-xs sm:text-sm text-amber-200/85 font-medium max-w-xs mx-auto">
+                {generationStage === 1 && "AI is analyzing review proof & platform validity..."}
+                {generationStage === 2 && "Generating your 100% authentic ₹100 handloom voucher code..."}
+                {generationStage === 3 && "Your ₹100 voucher code has been minted successfully!"}
+              </p>
             </div>
 
-            {/* Professional Security Verification Stepper Checklist */}
-            <div className="w-full bg-white/5 border border-white/10 rounded-2xl p-3.5 space-y-2.5 backdrop-blur-md text-left text-xs">
-              <div className="flex items-center justify-between">
-                <span className="flex items-center gap-2 text-stone-200 font-medium">
-                  {generationStage >= 1 ? (
-                    <Check className="w-4 h-4 text-emerald-400 shrink-0 stroke-[3]" />
-                  ) : (
-                    <span className="w-4 h-4 rounded-full border border-stone-500 inline-block shrink-0" />
-                  )}
-                  Screenshot & Review Verified
-                </span>
-                <span className="text-[10px] font-bold text-emerald-400 uppercase">
-                  {generationStage >= 1 ? "PASSED" : "PENDING"}
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <span className="flex items-center gap-2 text-stone-200 font-medium">
-                  {generationStage >= 2 ? (
-                    <Check className="w-4 h-4 text-emerald-400 shrink-0 stroke-[3]" />
-                  ) : (
-                    <span className="w-4 h-4 rounded-full border border-stone-500 inline-block shrink-0" />
-                  )}
-                  Anti-Fraud & Duplicate Clearance
-                </span>
-                <span className="text-[10px] font-bold uppercase text-amber-400">
-                  {generationStage >= 2 ? "CLEARED" : generationStage === 1 ? "PROCESSING..." : "QUEUED"}
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <span className="flex items-center gap-2 text-stone-200 font-medium">
-                  {generationStage >= 3 ? (
-                    <Check className="w-4 h-4 text-emerald-400 shrink-0 stroke-[3]" />
-                  ) : (
-                    <span className="w-4 h-4 rounded-full border border-stone-500 inline-block shrink-0" />
-                  )}
-                  ₹100 Gift Card Code Minting
-                </span>
-                <span className="text-[10px] font-bold uppercase text-emerald-400">
-                  {generationStage >= 3 ? "COMPLETED" : "PREPARING"}
-                </span>
-              </div>
-            </div>
-
-            {/* Smooth Segmented Progress Bar */}
-            <div className="w-full space-y-1.5 pt-1">
-              <div className="w-full h-1.5 bg-stone-800 rounded-full overflow-hidden p-0.5 border border-white/5">
-                <div 
-                  className="h-full rounded-full bg-gradient-to-r from-zari via-amber-400 to-emerald-400 transition-all duration-500 shadow-sm"
+            {/* Glowing Golden Segmented Progress Filament */}
+            <div className="w-full space-y-2 pt-2">
+              <div className="w-full h-2 bg-[#1a130b] rounded-full overflow-hidden p-0.5 border border-amber-500/30 shadow-inner">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-amber-400 via-amber-300 to-emerald-400 transition-all duration-500 shadow-[0_0_12px_rgba(251,191,36,0.8)]"
                   style={{ width: `${generationStage === 1 ? 35 : generationStage === 2 ? 75 : 100}%` }}
                 />
               </div>
-              <div className="flex justify-between text-[10px] text-taupe font-mono">
-                <span>SECURITY CHECK</span>
-                <span>{generationStage === 1 ? "35%" : generationStage === 2 ? "75%" : "100%"}</span>
+              <div className="flex justify-between items-center text-[10px] text-amber-300/80 font-mono font-bold tracking-wider">
+                <span>REWARDS CLEARANCE</span>
+                <span className="text-amber-200">{generationStage === 1 ? "35%" : generationStage === 2 ? "75%" : "100%"}</span>
               </div>
             </div>
           </div>
@@ -1751,138 +1730,85 @@ export default function ClaimGiftCardPage() {
                 <span>{isGoogle ? "Google Review Verified" : "Review Verified"} &bull; ₹100 Gift Card Ready</span>
               </div>
 
-              {/* Real Physical VIP Gift Card (ISO ID-1 Standard Credit/Gift Card Proportions) */}
+              {/* Real Luxury Retail E-Gift Card */}
               <div
                 onClick={handleManualCopy}
                 title="Click to copy voucher code"
-                className="group relative w-full aspect-[1.586/1] rounded-2xl sm:rounded-3xl p-4 sm:p-6 text-stone-900 overflow-hidden cursor-pointer select-none transition-all duration-300 hover:scale-[1.02] active:scale-[0.99] shadow-[0_22px_45px_-10px_rgba(180,130,40,0.4),0_12px_24px_-6px_rgba(0,0,0,0.15),inset_0_1px_1px_rgba(255,255,255,0.9),inset_0_-2px_4px_rgba(0,0,0,0.15)] border border-[#ecd599] ring-1 ring-amber-500/30 bg-[radial-gradient(ellipse_at_top_left,_var(--tw-gradient-stops))] from-[#fff8e7] via-[#f3d999] via-45% to-[#c99738]"
+                className="group relative w-full aspect-[1.65/1] rounded-3xl p-5 sm:p-7 text-stone-900 overflow-hidden cursor-pointer select-none transition-all duration-300 hover:scale-[1.02] active:scale-[0.99] shadow-[0_22px_45px_-10px_rgba(180,130,40,0.4),0_12px_24px_-6px_rgba(0,0,0,0.15),inset_0_1px_1px_rgba(255,255,255,0.9),inset_0_-2px_4px_rgba(0,0,0,0.15)] border-2 border-[#e6cb87] ring-1 ring-amber-500/30 bg-gradient-to-br from-[#fff9ea] via-[#f7e2ab] via-45% to-[#cfa344]"
               >
-                {/* Guilloche Security Weave Pattern & Silk Sheen */}
+                {/* Traditional Zari Brocade & Silk Pattern Overlay */}
                 <div 
-                  className="absolute inset-0 opacity-[0.07] pointer-events-none"
+                  className="absolute inset-0 opacity-[0.08] pointer-events-none"
                   style={{
-                    backgroundImage: `radial-gradient(#5a3e0b 1px, transparent 1px), radial-gradient(#5a3e0b 1px, #f3d999 1px)`,
-                    backgroundSize: "16px 16px",
-                    backgroundPosition: "0 0, 8px 8px",
+                    backgroundImage: `radial-gradient(#4d3408 1.5px, transparent 1.5px), radial-gradient(#4d3408 1.5px, #f7e2ab 1.5px)`,
+                    backgroundSize: "18px 18px",
+                    backgroundPosition: "0 0, 9px 9px",
                   }}
                 />
+
+                {/* Subtle Decorative Golden Corner Borders */}
+                <div className="absolute top-2 left-2 w-5 h-5 border-t-2 border-l-2 border-amber-700/30 rounded-tl-lg pointer-events-none" />
+                <div className="absolute top-2 right-2 w-5 h-5 border-t-2 border-r-2 border-amber-700/30 rounded-tr-lg pointer-events-none" />
+                <div className="absolute bottom-2 left-2 w-5 h-5 border-b-2 border-l-2 border-amber-700/30 rounded-bl-lg pointer-events-none" />
+                <div className="absolute bottom-2 right-2 w-5 h-5 border-b-2 border-r-2 border-amber-700/30 rounded-br-lg pointer-events-none" />
 
                 {/* Diagonal Holographic Light Reflection Beam */}
                 <div className="absolute -inset-full bg-gradient-to-tr from-transparent via-white/35 to-transparent rotate-25 pointer-events-none group-hover:translate-x-12 transition-transform duration-1000 ease-out" />
                 <div className="absolute top-0 right-0 w-48 h-48 bg-gradient-to-bl from-white/40 via-amber-200/20 to-transparent rounded-full blur-xl pointer-events-none" />
-                <div className="absolute -bottom-8 -left-8 w-40 h-40 bg-gradient-to-tr from-amber-600/20 to-transparent rounded-full blur-lg pointer-events-none" />
 
-                {/* CARD INNER CONTENT - Realistic Layout */}
+                {/* GIFT CARD INNER CONTENT */}
                 <div className="relative z-10 h-full flex flex-col justify-between">
-                  {/* Top Row: Brand & Value Seal */}
-                  <div className="flex items-start justify-between gap-2">
-                    {/* Brand Emblem & Typography */}
-                    <div className="flex items-center gap-2 sm:gap-2.5">
-                      <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-br from-[#ffe79a] via-[#dfb76c] to-[#9b6f1e] p-0.5 shadow-md flex items-center justify-center border border-amber-200/80 shrink-0">
-                        <div className="w-full h-full rounded-[9px] bg-gradient-to-tr from-[#6a4914] to-[#2c1d07] flex items-center justify-center text-amber-300">
-                          <Sparkles size={16} className="text-amber-300 animate-pulse" />
+                  {/* Top Header: Brand & Big Value */}
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-2.5 sm:gap-3">
+                      <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-br from-[#ffe79a] via-[#dfb76c] to-[#9b6f1e] p-0.5 shadow-md flex items-center justify-center border border-amber-200 shrink-0">
+                        <div className="w-full h-full rounded-[14px] bg-gradient-to-tr from-[#5a3a0a] to-[#2c1d07] flex items-center justify-center text-amber-300">
+                          <Gift size={18} className="text-amber-300 animate-pulse" />
                         </div>
                       </div>
                       <div className="space-y-0.5">
-                        <h3 className="font-serif text-[11px] sm:text-xs md:text-sm font-black tracking-widest text-[#2c1d07] uppercase [text-shadow:_0_1px_0_rgba(255,255,255,0.7)] leading-none">
+                        <h3 className="font-serif text-xs sm:text-sm md:text-base font-black tracking-wider text-[#2c1d07] uppercase [text-shadow:_0_1px_0_rgba(255,255,255,0.7)] leading-tight">
                           JAI SRI RAM TEXTILES
                         </h3>
-                        <p className="text-[7.5px] sm:text-[8.5px] tracking-[0.25em] font-bold text-[#6d4e1d] uppercase leading-tight">
-                          Heritage Privilege Card
+                        <p className="text-[8px] sm:text-[9.5px] tracking-[0.22em] font-extrabold text-[#6d4e1d] uppercase leading-tight">
+                          Heritage Handloom Gift Card
                         </p>
                       </div>
                     </div>
 
-                    {/* Metallic Value Badge */}
-                    <div className="px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-gradient-to-b from-[#fff7e0] via-[#f7e4b2] to-[#dfb76c] border border-amber-300 shadow-[0_2px_6px_rgba(0,0,0,0.1),inset_0_1px_0_rgba(255,255,255,0.9)] text-right shrink-0">
-                      <span className="block text-base sm:text-xl font-serif font-black text-[#2c1d07] leading-none [text-shadow:_0_1px_0_rgba(255,255,255,0.8)]">
+                    {/* Value Badge */}
+                    <div className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-2xl bg-gradient-to-b from-[#fff8e7] via-[#f9e7b8] to-[#dfb76c] border border-amber-400/80 shadow-[0_2px_8px_rgba(0,0,0,0.1),inset_0_1px_0_rgba(255,255,255,0.9)] text-right shrink-0">
+                      <span className="block text-lg sm:text-2xl font-serif font-black text-[#2c1d07] leading-none [text-shadow:_0_1px_0_rgba(255,255,255,0.8)]">
                         ₹100
                       </span>
-                      <span className="text-[7px] sm:text-[8px] uppercase tracking-widest font-black text-[#6d4e1d] block mt-0.5">
+                      <span className="text-[7.5px] sm:text-[8.5px] uppercase tracking-widest font-black text-[#6d4e1d] block mt-0.5">
                         GIFT VOUCHER
                       </span>
                     </div>
                   </div>
 
-                  {/* Middle Row: Realistic Gold EMV Smart Chip + Contactless Wave */}
-                  <div className="flex items-center gap-3 my-auto pt-1 sm:pt-2">
-                    {/* EMV Gold Chip */}
-                    <div className="w-10 h-7.5 sm:w-12 sm:h-9 rounded-md bg-gradient-to-br from-[#ffe89d] via-[#d4af37] to-[#996f0b] border border-[#b88c1c] shadow-[inset_0_1px_2px_rgba(255,255,255,0.8),0_2px_4px_rgba(0,0,0,0.25)] relative overflow-hidden flex flex-col justify-around p-0.5 shrink-0">
-                      {/* Micro-circuit dividing lines */}
-                      <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-[1px] bg-amber-950/40" />
-                      <div className="absolute inset-y-0 left-1/3 w-[1px] bg-amber-950/40" />
-                      <div className="absolute inset-y-0 right-1/3 w-[1px] bg-amber-950/40" />
-                      <div className="w-2.5 h-2.5 rounded-full border border-amber-950/40 mx-auto" />
-                    </div>
-
-                    {/* Contactless Wave Icon (Real Card Wave) */}
-                    <div className="text-[#5c4018] opacity-80 flex items-center" title="Contactless Enabled">
-                      <svg className="w-5 h-5 sm:w-6 sm:h-6 -rotate-90" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                        <path d="M5 12.55a11 11 0 0 1 14.08 0" />
-                        <path d="M1.42 9a16 16 0 0 1 21.16 0" />
-                        <path d="M8.53 16.11a6 6 0 0 1 6.95 0" />
-                        <circle cx="12" cy="20" r="1" fill="currentColor" />
-                      </svg>
-                    </div>
-
-                    {/* Platform Tag */}
-                    <div className="ml-auto px-2 py-0.5 rounded-md bg-[#2c1d07]/10 border border-[#2c1d07]/15 text-[8px] sm:text-[9px] font-bold text-[#2c1d07] tracking-wider uppercase">
-                      {isGoogle ? "⭐ Google Verified" : selectedPlatform === "flipkart" ? "🛍️ Flipkart Verified" : "📦 Amazon Verified"}
-                    </div>
-                  </div>
-
-                  {/* Embossed Card Number (Voucher Code) */}
-                  <div className="py-1">
-                    <p className="text-[7px] sm:text-[8px] uppercase tracking-[0.2em] font-black text-[#5c4018] mb-0.5">
-                      CARD / VOUCHER CODE (TAP TO COPY)
+                  {/* Middle Center: Gift Card Voucher Code Box */}
+                  <div className="my-auto py-2 sm:py-2.5 px-3 sm:px-4 rounded-2xl bg-white/70 backdrop-blur-xs border border-amber-400/50 shadow-inner text-center space-y-0.5">
+                    <p className="text-[7.5px] sm:text-[8.5px] uppercase tracking-[0.25em] font-black text-[#6d4e1d]">
+                      GIFT CARD CODE (TAP TO COPY)
                     </p>
-                    <div className="font-mono text-sm sm:text-lg md:text-xl font-black tracking-[0.14em] sm:tracking-[0.22em] text-[#1e1405] [text-shadow:_0_1px_0_rgba(255,255,255,0.9),_0_-1px_1px_rgba(0,0,0,0.35)] truncate">
-                      {generatedCard.code ? generatedCard.code.replace(/-/g, " ") : "JSRT 0100 XXXX YYYY"}
-                    </div>
+                    <p className="font-mono text-base sm:text-xl md:text-2xl font-black tracking-[0.12em] sm:tracking-[0.18em] text-[#1e1405] truncate select-all">
+                      {generatedCard.code || "JSRT-100-XXXX-XXXX"}
+                    </p>
                   </div>
 
-                  {/* Bottom Row: Cardholder, Expiry & Security Seal */}
-                  <div className="flex items-end justify-between pt-1 border-t border-amber-900/15">
-                    <div>
-                      <p className="text-[6.5px] sm:text-[7.5px] uppercase tracking-[0.18em] font-bold text-[#6d4e1d]">
-                        CARDHOLDER
-                      </p>
-                      <p className="font-mono text-[9px] sm:text-[11px] font-bold tracking-wider text-[#2c1d07] uppercase">
-                        {isGoogle ? "GOOGLE REVIEW PATRON" : "VALUED TEXTILE PATRON"}
-                      </p>
-                    </div>
-
-                    <div className="text-center">
-                      <p className="text-[6.5px] sm:text-[7.5px] uppercase tracking-[0.18em] font-bold text-[#6d4e1d]">
-                        VALID THRU
-                      </p>
-                      <p className="font-mono text-[9px] sm:text-[11px] font-bold tracking-wider text-[#2c1d07]">
-                        365 DAYS
-                      </p>
-                    </div>
-
-                    <div className="text-right">
-                      <p className="text-[6.5px] sm:text-[7.5px] uppercase tracking-[0.18em] font-bold text-[#6d4e1d]">
-                        STATUS
-                      </p>
-                      <p className="text-[9px] sm:text-[11px] font-bold tracking-wider text-emerald-800 flex items-center gap-1 justify-end">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
-                        ACTIVE
-                      </p>
-                    </div>
+                  {/* Bottom Footer: Gift Card Details */}
+                  <div className="flex items-center justify-between text-[8px] sm:text-[10px] text-[#5c4018] pt-1.5 border-t border-amber-900/15 font-medium">
+                    <span className="inline-flex items-center gap-1 font-bold text-[#2c1d07]">
+                      <span>🎁</span>
+                      <span>{isGoogle ? "Google Review Reward" : "Platform Review Reward"}</span>
+                    </span>
+                    <span className="inline-flex items-center gap-1.5 font-semibold text-emerald-800">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
+                      Valid for 365 Days
+                    </span>
                   </div>
                 </div>
-
-                {/* Floating "Copied!" feedback overlay on card */}
-                {copied && (
-                  <div className="absolute inset-0 bg-[#2c1d07]/75 backdrop-blur-xs z-20 flex flex-col items-center justify-center text-white animate-fade-in">
-                    <div className="w-10 h-10 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-lg mb-1">
-                      <Check size={22} className="stroke-[3]" />
-                    </div>
-                    <p className="text-sm font-black tracking-wider uppercase">Code Copied!</p>
-                    <p className="text-[10px] text-amber-200 font-mono mt-0.5">{generatedCard.code}</p>
-                  </div>
-                )}
               </div>
 
               {/* Dedicated Copy Button & Quick Instructions */}
