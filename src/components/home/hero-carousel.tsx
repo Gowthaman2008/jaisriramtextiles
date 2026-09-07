@@ -203,12 +203,14 @@ export function HeroCarousel({ dbSlides }: { dbSlides?: any[] }) {
       // Sync mobile horizontal scroll track
       if (mobileScrollRef.current) {
         const container = mobileScrollRef.current;
-        const cardWidth = container.firstElementChild?.clientWidth || 280;
-        const gap = 12;
-        container.scrollTo({
-          left: targetIndex * (cardWidth + gap),
-          behavior: "smooth",
-        });
+        const targetCard = container.children[targetIndex] as HTMLElement;
+        if (targetCard) {
+          const leftOffset = targetCard.offsetLeft - 16;
+          container.scrollTo({
+            left: Math.max(0, leftOffset),
+            behavior: "smooth",
+          });
+        }
       }
     },
     [slides.length]
@@ -386,7 +388,11 @@ export function HeroCarousel({ dbSlides }: { dbSlides?: any[] }) {
                   isMobileInteracting.current = false;
                 }, 3000);
               }}
-              className="flex gap-3 overflow-x-auto snap-x snap-mandatory scrollbar-none pb-2 pt-0.5 px-4 scroll-smooth"
+              style={{
+                scrollPaddingLeft: "16px",
+                scrollPaddingRight: "16px",
+              }}
+              className="flex gap-3 overflow-x-auto snap-x snap-mandatory scrollbar-none pb-2 pt-0.5 px-4 scroll-pl-4 scroll-pr-4 scroll-smooth"
             >
               {slides.map((s, idx) => {
                 const sIsVideo = isVideoMediaUrl(s.image);
