@@ -89,25 +89,9 @@ export function SmoothScroll({ children }: { children: React.ReactNode }) {
 
     window.addEventListener("scroll-to-top", handleCustomScrollTop);
 
-    // Global link click handler: immediately reset scroll when navigating to internal links
-    const handleGlobalLinkClick = (e: MouseEvent) => {
-      const target = (e.target as HTMLElement)?.closest("a");
-      if (!target) return;
-      const href = target.getAttribute("href");
-      if (!href) return;
-
-      // Only handle internal navigation links, skip hash anchors on the same page
-      if (href.startsWith("/") && !href.startsWith("/#") && !target.target && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
-        scrollToTopFn("instant");
-      }
-    };
-
-    document.addEventListener("click", handleGlobalLinkClick, { capture: true });
-
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       return () => {
         window.removeEventListener("scroll-to-top", handleCustomScrollTop);
-        document.removeEventListener("click", handleGlobalLinkClick, { capture: true });
         delete window.scrollToTop;
       };
     }
@@ -134,7 +118,6 @@ export function SmoothScroll({ children }: { children: React.ReactNode }) {
       lenisRef.current = null;
       window.__lenis = null;
       window.removeEventListener("scroll-to-top", handleCustomScrollTop);
-      document.removeEventListener("click", handleGlobalLinkClick, { capture: true });
       delete window.scrollToTop;
     };
   }, []);

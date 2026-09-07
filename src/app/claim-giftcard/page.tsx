@@ -167,6 +167,10 @@ export default function ClaimGiftCardPage() {
   const [showSupportModal, setShowSupportModal] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
+  // Full-screen card generation cinematic animation state
+  const [isGeneratingAnimation, setIsGeneratingAnimation] = useState(false);
+  const [generationStage, setGenerationStage] = useState<1 | 2 | 3>(1);
+
   // Result state
   const [generatedCard, setGeneratedCard] = useState<GeneratedGiftCard | null>(null);
   const [copied, setCopied] = useState(false);
@@ -175,6 +179,31 @@ export default function ClaimGiftCardPage() {
   const [historyCards, setHistoryCards] = useState<any[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [copiedHistoryCode, setCopiedHistoryCode] = useState<string | null>(null);
+
+  function playCelebrationFanfare() {
+    try {
+      const Ctx = window.AudioContext || (window as any).webkitAudioContext;
+      if (!Ctx) return;
+      const ctx = new Ctx();
+      const now = ctx.currentTime;
+      // Ascending celebratory arpeggio: C5 -> E5 -> G5 -> C6
+      const notes = [523.25, 659.25, 783.99, 1046.50];
+      notes.forEach((freq, idx) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(freq, now + idx * 0.11);
+        gain.gain.setValueAtTime(0, now + idx * 0.11);
+        gain.gain.linearRampToValueAtTime(0.18, now + idx * 0.11 + 0.03);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + idx * 0.11 + 0.35);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now + idx * 0.11);
+        osc.stop(now + idx * 0.11 + 0.4);
+      });
+      setTimeout(() => ctx.close(), 1200);
+    } catch {}
+  }
 
   async function fetchGiftCardHistory() {
     try {
@@ -495,32 +524,44 @@ export default function ClaimGiftCardPage() {
       }
 
       if (data.giftCard) {
-        setGeneratedCard(data.giftCard);
+        setIsGeneratingAnimation(true);
+        setGenerationStage(1);
 
-        if (typeof window !== "undefined") {
-          window.scrollToTop ? window.scrollToTop("instant") : window.scrollTo(0, 0);
-          setTimeout(() => {
-            if (window.scrollToTop) window.scrollToTop("instant");
-            else window.scrollTo(0, 0);
-          }, 60);
-        }
+        setTimeout(() => setGenerationStage(2), 850);
+        setTimeout(() => {
+          setGenerationStage(3);
+          playCelebrationFanfare();
+        }, 1750);
 
-        if (isGoogle) {
-          setGoogleClaimed(true);
-          setGoogleCardInfo(data.giftCard);
-        }
+        setTimeout(() => {
+          setIsGeneratingAnimation(false);
+          setGeneratedCard(data.giftCard);
 
-        // Refresh gift card history list
-        fetchGiftCardHistory();
+          if (typeof window !== "undefined") {
+            window.scrollToTop ? window.scrollToTop("instant") : window.scrollTo(0, 0);
+            setTimeout(() => {
+              if (window.scrollToTop) window.scrollToTop("instant");
+              else window.scrollTo(0, 0);
+            }, 60);
+          }
 
-        // Auto copy code to clipboard
-        try {
-          await navigator.clipboard.writeText(data.giftCard.code);
-          setCopied(true);
-          notify("🎉 ₹100 Gift Card code generated & automatically copied to clipboard!", "success");
-        } catch {
-          notify("🎉 ₹100 Gift Card code generated successfully!", "success");
-        }
+          if (isGoogle) {
+            setGoogleClaimed(true);
+            setGoogleCardInfo(data.giftCard);
+          }
+
+          // Refresh gift card history list
+          fetchGiftCardHistory();
+
+          // Auto copy code to clipboard
+          try {
+            navigator.clipboard.writeText(data.giftCard.code);
+            setCopied(true);
+            notify("🎉 ₹100 Gift Card code generated & automatically copied to clipboard!", "success");
+          } catch {
+            notify("🎉 ₹100 Gift Card code generated successfully!", "success");
+          }
+        }, 2650);
       }
     } catch (err: any) {
       const errMsg = err.name === "TypeError" && err.message.includes("fetch")
@@ -564,6 +605,98 @@ export default function ClaimGiftCardPage() {
 
   return (
     <main className="min-h-screen bg-ivory text-ink pb-20">
+      {/* ================= FULL SCREEN CINEMATIC CARD GENERATION ANIMATION OVERLAY ================= */}
+      {isGeneratingAnimation && (
+        <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center p-4 bg-stone-950/92 backdrop-blur-2xl text-ivory text-center select-none overflow-hidden animate-fade-in">
+          {/* Ambient Golden Radial Glows & Shimmer */}
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[360px] sm:w-[550px] h-[360px] sm:h-[550px] bg-gradient-to-tr from-zari/35 via-amber-500/20 to-transparent rounded-full blur-3xl animate-pulse pointer-events-none" />
+          
+          {/* Floating Sparkle Particles */}
+          <div className="absolute inset-0 pointer-events-none overflow-hidden">
+            {[...Array(18)].map((_, i) => (
+              <span
+                key={i}
+                className="absolute block rounded-full bg-amber-300 opacity-70 animate-ping"
+                style={{
+                  width: `${(i % 3) * 2 + 3}px`,
+                  height: `${(i % 3) * 2 + 3}px`,
+                  top: `${((i * 17) % 85) + 8}%`,
+                  left: `${((i * 23) % 90) + 5}%`,
+                  animationDuration: `${(i % 2) + 1.2}s`,
+                  animationDelay: `${(i * 0.15)}s`
+                }}
+              />
+            ))}
+          </div>
+
+          <div className="relative z-10 max-w-sm sm:max-w-md w-full space-y-7 flex flex-col items-center">
+            {/* Animated 3D Holographic Loom Voucher Card */}
+            <div className="relative">
+              {/* Pulsing Backlight Ring */}
+              <div className="absolute -inset-2 rounded-3xl bg-gradient-to-r from-zari via-amber-300 to-zari opacity-40 blur-lg animate-pulse" />
+
+              <div className="relative w-72 sm:w-84 h-44 sm:h-50 rounded-3xl bg-gradient-to-br from-[#2c231b] via-[#1c1713] to-[#120f0d] border-2 border-zari shadow-[0_0_50px_rgba(217,171,94,0.45)] p-5 flex flex-col justify-between overflow-hidden animate-scale-up">
+                {/* Gold Shimmer Sweep Overlay */}
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full animate-[shimmer_1.8s_infinite] pointer-events-none" />
+                
+                {/* Card Top */}
+                <div className="flex items-center justify-between relative z-10">
+                  <div className="flex items-center gap-1.5">
+                    <Sparkles className="w-4 h-4 text-zari animate-spin" style={{ animationDuration: "3s" }} />
+                    <span className="text-[10px] tracking-widest text-zari font-black uppercase">JAI SRI RAM TEXTILES</span>
+                  </div>
+                  <div className="px-2.5 py-0.5 rounded-full bg-amber-400/20 border border-amber-400/50 text-amber-300 text-[10px] font-black tracking-wider">
+                    ₹100 VOUCHER
+                  </div>
+                </div>
+
+                {/* Card Center: Animated Code Minting Text */}
+                <div className="my-auto py-2.5 px-3.5 rounded-2xl bg-black/60 border border-zari/50 flex items-center justify-center relative z-10 shadow-inner">
+                  <span className="font-mono text-sm sm:text-base font-black tracking-widest text-amber-200 animate-pulse">
+                    {generationStage === 1 && "• • • VERIFYING REVIEW • • •"}
+                    {generationStage === 2 && "✦ WEAVING ₹100 VOUCHER ✦"}
+                    {generationStage === 3 && "🎉 UNLOCKING VOUCHER CODE 🎉"}
+                  </span>
+                </div>
+
+                {/* Card Bottom */}
+                <div className="flex items-center justify-between text-[10px] text-stone-300/80 relative z-10 border-t border-white/10 pt-1.5">
+                  <span className="font-medium text-amber-200/90">
+                    {isGoogle ? "⭐ Google Review Reward" : "📦 Platform Order Review"}
+                  </span>
+                  <span className="font-mono text-zari font-bold">100% Handloom Cotton</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Step Status Text & Progress */}
+            <div className="space-y-3.5 w-full">
+              <div className="space-y-1.5">
+                <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-amber-400/15 border border-amber-400/30 text-amber-300 text-xs font-extrabold uppercase tracking-wider">
+                  <Sparkles size={13} className="animate-spin text-amber-300" style={{ animationDuration: "2s" }} />
+                  {generationStage === 1 && "Stage 1/3: AI Verification Passed"}
+                  {generationStage === 2 && "Stage 2/3: Minting ₹100 Gift Card"}
+                  {generationStage === 3 && "Stage 3/3: Voucher Ready!"}
+                </span>
+
+                <h3 className="font-display text-xl sm:text-2xl text-white font-bold tracking-tight">
+                  {generationStage === 1 && "Verifying 5-Star Review Authenticity..."}
+                  {generationStage === 2 && "Weaving Your ₹100 Handloom Voucher..."}
+                  {generationStage === 3 && "Gift Card Ready to Claim!"}
+                </h3>
+              </div>
+
+              {/* 3 Step Progress Bars */}
+              <div className="flex items-center justify-center gap-2 pt-1">
+                <span className={`h-2 rounded-full transition-all duration-300 ${generationStage >= 1 ? "w-10 bg-gradient-to-r from-zari to-amber-400 shadow-xs" : "w-2.5 bg-stone-700"}`} />
+                <span className={`h-2 rounded-full transition-all duration-300 ${generationStage >= 2 ? "w-10 bg-gradient-to-r from-zari to-amber-400 shadow-xs" : "w-2.5 bg-stone-700"}`} />
+                <span className={`h-2 rounded-full transition-all duration-300 ${generationStage >= 3 ? "w-10 bg-gradient-to-r from-zari to-amber-400 shadow-xs" : "w-2.5 bg-stone-700"}`} />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Centered Animated AI Verification Failure Modal */}
       {showAiFailureModal && (
         <div
@@ -1562,7 +1695,7 @@ export default function ClaimGiftCardPage() {
               </form>
             </div>
           ) : (
-            /* ================= STEP 2: COMPACT LUXURY GIFT CARD ================= */
+            /* ================= STEP 2: LUXURY LIGHT THEME GIFT CARD ================= */
             <div className="max-w-md mx-auto space-y-4 animate-scale-up">
               {/* Top Success Pill */}
               <div className="flex items-center justify-center gap-1.5 px-3.5 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-semibold w-fit mx-auto shadow-xs">
@@ -1570,45 +1703,53 @@ export default function ClaimGiftCardPage() {
                 <span>{isGoogle ? "Google Review Verified" : "Review Verified"} &bull; ₹100 Gift Card Ready</span>
               </div>
 
-              {/* The Luxury Physical-Style Digital Gift Voucher Card */}
-              <div className="relative rounded-2xl bg-gradient-to-br from-[#1b1714] via-[#241e18] to-[#120f0d] border-2 border-zari/60 shadow-xl p-5 sm:p-6 text-ivory overflow-hidden transition-all duration-300">
+              {/* The Luxury Physical-Style Light Theme Gift Card */}
+              <div className="relative rounded-3xl bg-gradient-to-br from-[#FFFDF9] via-[#FAF6EE] to-[#F5EFEB] border-2 border-zari/60 shadow-lift p-6 sm:p-7 text-ink overflow-hidden transition-all duration-300">
                 {/* Background Zari Shimmer Ornaments */}
-                <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-bl from-zari/25 via-zari/5 to-transparent rounded-full blur-xl pointer-events-none" />
-                <div className="absolute -bottom-8 -left-8 w-32 h-32 bg-gradient-to-tr from-amber-500/20 to-transparent rounded-full blur-lg pointer-events-none" />
+                <div className="absolute top-0 right-0 w-44 h-44 bg-gradient-to-bl from-zari/20 via-zari/5 to-transparent rounded-full blur-xl pointer-events-none" />
+                <div className="absolute -bottom-10 -left-10 w-36 h-36 bg-gradient-to-tr from-amber-200/30 to-transparent rounded-full blur-lg pointer-events-none" />
                 
                 {/* Top Row: Brand & Value */}
                 <div className="flex items-start justify-between gap-2 relative z-10">
-                  <div className="space-y-0.5">
-                    <span className="text-[10px] tracking-widest text-zari uppercase font-bold flex items-center gap-1">
-                      <Sparkles size={11} className="text-zari" />
-                      JAI SRI RAM TEXTILES
-                    </span>
-                    <h3 className="font-display text-sm tracking-wide text-stone-200">Heritage Loom Voucher</h3>
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-zari via-amber-400 to-zari-deep text-stone-950 flex items-center justify-center shadow-xs shrink-0">
+                      <Sparkles size={15} className="text-stone-950" />
+                    </div>
+                    <div className="space-y-0.5">
+                      <p className="text-[10px] tracking-widest text-zari-deep uppercase font-black">
+                        JAI SRI RAM TEXTILES
+                      </p>
+                      <h3 className="font-display text-sm font-bold text-ink leading-tight">
+                        Heritage Loom Voucher
+                      </h3>
+                    </div>
                   </div>
 
-                  <div className="text-right">
-                    <span className="block text-xl sm:text-2xl font-display font-extrabold text-amber-300 drop-shadow-sm leading-tight">
+                  <div className="px-3 py-1.5 rounded-2xl bg-gradient-to-r from-amber-100 via-amber-50 to-amber-100 border border-amber-300 shadow-2xs text-right">
+                    <span className="block text-xl sm:text-2xl font-display font-black text-amber-900 leading-none">
                       ₹100
                     </span>
-                    <span className="text-[9px] uppercase tracking-widest text-zari/80 font-bold">GIFT CARD</span>
+                    <span className="text-[8px] uppercase tracking-widest font-extrabold text-amber-800/90 block mt-0.5">
+                      GIFT CARD
+                    </span>
                   </div>
                 </div>
 
-                {/* Middle: Clean One-Line Code Box with Copy Button */}
-                <div className="my-4 bg-black/45 backdrop-blur-md border border-zari/40 rounded-xl p-2.5 sm:p-3 flex items-center justify-between gap-2 shadow-inner relative z-10">
+                {/* Middle: Clean High-Contrast Light Code Box with Copy Button */}
+                <div className="my-4.5 bg-white border-2 border-dashed border-zari/50 rounded-2xl p-3 sm:p-3.5 flex items-center justify-between gap-2.5 shadow-xs relative z-10">
                   <div className="min-w-0 flex-1">
-                    <p className="text-[8px] sm:text-[9px] uppercase tracking-wider text-zari/70 font-semibold">VOUCHER CODE</p>
-                    <p className="font-mono text-sm sm:text-base font-bold tracking-wider text-amber-100 truncate select-all">
+                    <p className="text-[8px] sm:text-[9px] uppercase tracking-wider text-taupe font-bold">VOUCHER CODE</p>
+                    <p className="font-mono text-sm sm:text-base font-black tracking-widest text-ink truncate select-all mt-0.5">
                       {generatedCard.code}
                     </p>
                   </div>
                   <button
                     type="button"
                     onClick={handleManualCopy}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 flex items-center gap-1.5 cursor-pointer shrink-0 shadow-xs active:scale-95 ${
+                    className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 flex items-center gap-1.5 cursor-pointer shrink-0 shadow-xs active:scale-95 ${
                       copied
                         ? "bg-emerald-600 text-white"
-                        : "bg-gradient-to-r from-zari to-amber-400 text-stone-950 hover:brightness-110"
+                        : "bg-gradient-to-r from-zari via-amber-400 to-zari-deep text-stone-950 hover:brightness-105"
                     }`}
                   >
                     {copied ? (
@@ -1626,13 +1767,18 @@ export default function ClaimGiftCardPage() {
                 </div>
 
                 {/* Bottom Row: Platform Badge & Expiry */}
-                <div className="flex items-center justify-between text-[10px] text-stone-300/80 pt-1.5 border-t border-white/10 relative z-10">
-                  <span className="inline-flex items-center gap-1 font-medium text-amber-200/90">
+                <div className="flex items-center justify-between text-[10px] text-taupe pt-1.5 border-t border-line/60 relative z-10">
+                  <span className="inline-flex items-center gap-1 font-bold text-ink bg-cream/60 px-2 py-0.5 rounded-full border border-line">
                     <span>{isGoogle ? "⭐ Google Review" : selectedPlatform === "flipkart" ? "🛍️ Flipkart" : "📦 Amazon"}</span>
                   </span>
-                  <span className="font-mono text-stone-400">
-                    Valid 365 Days
-                  </span>
+                  <div className="flex items-center gap-2 font-mono">
+                    <span className="inline-flex items-center gap-1 text-emerald-700 font-bold font-sans">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                      Active
+                    </span>
+                    <span>&bull;</span>
+                    <span>Valid 365 Days</span>
+                  </div>
                 </div>
               </div>
 
@@ -1886,51 +2032,49 @@ export default function ClaimGiftCardPage() {
             </div>
           )}
 
-          {/* ================= TERMS & CONDITIONS (Only shown before generating card) ================= */}
-          {!generatedCard && (
-            <div className="mt-12 bg-white border border-line rounded-3xl p-6 sm:p-8 shadow-soft space-y-4">
-              <div className="flex items-center gap-2 text-ink">
-                <ShieldCheck className="w-5 h-5 text-zari" />
-                <h3 className="font-display text-lg">Terms & Conditions — ₹100 Gift Card</h3>
+          {/* ================= TERMS & CONDITIONS ================= */}
+          <div className="mt-12 bg-white border border-line rounded-3xl p-6 sm:p-8 shadow-soft space-y-4">
+            <div className="flex items-center gap-2 text-ink">
+              <ShieldCheck className="w-5 h-5 text-zari" />
+              <h3 className="font-display text-lg">Terms & Conditions — ₹100 Gift Card</h3>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-taupe leading-relaxed">
+              <div className="space-y-2">
+                <div className="flex items-start gap-2">
+                  <span className="font-bold text-zari-deep">•</span>
+                  <p><strong className="text-ink">1-Year Expiry:</strong> All generated ₹100 gift card codes are valid for <strong className="text-ink font-semibold">1 full year (365 days)</strong> from the date of issue.</p>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="font-bold text-zari-deep">•</span>
+                  <p><strong className="text-ink">One-Time Use:</strong> Each code is valid for a single redemption per customer and review.</p>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="font-bold text-zari-deep">•</span>
+                  <p><strong className="text-ink">Wallet Redemption:</strong> Users can redeem the code into their JAI SRI RAM TEXTILES Wallet as cashback balance.</p>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="font-bold text-zari-deep">•</span>
+                  <p><strong className="text-ink">Checkout Rule:</strong> Wallet cashback balance is redeemable during checkout up to <strong className="text-ink font-semibold">20% of the cart subtotal, with a maximum limit of ₹50 per order</strong>.</p>
+                </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-taupe leading-relaxed">
-                <div className="space-y-2">
-                  <div className="flex items-start gap-2">
-                    <span className="font-bold text-zari-deep">•</span>
-                    <p><strong className="text-ink">1-Year Expiry:</strong> All generated ₹100 gift card codes are valid for <strong className="text-ink font-semibold">1 full year (365 days)</strong> from the date of issue.</p>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <span className="font-bold text-zari-deep">•</span>
-                    <p><strong className="text-ink">One-Time Use:</strong> Each code is valid for a single redemption per customer and review.</p>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <span className="font-bold text-zari-deep">•</span>
-                    <p><strong className="text-ink">Wallet Redemption:</strong> Users can redeem the code into their JAI SRI RAM TEXTILES Wallet as cashback balance.</p>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <span className="font-bold text-zari-deep">•</span>
-                    <p><strong className="text-ink">Checkout Rule:</strong> Wallet cashback balance is redeemable during checkout up to <strong className="text-ink font-semibold">20% of the cart subtotal, with a maximum limit of ₹50 per order</strong>.</p>
-                  </div>
+              <div className="space-y-2">
+                <div className="flex items-start gap-2">
+                  <span className="font-bold text-zari-deep">•</span>
+                  <p><strong className="text-ink">Proof Screenshots:</strong> Amazon & Flipkart reviews require 2 screenshots and verified Platform Order ID. Google Reviews require 1 screenshot.</p>
                 </div>
-
-                <div className="space-y-2">
-                  <div className="flex items-start gap-2">
-                    <span className="font-bold text-zari-deep">•</span>
-                    <p><strong className="text-ink">Proof Screenshots:</strong> Amazon & Flipkart reviews require 2 screenshots and verified Platform Order ID. Google Reviews require 1 screenshot.</p>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <span className="font-bold text-zari-deep">•</span>
-                    <p><strong className="text-ink">Google Review 1-Time Limit:</strong> Google Reviews reward is strictly limited to 1 claim per customer account.</p>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <span className="font-bold text-zari-deep">•</span>
-                    <p><strong className="text-ink">Store Moderation:</strong> JAI SRI RAM TEXTILES reserves the right to verify submissions and deactivate fraudulent entries.</p>
-                  </div>
+                <div className="flex items-start gap-2">
+                  <span className="font-bold text-zari-deep">•</span>
+                  <p><strong className="text-ink">Google Review 1-Time Limit:</strong> Google Reviews reward is strictly limited to 1 claim per customer account.</p>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="font-bold text-zari-deep">•</span>
+                  <p><strong className="text-ink">Store Moderation:</strong> JAI SRI RAM TEXTILES reserves the right to verify submissions and deactivate fraudulent entries.</p>
                 </div>
               </div>
             </div>
-          )}
+          </div>
         </div>
       </Container>
     </main>
