@@ -6,7 +6,7 @@ import Link from "next/link";
 import { Container } from "@/components/ui/container";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, ChevronLeft } from "lucide-react";
  
 function ResetPasswordContent() {
   const router = useRouter();
@@ -139,6 +139,12 @@ function ResetPasswordContent() {
     <div className="flex min-h-[calc(100vh-76px)] items-center py-16">
       <Container className="max-w-[420px]">
         <div className="zari-frame rounded-card bg-ivory p-8 shadow-soft">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-taupe hover:text-ink mb-4 transition-colors cursor-pointer"
+          >
+            <ChevronLeft size={16} /> Back to Store
+          </Link>
           <h1 className="font-display text-2xl text-ink">Reset password</h1>
           <p className="mt-1 text-sm text-taupe">Enter a new password for <strong className="text-ink">{user.email}</strong>.</p>
 

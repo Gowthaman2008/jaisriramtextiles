@@ -1747,39 +1747,8 @@ export default function ClaimGiftCardPage() {
                 </div>
               </div>
 
-              {/* Dedicated Copy Button & Quick Instructions */}
-              <div className="flex items-center justify-between gap-3 px-3 py-2 rounded-2xl bg-white border border-line shadow-2xs">
-                <div className="min-w-0 flex-1">
-                  <p className="text-[10px] text-taupe">Tap the card above or click copy:</p>
-                  <p className="font-mono text-xs sm:text-sm font-bold text-ink truncate select-all">
-                    {generatedCard.code}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleManualCopy}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 flex items-center gap-1.5 cursor-pointer shrink-0 shadow-xs active:scale-95 ${
-                    copied
-                      ? "bg-emerald-600 text-white shadow-emerald-500/20"
-                      : "bg-gradient-to-r from-zari via-amber-400 to-zari-deep text-stone-950 hover:brightness-105"
-                  }`}
-                >
-                  {copied ? (
-                    <>
-                      <Check size={14} />
-                      <span>Copied!</span>
-                    </>
-                  ) : (
-                    <>
-                      <Copy size={14} />
-                      <span>Copy Code</span>
-                    </>
-                  )}
-                </button>
-              </div>
-
               {/* Action Buttons */}
-              <div className="space-y-2.5 pt-1">
+              <div className="space-y-2.5 pt-2">
                 <Link
                   href={`/account?tab=wallet&redeem=${encodeURIComponent(generatedCard.code)}`}
                   className="w-full py-3.5 px-5 rounded-xl bg-gradient-to-r from-zari-deep via-zari to-zari-deep hover:brightness-110 text-white font-bold text-xs sm:text-sm uppercase tracking-wider shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98"

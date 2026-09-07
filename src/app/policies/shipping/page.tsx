@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import Link from "next/link";
+import { ChevronLeft } from "lucide-react";
 import { Container } from "@/components/ui/container";
 import { COMMERCE } from "@/lib/constants";
 import { formatINR } from "@/lib/utils";
@@ -7,8 +9,18 @@ export const metadata: Metadata = { title: "Shipping Policy" };
 
 export default function ShippingPage() {
   return (
-    <div className="py-14 sm:py-20">
+    <div className="py-8 sm:py-14">
       <Container className="max-w-[720px]">
+        {/* Back Link */}
+        <div className="mb-4">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-taupe hover:text-ink transition-colors cursor-pointer"
+          >
+            <ChevronLeft size={16} /> Back to Home
+          </Link>
+        </div>
+
         <h1 className="font-display text-4xl text-ink">Shipping Policy</h1>
         <p className="mt-2 text-sm text-muted">Last updated: July 2026</p>
         <div className="zari-rule mt-6 mb-8" />

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { Mail, MapPin } from "lucide-react";
+import Link from "next/link";
+import { Mail, MapPin, ChevronLeft } from "lucide-react";
 import { Container } from "@/components/ui/container";
 import { BUSINESS } from "@/lib/constants";
 
@@ -11,8 +12,18 @@ export const metadata: Metadata = {
 export default function ContactPage() {
   const { address } = BUSINESS;
   return (
-    <div className="py-14 sm:py-20">
+    <div className="py-8 sm:py-14">
       <Container className="max-w-[720px]">
+        {/* Back Link */}
+        <div className="mb-4">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-taupe hover:text-ink transition-colors cursor-pointer"
+          >
+            <ChevronLeft size={16} /> Back to Home
+          </Link>
+        </div>
+
         <span className="eyebrow">Get in touch</span>
         <h1 className="mt-3 font-display text-4xl text-ink sm:text-5xl">Contact us</h1>
         <div className="zari-rule mt-6 mb-10" />

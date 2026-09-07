@@ -6,7 +6,7 @@ import Link from "next/link";
 import { Container } from "@/components/ui/container";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, ChevronLeft } from "lucide-react";
 
 function GoogleIcon() {
   return (
@@ -74,6 +74,12 @@ function SignInPageContent() {
     <main className="flex min-h-[calc(100vh-80px)] w-full items-center justify-center p-4 py-8 sm:py-16 bg-cream/20">
       <div className="w-full max-w-[440px] mx-auto">
         <div className="zari-frame rounded-3xl bg-ivory p-6 sm:p-8 shadow-lift border border-line/70">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-taupe hover:text-ink mb-4 transition-colors cursor-pointer"
+          >
+            <ChevronLeft size={16} /> Back to Store
+          </Link>
           <h1 className="font-display text-2xl sm:text-3xl text-ink font-bold">Sign in</h1>
           <p className="mt-1 text-sm text-taupe">Welcome back to JAI SRI RAM TEXTILES</p>
 
