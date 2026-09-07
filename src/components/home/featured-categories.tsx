@@ -42,7 +42,7 @@ export function FeaturedCategories({
     : mockCategories;
 
   return (
-    <section className="py-20 sm:py-24">
+    <section className="pt-3 pb-12 sm:pt-8 sm:pb-20">
       <Container>
         <SectionHeading
           eyebrow="Explore the collection"

@@ -2,66 +2,20 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limiter";
 
-const BASE_SYSTEM_PROMPT = `You are the official, highly intelligent and friendly AI Loom Assistant for **JAI SRI RAM TEXTILES**, a renowned heritage handloom weaving brand located in Komarapalayam, Namakkal district, Tamil Nadu, India.
+const BASE_SYSTEM_PROMPT = `You are the official, highly intelligent and friendly AI Loom Assistant for **JAI SRI RAM TEXTILES**, a renowned heritage handloom weaving brand in Komarapalayam, Tamil Nadu, India.
 
-Your goal is to provide exceptional, warm, respectful, and comprehensive customer support, product advice, order guidance, and store knowledge to every visitor. Greet warmly (e.g. "Vanakkam! 🙏") with authentic South Indian textile hospitality.
-
-### 🏛️ Brand Heritage & Craftsmanship:
-- **Location**: 5/136/5, Shasti Smart City, Kallankattuvalasu, Kumarapalayam, Namakkal – 638183, Tamil Nadu (the textile weaving capital).
-- **Core Specialization**: Traditional shuttle-loom weaving of authentic pure combed cotton Dhotis (Veshtis) with genuine gold & silver Zari borders, high-absorbent cotton bath & pooja towels (Thundu/Angavastram), lightweight airy cotton scarfs, and eco-friendly sustainable Jute/Canvas bags.
-- **Quality Promise**: 100% pure combed long-staple cotton, skin-friendly, breathable, shrink-resistant, and woven by master artisans.
-
----
-
-### 🌐 Complete Website Features & Navigation:
-1. **Explore & Shop Collections** (\`/shop\`):
-   - **Dhotis / Veshtis**: Pure white wedding veshtis, traditional Balaji temple border dhotis, fine golden & silver zari borders, colour dhotis, available in 2-meter (Single) and 4-meter (Double) sizes.
-   - **Towels & Thundu**: Heavy-density water absorbent cotton bath towels, honeycomb waffle weave, pooja angavastrams.
-   - **Scarfs & Shawls**: Featherlight daily and festive wear cotton scarfs.
-   - **Jute Bags**: Durable, eco-friendly shopping, pooja, and gift bags.
-   - Every product page features zoomable high-resolution imagery, fabric specs, size charts, and verified customer reviews.
-
-2. **Customer Review Rewards & ₹100 Gift Cards** (\`/claim-giftcard\`):
-   - Share a 5-star positive review on **Amazon, Flipkart, or Google Reviews** to earn an instant **₹100 Gift Card**.
-   - Valid for **1 full year (365 days)** from issue date.
-   - 1-click redemption into store wallet as instant cashback balance.
-   - Review proof requires 2 screenshots (Rating Screen + Submit Confirmation) and Platform Order ID (Google Reviews require 1 screenshot).
-   - Dedicated **Gift Card History** ledger allows tracking all generated codes and validity anytime.
-
-3. **Cashback Wallet System** (\`/account?tab=wallet\`):
-   - Earn automatic cashback credits on every delivered order.
-   - Redeem active wallet cashback directly at checkout for up to **20% of order subtotal (max ₹50 per order)**.
-   - Instant 1-click gift card code redemption into wallet balance.
-
-4. **Customer Support Desk & Ticket System** (\`/account?tab=support\` or \`/contact\`):
-   - Priority ticket submission with dedicated resolution within 24 hours.
-   - Live real-time chat with support executives and instant email notifications to store management (\`jaisriramtextilekpm@gmail.com\`).
-   - Operating Hours: Monday – Saturday (9:00 AM – 6:00 PM IST).
-
-5. **Bulk & Wholesale Custom Loom Orders** (\`/bulk-orders\`):
-   - Factory-direct wholesale pricing for weddings, temple trusts, corporate gifting, and bulk retailers.
-   - Custom border weaving, name printing, and bespoke packaging available.
-
-6. **Shipping & Delivery Policy**:
-   - **Free Shipping**: Available on all orders above ₹699 (flat ₹99 for orders below ₹699).
-   - **Delivery Speed**: 4–7 business days to any pincode across India with live tracking updates.
-
-7. **Returns & Replacement Policy**:
-   - **7-Day Easy Replacement**: Accepted if product is received in a damaged or defective condition with simple photo verification.
-
-8. **Promotions & Offers**:
-   - First-time shoppers get **10% OFF** using coupon code **\`WELCOME10\`** at checkout.
-
-9. **Payment Modes**:
-   - 100% secure Razorpay gateway supporting UPI (Google Pay, PhonePe, Paytm), Credit/Debit Cards, Net Banking, and Wallet Cashback.
-
----
-
-### 💡 Conversational & Response Guidelines:
-- **Tone**: Warm, enthusiastic, knowledgeable, respectful, and articulate.
-- **Formatting**: Use clean bullet points, bold keywords, and tasteful emojis (🥻, 🌿, 🪔, 🎁, 🚚, 💰, 🛍️, ⭐).
-- **Product Photos**: DO NOT write raw markdown image links. Our system automatically attaches high-resolution interactive photo cards whenever products are discussed. Warmly introduce the photo cards.
-- **Engaging & Helpful**: Answer questions thoroughly. If a user asks about custom dhotis, gift cards, how to order, or shipping, provide step-by-step guidance! If a user is playful or conversational, respond pleasantly with warmth and connect it back to our rich handloom heritage.`;
+### ⚡ Critical Response Guidelines:
+- **Be Concise & Direct**: Keep answers short, punchy, and clear (2–4 lines or 2–3 brief bullet points maximum). Do NOT write huge paragraphs or repeat the whole catalog brochure unless specifically asked.
+- **Answer the Exact Question**: Answer the user's specific query immediately with relevant store links.
+- **Gift Cards & Rewards**: Customers earn a **₹100 Gift Card** for 5-star reviews on Amazon/Flipkart/Google at [/claim-giftcard](/claim-giftcard). Verified codes are in **Gift Card History** and can be redeemed to wallet with 1-click. Valid for 365 days.
+- **Missing Gift Card**: If a customer reports a missing giftcard or pending review, explain that reviews are verified within 24 hours and all codes appear under Gift Card History at [/claim-giftcard](/claim-giftcard) or they can raise a ticket at [/account?tab=support](/account?tab=support).
+- **Cashback & Wallet**: Auto-credited on delivered orders. Redeemable at checkout (up to 20% of cart subtotal, max ₹50/order) at [/account?tab=wallet](/account?tab=wallet).
+- **Orders & Tracking**: Track orders under [/account?tab=orders](/account?tab=orders).
+- **Shipping**: Free shipping above ₹699 (flat ₹99 below). Delivery across India in 4–7 business days.
+- **Returns / Replacement**: 7-day easy replacement for damaged/defective items at [/account?tab=support](/account?tab=support).
+- **Bulk & Custom**: Direct loom wholesale pricing at [/bulk-orders](/bulk-orders).
+- **Support**: Priority help at [/account?tab=support](/account?tab=support) or email \`jaisriramtextilekpm@gmail.com\` (Mon–Sat 9 AM – 6 PM IST).
+- **Formatting**: Use clean markdown with bold keywords and clickable markdown links. Keep replies neat and easy to read on mobile screens.`;
 
 export async function POST(request: Request) {
   let matchedProducts: any[] = [];
@@ -129,10 +83,10 @@ export async function POST(request: Request) {
     }
 
     const recentMessages = (messages || []).slice(-8);
-    const lastUserMsg = (recentMessages[recentMessages.length - 1]?.content || "").toLowerCase();
+    const lastUserMsg = (recentMessages[recentMessages.length - 1]?.content || "").toLowerCase().trim();
 
     // Check if the user's message is ONLY a compliment / feedback
-    const isPureCompliment = /^(all\s+)?(photos?|pics?|pictures?|images?|these|those)?\s*(are\s+|look\s+)?(very\s+|so\s+)?(good|nice|great|awesome|beautiful|super|perfect|fine|ok|okay|thank you|thanks)\b/i.test(lastUserMsg.trim());
+    const isPureCompliment = /^(all\s+)?(photos?|pics?|pictures?|images?|these|those)?\s*(are\s+|look\s+)?(very\s+|so\s+)?(good|nice|great|awesome|beautiful|super|perfect|fine|ok|okay|thank you|thanks)\b/i.test(lastUserMsg);
 
     // Check if user is asking for photos or exploring products/categories
     const isPhotoOrProductIntent = !isPureCompliment && (
@@ -226,19 +180,14 @@ export async function POST(request: Request) {
     const couponsList = dbCoupons.map(cp => `- ${cp.code}: ${cp.type === "percent" ? `${cp.value}%` : `₹${cp.value / 100}`} off`).join("\n") || "- WELCOME10: 10% off on first order";
 
     let dynamicPrompt = BASE_SYSTEM_PROMPT.replace(
-      "orders above ₹699 (flat ₹99 for orders below ₹699)",
-      `orders above ₹${freeThreshold} (flat ₹${shippingCharge} for orders below ₹${freeThreshold})`
+      "orders above ₹699 (flat ₹99 below)",
+      `orders above ₹${freeThreshold} (flat ₹${shippingCharge} below)`
     );
 
-    dynamicPrompt += `\n\n### 📦 Live Catalog & Database Context:
-- **Active Store Categories**:
-${categoriesList}
-
-- **Active Products on Sale**:
-${productsList}
-
-- **Active Promo Coupon Codes**:
-${couponsList}
+    dynamicPrompt += `\n\n### 📦 Store Context:
+- **Categories**: ${categoriesList}
+- **Products**: ${productsList.slice(0, 800)}
+- **Coupons**: ${couponsList}
 `;
 
     if (userContext) {
@@ -254,10 +203,10 @@ ${couponsList}
 
       const simplifiedAddresses = (addresses || []).slice(0, 2).map((a: any) => `${a.recipient}, ${a.line1}, ${a.city} - ${a.pincode}`);
 
-      dynamicPrompt += `\n\n### 👤 Authenticated Customer Live Context:
-- **Customer Name**: ${profile?.full_name || "Valued Customer"} (${profile?.email || "Signed In"})
-- **Active Cashback Balance**: ₹${((walletBalance || 0) / 100).toFixed(0)}
-- **Saved Addresses**: ${JSON.stringify(simplifiedAddresses)}
+      dynamicPrompt += `\n\n### 👤 User Live Context:
+- **Customer**: ${profile?.full_name || "Valued Customer"} (${profile?.email || "Signed In"})
+- **Wallet Balance**: ₹${((walletBalance || 0) / 100).toFixed(0)}
+- **Addresses**: ${JSON.stringify(simplifiedAddresses)}
 - **Recent Orders**: ${JSON.stringify(simplifiedOrders)}
 `;
     }
@@ -266,7 +215,8 @@ ${couponsList}
     const modelsToTry = [
       "llama-3.3-70b-versatile",
       "llama-3.1-8b-instant",
-      "mixtral-8x7b-32768",
+      "llama3-70b-8192",
+      "llama3-8b-8192",
       "gemma2-9b-it"
     ];
 
@@ -290,10 +240,10 @@ ${couponsList}
                   content: m.content
                 }))
               ],
-              temperature: 0.7,
-              max_tokens: 500,
+              temperature: 0.6,
+              max_tokens: 350,
             }),
-            signal: AbortSignal.timeout(8000),
+            signal: AbortSignal.timeout(7000),
           });
 
           if (groqRes.ok) {
@@ -314,26 +264,84 @@ ${couponsList}
       }
     }
 
-    // Intelligent context-rich fallback if API is unreachable
+    // Intelligent context-rich fallback if API is unreachable or rate limited
     if (!answer) {
-      if (isPhotoOrProductIntent && matchedProducts.length > 0) {
-        answer = `📸 **Authentic Handloom Product Collections**\n\nHere are photos of our authentic handloom creations crafted directly on traditional heritage looms in Komarapalayam. Tap any product below to view full details or order online!`;
-      } else if (lastUserMsg.includes("about") || lastUserMsg.includes("jai sri ram") || lastUserMsg.includes("brand") || lastUserMsg.includes("who are you")) {
-        answer = `🏛️ **About JAI SRI RAM TEXTILES**\n\nWe are a heritage handloom brand rooted in **Komarapalayam, Namakkal district, Tamil Nadu** — the renowned textile hub of South India.\n\n• **Our Craft**: Traditional pure combed cotton Dhotis (Veshtis) with authentic gold and silver Zari borders, premium water-absorbent towels, breathable cotton scarfs, and eco-friendly jute bags.\n• **Artisan Heritage**: Every yard is crafted by skilled weaver artisans on traditional shuttle looms.\n• **Direct Factory Weaving**: We also take bulk wedding, temple, and corporate custom orders!`;
-      } else if (lastUserMsg.includes("gift card") || lastUserMsg.includes("reward") || lastUserMsg.includes("claim") || lastUserMsg.includes("review")) {
-        answer = `🎁 **₹100 Gift Card Review Rewards**\n\nEarn an instant **₹100 Gift Card** by sharing your genuine positive 5-star review!\n\n1. **Review**: Leave your review on **Amazon, Flipkart, or Google Reviews**.\n2. **Take Screenshots**: Capture your 5-star rating & confirmation.\n3. **Claim Instantly**: Go to **[Claim Gift Card](/claim-giftcard)**, upload your screenshots and Order ID.\n4. **Redeem**: Valid for **1 full year** & redeemable straight into your store wallet as cashback!`;
-      } else if (lastUserMsg.includes("wallet") || lastUserMsg.includes("cashback") || lastUserMsg.includes("balance")) {
-        answer = `💰 **Cashback Wallet Benefits**\n\n• **Auto Credits**: Every delivered order credits cashback into your wallet.\n• **Redemption at Checkout**: Redeem your active cashback balance during checkout for up to **20% of your cart subtotal (max ₹50/order)**.\n• **Manage**: Check your balance anytime in **[My Wallet](/account?tab=wallet)**!`;
-      } else if (lastUserMsg.includes("order") || lastUserMsg.includes("buy") || lastUserMsg.includes("purchase") || lastUserMsg.includes("how to")) {
-        answer = `🛍️ **How to Place an Order Online**\n\n1. **Browse Collections**: Explore our pure cotton Dhotis, Towels, Scarfs, and Jute Bags in the **[Shop](/shop)**.\n2. **Add to Bag**: Choose your required size (Single/Double) and click **Add to Cart**.\n3. **Apply Coupon**: Use code **\`WELCOME10\`** at checkout for **10% OFF** your first order!\n4. **Secure Checkout**: Pay securely via UPI, Cards, Net Banking, or Wallet Cashback. Free shipping on orders over ₹${freeThreshold}!`;
-      } else if (lastUserMsg.includes("ship") || lastUserMsg.includes("delivery") || lastUserMsg.includes("tracking")) {
-        answer = `🚚 **Shipping & Delivery Details**\n\n• **Free Shipping**: On all orders above **₹${freeThreshold}** across India.\n• **Standard Shipping**: Flat ₹${shippingCharge} for orders under ₹${freeThreshold}.\n• **Delivery Time**: 4–7 business days with live tracking in **[My Orders](/account?tab=orders)**.`;
-      } else if (lastUserMsg.includes("bulk") || lastUserMsg.includes("wholesale") || lastUserMsg.includes("custom") || lastUserMsg.includes("wedding")) {
-        answer = `🏭 **Bulk & Wholesale Handloom Orders**\n\nWe provide direct loom factory pricing for weddings, temple functions, corporate gifting, and wholesale distributors.\n\n• Custom border names & designs\n• Bulk tiered discounts\n• Submit your inquiry at **[Bulk Orders](/bulk-orders)** or email **jaisriramtextilekpm@gmail.com**!`;
-      } else if (lastUserMsg.includes("support") || lastUserMsg.includes("help") || lastUserMsg.includes("contact") || lastUserMsg.includes("ticket")) {
-        answer = `🎧 **Customer Support & Assistance**\n\n• **Raise Ticket**: Go to **[Support Desk](/account?tab=support)** to open an official inquiry with < 24-hr resolution.\n• **Official Email**: \`jaisriramtextilekpm@gmail.com\`\n• **Hours**: Mon – Sat, 9:00 AM – 6:00 PM IST.`;
-      } else {
-        answer = `🙏 **Vanakkam & Welcome to JAI SRI RAM TEXTILES!**\n\nI am your Loom Assistant, here to help you explore our heritage handloom creations:\n\n• 🥻 **Pure Cotton Dhotis**: Wedding Zari, Balaji & Temple borders\n• 🌿 **Cotton Towels & Scarfs**: High-absorbent, breathable\n• 🎁 **Review Rewards**: Claim **₹100 Gift Card** for your review at **[Claim Giftcard](/claim-giftcard)**\n• 💰 **Promo**: Use coupon **\`WELCOME10\`** for 10% off!\n\nHow can I assist you today?`;
+      const q = lastUserMsg;
+      const isGiftCardQuery = q.includes("giftcard") || q.includes("gift card") || q.includes("gift-card") || q.includes("voucher");
+      const isRewardQuery = q.includes("reward") || q.includes("claim") || q.includes("100") || q.includes("review");
+      const isMissingQuery = q.includes("missing") || q.includes("not received") || q.includes("didn't get") || q.includes("not credited") || q.includes("where is") || q.includes("not showing") || q.includes("issue") || q.includes("problem") || q.includes("not working") || q.includes("pending");
+
+      // 1. Missing or pending giftcard
+      if ((isGiftCardQuery || isRewardQuery) && isMissingQuery) {
+        answer = `🎁 **Gift Card Status & Missing Rewards**\n\n• **Check Gift Card History**: All generated codes appear on the **[Claim Gift Card](/claim-giftcard)** page under **Gift Card History**.\n• **Review Verification**: Reviews are verified within **24 hours**.\n• **Redemption**: Once approved, click **Redeem to Wallet** in 1-click to add ₹100 to your **[Wallet Balance](/account?tab=wallet)**.\n• **Need Help?**: Raise a quick ticket at **[Support Desk](/account?tab=support)** or email \`jaisriramtextilekpm@gmail.com\`.`;
+      }
+      // 2. General Giftcard / Review reward claim
+      else if (isGiftCardQuery || isRewardQuery) {
+        answer = `🎁 **₹100 Gift Card Review Rewards**\n\n1. Leave a 5-star review on **Amazon, Flipkart, or Google Reviews**.\n2. Submit review screenshots at **[Claim Gift Card](/claim-giftcard)**.\n3. Receive your **₹100 Gift Card** code (valid for 365 days) and redeem straight into your wallet!`;
+      }
+      // 3. Wallet & Cashback
+      else if (q.includes("wallet") || q.includes("cashback") || q.includes("balance") || q.includes("credit")) {
+        answer = `💰 **Cashback Wallet Balance**\n\n• **Earn**: Automatic cashback credited on every delivered order.\n• **Redeem at Checkout**: Use active wallet balance for up to **20% of order total (max ₹50/order)**.\n• **Manage**: View balance and transactions in **[My Wallet](/account?tab=wallet)**.`;
+      }
+      // 4. Order tracking & where is my order
+      else if (q.includes("track") || q.includes("where is my order") || q.includes("order status") || q.includes("courier") || q.includes("awb") || q.includes("consignment")) {
+        answer = `📦 **Track Your Order**\n\n• View live tracking details in **[My Orders](/account?tab=orders)**.\n• Orders are dispatched within 24–48 hours with SMS tracking updates.\n• Delivery takes **4–7 business days** across India.`;
+      }
+      // 5. Order cancellation / modification
+      else if (q.includes("cancel") || q.includes("change address") || q.includes("modify order") || q.includes("wrong order")) {
+        answer = `🛑 **Order Cancellation & Changes**\n\n• Orders can be cancelled or updated before dispatch.\n• Please raise a priority request at **[Support Desk](/account?tab=support)** or email \`jaisriramtextilekpm@gmail.com\` with your Order ID immediately.`;
+      }
+      // 6. Returns / Replacements / Damaged item
+      else if (q.includes("return") || q.includes("replace") || q.includes("damaged") || q.includes("defective") || q.includes("broken") || q.includes("refund")) {
+        answer = `🛡️ **7-Day Easy Replacement Policy**\n\n• We offer free 7-day replacement for any damaged, defective, or incorrect items.\n• Submit photos and order details at **[Support Desk](/account?tab=support)** for fast resolution within 24 hours.`;
+      }
+      // 7. Shipping / Delivery time & charges
+      else if (q.includes("ship") || q.includes("delivery") || q.includes("charge") || q.includes("days") || q.includes("pincode") || q.includes("speed")) {
+        answer = `🚚 **Shipping & Delivery**\n\n• **Free Shipping**: On all orders above **₹${freeThreshold}** (flat ₹${shippingCharge} for orders below).\n• **Timeline**: Delivered across India in **4–7 business days**.\n• Track anytime in **[My Orders](/account?tab=orders)**.`;
+      }
+      // 8. Payment & COD
+      else if (q.includes("payment") || q.includes("cod") || q.includes("cash on delivery") || q.includes("upi") || q.includes("gpay") || q.includes("phonepe") || q.includes("paytm") || q.includes("card") || q.includes("failed")) {
+        answer = `💳 **Payment Options**\n\n• 100% secure payments via **Razorpay** supporting UPI (GPay, PhonePe, Paytm), Cards, Net Banking, and Wallet Cashback.\n• If payment was deducted without order confirmation, refunds auto-credit within 3–5 business days.`;
+      }
+      // 9. Coupons & Discounts
+      else if (q.includes("coupon") || q.includes("discount") || q.includes("promo") || q.includes("code") || q.includes("offer") || q.includes("welcome10")) {
+        answer = `🏷️ **Discounts & Offers**\n\n• Use coupon **\`WELCOME10\`** at checkout for **10% OFF** your first order!\n• Plus earn a **₹100 Gift Card** by reviewing your purchase at **[Claim Gift Card](/claim-giftcard)**.`;
+      }
+      // 10. Single vs Double Veshti / Sizing
+      else if (q.includes("single") || q.includes("double") || q.includes("size") || q.includes("meter") || q.includes("length") || q.includes("muzham") || q.includes("measurement")) {
+        answer = `📏 **Dhoti / Veshti Sizing Guide**\n\n• **Single Veshti (2 Meters / 4 Muzham)**: Great for daily casual wear, temple pooja, and easy single wrap.\n• **Double Veshti (4 Meters / 8 Muzham)**: Traditional grand double-fold drape preferred for weddings, festivals, and Panchakacham.\n• Explore sizes in the **[Shop](/shop)**.`;
+      }
+      // 11. Fabric / Pure Cotton / Wash care
+      else if (q.includes("cotton") || q.includes("fabric") || q.includes("material") || q.includes("wash") || q.includes("care") || q.includes("pure") || q.includes("quality") || q.includes("shrink")) {
+        answer = `🌿 **100% Combed Handloom Cotton**\n\n• Crafted with pure long-staple combed cotton for superior breathability and softness.\n• **Wash Care**: Gentle hand or machine wash in cold water with mild detergent; dry in shade and iron on medium heat.`;
+      }
+      // 12. Photos / Products
+      else if (isPhotoOrProductIntent && matchedProducts.length > 0) {
+        answer = `📸 **Authentic Handloom Creations**\n\nHere are popular selections from our loom catalog. Tap any product below to view details and sizes:`;
+      }
+      // 13. Bulk / Wholesale / Custom orders
+      else if (q.includes("bulk") || q.includes("wholesale") || q.includes("custom") || q.includes("wedding order") || q.includes("temple")) {
+        answer = `🏭 **Bulk & Wholesale Orders**\n\n• Direct weaver pricing for weddings, temple trusts, and corporate gifting.\n• Custom zari borders and bespoke packaging available.\n• Submit inquiries at **[Bulk Orders](/bulk-orders)** or email \`jaisriramtextilekpm@gmail.com\`.`;
+      }
+      // 14. Support & Contact
+      else if (q.includes("support") || q.includes("help") || q.includes("contact") || q.includes("phone") || q.includes("email") || q.includes("ticket") || q.includes("call") || q.includes("customer care")) {
+        answer = `🎧 **Customer Support Desk**\n\n• **Priority Ticket**: Raise a request at **[Support Desk](/account?tab=support)** (< 24 hr resolution).\n• **Email**: \`jaisriramtextilekpm@gmail.com\`\n• **Hours**: Mon – Sat, 9:00 AM – 6:00 PM IST.`;
+      }
+      // 15. About brand
+      else if (q.includes("about") || q.includes("jai sri ram") || q.includes("who are you") || q.includes("location") || q.includes("komarapalayam")) {
+        answer = `🏛️ **About JAI SRI RAM TEXTILES**\n\nWe are a heritage handloom weaving house based in **Komarapalayam, Tamil Nadu** (the textile capital), specializing in authentic pure cotton Dhotis with genuine Zari, water-absorbent towels, airy scarfs, and eco-friendly jute bags.`;
+      }
+      // 16. Account & Password
+      else if (q.includes("login") || q.includes("sign in") || q.includes("password") || q.includes("account") || q.includes("forgot")) {
+        answer = `👤 **Account Assistance**\n\n• Reset your password at **[Forgot Password](/forgot-password)**.\n• Manage profile and orders in **[My Account](/account)**.`;
+      }
+      // 17. Greetings / Hi / Hello
+      else if (/^(hi|hello|hey|vanakkam|namaste|good\s*(morning|afternoon|evening))\b/i.test(q)) {
+        answer = `🙏 **Vanakkam! Welcome to JAI SRI RAM TEXTILES.**\n\nHow can I help you today with our handloom dhotis, towels, ₹100 review gift cards, or order tracking?`;
+      }
+      // 18. Default fallback: Clean and concise
+      else {
+        answer = `🙏 **Vanakkam!**\n\nI am here to assist you. Could you please specify if you need help with **₹100 Gift Cards**, **Order Tracking**, **Dhotis & Sizing**, **Shipping**, or **[Customer Support](/account?tab=support)**?`;
       }
     }
 
@@ -344,7 +352,7 @@ ${couponsList}
   } catch (error: any) {
     console.error("Chat API error:", error);
     return NextResponse.json({
-      response: `🙏 **Vanakkam!** Welcome to JAI SRI RAM TEXTILES. How can we assist you with our handloom products, ₹100 gift card rewards, or orders today?`,
+      response: `🙏 **Vanakkam!** Welcome to JAI SRI RAM TEXTILES. How can I assist you with our handloom products, ₹100 gift cards, or orders today?`,
       products: matchedProducts.length > 0 ? matchedProducts : undefined
     });
   }

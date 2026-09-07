@@ -111,13 +111,6 @@ export function Navbar() {
 
           {/* Actions */}
           <div className="flex items-center gap-1.5 sm:gap-2">
-            <button
-              onClick={() => setSearchOpen(true)}
-              aria-label="Search"
-              className="relative rounded-full p-2 text-ink transition-colors hover:bg-cream cursor-pointer"
-            >
-              <Search size={19} />
-            </button>
             <WishlistButton count={wishlistCount} className="hidden lg:inline-flex" />
             <IconLink href="/account" label="Account"><User size={19} /></IconLink>
             <CartButton count={cartCount} />

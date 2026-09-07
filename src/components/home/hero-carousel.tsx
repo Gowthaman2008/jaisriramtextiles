@@ -2,15 +2,16 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   ArrowRight,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   Volume2,
   VolumeX,
   Search,
-  Camera,
   Mic,
   ScanLine,
   MapPin,
@@ -23,6 +24,8 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { placeholderImage } from "@/lib/cloudinary-image";
 import { SearchOverlay } from "@/components/layout/search-overlay";
+import { AddressSelectorModal, Address } from "@/components/home/address-selector-modal";
+import { createClient } from "@/lib/supabase/client";
 
 export function isVideoMediaUrl(url?: string | null): boolean {
   if (!url) return false;
@@ -177,6 +180,9 @@ export function HeroCarousel({ dbSlides }: { dbSlides?: any[] }) {
   const [[index, dir], setState] = useState<[number, number]>([0, 1]);
   const [isMuted, setIsMuted] = useState(true);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [addressModalOpen, setAddressModalOpen] = useState(false);
+  const [userAddress, setUserAddress] = useState<Address | null>(null);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isDesktop, setIsDesktop] = useState(false);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
   const mobileScrollRef = useRef<HTMLDivElement>(null);
@@ -187,6 +193,32 @@ export function HeroCarousel({ dbSlides }: { dbSlides?: any[] }) {
     check();
     window.addEventListener("resize", check);
     return () => window.removeEventListener("resize", check);
+  }, []);
+
+  // Fetch logged in user's saved default delivery address
+  useEffect(() => {
+    async function loadSavedAddress() {
+      try {
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          setIsLoggedIn(true);
+          const { data: addrs } = await supabase
+            .from("addresses")
+            .select("*")
+            .eq("user_id", user.id)
+            .order("is_default", { ascending: false });
+
+          if (addrs && addrs.length > 0) {
+            const defaultAddr = addrs.find((a: Address) => a.is_default) || addrs[0];
+            setUserAddress(defaultAddr);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load header address:", err);
+      }
+    }
+    loadSavedAddress();
   }, []);
 
   useEffect(() => {
@@ -290,7 +322,7 @@ export function HeroCarousel({ dbSlides }: { dbSlides?: any[] }) {
       <section
         aria-roledescription="carousel"
         aria-label="Featured highlights"
-        className="relative bg-gradient-to-b from-cream/40 via-cream/10 to-transparent pt-1 pb-4 sm:py-4 overflow-hidden"
+        className="relative bg-gradient-to-b from-cream/40 via-cream/10 to-transparent pt-1 pb-2 sm:pb-4 overflow-hidden"
       >
         <div className="w-full max-w-7xl mx-auto">
           {/* ========================================================================= */}
@@ -314,23 +346,8 @@ export function HeroCarousel({ dbSlides }: { dbSlides?: any[] }) {
                 </div>
               </div>
 
-              {/* Right Action Icons (Amazon Style: Camera/AI Lens, Mic, Scan) */}
+              {/* Right Action Icons (Voice / Scan) */}
               <div className="flex items-center gap-2 sm:gap-3 shrink-0 text-ink/70 pl-2 border-l border-line/40">
-                <button
-                  type="button"
-                  aria-label="Visual AI Search"
-                  title="Search with image or camera"
-                  className="p-1 hover:text-zari-deep transition-colors relative"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSearchOpen(true);
-                  }}
-                >
-                  <div className="relative">
-                    <Camera className="w-4 h-4 sm:w-5 sm:h-5" />
-                    <Sparkles className="w-2 h-2 text-zari absolute -top-1 -right-1" />
-                  </div>
-                </button>
                 <button
                   type="button"
                   aria-label="Voice Search"
@@ -360,13 +377,32 @@ export function HeroCarousel({ dbSlides }: { dbSlides?: any[] }) {
 
             {/* Amazon-style Location / Quick Delivery Strip */}
             <div className="flex items-center justify-between px-1 text-[11px] sm:text-xs text-taupe font-medium">
-              <div className="flex items-center gap-1.5 truncate">
-                <MapPin className="w-3.5 h-3.5 text-zari-deep shrink-0" />
+              <button
+                type="button"
+                onClick={() => setAddressModalOpen(true)}
+                className="flex items-center gap-1.5 truncate text-left hover:text-ink transition group cursor-pointer focus:outline-none max-w-[70%]"
+                title="Click to view or edit delivery address"
+              >
+                <MapPin className="w-3.5 h-3.5 text-zari-deep shrink-0 group-hover:scale-110 transition-transform" />
                 <span className="truncate">
-                  Deliver to <strong className="text-ink font-semibold">India</strong> — All Pincodes Supported
+                  {userAddress ? (
+                    <>
+                      Deliver to <strong className="text-ink font-semibold underline decoration-dotted decoration-zari/60 underline-offset-2">{userAddress.recipient || "You"}</strong>
+                      {" "}&bull; {userAddress.city} {userAddress.pincode}
+                    </>
+                  ) : isLoggedIn ? (
+                    <>
+                      Deliver to <strong className="text-ink font-semibold underline decoration-dotted decoration-zari/60 underline-offset-2">Select Location</strong> — Add or choose address
+                    </>
+                  ) : (
+                    <>
+                      Deliver to <strong className="text-ink font-semibold underline decoration-dotted decoration-zari/60 underline-offset-2">India</strong> — Select to view delivery address
+                    </>
+                  )}
                 </span>
-              </div>
-              <div className="flex items-center gap-1 shrink-0 text-[10px] sm:text-[11px] font-bold text-zari-deep uppercase tracking-wider">
+                <ChevronDown className="w-3 h-3 text-taupe shrink-0 group-hover:text-zari-deep transition-colors" />
+              </button>
+              <div className="flex items-center gap-1 shrink-0 text-[10px] sm:text-[11px] font-bold text-zari-deep uppercase tracking-wider pl-2">
                 <ShieldCheck className="w-3.5 h-3.5" />
                 <span>100% Authentic</span>
               </div>
@@ -399,13 +435,17 @@ export function HeroCarousel({ dbSlides }: { dbSlides?: any[] }) {
                 const isActive = idx === index;
 
                 return (
-                  <div
+                  <Link
                     key={idx}
-                    onClick={() => {
-                      if (!isActive) go(idx, idx > index ? 1 : -1);
+                    href={s.cta.href}
+                    onClick={(e) => {
+                      if (!isActive) {
+                        e.preventDefault();
+                        go(idx, idx > index ? 1 : -1);
+                      }
                     }}
                     className={cn(
-                      "w-[72vw] max-w-[290px] shrink-0 snap-start h-[410px] sm:h-[440px] rounded-2xl overflow-hidden border border-ink/10 shadow-md relative bg-stone-900 transition-all duration-300",
+                      "w-[72vw] max-w-[290px] shrink-0 snap-start h-[410px] sm:h-[440px] rounded-2xl overflow-hidden border border-ink/10 shadow-md relative bg-stone-900 transition-all duration-300 block cursor-pointer select-none",
                       isActive ? "ring-1.5 ring-zari/40 shadow-lg" : "opacity-85"
                     )}
                   >
@@ -429,61 +469,52 @@ export function HeroCarousel({ dbSlides }: { dbSlides?: any[] }) {
                         />
                       )}
 
-                      {/* Amazon-style High-Contrast Scrim Gradient */}
-                      <div className="absolute inset-0 bg-gradient-to-t from-ink/95 via-ink/40 to-ink/20" />
-                      <div className="absolute inset-0 bg-weave opacity-20 mix-blend-multiply" />
+                      {/* Gradient Scrim: Clear at the top so image/video shows cleanly, smooth gradient at bottom for text */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 via-55% to-transparent" />
+                      <div className="absolute inset-0 bg-weave opacity-15 mix-blend-multiply" />
                     </div>
 
-                    {/* Card Content Overlay: Top Title/Eyebrow + Bottom CTA (Amazon Layout) */}
-                    <div className="relative z-10 flex flex-col justify-between h-full p-4 text-white">
-                      {/* Top Section: Eyebrow + Bold Title + Subtitle */}
-                      <div className="space-y-2">
-                        <div>
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-zari/25 text-zari-soft text-[10px] font-bold tracking-wider uppercase backdrop-blur-md border border-zari/40 shadow-xs">
+                    {/* Card Content Overlay: Top Utilities + Bottom Text Content */}
+                    <div className="relative z-10 flex flex-col justify-between h-full p-3.5 sm:p-4 text-white">
+                      {/* Top Bar: Subtle Eyebrow Pill + Sound Toggle */}
+                      <div className="flex items-center justify-between gap-2">
+                        {s.eyebrow ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-black/40 text-zari-soft text-[9px] font-bold tracking-wider uppercase backdrop-blur-md border border-zari/30 shadow-xs">
                             <Sparkles className="w-2.5 h-2.5 text-zari-soft" />
                             {s.eyebrow}
                           </span>
-                        </div>
-
-                        {/* Title */}
-                        <h2 className="font-display text-2xl font-black text-white leading-tight drop-shadow-md">
-                          {s.title}
-                        </h2>
-
-                        {/* Subtitle */}
-                        <p className="text-xs text-white/85 leading-snug line-clamp-3 font-medium">
-                          {s.subtitle}
-                        </p>
-                      </div>
-
-                      {/* Bottom Section: CTA Button + Sound Toggle */}
-                      <div className="pt-2 flex items-center gap-2">
-                        <Button
-                          variant="gold"
-                          size="sm"
-                          href={s.cta.href}
-                          className="rounded-full shadow-md text-xs font-bold px-4 py-2 h-8"
-                        >
-                          {s.cta.label}
-                          <ArrowRight size={13} />
-                        </Button>
+                        ) : <div />}
 
                         {sIsVideo && isActive && (
                           <button
                             type="button"
                             onClick={(e) => {
+                              e.preventDefault();
                               e.stopPropagation();
                               setIsMuted((prev) => !prev);
                             }}
                             aria-label={isMuted ? "Unmute video" : "Mute video"}
-                            className="p-1.5 rounded-full border border-white/30 bg-black/60 text-white backdrop-blur text-xs font-semibold hover:border-zari transition shadow-sm"
+                            className="p-1.5 rounded-full border border-white/30 bg-black/60 text-white backdrop-blur text-[11px] font-semibold hover:border-zari transition shadow-sm cursor-pointer ml-auto"
                           >
-                            {isMuted ? <VolumeX size={14} /> : <Volume2 size={14} />}
+                            {isMuted ? <VolumeX size={13} /> : <Volume2 size={13} />}
                           </button>
                         )}
                       </div>
+
+                      {/* Bottom Section: All Text (Title + Subtitle) perfectly fitted at the bottom */}
+                      <div className="space-y-1">
+                        {/* Title */}
+                        <h2 className="font-display text-base sm:text-lg font-bold text-white leading-tight drop-shadow-md">
+                          {s.title}
+                        </h2>
+
+                        {/* Subtitle */}
+                        <p className="text-[11px] sm:text-xs text-white/85 leading-snug line-clamp-2 font-medium">
+                          {s.subtitle}
+                        </p>
+                      </div>
                     </div>
-                  </div>
+                  </Link>
                 );
               })}
             </div>
@@ -500,7 +531,10 @@ export function HeroCarousel({ dbSlides }: { dbSlides?: any[] }) {
               onTouchEnd={onTouchEnd}
             >
               {/* Main Rounded Hero Card */}
-              <div className="relative w-full h-[520px] lg:h-[580px] rounded-[32px] overflow-hidden border border-ink/10 shadow-lift bg-cream/30">
+              <Link
+                href={slide.cta.href}
+                className="relative block w-full h-[520px] lg:h-[580px] rounded-[32px] overflow-hidden border border-ink/10 shadow-lift bg-cream/30 cursor-pointer group"
+              >
                 {/* Background Media with AnimatePresence */}
                 <AnimatePresence initial={false} custom={dir}>
                   <motion.div
@@ -527,7 +561,7 @@ export function HeroCarousel({ dbSlides }: { dbSlides?: any[] }) {
                         fill
                         priority={index === 0}
                         sizes="(max-width: 1200px) 90vw, 1200px"
-                        className="object-cover"
+                        className="object-cover group-hover:scale-102 transition-transform duration-700 ease-out"
                       />
                     )}
 
@@ -564,52 +598,57 @@ export function HeroCarousel({ dbSlides }: { dbSlides?: any[] }) {
                         <p className="mt-3.5 max-w-md text-base lg:text-lg leading-relaxed text-taupe font-medium">
                           {slide.subtitle}
                         </p>
-
-                        {/* CTA Button */}
-                        <div className="mt-6 flex items-center gap-3">
-                          <Button
-                            variant="gold"
-                            size="lg"
-                            href={slide.cta.href}
-                            className="rounded-full shadow-md hover:shadow-lg transition-transform active:scale-95"
-                          >
-                            {slide.cta.label}
-                            <ArrowRight size={18} />
-                          </Button>
-
-                          {isVideo && (
-                            <button
-                              onClick={() => setIsMuted((prev) => !prev)}
-                              aria-label={isMuted ? "Unmute video" : "Mute video"}
-                              className="flex items-center gap-1.5 px-3 py-2.5 rounded-full border border-ink/15 bg-ivory/80 text-ink backdrop-blur text-xs font-semibold hover:border-zari transition shadow-sm cursor-pointer"
-                            >
-                              {isMuted ? <VolumeX size={15} /> : <Volume2 size={15} />}
-                              <span>{isMuted ? "Unmute" : "Mute"}</span>
-                            </button>
-                          )}
-                        </div>
                       </motion.div>
                     </AnimatePresence>
                   </div>
-                </div>
 
-                {/* Desktop Next/Prev Arrow Controls */}
-                <div className="flex items-center justify-between absolute inset-x-4 top-1/2 -translate-y-1/2 z-20 pointer-events-none">
-                  <button
-                    aria-label="Previous Slide"
-                    onClick={() => go(index - 1, -1)}
-                    className="pointer-events-auto grid h-11 w-11 place-items-center rounded-full border border-line/50 bg-white/90 text-ink shadow-md backdrop-blur hover:bg-white hover:scale-105 active:scale-95 transition-all cursor-pointer"
-                  >
-                    <ChevronLeft size={20} />
-                  </button>
-                  <button
-                    aria-label="Next Slide"
-                    onClick={() => go(index + 1, 1)}
-                    className="pointer-events-auto grid h-11 w-11 place-items-center rounded-full border border-line/50 bg-white/90 text-ink shadow-md backdrop-blur hover:bg-white hover:scale-105 active:scale-95 transition-all cursor-pointer"
-                  >
-                    <ChevronRight size={20} />
-                  </button>
+                  {/* Video Mute Toggle */}
+                  {isVideo && (
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setIsMuted((prev) => !prev);
+                        }}
+                        aria-label={isMuted ? "Unmute video" : "Mute video"}
+                        className="flex items-center gap-1.5 px-3 py-2.5 rounded-full border border-ink/15 bg-ivory/80 text-ink backdrop-blur text-xs font-semibold hover:border-zari transition shadow-sm cursor-pointer z-20"
+                      >
+                        {isMuted ? <VolumeX size={15} /> : <Volume2 size={15} />}
+                        <span>{isMuted ? "Unmute" : "Mute"}</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
+              </Link>
+
+              {/* Desktop Next/Prev Arrow Controls */}
+              <div className="flex items-center justify-between absolute inset-x-4 top-1/2 -translate-y-1/2 z-20 pointer-events-none">
+                <button
+                  type="button"
+                  aria-label="Previous Slide"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    go(index - 1, -1);
+                  }}
+                  className="pointer-events-auto grid h-11 w-11 place-items-center rounded-full border border-line/50 bg-white/90 text-ink shadow-md backdrop-blur hover:bg-white hover:scale-105 active:scale-95 transition-all cursor-pointer"
+                >
+                  <ChevronLeft size={20} />
+                </button>
+                <button
+                  type="button"
+                  aria-label="Next Slide"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    go(index + 1, 1);
+                  }}
+                  className="pointer-events-auto grid h-11 w-11 place-items-center rounded-full border border-line/50 bg-white/90 text-ink shadow-md backdrop-blur hover:bg-white hover:scale-105 active:scale-95 transition-all cursor-pointer"
+                >
+                  <ChevronRight size={20} />
+                </button>
               </div>
 
               {/* Amazon-Style Adjacent Card Peek (Visual accent on larger screens) */}
@@ -652,6 +691,13 @@ export function HeroCarousel({ dbSlides }: { dbSlides?: any[] }) {
 
       {/* Global Interactive Search Overlay */}
       <SearchOverlay open={searchOpen} onClose={() => setSearchOpen(false)} />
+
+      {/* Interactive Delivery Address Selector & Editor Modal */}
+      <AddressSelectorModal
+        isOpen={addressModalOpen}
+        onClose={() => setAddressModalOpen(false)}
+        onAddressSelect={(addr) => setUserAddress(addr)}
+      />
     </>
   );
 }

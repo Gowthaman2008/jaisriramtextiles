@@ -219,10 +219,11 @@ export function AIChatbot() {
     }
 
     const dynamicChips: any[] = [];
-    if (text.includes("gift card") || text.includes("review") || text.includes("claim")) {
+    if (text.includes("giftcard") || text.includes("gift card") || text.includes("voucher") || text.includes("review") || text.includes("claim")) {
       dynamicChips.push({ label: "🎁 Claim ₹100 Gift Card", href: "/claim-giftcard" });
+      dynamicChips.push({ label: "📜 Gift Card History", href: "/claim-giftcard" });
     }
-    if (text.includes("wallet") || text.includes("cashback")) {
+    if (text.includes("wallet") || text.includes("cashback") || text.includes("balance")) {
       dynamicChips.push({ label: "💰 Open Wallet", href: "/account?tab=wallet" });
     }
     if (text.includes("shop") || text.includes("dhoti") || text.includes("towel") || text.includes("veshti") || text.includes("scarf") || text.includes("bag")) {
@@ -231,10 +232,10 @@ export function AIChatbot() {
     if (text.includes("bulk") || text.includes("wholesale") || text.includes("custom")) {
       dynamicChips.push({ label: "🏭 Bulk Orders", href: "/bulk-orders" });
     }
-    if (text.includes("order") || text.includes("track") || text.includes("delivery") || text.includes("shipping")) {
+    if (text.includes("order") || text.includes("track") || text.includes("delivery") || text.includes("shipping") || text.includes("cancel")) {
       dynamicChips.push({ label: "📦 My Orders", href: "/account?tab=orders" });
     }
-    if (text.includes("support") || text.includes("ticket") || text.includes("contact")) {
+    if (text.includes("support") || text.includes("ticket") || text.includes("contact") || text.includes("missing") || text.includes("return") || text.includes("replace") || text.includes("help")) {
       dynamicChips.push({ label: "🎧 Support Desk", href: "/account?tab=support" });
     }
 
@@ -800,26 +801,29 @@ function parseMarkdown(text: string) {
   const lines = text.split("\n");
   return lines.map((line, lineIdx) => {
     const trimmed = line.trim();
+    if (!trimmed) {
+      return <div key={lineIdx} className="h-1" />;
+    }
     
-    // Check for bullet list
-    const isBullet = trimmed.startsWith("- ") || trimmed.startsWith("* ");
+    // Check for bullet list (-, *, •, ⁃, ▪)
+    const isBullet = /^[-*•⁃▪]\s*/.test(trimmed);
     if (isBullet) {
-      const content = trimmed.substring(2);
+      const content = trimmed.replace(/^[-*•⁃▪]\s*/, "");
       return (
-        <li key={lineIdx} className="list-disc ml-4 my-1">
+        <li key={lineIdx} className="list-disc ml-3.5 my-0.5 leading-snug">
           {renderInlineMarkdown(content)}
         </li>
       );
     }
 
-    // Check for numbered list
-    const isNumbered = /^\d+\.\s/.test(trimmed);
+    // Check for numbered list (1., 2., etc.)
+    const isNumbered = /^\d+[\.\)]\s/.test(trimmed);
     if (isNumbered) {
-      const match = trimmed.match(/^(\d+)\.\s(.*)/);
+      const match = trimmed.match(/^(\d+)[\.\)]\s(.*)/);
       if (match) {
         const content = match[2];
         return (
-          <li key={lineIdx} className="list-decimal ml-4 my-1">
+          <li key={lineIdx} className="list-decimal ml-3.5 my-0.5 leading-snug">
             {renderInlineMarkdown(content)}
           </li>
         );
@@ -828,7 +832,7 @@ function parseMarkdown(text: string) {
 
     // Regular paragraph
     return (
-      <p key={lineIdx} className="mb-1 last:mb-0">
+      <p key={lineIdx} className="mb-1 last:mb-0 leading-relaxed">
         {renderInlineMarkdown(line)}
       </p>
     );
