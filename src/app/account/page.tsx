@@ -12,6 +12,7 @@ import { ProductCard } from "@/components/home/product-card";
 import { formatINR } from "@/lib/utils";
 import { jsPDF } from "jspdf";
 import { drawInvoicePdf } from "@/lib/invoice-generator";
+import type { Product } from "@/lib/types";
 import {
   User,
   ShoppingBag,
@@ -24,6 +25,7 @@ import {
   RefreshCw,
   Printer,
   ChevronLeft,
+  ChevronRight,
   Calendar,
   CreditCard,
   History,
@@ -38,7 +40,9 @@ import {
   Gift,
   CheckCircle2,
   AlertCircle,
-  ChevronDown
+  ChevronDown,
+  Shuffle,
+  Sparkles
 } from "lucide-react";
 
 export default function AccountPage() {
@@ -117,6 +121,10 @@ export default function AccountPage() {
   const [walletBalance, setWalletBalance] = useState(0);
   const [walletHistory, setWalletHistory] = useState<any[]>([]);
   const [showWalletLogs, setShowWalletLogs] = useState(false);
+  const [suggestedProducts, setSuggestedProducts] = useState<Product[]>([]);
+  const [allProductsPool, setAllProductsPool] = useState<Product[]>([]);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [addresses, setAddresses] = useState<any[]>([]);
   const [userReviews, setUserReviews] = useState<any[]>([]);
 
@@ -339,6 +347,114 @@ export default function AccountPage() {
       setRefreshing(false);
     }
   }
+
+  function shuffleAndPickSuggestions(pool: Product[]) {
+    if (!pool || pool.length === 0) return [];
+    const shuffled = [...pool].sort(() => Math.random() - 0.5);
+    return shuffled.slice(0, 10);
+  }
+
+  const handleScrollLeft = () => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollBy({ left: -320, behavior: "smooth" });
+    }
+  };
+
+  const handleScrollRight = () => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollBy({ left: 320, behavior: "smooth" });
+    }
+  };
+
+  const handleReshuffle = () => {
+    if (allProductsPool.length > 0) {
+      setSuggestedProducts(shuffleAndPickSuggestions(allProductsPool));
+    }
+  };
+
+  useEffect(() => {
+    async function loadSuggestedProducts() {
+      if (allProductsPool.length > 0) {
+        setSuggestedProducts(shuffleAndPickSuggestions(allProductsPool));
+        return;
+      }
+      setLoadingSuggestions(true);
+      try {
+        const { data, error } = await supabase
+          .from("products")
+          .select(`
+            id, slug, name, description, price_paise, compare_at_paise, cashback_paise, stock,
+            is_on_sale, rating_avg, rating_count, show_size, is_featured, is_bestseller, is_new, is_trending, pieces_per_pack,
+            categories(slug, name),
+            product_images(url, alt, sort_order),
+            product_variants(id, size, color, sku, stock)
+          `)
+          .eq("is_active", true)
+          .limit(40);
+
+        if (data && data.length > 0) {
+          const mapped: Product[] = data.map((row: any) => {
+            const images = (row.product_images || [])
+              .sort((a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+              .map((img: any) => img.url);
+
+            const variants = (row.product_variants || []).map((v: any) => ({
+              id: v.id,
+              size: v.size || "",
+              color: v.color || "",
+              sku: v.sku || "",
+              stock: v.stock || 0,
+            }));
+
+            const category = (row.categories as any)?.slug || "dhotis";
+            const categoryLabel = (row.categories as any)?.name || "Handloom";
+
+            const badges: ("new" | "bestseller" | "trending" | "sale")[] = [];
+            if (row.is_new) badges.push("new");
+            if (row.is_bestseller) badges.push("bestseller");
+            if (row.is_trending) badges.push("trending");
+            if (row.is_on_sale) badges.push("sale");
+
+            return {
+              id: row.id,
+              slug: row.slug,
+              name: row.name,
+              description: row.description,
+              category,
+              categoryLabel,
+              pricePaise: row.price_paise,
+              compareAtPaise: row.compare_at_paise,
+              cashbackPaise: row.cashback_paise || 0,
+              image: images[0] || "/placeholder.jpg",
+              images,
+              rating: row.rating_avg || 4.8,
+              reviewCount: row.rating_count || 12,
+              inStock: (row.stock || 0) > 0,
+              badges: badges.length > 0 ? badges : undefined,
+              stock: row.stock || 0,
+              variants,
+              showSize: row.show_size ?? true,
+              isFeatured: row.is_featured || false,
+              isBestseller: row.is_bestseller || false,
+              isNewArrival: row.is_new || false,
+              isTrending: row.is_trending || false,
+              piecesPerPack: row.pieces_per_pack || 1,
+            };
+          });
+          setAllProductsPool(mapped);
+          setSuggestedProducts(shuffleAndPickSuggestions(mapped));
+        }
+      } catch (e) {
+        console.error("Failed to load suggested products:", e);
+      } finally {
+        setLoadingSuggestions(false);
+      }
+    }
+
+    if (activeTab === "wallet") {
+      loadSuggestedProducts();
+    }
+  }, [activeTab]);
 
   const isReviewed = (productId: string, orderId: string) => {
     return userReviews.some(
@@ -1460,6 +1576,102 @@ export default function AccountPage() {
                   )}
                 </div>
               )}
+            </div>
+
+            {/* ================= SHOP NOW USING CASHBACK SECTION ================= */}
+            <div className="bg-white border border-line rounded-card p-5 sm:p-7 shadow-soft space-y-4">
+              {/* Header with Title, Badge and Shuffle/Arrow controls */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-line/60">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-zari via-amber-400 to-zari-deep text-stone-950 flex items-center justify-center shadow-xs">
+                      <ShoppingBag size={16} className="text-stone-950" />
+                    </div>
+                    <h3 className="font-display text-base sm:text-lg text-ink font-bold">
+                      Shop Now using cashback
+                    </h3>
+                    <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] font-extrabold uppercase tracking-wide">
+                      ⚡ Cashback Applicable
+                    </span>
+                  </div>
+                  <p className="text-xs text-taupe">
+                    Redeem your <strong className="text-ink font-semibold">₹{(walletBalance / 100).toFixed(0)} cashback balance</strong> directly at checkout on these curated handloom styles (up to 20% / max ₹50 per order).
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
+                  <button
+                    type="button"
+                    onClick={handleReshuffle}
+                    title="Show different mixed products"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-line hover:border-zari text-taupe hover:text-ink text-xs font-semibold hover:bg-cream/40 transition-all cursor-pointer shadow-2xs"
+                  >
+                    <Shuffle size={13} className="text-zari" />
+                    <span>Shuffle</span>
+                  </button>
+
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={handleScrollLeft}
+                      aria-label="Scroll left"
+                      className="w-8 h-8 rounded-xl border border-line hover:border-zari flex items-center justify-center text-taupe hover:text-ink hover:bg-cream/40 transition-all cursor-pointer"
+                    >
+                      <ChevronLeft size={16} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleScrollRight}
+                      aria-label="Scroll right"
+                      className="w-8 h-8 rounded-xl border border-line hover:border-zari flex items-center justify-center text-taupe hover:text-ink hover:bg-cream/40 transition-all cursor-pointer"
+                    >
+                      <ChevronRight size={16} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Sidely (Horizontally) Scrollable Row of Mixed Products */}
+              {loadingSuggestions && suggestedProducts.length === 0 ? (
+                <div className="py-12 flex flex-col items-center justify-center gap-2 text-taupe">
+                  <RefreshCw size={22} className="animate-spin text-zari" />
+                  <span className="text-xs">Loading cashback recommendations...</span>
+                </div>
+              ) : suggestedProducts.length === 0 ? (
+                <div className="py-8 text-center text-xs text-taupe">
+                  <p>Explore our catalog to use your cashback balance.</p>
+                  <Link href="/shop" className="mt-2 inline-block text-xs font-bold text-zari underline">
+                    Browse All Products &rarr;
+                  </Link>
+                </div>
+              ) : (
+                <div
+                  ref={scrollContainerRef}
+                  className="flex gap-4 overflow-x-auto pb-3 pt-1 scroll-smooth snap-x snap-mandatory scrollbar-none overscroll-x-contain"
+                  style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+                >
+                  {suggestedProducts.map((p, idx) => (
+                    <div
+                      key={p.id}
+                      className="w-[240px] sm:w-[260px] md:w-[280px] shrink-0 snap-start"
+                    >
+                      <ProductCard product={p} index={idx} />
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Footer Quick Link */}
+              <div className="pt-1 flex items-center justify-between text-xs border-t border-line/40">
+                <span className="text-taupe text-[11px]">Swipe sideways to explore more styles</span>
+                <Link
+                  href="/shop"
+                  className="inline-flex items-center gap-1 font-bold text-zari-deep hover:text-ink hover:underline"
+                >
+                  <span>Explore All Products</span>
+                  <span>&rarr;</span>
+                </Link>
+              </div>
             </div>
           </div>
         )}
