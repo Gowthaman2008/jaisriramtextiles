@@ -814,9 +814,27 @@ ${itemsList || "- No items listed"}`;
   );
 }
 
+function cleanMarkdownText(raw: string): string {
+  let text = raw;
+  // Fix raw bracketed URLs like "[/account?tab=wallet](/account?tab=wallet)" -> "[My Wallet](/account?tab=wallet)"
+  text = text.replace(/\[\/?account\?tab=wallet\]\(\/?account\?tab=wallet\)/gi, "[My Wallet](/account?tab=wallet)");
+  text = text.replace(/\[\/?claim-giftcard\]\(\/?claim-giftcard\)/gi, "[Claim ₹100 Gift Card](/claim-giftcard)");
+  text = text.replace(/\[\/?account\?tab=support\]\(\/?account\?tab=support\)/gi, "[Support Desk](/account?tab=support)");
+  text = text.replace(/\[\/?account\?tab=orders\]\(\/?account\?tab=orders\)/gi, "[My Orders](/account?tab=orders)");
+  text = text.replace(/\[\/?bulk-orders\]\(\/?bulk-orders\)/gi, "[Bulk Orders](/bulk-orders)");
+  text = text.replace(/\[\/?shop\]\(\/?shop\)/gi, "[Shop Catalog](/shop)");
+
+  // Fix broken asterisks like "• Wallet Balance:* ₹0" -> "• **Wallet Balance:** ₹0"
+  text = text.replace(/•\s*\*([^*:]+):?\*\s*/g, "• **$1:** ");
+  text = text.replace(/•\s*([A-Za-z0-9\s]+):\*\s*/g, "• **$1:** ");
+
+  return text;
+}
+
 // Markdown parser helpers
 function parseMarkdown(text: string) {
-  const lines = text.split("\n");
+  const cleanedText = cleanMarkdownText(text);
+  const lines = cleanedText.split("\n");
   return lines.map((line, lineIdx) => {
     const trimmed = line.trim();
     if (!trimmed) {
@@ -866,8 +884,19 @@ function renderInlineMarkdown(text: string) {
     // 1. Markdown Link: [text](url)
     const linkMatch = remaining.match(/^\[([^\]]+)\]\(([^)]+)\)/);
     if (linkMatch) {
-      const linkText = linkMatch[1];
+      let linkText = linkMatch[1];
       const href = linkMatch[2];
+
+      // Auto-beautify raw slash paths
+      if (linkText.startsWith("/")) {
+        if (linkText.includes("wallet")) linkText = "My Wallet";
+        else if (linkText.includes("orders")) linkText = "My Orders";
+        else if (linkText.includes("support")) linkText = "Support Desk";
+        else if (linkText.includes("claim-giftcard") || linkText.includes("giftcard")) linkText = "Claim ₹100 Gift Card";
+        else if (linkText.includes("bulk")) linkText = "Bulk Orders";
+        else if (linkText.includes("shop")) linkText = "Shop Catalog";
+      }
+
       tokens.push(
         <a
           key={key++}

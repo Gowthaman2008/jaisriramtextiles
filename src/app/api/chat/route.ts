@@ -6,7 +6,7 @@ const BASE_SYSTEM_PROMPT = `You are the official, highly intelligent, friendly, 
 
 ### ⚡ Critical Response Guidelines:
 1. **Be Concise & Direct**: Keep answers short, polite, helpful, and conversational (2–4 lines maximum or brief bullet points). Never write overly long essays.
-2. **Tone**: Warm, hospitable, and respectful (use "Vanakkam 🙏", "Nandri 🙏" where appropriate).
+2. **Tone**: Warm, hospitable, and respectful (use "Vanakkam 🙏", "Nandri 🙏" where appropriate). If the customer speaks Tamil or Tanglish ("ipoo indha wallet la evolo iruki"), answer politely and clearly in matching helpful language!
 3. **Product & Photo Authenticity**:
    - All photos, videos, and product displays across our website are **100% authentic, real studio and loom photographs** taken directly from our master weaver workshops in Komarapalayam.
    - We do NOT use generic stock images or fake photos.
@@ -17,20 +17,22 @@ const BASE_SYSTEM_PROMPT = `You are the official, highly intelligent, friendly, 
    - Do NOT suggest buying new items or promote other products when a customer has an active complaint or problem.
 5. **₹100 Gift Card Review Rewards**:
    - Customers earn a **₹100 Gift Card** for leaving a 5-star review on Amazon, Flipkart, or Google Reviews.
-   - Submit review screenshots at **[/claim-giftcard](/claim-giftcard)**.
+   - Submit review screenshots at **[Claim Gift Card](/claim-giftcard)**.
    - Codes are verified within 24 hours, stored in **Gift Card History**, and redeemable to wallet with 1-click. Valid for 365 days.
 6. **Cashback & Wallet**:
    - Automatic cashback is credited on delivered orders.
-   - Redeemable at checkout (up to 20% of cart subtotal, max ₹50/order) in **[/account?tab=wallet](/account?tab=wallet)**.
+   - Redeemable at checkout (up to 20% of cart subtotal, max ₹50/order) in **[My Wallet](/account?tab=wallet)**.
 7. **Orders & Live Tracking**:
-   - Track live courier status at **[/account?tab=orders](/account?tab=orders)**.
+   - Track live courier status at **[My Orders](/account?tab=orders)**.
    - Orders dispatch within 24–48 hours; delivery in 4–7 business days across India.
 8. **Shipping**:
    - Free shipping on orders above ₹699 (flat ₹99 below).
 9. **Bulk & Wholesale Orders**:
-   - Direct manufacturer pricing for temples, hotels, retailers, and weddings at **[/bulk-orders](/bulk-orders)**.
-10. **Formatting**:
-   - Use clean Markdown with bold keywords and clickable links. Keep replies easy to read on mobile.`;
+   - Direct manufacturer pricing for temples, hotels, retailers, and weddings at **[Bulk Orders](/bulk-orders)**.
+10. **Formatting Rules (NO RAW CODE OR RAW PATHS)**:
+   - Always format links as [Human Label](/path) (e.g. [My Wallet](/account?tab=wallet), [Support Desk](/account?tab=support), [Claim Gift Card](/claim-giftcard)).
+   - NEVER output raw bracketed paths like "[/account?tab=wallet](/account?tab=wallet)".
+   - NEVER leave stray broken asterisks like "Balance:* ₹0". Use clean bold: "**Wallet Balance:** ₹0".`;
 
 export async function POST(request: Request) {
   let matchedProducts: any[] = [];
@@ -471,8 +473,10 @@ export async function POST(request: Request) {
       }
     }
 
+    const sanitizedAnswer = cleanAiResponse(answer);
+
     return NextResponse.json({
-      response: answer,
+      response: sanitizedAnswer,
       products: matchedProducts.length > 0 ? matchedProducts : undefined,
     });
   } catch (error: any) {
@@ -482,4 +486,44 @@ export async function POST(request: Request) {
       products: matchedProducts.length > 0 ? matchedProducts : undefined,
     });
   }
+}
+
+function cleanAiResponse(raw: string): string {
+  if (!raw) return "";
+
+  let cleaned = raw;
+
+  // 1. Remove think tags and markdown image tags
+  cleaned = cleaned.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
+  cleaned = cleaned.replace(/!\[.*?\]\(.*?\)/g, "");
+  cleaned = cleaned.replace(/https?:\/\/[^\s]+\.(?:jpg|jpeg|png|gif|webp)/gi, "");
+
+  // 2. Fix raw bracketed URLs like "[/account?tab=wallet](/account?tab=wallet)" -> "[My Wallet](/account?tab=wallet)"
+  cleaned = cleaned.replace(/\[\/?account\?tab=wallet\]\(\/?account\?tab=wallet\)/gi, "[My Wallet](/account?tab=wallet)");
+  cleaned = cleaned.replace(/\[\/?claim-giftcard\]\(\/?claim-giftcard\)/gi, "[Claim ₹100 Gift Card](/claim-giftcard)");
+  cleaned = cleaned.replace(/\[\/?account\?tab=support\]\(\/?account\?tab=support\)/gi, "[Support Desk](/account?tab=support)");
+  cleaned = cleaned.replace(/\[\/?account\?tab=orders\]\(\/?account\?tab=orders\)/gi, "[My Orders](/account?tab=orders)");
+  cleaned = cleaned.replace(/\[\/?bulk-orders\]\(\/?bulk-orders\)/gi, "[Bulk Orders](/bulk-orders)");
+  cleaned = cleaned.replace(/\[\/?shop\]\(\/?shop\)/gi, "[Shop Catalog](/shop)");
+
+  // 3. Fix any other raw slash-path link text e.g. "[/path](/path)"
+  cleaned = cleaned.replace(/\[\/([a-zA-Z0-9?=_/-]+)\]\(([^)]+)\)/g, (match, path, url) => {
+    let readable = path;
+    if (path.includes("wallet")) readable = "My Wallet";
+    else if (path.includes("orders")) readable = "My Orders";
+    else if (path.includes("support")) readable = "Support Desk";
+    else if (path.includes("giftcard")) readable = "Claim Gift Card";
+    else if (path.includes("bulk")) readable = "Bulk Orders";
+    else if (path.includes("shop")) readable = "Shop";
+    return `[${readable}](${url})`;
+  });
+
+  // 4. Fix broken markdown asterisks like "• Wallet Balance:* ₹0" -> "• **Wallet Balance:** ₹0"
+  cleaned = cleaned.replace(/•\s*\*([^*:]+):?\*\s*/g, "• **$1:** ");
+  cleaned = cleaned.replace(/•\s*([A-Za-z0-9\s]+):\*\s*/g, "• **$1:** ");
+
+  // 5. Clean trailing stray asterisks
+  cleaned = cleaned.replace(/\s+\*\s*$/gm, "");
+
+  return cleaned.trim();
 }
