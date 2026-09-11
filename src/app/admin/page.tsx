@@ -51,7 +51,8 @@ import {
   Send,
   Sparkles,
   Video as VideoIcon,
-  Play
+  Play,
+  Phone
 } from "lucide-react";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { MarketingHub } from "@/components/admin/marketing/marketing-hub";
@@ -626,6 +627,7 @@ export default function AdminDashboardPage() {
   const [supportMessages, setSupportMessages] = useState<any[]>([]);
   const [bulkInquiries, setBulkInquiries] = useState<any[]>([]);
   const [newsletterSubs, setNewsletterSubs] = useState<any[]>([]);
+  const [bulkClickStats, setBulkClickStats] = useState<any>(null);
   const [coupons, setCoupons] = useState<any[]>([]);
   const [newCouponCode, setNewCouponCode] = useState("");
   const [newCouponType, setNewCouponType] = useState<"percent" | "flat">("percent");
@@ -771,6 +773,21 @@ export default function AdminDashboardPage() {
             })
             .then(data => setAnalytics(data)),
           "Analytics API"
+        )
+      );
+    }
+
+    // Bulk Enquiry Click Stats (Overview)
+    if (["overview"].includes(tab)) {
+      promises.push(
+        wrap(
+          fetch("/api/bulk-click")
+            .then(res => {
+              if (!res.ok) throw new Error(`HTTP ${res.status}`);
+              return res.json();
+            })
+            .then(data => setBulkClickStats(data)),
+          "Bulk Click Stats API"
         )
       );
     }
@@ -4381,6 +4398,66 @@ export default function AdminDashboardPage() {
                           </div>
                         </div>
                       ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Bulk Enquiry Click Tracking */}
+                <div className="bg-white border border-line rounded-card p-6 shadow-soft">
+                  <div className="flex justify-between items-center mb-5">
+                    <div>
+                      <h3 className="font-display text-lg text-ink">Bulk Enquiry Clicks</h3>
+                      <p className="text-xs text-taupe mt-0.5">Click counts on Call, WhatsApp &amp; Email buttons on the Bulk Orders page</p>
+                    </div>
+                    <span className="text-xs font-semibold text-taupe bg-cream/55 px-2.5 py-1 rounded-full border border-line">
+                      Total: {bulkClickStats?.grandTotal || 0}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    {/* Call Now */}
+                    <div className="rounded-lg border border-line bg-cream/30 p-4 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <span className="inline-grid h-8 w-8 place-items-center rounded-full bg-emerald-100 text-emerald-700">
+                          <Phone className="w-4 h-4" />
+                        </span>
+                        <span className="text-xs font-bold uppercase tracking-wider text-taupe">Call Now</span>
+                      </div>
+                      <p className="text-2xl font-display text-ink">{bulkClickStats?.clicks?.call?.total || 0}</p>
+                      <div className="text-[11px] text-taupe space-y-0.5">
+                        <div className="flex justify-between"><span>Today</span><span className="font-mono font-semibold text-ink">{bulkClickStats?.clicks?.call?.today || 0}</span></div>
+                        <div className="flex justify-between"><span>This Week</span><span className="font-mono font-semibold text-ink">{bulkClickStats?.clicks?.call?.week || 0}</span></div>
+                        <div className="flex justify-between"><span>This Month</span><span className="font-mono font-semibold text-ink">{bulkClickStats?.clicks?.call?.month || 0}</span></div>
+                      </div>
+                    </div>
+                    {/* Chat on WhatsApp */}
+                    <div className="rounded-lg border border-line bg-cream/30 p-4 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <span className="inline-grid h-8 w-8 place-items-center rounded-full bg-green-100 text-green-700">
+                          <MessageSquareText className="w-4 h-4" />
+                        </span>
+                        <span className="text-xs font-bold uppercase tracking-wider text-taupe">WhatsApp</span>
+                      </div>
+                      <p className="text-2xl font-display text-ink">{bulkClickStats?.clicks?.whatsapp?.total || 0}</p>
+                      <div className="text-[11px] text-taupe space-y-0.5">
+                        <div className="flex justify-between"><span>Today</span><span className="font-mono font-semibold text-ink">{bulkClickStats?.clicks?.whatsapp?.today || 0}</span></div>
+                        <div className="flex justify-between"><span>This Week</span><span className="font-mono font-semibold text-ink">{bulkClickStats?.clicks?.whatsapp?.week || 0}</span></div>
+                        <div className="flex justify-between"><span>This Month</span><span className="font-mono font-semibold text-ink">{bulkClickStats?.clicks?.whatsapp?.month || 0}</span></div>
+                      </div>
+                    </div>
+                    {/* Send Email */}
+                    <div className="rounded-lg border border-line bg-cream/30 p-4 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <span className="inline-grid h-8 w-8 place-items-center rounded-full bg-blue-100 text-blue-700">
+                          <Mail className="w-4 h-4" />
+                        </span>
+                        <span className="text-xs font-bold uppercase tracking-wider text-taupe">Email</span>
+                      </div>
+                      <p className="text-2xl font-display text-ink">{bulkClickStats?.clicks?.email?.total || 0}</p>
+                      <div className="text-[11px] text-taupe space-y-0.5">
+                        <div className="flex justify-between"><span>Today</span><span className="font-mono font-semibold text-ink">{bulkClickStats?.clicks?.email?.today || 0}</span></div>
+                        <div className="flex justify-between"><span>This Week</span><span className="font-mono font-semibold text-ink">{bulkClickStats?.clicks?.email?.week || 0}</span></div>
+                        <div className="flex justify-between"><span>This Month</span><span className="font-mono font-semibold text-ink">{bulkClickStats?.clicks?.email?.month || 0}</span></div>
+                      </div>
                     </div>
                   </div>
                 </div>

@@ -1,41 +1,18 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
-import { Phone, MessageCircle, Mail, CheckCircle2, ChevronLeft } from "lucide-react";
+import { CheckCircle2, ChevronLeft, ArrowRight } from "lucide-react";
 import { Container } from "@/components/ui/container";
 import { SectionHeading } from "@/components/ui/section-heading";
+import { BulkEnquiryCards } from "@/components/bulk-enquiry-cards";
+import { getAllProducts } from "@/lib/supabase/queries";
+import { formatINR } from "@/lib/utils";
 
 export const metadata: Metadata = {
   title: "Bulk Orders & Wholesale",
   description:
     "Wholesale dhotis, towels, scarfs and jute bags for temples, hotels, retailers and corporate gifting from JAI SRI RAM TEXTILES. Call, WhatsApp or email us directly for bulk pricing.",
 };
-
-const contacts = [
-  {
-    icon: Phone,
-    label: "Call Us",
-    value: "+91 86083 86872",
-    sub: "Mon–Sat, 9:00 AM – 7:00 PM",
-    href: "tel:+918608386872",
-    cta: "Call Now",
-  },
-  {
-    icon: MessageCircle,
-    label: "WhatsApp",
-    value: "+91 86083 86872",
-    sub: "Fastest way to share your requirement",
-    href: "https://wa.me/918608386872?text=" + encodeURIComponent("Hi, I'm interested in placing a bulk/wholesale order with Jai Sri Ram Textiles. Please share pricing details."),
-    cta: "Chat on WhatsApp",
-  },
-  {
-    icon: Mail,
-    label: "Email",
-    value: "jaisriramtextilekpm@gmail.com",
-    sub: "Share your quantity & we'll quote within a day",
-    href: "mailto:jaisriramtextilekpm@gmail.com?subject=" + encodeURIComponent("Bulk Order Enquiry") + "&body=" + encodeURIComponent("Hi, I'm interested in placing a bulk/wholesale order. Here are my requirements:\n\nProduct(s):\nApprox. quantity:\nOrganisation:\n"),
-    cta: "Send Email",
-  },
-];
 
 const wholesalePerks = [
   "Direct-from-manufacturer pricing — no middleman markup",
@@ -46,7 +23,9 @@ const wholesalePerks = [
   "Consistent quality across every piece in a large order",
 ];
 
-export default function BulkOrdersPage() {
+export default async function BulkOrdersPage() {
+  const products = await getAllProducts();
+
   return (
     <div className="py-8 sm:py-14">
       <Container className="max-w-[860px]">
@@ -66,32 +45,88 @@ export default function BulkOrdersPage() {
           intro="Temples, hotels, retailers, corporates and wedding parties — reach out to us directly for wholesale pricing and lead times. No forms, no waiting — just call, WhatsApp or email."
         />
 
-        {/* Contact cards */}
-        <div className="mt-10 grid gap-5 sm:grid-cols-3">
-          {contacts.map((c) => (
-            <div
-              key={c.label}
-              className="flex flex-col items-start gap-3 rounded-card border border-line bg-white p-6 shadow-soft"
-            >
-              <span className="inline-grid h-11 w-11 place-items-center rounded-full bg-zari-tint text-zari-deep">
-                <c.icon size={20} />
-              </span>
-              <div className="w-full min-w-0">
-                <p className="text-xs font-bold uppercase tracking-wide text-taupe">{c.label}</p>
-                <p className="mt-1 break-all font-sans text-base font-bold text-ink">{c.value}</p>
-                <p className="mt-1 text-xs text-taupe">{c.sub}</p>
-              </div>
-              <a
-                href={c.href}
-                target={c.href.startsWith("http") ? "_blank" : undefined}
-                rel="noopener noreferrer"
-                className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-pill bg-zari px-4 text-sm font-semibold text-ivory transition-colors hover:bg-zari-deep"
-              >
-                {c.cta}
-              </a>
+        {/* Contact cards with click tracking */}
+        <BulkEnquiryCards />
+
+        {/* Product Showcase */}
+        {products.length > 0 && (
+          <div className="mt-16">
+            <h2 className="font-display text-2xl text-ink">Our products available for bulk orders</h2>
+            <p className="mt-2 text-sm text-taupe">
+              Browse our range below — contact us with the product name, quantity and any customisation for a wholesale quote.
+            </p>
+            <div className="mt-8 grid grid-cols-2 sm:grid-cols-3 gap-4 sm:gap-5">
+              {products.map((product) => {
+                const sizes = product.variants
+                  ?.map((v) => v.size)
+                  .filter((s): s is string => !!s)
+                  .filter((s, i, arr) => arr.indexOf(s) === i);
+
+                return (
+                  <Link
+                    key={product.id}
+                    href={`/product/${product.slug}`}
+                    className="group rounded-card border border-line bg-white overflow-hidden shadow-soft hover:shadow-lift transition-shadow"
+                  >
+                    {/* Product Image */}
+                    <div className="relative aspect-square bg-cream overflow-hidden">
+                      {product.image ? (
+                        <Image
+                          src={product.image}
+                          alt={product.name}
+                          fill
+                          className="object-cover transition-transform duration-300 group-hover:scale-105"
+                          sizes="(max-width: 640px) 50vw, 280px"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-taupe text-xs">
+                          No image
+                        </div>
+                      )}
+                      {product.categoryLabel && (
+                        <span className="absolute top-2 left-2 bg-ink/80 text-ivory text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded">
+                          {product.categoryLabel}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Product Info */}
+                    <div className="p-3 sm:p-4 space-y-1.5">
+                      <h3 className="text-sm font-bold text-ink leading-snug line-clamp-2 group-hover:text-zari-deep transition-colors">
+                        {product.name}
+                      </h3>
+                      {product.description && (
+                        <p className="text-xs text-taupe leading-relaxed line-clamp-2">
+                          {product.description}
+                        </p>
+                      )}
+                      <p className="text-sm font-bold text-zari-deep">
+                        {formatINR(product.pricePaise)}
+                        {product.compareAtPaise && product.compareAtPaise > product.pricePaise && (
+                          <span className="ml-1.5 text-xs text-taupe line-through font-normal">
+                            {formatINR(product.compareAtPaise)}
+                          </span>
+                        )}
+                      </p>
+                      {sizes && sizes.length > 0 && (
+                        <div className="flex flex-wrap gap-1 pt-1">
+                          {sizes.map((size) => (
+                            <span
+                              key={size}
+                              className="inline-block text-[10px] font-semibold text-taupe bg-cream border border-line rounded px-1.5 py-0.5"
+                            >
+                              {size}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </Link>
+                );
+              })}
             </div>
-          ))}
-        </div>
+          </div>
+        )}
 
         {/* Wholesale / bulk discount details */}
         <div className="mt-16 rounded-card border border-line bg-cream/50 p-6 sm:p-8">
@@ -135,6 +170,16 @@ export default function BulkOrdersPage() {
             wholesale pricing on large orders — with full control over fabric, weave quality
             and turnaround time.
           </p>
+        </div>
+
+        {/* Explore Products CTA */}
+        <div className="mt-14 text-center">
+          <Link
+            href="/shop"
+            className="inline-flex items-center gap-2 rounded-pill bg-zari px-8 py-3 text-base font-semibold text-ivory transition-colors hover:bg-zari-deep"
+          >
+            Explore Products <ArrowRight size={18} />
+          </Link>
         </div>
       </Container>
     </div>
