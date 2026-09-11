@@ -815,18 +815,47 @@ ${itemsList || "- No items listed"}`;
 }
 
 function cleanMarkdownText(raw: string): string {
+  if (!raw) return "";
   let text = raw;
-  // Fix raw bracketed URLs like "[/account?tab=wallet](/account?tab=wallet)" -> "[My Wallet](/account?tab=wallet)"
-  text = text.replace(/\[\/?account\?tab=wallet\]\(\/?account\?tab=wallet\)/gi, "[My Wallet](/account?tab=wallet)");
-  text = text.replace(/\[\/?claim-giftcard\]\(\/?claim-giftcard\)/gi, "[Claim ₹100 Gift Card](/claim-giftcard)");
-  text = text.replace(/\[\/?account\?tab=support\]\(\/?account\?tab=support\)/gi, "[Support Desk](/account?tab=support)");
-  text = text.replace(/\[\/?account\?tab=orders\]\(\/?account\?tab=orders\)/gi, "[My Orders](/account?tab=orders)");
-  text = text.replace(/\[\/?bulk-orders\]\(\/?bulk-orders\)/gi, "[Bulk Orders](/bulk-orders)");
-  text = text.replace(/\[\/?shop\]\(\/?shop\)/gi, "[Shop Catalog](/shop)");
 
-  // Fix broken asterisks like "• Wallet Balance:* ₹0" -> "• **Wallet Balance:** ₹0"
+  // 1. Convert any standalone slash paths in plain text like "go to /account?tab=wallet" or "in /claim-giftcard" to markdown links
+  text = text.replace(/(^|[\s(])(\/account\?tab=wallet)([\s).,!?]|$)/gi, "$1[My Wallet](/account?tab=wallet)$3");
+  text = text.replace(/(^|[\s(])(\/account\?tab=orders)([\s).,!?]|$)/gi, "$1[My Orders](/account?tab=orders)$3");
+  text = text.replace(/(^|[\s(])(\/account\?tab=support)([\s).,!?]|$)/gi, "$1[Support Desk](/account?tab=support)$3");
+  text = text.replace(/(^|[\s(])(\/claim-giftcard)([\s).,!?]|$)/gi, "$1[Claim ₹100 Gift Card](/claim-giftcard)$3");
+  text = text.replace(/(^|[\s(])(\/bulk-orders)([\s).,!?]|$)/gi, "$1[Bulk Orders](/bulk-orders)$3");
+  text = text.replace(/(^|[\s(])(\/shop)([\s).,!?]|$)/gi, "$1[Shop Catalog](/shop)$3");
+
+  // 2. Normalize any "[Label] (url)" or "[Label]  (url)" to "[Label](url)"
+  text = text.replace(/\[([^\]]+)\]\s*\(\s*([^)]+)\s*\)/g, "[$1]($2)");
+
+  // 3. Fix raw bracketed URLs like "[/account?tab=wallet](/account?tab=wallet)" -> "[My Wallet](/account?tab=wallet)"
+  text = text.replace(/\[\/?account\?tab=wallet\]\(([^)]+)\)/gi, "[My Wallet]($1)");
+  text = text.replace(/\[\/?claim-giftcard\]\(([^)]+)\)/gi, "[Claim ₹100 Gift Card]($1)");
+  text = text.replace(/\[\/?account\?tab=support\]\(([^)]+)\)/gi, "[Support Desk]($1)");
+  text = text.replace(/\[\/?account\?tab=orders\]\(([^)]+)\)/gi, "[My Orders]($1)");
+  text = text.replace(/\[\/?bulk-orders\]\(([^)]+)\)/gi, "[Bulk Orders]($1)");
+  text = text.replace(/\[\/?shop\]\(([^)]+)\)/gi, "[Shop Catalog]($1)");
+
+  // 4. Fix any other raw slash-path link text e.g. "[/path](/path)"
+  text = text.replace(/\[\/([a-zA-Z0-9?=_/-]+)\]\(([^)]+)\)/g, (_m, path, url) => {
+    let readable = path;
+    if (path.includes("wallet")) readable = "My Wallet";
+    else if (path.includes("orders")) readable = "My Orders";
+    else if (path.includes("support")) readable = "Support Desk";
+    else if (path.includes("giftcard")) readable = "Claim ₹100 Gift Card";
+    else if (path.includes("bulk")) readable = "Bulk Orders";
+    else if (path.includes("shop")) readable = "Shop Catalog";
+    return `[${readable}](${url})`;
+  });
+
+  // 5. Fix broken asterisks like "• Wallet Balance:* ₹0" -> "• **Wallet Balance:** ₹0"
   text = text.replace(/•\s*\*([^*:]+):?\*\s*/g, "• **$1:** ");
   text = text.replace(/•\s*([A-Za-z0-9\s]+):\*\s*/g, "• **$1:** ");
+  text = text.replace(/\*\*([^*]+)\*:/g, "**$1:**");
+
+  // 6. Remove stray unmatched single asterisks at end of line
+  text = text.replace(/(^|[^\*])\*([^\*\n]+)$/gm, "$1$2");
 
   return text;
 }
@@ -881,11 +910,11 @@ function renderInlineMarkdown(text: string) {
   let key = 0;
 
   while (remaining.length > 0) {
-    // 1. Markdown Link: [text](url)
-    const linkMatch = remaining.match(/^\[([^\]]+)\]\(([^)]+)\)/);
+    // 1. Markdown Link: [text](url) or [text] (url)
+    const linkMatch = remaining.match(/^\[([^\]]+)\]\s*\(([^)]+)\)/);
     if (linkMatch) {
-      let linkText = linkMatch[1];
-      const href = linkMatch[2];
+      let linkText = linkMatch[1].trim();
+      const href = linkMatch[2].trim();
 
       // Auto-beautify raw slash paths
       if (linkText.startsWith("/")) {
@@ -903,7 +932,7 @@ function renderInlineMarkdown(text: string) {
           href={href}
           target={href.startsWith("http") ? "_blank" : undefined}
           rel={href.startsWith("http") ? "noopener noreferrer" : undefined}
-          className="text-zari-deep underline hover:text-ink font-semibold transition-colors duration-150 inline cursor-pointer font-sans"
+          className="text-zari-deep underline hover:text-ink font-bold transition-colors duration-150 inline cursor-pointer font-sans"
         >
           {linkText}
         </a>
@@ -949,7 +978,7 @@ function renderInlineMarkdown(text: string) {
     }
 
     // 5. Normal text chunk until the next markdown delimiter
-    const nextSpecialIndex = remaining.slice(1).search(/[[*`]/);
+    const nextSpecialIndex = remaining.slice(1).search(/(\[|\*|`)/);
     if (nextSpecialIndex === -1) {
       tokens.push(remaining);
       break;

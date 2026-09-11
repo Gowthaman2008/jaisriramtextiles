@@ -498,31 +498,43 @@ function cleanAiResponse(raw: string): string {
   cleaned = cleaned.replace(/!\[.*?\]\(.*?\)/g, "");
   cleaned = cleaned.replace(/https?:\/\/[^\s]+\.(?:jpg|jpeg|png|gif|webp)/gi, "");
 
-  // 2. Fix raw bracketed URLs like "[/account?tab=wallet](/account?tab=wallet)" -> "[My Wallet](/account?tab=wallet)"
-  cleaned = cleaned.replace(/\[\/?account\?tab=wallet\]\(\/?account\?tab=wallet\)/gi, "[My Wallet](/account?tab=wallet)");
-  cleaned = cleaned.replace(/\[\/?claim-giftcard\]\(\/?claim-giftcard\)/gi, "[Claim ₹100 Gift Card](/claim-giftcard)");
-  cleaned = cleaned.replace(/\[\/?account\?tab=support\]\(\/?account\?tab=support\)/gi, "[Support Desk](/account?tab=support)");
-  cleaned = cleaned.replace(/\[\/?account\?tab=orders\]\(\/?account\?tab=orders\)/gi, "[My Orders](/account?tab=orders)");
-  cleaned = cleaned.replace(/\[\/?bulk-orders\]\(\/?bulk-orders\)/gi, "[Bulk Orders](/bulk-orders)");
-  cleaned = cleaned.replace(/\[\/?shop\]\(\/?shop\)/gi, "[Shop Catalog](/shop)");
+  // 2. Convert any standalone slash paths in plain text like "go to /account?tab=wallet" or "in /claim-giftcard" to markdown links
+  cleaned = cleaned.replace(/(^|[\s(])(\/account\?tab=wallet)([\s).,!?]|$)/gi, "$1[My Wallet](/account?tab=wallet)$3");
+  cleaned = cleaned.replace(/(^|[\s(])(\/account\?tab=orders)([\s).,!?]|$)/gi, "$1[My Orders](/account?tab=orders)$3");
+  cleaned = cleaned.replace(/(^|[\s(])(\/account\?tab=support)([\s).,!?]|$)/gi, "$1[Support Desk](/account?tab=support)$3");
+  cleaned = cleaned.replace(/(^|[\s(])(\/claim-giftcard)([\s).,!?]|$)/gi, "$1[Claim ₹100 Gift Card](/claim-giftcard)$3");
+  cleaned = cleaned.replace(/(^|[\s(])(\/bulk-orders)([\s).,!?]|$)/gi, "$1[Bulk Orders](/bulk-orders)$3");
+  cleaned = cleaned.replace(/(^|[\s(])(\/shop)([\s).,!?]|$)/gi, "$1[Shop Catalog](/shop)$3");
 
-  // 3. Fix any other raw slash-path link text e.g. "[/path](/path)"
-  cleaned = cleaned.replace(/\[\/([a-zA-Z0-9?=_/-]+)\]\(([^)]+)\)/g, (match, path, url) => {
+  // 3. Normalize any "[Label] (url)" or "[Label]  (url)" to "[Label](url)"
+  cleaned = cleaned.replace(/\[([^\]]+)\]\s*\(\s*([^)]+)\s*\)/g, "[$1]($2)");
+
+  // 4. Fix raw bracketed URLs like "[/account?tab=wallet](/account?tab=wallet)" -> "[My Wallet](/account?tab=wallet)"
+  cleaned = cleaned.replace(/\[\/?account\?tab=wallet\]\(([^)]+)\)/gi, "[My Wallet]($1)");
+  cleaned = cleaned.replace(/\[\/?claim-giftcard\]\(([^)]+)\)/gi, "[Claim ₹100 Gift Card]($1)");
+  cleaned = cleaned.replace(/\[\/?account\?tab=support\]\(([^)]+)\)/gi, "[Support Desk]($1)");
+  cleaned = cleaned.replace(/\[\/?account\?tab=orders\]\(([^)]+)\)/gi, "[My Orders]($1)");
+  cleaned = cleaned.replace(/\[\/?bulk-orders\]\(([^)]+)\)/gi, "[Bulk Orders]($1)");
+  cleaned = cleaned.replace(/\[\/?shop\]\(([^)]+)\)/gi, "[Shop Catalog]($1)");
+
+  // 5. Fix any other raw slash-path link text e.g. "[/path](/path)"
+  cleaned = cleaned.replace(/\[\/([a-zA-Z0-9?=_/-]+)\]\(([^)]+)\)/g, (_m, path, url) => {
     let readable = path;
     if (path.includes("wallet")) readable = "My Wallet";
     else if (path.includes("orders")) readable = "My Orders";
     else if (path.includes("support")) readable = "Support Desk";
-    else if (path.includes("giftcard")) readable = "Claim Gift Card";
+    else if (path.includes("giftcard")) readable = "Claim ₹100 Gift Card";
     else if (path.includes("bulk")) readable = "Bulk Orders";
-    else if (path.includes("shop")) readable = "Shop";
+    else if (path.includes("shop")) readable = "Shop Catalog";
     return `[${readable}](${url})`;
   });
 
-  // 4. Fix broken markdown asterisks like "• Wallet Balance:* ₹0" -> "• **Wallet Balance:** ₹0"
+  // 6. Fix broken markdown asterisks like "• Wallet Balance:* ₹0" -> "• **Wallet Balance:** ₹0"
   cleaned = cleaned.replace(/•\s*\*([^*:]+):?\*\s*/g, "• **$1:** ");
   cleaned = cleaned.replace(/•\s*([A-Za-z0-9\s]+):\*\s*/g, "• **$1:** ");
+  cleaned = cleaned.replace(/\*\*([^*]+)\*:/g, "**$1:**");
 
-  // 5. Clean trailing stray asterisks
+  // 7. Clean trailing stray asterisks
   cleaned = cleaned.replace(/\s+\*\s*$/gm, "");
 
   return cleaned.trim();
