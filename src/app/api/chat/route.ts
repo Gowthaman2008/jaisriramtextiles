@@ -32,7 +32,9 @@ const BASE_SYSTEM_PROMPT = `You are the official, highly intelligent, friendly, 
 10. **Formatting Rules (NO RAW CODE OR RAW PATHS)**:
    - Always format links as [Human Label](/path) (e.g. [My Wallet](/account?tab=wallet), [Support Desk](/account?tab=support), [Claim Gift Card](/claim-giftcard)).
    - NEVER output raw bracketed paths like "[/account?tab=wallet](/account?tab=wallet)".
-   - NEVER leave stray broken asterisks like "Balance:* ₹0". Use clean bold: "**Wallet Balance:** ₹0".`;
+   - NEVER leave stray broken asterisks like "Balance:* ₹0". Use clean bold: "**Wallet Balance:** ₹0".
+11. **Photo & Product Inquiries**:
+   - When a user asks to see photos, pics, varieties, or designs (e.g., "send dhoti photos", "show towels"), inform them that the latest studio photographs and product cards are displayed right below for easy browsing.`;
 
 export async function POST(request: Request) {
   let matchedProducts: any[] = [];
@@ -128,7 +130,7 @@ export async function POST(request: Request) {
       lastUserMsg.includes("tear") ||
       lastUserMsg.includes("stain") ||
       lastUserMsg.includes("dirty") ||
-      lastUserMsg.includes("wrong") ||
+      lastUserMsg.includes("wrong item") ||
       lastUserMsg.includes("missing") ||
       lastUserMsg.includes("not received") ||
       lastUserMsg.includes("didn't get") ||
@@ -146,65 +148,32 @@ export async function POST(request: Request) {
       lastUserMsg.includes("cancel") ||
       lastUserMsg.includes("cancellation") ||
       lastUserMsg.includes("complaint") ||
-      lastUserMsg.includes("issue") ||
-      lastUserMsg.includes("problem") ||
-      lastUserMsg.includes("not working") ||
-      lastUserMsg.includes("not showing") ||
-      lastUserMsg.includes("help") ||
-      lastUserMsg.includes("support") ||
       lastUserMsg.includes("ticket") ||
-      lastUserMsg.includes("track") ||
-      lastUserMsg.includes("where is my") ||
+      lastUserMsg.includes("where is my order") ||
       lastUserMsg.includes("order status") ||
-      lastUserMsg.includes("courier") ||
+      lastUserMsg.includes("track my order") ||
       lastUserMsg.includes("delay") ||
-      lastUserMsg.includes("late") ||
-      lastUserMsg.includes("giftcard") ||
-      lastUserMsg.includes("gift card") ||
-      lastUserMsg.includes("wallet") ||
-      lastUserMsg.includes("cashback") ||
-      lastUserMsg.includes("payment") ||
-      lastUserMsg.includes("money") ||
-      lastUserMsg.includes("review reward")
+      lastUserMsg.includes("late delivery")
     );
 
-    // 2. Detect explicit photo, catalog or shopping requests
-    const isExplicitPhotoOrCatalogIntent = (
-      lastUserMsg.includes("show photo") ||
-      lastUserMsg.includes("send photo") ||
-      lastUserMsg.includes("show me photo") ||
-      lastUserMsg.includes("show pics") ||
-      lastUserMsg.includes("send pic") ||
-      lastUserMsg.includes("show me the collection") ||
-      lastUserMsg.includes("show products") ||
-      lastUserMsg.includes("see products") ||
-      lastUserMsg.includes("catalog") ||
-      lastUserMsg.includes("explore collection") ||
-      lastUserMsg.includes("what products do you have") ||
-      lastUserMsg.includes("show catalog")
-    );
+    // 2. Detect ANY intent to view photos, products, categories, or shopping
+    const hasPhotoIntent = /\b(photo|photos|pic|pics|picture|pictures|image|images|sample|samples|look|looks|see|show|send|view|display)\b/i.test(lastUserMsg);
+    
+    const hasProductKeyword = /\b(dhoti|dhotis|veshti|veshtis|vesthi|vesthis|vetti|vettis|towel|towels|thundu|thundus|angavastram|angavastrams|shawl|shawls|bag|bags|jute|canvas|tote|scarf|scarves|cotton|silk|zari|border|panchakacham|product|products|collection|catalog|catalogue|item|items|model|models|design|designs|variety|varieties|white|colour|color)\b/i.test(lastUserMsg);
 
-    const isGeneralShoppingInquiry = (
-      (lastUserMsg.includes("dhoti") ||
-        lastUserMsg.includes("veshti") ||
-        lastUserMsg.includes("vesthi") ||
-        lastUserMsg.includes("vetti") ||
-        lastUserMsg.includes("towel") ||
-        lastUserMsg.includes("thundu") ||
-        lastUserMsg.includes("angavastram") ||
-        lastUserMsg.includes("jute") ||
-        lastUserMsg.includes("bag") ||
-        lastUserMsg.includes("scarf")) &&
-      (lastUserMsg.startsWith("show ") ||
-        lastUserMsg.includes("buy ") ||
-        lastUserMsg.includes("order ") ||
-        lastUserMsg.includes("purchase ") ||
-        lastUserMsg.includes("collection") ||
-        lastUserMsg.includes("explore"))
-    );
+    const isGeneralShoppingInquiry = /\b(buy|order|purchase|shop|shopping|price|pricing|cost|rate|explore|recommend|available|options)\b/i.test(lastUserMsg);
 
-    // Only attach product cards if this is a genuine shopping request and NOT a problem/support query
-    const shouldAttachProducts = !isSupportOrProblemQuery && (isExplicitPhotoOrCatalogIntent || isGeneralShoppingInquiry);
+    // Attach product cards if this is a genuine product / photo / shopping query and NOT a problem/support ticket
+    const shouldAttachProducts = !isSupportOrProblemQuery && (
+      (hasPhotoIntent && hasProductKeyword) ||
+      (hasPhotoIntent && /\b(all|send|show|give|display|them|products|items|collection|latest|best|new)\b/i.test(lastUserMsg)) ||
+      (hasProductKeyword && isGeneralShoppingInquiry) ||
+      (hasPhotoIntent && !lastUserMsg.includes("wallet") && !lastUserMsg.includes("giftcard") && !lastUserMsg.includes("support")) ||
+      lastUserMsg.includes("explore_products") ||
+      lastUserMsg.includes("dhoti photo") ||
+      lastUserMsg.includes("photos") ||
+      lastUserMsg.includes("pics")
+    );
 
     matchedProducts = [];
 
@@ -406,6 +375,10 @@ export async function POST(request: Request) {
       // 1. Photo Authenticity Doubts ("photos not real", "is this real photo", "fake")
       if (q.includes("not real") || q.includes("fake") || q.includes("real photo") || q.includes("photos are not real") || q.includes("actual photo") || q.includes("original photo")) {
         answer = `📸 **100% Genuine Studio & Loom Photos**\n\nEvery photograph and video on our website is taken directly from our **actual handloom workshops in Komarapalayam**. We never use stock photos or digitally altered images.\n\nEvery piece comes with our **[7-Day Easy Replacement Guarantee](/account?tab=support)** — you receive the exact weave, zari border, and fabric quality shown on screen!`;
+      }
+      // 1b. Direct Product & Photo Requests ("send dhoti photos", "show photos", "pics", "collection")
+      else if (shouldAttachProducts || hasPhotoIntent || q.includes("photo") || q.includes("pic") || q.includes("picture") || q.includes("image")) {
+        answer = `📸 **Authentic Handloom Collection Photos**\n\nHere are the studio photographs directly from our weaving workshops. Tap any product below to view detailed photos, specs, and order directly!`;
       }
       // 2. Closings & Goodbyes
       else if (/^(bye|goodbye|good\s*bye|bye\s*bye|see\s*you|cya|take\s*care|good\s*night|goodnight|tata|exit|quit)\b/i.test(q)) {
