@@ -11,6 +11,7 @@ import { ProductActions } from "@/components/product/product-actions";
 import { ProductGallery } from "@/components/product/product-gallery";
 import { ProductAuthGate } from "@/components/product/product-auth-gate";
 import { ProductSuggestions } from "@/components/product/product-suggestions";
+import { ShareProductButton } from "@/components/product/share-product-button";
 import { ChevronLeft } from "lucide-react";
 
 type Props = { params: Promise<{ slug: string }> };
@@ -218,9 +219,12 @@ export default async function ProductPage({ params }: Props) {
           >
             <ChevronLeft size={16} /> Back to Shop
           </Link>
-          <Button variant="gold" size="sm" href="/bulk-orders" className="text-xs">
-            Bulk Orders
-          </Button>
+          <div className="flex items-center gap-2">
+            <ShareProductButton product={product} />
+            <Button variant="gold" size="sm" href="/bulk-orders" className="text-xs">
+              Bulk Orders
+            </Button>
+          </div>
         </div>
 
         {/* Auth Gate Banner for unauthenticated visitors */}

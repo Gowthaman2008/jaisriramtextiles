@@ -216,6 +216,27 @@ export function AIChatbot() {
     }
 
     const dynamicChips: any[] = [];
+    const isSupportIssue =
+      text.includes("damage") ||
+      text.includes("defect") ||
+      text.includes("broken") ||
+      text.includes("torn") ||
+      text.includes("return") ||
+      text.includes("replace") ||
+      text.includes("missing") ||
+      text.includes("wrong") ||
+      text.includes("complaint") ||
+      text.includes("problem") ||
+      text.includes("issue") ||
+      text.includes("support") ||
+      text.includes("ticket") ||
+      text.includes("help");
+
+    if (isSupportIssue) {
+      dynamicChips.push({ label: "🎧 Support Desk", href: "/account?tab=support" });
+      dynamicChips.push({ label: "📦 My Orders", href: "/account?tab=orders" });
+    }
+
     if (text.includes("giftcard") || text.includes("gift card") || text.includes("voucher") || text.includes("review") || text.includes("claim")) {
       dynamicChips.push({ label: "🎁 Claim ₹100 Gift Card", href: "/claim-giftcard" });
       dynamicChips.push({ label: "📜 Gift Card History", href: "/claim-giftcard" });
@@ -223,16 +244,16 @@ export function AIChatbot() {
     if (text.includes("wallet") || text.includes("cashback") || text.includes("balance")) {
       dynamicChips.push({ label: "💰 Open Wallet", href: "/account?tab=wallet" });
     }
-    if (text.includes("shop") || text.includes("dhoti") || text.includes("towel") || text.includes("veshti") || text.includes("scarf") || text.includes("bag")) {
+    if (!isSupportIssue && (text.includes("shop") || text.includes("dhoti") || text.includes("towel") || text.includes("veshti") || text.includes("scarf") || text.includes("bag"))) {
       dynamicChips.push({ label: "🛍️ Explore Shop", href: "/shop" });
     }
     if (text.includes("bulk") || text.includes("wholesale") || text.includes("custom")) {
       dynamicChips.push({ label: "🏭 Bulk Orders", href: "/bulk-orders" });
     }
-    if (text.includes("order") || text.includes("track") || text.includes("delivery") || text.includes("shipping") || text.includes("cancel")) {
+    if (!isSupportIssue && (text.includes("order") || text.includes("track") || text.includes("delivery") || text.includes("shipping") || text.includes("cancel"))) {
       dynamicChips.push({ label: "📦 My Orders", href: "/account?tab=orders" });
     }
-    if (text.includes("support") || text.includes("ticket") || text.includes("contact") || text.includes("missing") || text.includes("return") || text.includes("replace") || text.includes("help")) {
+    if (!isSupportIssue && (text.includes("contact") || text.includes("support") || text.includes("help"))) {
       dynamicChips.push({ label: "🎧 Support Desk", href: "/account?tab=support" });
     }
 

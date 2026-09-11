@@ -7,6 +7,7 @@ const BASE_SYSTEM_PROMPT = `You are the official, highly intelligent, and friend
 ### ⚡ Critical Response Guidelines:
 - **Be Concise & Direct**: Keep answers short, polite, and conversational (2–4 lines maximum or brief bullet points).
 - **Conversational & Friendly**: If the user says "bye", "ok", "iam okay", "thanks", or simple greetings/small talk, respond warmly and naturally in 1–2 pleasant sentences without overwhelming them with unnecessary links.
+- **Problem & Issue Resolution**: If the customer reports a problem, damaged item, defect, missing order, delivery delay, or asks for return/replacement/support, focus entirely on empathetic assistance, policy guidelines, and providing immediate links to [Support Desk](/account?tab=support) or [My Orders](/account?tab=orders). Do NOT promote other products or suggest buying new items.
 - **Answer the Exact Question**: Answer the user's specific query immediately with relevant store links.
 - **Gift Cards & Rewards**: Customers earn a **₹100 Gift Card** for 5-star reviews on Amazon/Flipkart/Google at [/claim-giftcard](/claim-giftcard). Verified codes are in **Gift Card History** and can be redeemed to wallet with 1-click. Valid for 365 days.
 - **Missing Gift Card**: If a customer reports a missing giftcard or pending review, explain that reviews are verified within 24 hours and all codes appear under Gift Card History at [/claim-giftcard](/claim-giftcard) or they can raise a ticket at [/account?tab=support](/account?tab=support).
@@ -93,34 +94,100 @@ export async function POST(request: Request) {
     const recentMessages = (messages || []).slice(-8);
     const lastUserMsg = (recentMessages[recentMessages.length - 1]?.content || "").toLowerCase().trim();
 
-    // Check if user is asking for photos or exploring products/categories
-    const isPhotoOrProductIntent = (
+    // 1. Detect Support, Issue, Damage, Complaint, Return, Policy & Transactional queries
+    const isSupportOrProblemQuery = (
+      lastUserMsg.includes("damage") ||
+      lastUserMsg.includes("defective") ||
+      lastUserMsg.includes("defect") ||
+      lastUserMsg.includes("broken") ||
+      lastUserMsg.includes("torn") ||
+      lastUserMsg.includes("tear") ||
+      lastUserMsg.includes("stain") ||
+      lastUserMsg.includes("dirty") ||
+      lastUserMsg.includes("wrong") ||
+      lastUserMsg.includes("missing") ||
+      lastUserMsg.includes("not received") ||
+      lastUserMsg.includes("didn't get") ||
+      lastUserMsg.includes("did not get") ||
+      lastUserMsg.includes("not get") ||
+      lastUserMsg.includes("refund") ||
+      lastUserMsg.includes("replace") ||
+      lastUserMsg.includes("return") ||
+      lastUserMsg.includes("exchange") ||
+      lastUserMsg.includes("cancel") ||
+      lastUserMsg.includes("cancellation") ||
+      lastUserMsg.includes("complaint") ||
+      lastUserMsg.includes("issue") ||
+      lastUserMsg.includes("problem") ||
+      lastUserMsg.includes("not working") ||
+      lastUserMsg.includes("not showing") ||
+      lastUserMsg.includes("help") ||
+      lastUserMsg.includes("support") ||
+      lastUserMsg.includes("ticket") ||
+      lastUserMsg.includes("track") ||
+      lastUserMsg.includes("where is my") ||
+      lastUserMsg.includes("order status") ||
+      lastUserMsg.includes("courier") ||
+      lastUserMsg.includes("delay") ||
+      lastUserMsg.includes("late") ||
+      lastUserMsg.includes("giftcard") ||
+      lastUserMsg.includes("gift card") ||
+      lastUserMsg.includes("wallet") ||
+      lastUserMsg.includes("cashback") ||
+      lastUserMsg.includes("payment") ||
+      lastUserMsg.includes("money") ||
+      lastUserMsg.includes("review reward")
+    );
+
+    // 2. Detect explicit photo, catalog or shopping requests
+    const isExplicitPhotoOrCatalogIntent = (
       lastUserMsg.includes("photo") ||
       lastUserMsg.includes("pic") ||
       lastUserMsg.includes("image") ||
       lastUserMsg.includes("picture") ||
-      lastUserMsg.includes("show") ||
-      lastUserMsg.includes("send") ||
-      lastUserMsg.includes("see") ||
+      lastUserMsg.includes("show me") ||
+      lastUserMsg.includes("show photo") ||
+      lastUserMsg.includes("send photo") ||
+      lastUserMsg.includes("show product") ||
+      lastUserMsg.includes("see product") ||
       lastUserMsg.includes("sample") ||
       lastUserMsg.includes("catalog") ||
-      lastUserMsg.includes("explore") ||
-      lastUserMsg.includes("collection") ||
-      lastUserMsg.includes("dhoti") ||
-      lastUserMsg.includes("veshti") ||
-      lastUserMsg.includes("vesthi") ||
-      lastUserMsg.includes("vetti") ||
-      lastUserMsg.includes("towel") ||
-      lastUserMsg.includes("thundu") ||
-      lastUserMsg.includes("angavastram") ||
-      lastUserMsg.includes("jute") ||
-      lastUserMsg.includes("bag") ||
-      lastUserMsg.includes("scarf")
+      lastUserMsg.includes("explore collection") ||
+      lastUserMsg.includes("view collection") ||
+      lastUserMsg.includes("what products") ||
+      lastUserMsg.includes("designs") ||
+      lastUserMsg.includes("models") ||
+      lastUserMsg.includes("browse")
     );
+
+    const isGeneralShoppingInquiry = (
+      (lastUserMsg.includes("dhoti") ||
+        lastUserMsg.includes("veshti") ||
+        lastUserMsg.includes("vesthi") ||
+        lastUserMsg.includes("vetti") ||
+        lastUserMsg.includes("towel") ||
+        lastUserMsg.includes("thundu") ||
+        lastUserMsg.includes("angavastram") ||
+        lastUserMsg.includes("jute") ||
+        lastUserMsg.includes("bag") ||
+        lastUserMsg.includes("scarf")) &&
+      (lastUserMsg.includes("show") ||
+        lastUserMsg.includes("buy") ||
+        lastUserMsg.includes("available") ||
+        lastUserMsg.includes("price") ||
+        lastUserMsg.includes("rate") ||
+        lastUserMsg.includes("collection") ||
+        lastUserMsg.includes("types") ||
+        lastUserMsg.includes("options") ||
+        lastUserMsg.includes("explore"))
+    );
+
+    // Only attach product cards if this is a genuine shopping/photo query and NOT a problem/support query
+    const shouldAttachProducts = !isSupportOrProblemQuery && (isExplicitPhotoOrCatalogIntent || isGeneralShoppingInquiry);
 
     matchedProducts = [];
 
-    if (isPhotoOrProductIntent && dbProducts.length > 0) {
+    if (shouldAttachProducts && dbProducts.length > 0) {
       let filtered = dbProducts.filter((p) => {
         const name = (p.name || "").toLowerCase();
         const catName = (p.categories?.name || "").toLowerCase();
@@ -374,7 +441,7 @@ export async function POST(request: Request) {
         answer = `📏 **Dhoti / Veshti Sizing Guide**\n\n• **Single Veshti (2 Meters / 4 Muzham)**: Great for daily casual wear, temple pooja, and easy wrap.\n• **Double Veshti (4 Meters / 8 Muzham)**: Traditional grand double-fold drape preferred for weddings, festivals, and Panchakacham.\n• Explore sizes in the **[Shop](/shop)**.`;
       } else if (q.includes("cotton") || q.includes("fabric") || q.includes("material") || q.includes("wash") || q.includes("care") || q.includes("pure") || q.includes("quality") || q.includes("shrink")) {
         answer = `🌿 **100% Combed Handloom Cotton**\n\n• Crafted with pure long-staple combed cotton for superior breathability and softness.\n• **Wash Care**: Gentle hand or machine wash in cold water with mild detergent; dry in shade and iron on medium heat.`;
-      } else if (isPhotoOrProductIntent && matchedProducts.length > 0) {
+      } else if (shouldAttachProducts && matchedProducts.length > 0) {
         answer = `📸 **Authentic Handloom Creations**\n\nHere are popular selections from our loom catalog. Tap any product below to view details and sizes:`;
       } else if (q.includes("bulk") || q.includes("wholesale") || q.includes("custom") || q.includes("wedding order") || q.includes("temple")) {
         answer = `🏭 **Bulk & Wholesale Orders**\n\n• Direct weaver pricing for weddings, temple trusts, and corporate gifting.\n• Custom zari borders and bespoke packaging available.\n• Submit inquiries at **[Bulk Orders](/bulk-orders)** or email \`jaisriramtextilekpm@gmail.com\`.`;

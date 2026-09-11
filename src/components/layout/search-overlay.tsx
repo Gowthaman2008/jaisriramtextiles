@@ -7,6 +7,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import {
   Search,
   X,
+  CircleX,
   Loader2,
   ShoppingBag,
   Mic,
@@ -500,7 +501,7 @@ export function SearchOverlay({ open, onClose }: { open: boolean; onClose: () =>
               {loading && <Loader2 className="w-4 h-4 text-zari-deep animate-spin shrink-0" />}
 
               {/* Action Tools: Voice / Clear / Close */}
-              <div className="flex items-center gap-1.5 shrink-0">
+              <div className="flex items-center gap-1 shrink-0">
                 {/* Voice Mic Button */}
                 <button
                   type="button"
@@ -517,18 +518,27 @@ export function SearchOverlay({ open, onClose }: { open: boolean; onClose: () =>
 
                 {query && (
                   <button
-                    onClick={() => setQuery("")}
-                    aria-label="Clear query"
-                    className="p-1.5 rounded-full text-taupe hover:text-ink hover:bg-cream transition-colors cursor-pointer"
+                    type="button"
+                    onClick={() => {
+                      setQuery("");
+                      inputRef.current?.focus();
+                    }}
+                    title="Clear search text"
+                    aria-label="Clear search input"
+                    className="p-1 rounded-full text-taupe/70 hover:text-ink hover:bg-cream transition-colors cursor-pointer"
                   >
-                    <X size={16} />
+                    <CircleX size={16} className="fill-taupe/15 text-taupe hover:text-ink" />
                   </button>
                 )}
 
+                <div className="h-4 w-px bg-line/80 mx-1" />
+
                 <button
+                  type="button"
                   onClick={onClose}
                   aria-label="Close search"
-                  className="p-1.5 rounded-full text-taupe hover:text-ink hover:bg-cream transition-colors ml-1 cursor-pointer"
+                  title="Close search"
+                  className="p-1.5 rounded-full text-taupe hover:text-ink hover:bg-cream transition-colors cursor-pointer"
                 >
                   <X size={18} />
                 </button>
