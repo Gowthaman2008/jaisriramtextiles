@@ -6,7 +6,6 @@ import { Container } from "@/components/ui/container";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { BulkEnquiryCards } from "@/components/bulk-enquiry-cards";
 import { getAllProducts } from "@/lib/supabase/queries";
-import { formatINR } from "@/lib/utils";
 
 export const metadata: Metadata = {
   title: "Bulk Orders & Wholesale",
@@ -56,7 +55,7 @@ export default async function BulkOrdersPage() {
               Browse our range below — contact us with the product name, quantity and any customisation for a wholesale quote.
             </p>
             <div className="mt-8 grid grid-cols-2 sm:grid-cols-3 gap-4 sm:gap-5">
-              {products.map((product) => {
+              {products.filter((p) => p.category !== "jute-bags" && p.categoryLabel?.toLowerCase() !== "jute bags").map((product) => {
                 const sizes = product.variants
                   ?.map((v) => v.size)
                   .filter((s): s is string => !!s)
@@ -100,14 +99,7 @@ export default async function BulkOrdersPage() {
                           {product.description}
                         </p>
                       )}
-                      <p className="text-sm font-bold text-zari-deep">
-                        {formatINR(product.pricePaise)}
-                        {product.compareAtPaise && product.compareAtPaise > product.pricePaise && (
-                          <span className="ml-1.5 text-xs text-taupe line-through font-normal">
-                            {formatINR(product.compareAtPaise)}
-                          </span>
-                        )}
-                      </p>
+
                       {sizes && sizes.length > 0 && (
                         <div className="flex flex-wrap gap-1 pt-1">
                           {sizes.map((size) => (

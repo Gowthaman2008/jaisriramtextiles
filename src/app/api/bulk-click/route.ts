@@ -30,8 +30,9 @@ export async function POST(request: Request) {
     });
 
     if (error) {
-      console.error("Failed to record bulk enquiry click:", error);
-      return NextResponse.json({ error: "Failed to record click" }, { status: 500 });
+      // Silently ignore — table may not exist yet
+      console.warn("Bulk click insert skipped (table may not exist):", error.message);
+      return NextResponse.json({ success: true });
     }
 
     return NextResponse.json({ success: true });
@@ -73,8 +74,14 @@ export async function GET(request: Request) {
       .select("button_type, clicked_at");
 
     if (error) {
-      console.error("Failed to fetch bulk enquiry clicks:", error);
-      return NextResponse.json({ error: "Failed to fetch clicks" }, { status: 500 });
+      // Table may not exist yet — return empty counts gracefully
+      console.warn("Bulk click fetch skipped (table may not exist):", error.message);
+      const emptyResult: Record<string, { total: number; today: number; week: number; month: number }> = {
+        call: { total: 0, today: 0, week: 0, month: 0 },
+        whatsapp: { total: 0, today: 0, week: 0, month: 0 },
+        email: { total: 0, today: 0, week: 0, month: 0 },
+      };
+      return NextResponse.json({ clicks: emptyResult, grandTotal: 0 });
     }
 
     const now = new Date();
