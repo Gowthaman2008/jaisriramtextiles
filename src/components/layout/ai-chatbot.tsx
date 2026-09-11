@@ -858,58 +858,78 @@ function parseMarkdown(text: string) {
 }
 
 function renderInlineMarkdown(text: string) {
-  const pattern = /(\[.*?\]\(.*?\)|\*\*.*?\*\*|`.*?`|\*.*?\*)/g;
-  const parts = text.split(pattern);
+  const tokens: React.ReactNode[] = [];
+  let remaining = text;
+  let key = 0;
 
-  return parts.map((part, idx) => {
-    if (!part) return null;
-
-    // Link: [text](url)
-    if (part.startsWith("[") && part.includes("](") && part.endsWith(")")) {
-      const match = part.match(/^\[(.*?)\]\((.*?)\)$/);
-      if (match) {
-        const [, linkText, href] = match;
-        return (
-          <a
-            key={idx}
-            href={href}
-            target={href.startsWith("http") ? "_blank" : undefined}
-            rel={href.startsWith("http") ? "noopener noreferrer" : undefined}
-            className="text-zari-deep underline hover:text-ink font-semibold transition-colors duration-150 inline-flex items-center gap-0.5"
-          >
-            {linkText}
-          </a>
-        );
-      }
+  while (remaining.length > 0) {
+    // 1. Markdown Link: [text](url)
+    const linkMatch = remaining.match(/^\[([^\]]+)\]\(([^)]+)\)/);
+    if (linkMatch) {
+      const linkText = linkMatch[1];
+      const href = linkMatch[2];
+      tokens.push(
+        <a
+          key={key++}
+          href={href}
+          target={href.startsWith("http") ? "_blank" : undefined}
+          rel={href.startsWith("http") ? "noopener noreferrer" : undefined}
+          className="text-zari-deep underline hover:text-ink font-semibold transition-colors duration-150 inline cursor-pointer font-sans"
+        >
+          {linkText}
+        </a>
+      );
+      remaining = remaining.slice(linkMatch[0].length);
+      continue;
     }
 
-    // Bold: **text**
-    if (part.startsWith("**") && part.endsWith("**") && part.length >= 4) {
-      return (
-        <strong key={idx} className="font-bold text-ink">
-          {part.slice(2, -2)}
+    // 2. Bold: **text**
+    const boldMatch = remaining.match(/^\*\*([^*]+)\*\*/);
+    if (boldMatch) {
+      tokens.push(
+        <strong key={key++} className="font-bold text-ink">
+          {boldMatch[1]}
         </strong>
       );
+      remaining = remaining.slice(boldMatch[0].length);
+      continue;
     }
 
-    // Code: `code`
-    if (part.startsWith("`") && part.endsWith("`") && part.length >= 2) {
-      return (
-        <code key={idx} className="px-1.5 py-0.5 rounded bg-cream/70 text-zari-deep font-mono text-[11px] border border-zari/20">
-          {part.slice(1, -1)}
+    // 3. Inline Code: `code`
+    const codeMatch = remaining.match(/^`([^`]+)`/);
+    if (codeMatch) {
+      tokens.push(
+        <code key={key++} className="px-1.5 py-0.5 rounded bg-cream/70 text-zari-deep font-mono text-[11px] border border-zari/20">
+          {codeMatch[1]}
         </code>
       );
+      remaining = remaining.slice(codeMatch[0].length);
+      continue;
     }
 
-    // Italic: *text*
-    if (part.startsWith("*") && part.endsWith("*") && part.length >= 2) {
-      return (
-        <em key={idx} className="italic text-ink/90">
-          {part.slice(1, -1)}
+    // 4. Italic: *text* (when followed by another closing *)
+    const italicMatch = remaining.match(/^\*([^*]+)\*/);
+    if (italicMatch) {
+      tokens.push(
+        <em key={key++} className="italic text-ink/90">
+          {italicMatch[1]}
         </em>
       );
+      remaining = remaining.slice(italicMatch[0].length);
+      continue;
     }
 
-    return part;
-  });
+    // 5. Normal text chunk until the next markdown delimiter
+    const nextSpecialIndex = remaining.slice(1).search(/[[*`]/);
+    if (nextSpecialIndex === -1) {
+      tokens.push(remaining);
+      break;
+    } else {
+      const chunk = remaining.slice(0, nextSpecialIndex + 1);
+      tokens.push(chunk);
+      remaining = remaining.slice(nextSpecialIndex + 1);
+    }
+  }
+
+  return tokens;
 }
