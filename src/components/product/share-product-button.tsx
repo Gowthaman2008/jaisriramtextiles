@@ -8,9 +8,9 @@ import {
   Copy,
   Check,
   Smartphone,
-  MessageCircle,
   ExternalLink,
-  Send,
+  Download,
+  Loader2,
 } from "lucide-react";
 import { formatINR } from "@/lib/utils";
 import type { Product } from "@/lib/types";
@@ -22,14 +22,8 @@ interface ShareProductButtonProps {
 export function ShareProductButton({ product }: ShareProductButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [canNativeShare, setCanNativeShare] = useState(false);
-  const [isSharingImage, setIsSharingImage] = useState(false);
-
-  useEffect(() => {
-    if (typeof navigator !== "undefined" && !!navigator.share) {
-      setCanNativeShare(true);
-    }
-  }, []);
+  const [isSharingMedia, setIsSharingMedia] = useState(false);
+  const [downloadingImg, setDownloadingImg] = useState(false);
 
   // Close on Escape key
   useEffect(() => {
@@ -59,27 +53,112 @@ export function ShareProductButton({ product }: ShareProductButtonProps) {
     ? formatINR(product.compareAtPaise, true)
     : null;
 
-  // Build WhatsApp Share Text with emojis, product details, photo URL, and direct link
-  const buildWhatsAppMessage = () => {
+  // Clean, concise message without description and without raw image URLs
+  const buildCleanCaption = () => {
     const lines = [
-      `🌟 *${product.name}*`,
-      product.categoryLabel ? `🏷️ Category: *${product.categoryLabel}*` : "",
-      `💰 Price: *${priceDisplay}*${originalPriceDisplay ? ` ~(${originalPriceDisplay})~` : ""}`,
-      product.description ? `📝 ${product.description.slice(0, 140)}...` : "",
-      `🌿 100% Pure Handloom Cotton | JAI SRI RAM TEXTILES`,
+      `✨ *${product.name}*`,
+      product.categoryLabel ? `🏷️ *Category:* ${product.categoryLabel}` : "",
+      `💰 *Price:* ${priceDisplay}${originalPriceDisplay ? ` ~(${originalPriceDisplay})~` : ""}`,
+      `🌿 *100% Pure Handloom Cotton | JAI SRI RAM TEXTILES*`,
       "",
-      product.image ? `📸 *Product Photo:*\n${product.image}` : "",
-      "",
-      `🔗 *View & Order Online:*\n${productUrl}`,
+      `🔗 *View & Order Online:*`,
+      `${productUrl}`,
     ].filter(Boolean);
 
     return lines.join("\n");
   };
 
-  const handleWhatsAppShare = () => {
-    const message = buildWhatsAppMessage();
-    const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`;
+  // Convert product image URL to a File for Web Share API Level 2 (Media sharing)
+  const getProductImageFile = async (): Promise<File | null> => {
+    if (!product.image) return null;
+    try {
+      const res = await fetch(product.image, { mode: "cors" });
+      const blob = await res.blob();
+      const mimeType = blob.type || "image/jpeg";
+      const ext = mimeType.includes("png") ? "png" : mimeType.includes("webp") ? "webp" : "jpg";
+      return new File([blob], `${product.slug || "product"}.${ext}`, { type: mimeType });
+    } catch (e) {
+      console.warn("Could not fetch image file for media sharing:", e);
+      return null;
+    }
+  };
+
+  // Share as media photo + caption via Native Web Share API (WhatsApp, etc.)
+  const handleMediaShare = async () => {
+    setIsSharingMedia(true);
+    const caption = buildCleanCaption();
+
+    try {
+      if (typeof navigator !== "undefined" && navigator.share) {
+        let imageFile: File | null = null;
+        if (product.image) {
+          imageFile = await getProductImageFile();
+        }
+
+        // If browser supports sharing files (media), share the photo directly
+        if (imageFile && navigator.canShare && navigator.canShare({ files: [imageFile] })) {
+          await navigator.share({
+            title: product.name,
+            text: caption,
+            files: [imageFile],
+          });
+          setIsOpen(false);
+          return;
+        }
+
+        // If file sharing is not supported by device, share text + URL via native share sheet
+        await navigator.share({
+          title: product.name,
+          text: caption,
+          url: productUrl,
+        });
+        setIsOpen(false);
+        return;
+      }
+
+      // Fallback if navigator.share is completely unavailable (e.g. desktop non-HTTPS)
+      const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(caption)}`;
+      window.open(url, "_blank", "noopener,noreferrer");
+    } catch (err: any) {
+      if (err.name !== "AbortError") {
+        console.error("Share error:", err);
+        // Fallback to WhatsApp link
+        const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(caption)}`;
+        window.open(url, "_blank", "noopener,noreferrer");
+      }
+    } finally {
+      setIsSharingMedia(false);
+    }
+  };
+
+  // Direct WhatsApp Web Fallback button
+  const handleWhatsAppDirect = () => {
+    const caption = buildCleanCaption();
+    const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(caption)}`;
     window.open(url, "_blank", "noopener,noreferrer");
+  };
+
+  // Download product image for manual sharing / attachments
+  const handleDownloadPhoto = async () => {
+    if (!product.image) return;
+    setDownloadingImg(true);
+    try {
+      const res = await fetch(product.image);
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${product.slug || "product"}.jpg`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Failed to download image:", err);
+      window.open(product.image, "_blank");
+    } finally {
+      setDownloadingImg(false);
+    }
   };
 
   const handleCopyLink = async () => {
@@ -102,54 +181,6 @@ export function ShareProductButton({ product }: ShareProductButtonProps) {
     } catch (err) {
       console.error("Failed to copy link:", err);
     }
-  };
-
-  const handleNativeShare = async () => {
-    if (typeof navigator === "undefined" || !navigator.share) return;
-
-    setIsSharingImage(true);
-    try {
-      let shareData: ShareData = {
-        title: product.name,
-        text: `Check out ${product.name} (${priceDisplay}) at Jai Sri Ram Textiles`,
-        url: productUrl,
-      };
-
-      // Try sharing with the actual image file on supported mobile devices
-      if (product.image && navigator.canShare) {
-        try {
-          const res = await fetch(product.image);
-          const blob = await res.blob();
-          const file = new File([blob], `${product.slug}.jpg`, {
-            type: blob.type || "image/jpeg",
-          });
-          if (navigator.canShare({ files: [file] })) {
-            shareData = {
-              title: product.name,
-              text: `${product.name} (${priceDisplay})\n100% Pure Handloom Cotton\n${productUrl}`,
-              files: [file],
-            };
-          }
-        } catch (imgErr) {
-          console.warn("Could not bundle image in native share:", imgErr);
-        }
-      }
-
-      await navigator.share(shareData);
-      setIsOpen(false);
-    } catch (err: any) {
-      if (err.name !== "AbortError") {
-        console.error("Native share error:", err);
-      }
-    } finally {
-      setIsSharingImage(false);
-    }
-  };
-
-  const handleTelegramShare = () => {
-    const text = `${product.name} (${priceDisplay}) - Jai Sri Ram Textiles\n${product.image || ""}`;
-    const url = `https://t.me/share/url?url=${encodeURIComponent(productUrl)}&text=${encodeURIComponent(text)}`;
-    window.open(url, "_blank", "noopener,noreferrer");
   };
 
   return (
@@ -184,7 +215,7 @@ export function ShareProductButton({ product }: ShareProductButtonProps) {
                 </div>
                 <div>
                   <h3 className="font-display text-base font-bold text-ink">Share Product</h3>
-                  <p className="text-[11px] text-taupe">Share photos, details & links with friends</p>
+                  <p className="text-[11px] text-taupe">Send photo, price & order link</p>
                 </div>
               </div>
               <button
@@ -234,89 +265,94 @@ export function ShareProductButton({ product }: ShareProductButtonProps) {
                 </div>
               </div>
 
-              {/* Share Destination Options */}
+              {/* Share Options */}
               <div className="mt-5 space-y-2.5">
-                {/* 1. WhatsApp Button (Primary Highlight) */}
+                {/* 1. Primary Share: Media Photo + Caption into WhatsApp / Social Apps */}
                 <button
                   type="button"
-                  onClick={handleWhatsAppShare}
+                  onClick={handleMediaShare}
+                  disabled={isSharingMedia}
+                  className="w-full flex items-center justify-between p-3.5 rounded-xl bg-[#25D366] hover:bg-[#20ba5a] text-white transition-all group shadow-sm cursor-pointer"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center shrink-0">
+                      {isSharingMedia ? (
+                        <Loader2 size={20} className="animate-spin text-white" />
+                      ) : (
+                        /* WhatsApp SVG */
+                        <svg
+                          viewBox="0 0 24 24"
+                          width="20"
+                          height="20"
+                          fill="currentColor"
+                          className="text-white"
+                        >
+                          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z" />
+                        </svg>
+                      )}
+                    </div>
+                    <div className="text-left">
+                      <div className="text-sm font-bold text-white">
+                        {isSharingMedia ? "Preparing Photo..." : "Share Photo to WhatsApp"}
+                      </div>
+                      <div className="text-[11px] text-white/85">
+                        Sends photo as media with price & order link
+                      </div>
+                    </div>
+                  </div>
+                  <Share2 size={16} className="text-white/80" />
+                </button>
+
+                {/* 2. Direct Web WhatsApp link fallback */}
+                <button
+                  type="button"
+                  onClick={handleWhatsAppDirect}
                   className="w-full flex items-center justify-between p-3 rounded-xl bg-[#25D366]/10 hover:bg-[#25D366]/20 border border-[#25D366]/30 text-ink transition-all group cursor-pointer"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-full bg-[#25D366] text-white flex items-center justify-center shrink-0 shadow-xs">
-                      {/* WhatsApp Icon */}
-                      <svg
-                        viewBox="0 0 24 24"
-                        width="20"
-                        height="20"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        fill="none"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        className="fill-white stroke-none"
-                      >
-                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z" />
-                      </svg>
+                    <div className="w-8 h-8 rounded-full bg-[#25D366]/20 text-[#128C7E] flex items-center justify-center shrink-0">
+                      <ExternalLink size={16} />
                     </div>
                     <div className="text-left">
                       <div className="text-xs font-bold text-ink group-hover:text-[#128C7E] transition-colors">
-                        Share on WhatsApp
+                        Open WhatsApp Web Directly
                       </div>
-                      <div className="text-[11px] text-taupe">
-                        Sends photo link, price & full product details
+                      <div className="text-[10px] text-taupe">
+                        Quick text & order link for desktop WhatsApp
                       </div>
                     </div>
                   </div>
-                  <ExternalLink size={15} className="text-taupe group-hover:text-[#128C7E]" />
+                  <ExternalLink size={14} className="text-taupe group-hover:text-[#128C7E]" />
                 </button>
 
-                {/* 2. Native Share (Device Share Sheet with Photos support) */}
-                {canNativeShare && (
+                {/* 3. Download Photo Option */}
+                {product.image && (
                   <button
                     type="button"
-                    onClick={handleNativeShare}
-                    disabled={isSharingImage}
+                    onClick={handleDownloadPhoto}
+                    disabled={downloadingImg}
                     className="w-full flex items-center justify-between p-3 rounded-xl bg-cream/60 hover:bg-cream border border-line text-ink transition-all group cursor-pointer"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-full bg-ink text-ivory flex items-center justify-center shrink-0 shadow-xs">
-                        <Smartphone size={18} />
+                      <div className="w-8 h-8 rounded-full bg-ink/10 text-ink flex items-center justify-center shrink-0">
+                        {downloadingImg ? (
+                          <Loader2 size={15} className="animate-spin text-ink" />
+                        ) : (
+                          <Download size={15} />
+                        )}
                       </div>
                       <div className="text-left">
                         <div className="text-xs font-bold text-ink group-hover:text-zari-deep transition-colors">
-                          {isSharingImage ? "Preparing Photo..." : "More Apps & Social Media"}
+                          Save Product Photo
                         </div>
-                        <div className="text-[11px] text-taupe">
-                          Share directly to Instagram, Telegram, SMS & more
+                        <div className="text-[10px] text-taupe">
+                          Download high-res image to device
                         </div>
                       </div>
                     </div>
-                    <Share2 size={15} className="text-taupe group-hover:text-ink" />
+                    <Download size={14} className="text-taupe group-hover:text-ink" />
                   </button>
                 )}
-
-                {/* 3. Telegram Option */}
-                <button
-                  type="button"
-                  onClick={handleTelegramShare}
-                  className="w-full flex items-center justify-between p-3 rounded-xl bg-[#229ED9]/10 hover:bg-[#229ED9]/20 border border-[#229ED9]/30 text-ink transition-all group cursor-pointer"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-full bg-[#229ED9] text-white flex items-center justify-center shrink-0 shadow-xs">
-                      <Send size={16} className="-translate-x-0.5 translate-y-0.5" />
-                    </div>
-                    <div className="text-left">
-                      <div className="text-xs font-bold text-ink group-hover:text-[#229ED9] transition-colors">
-                        Share on Telegram
-                      </div>
-                      <div className="text-[11px] text-taupe">
-                        Share product link and summary to Telegram
-                      </div>
-                    </div>
-                  </div>
-                  <ExternalLink size={15} className="text-taupe group-hover:text-[#229ED9]" />
-                </button>
               </div>
 
               {/* Copy Direct Link Section */}

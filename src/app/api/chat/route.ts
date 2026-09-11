@@ -2,25 +2,39 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limiter";
 
-const BASE_SYSTEM_PROMPT = `You are the official, highly intelligent, and friendly AI Loom Assistant for **JAI SRI RAM TEXTILES**, a renowned heritage handloom weaving brand in Komarapalayam, Tamil Nadu, India.
+const BASE_SYSTEM_PROMPT = `You are the official, highly intelligent, friendly, and authentic AI Loom Assistant for **JAI SRI RAM TEXTILES**, a renowned heritage handloom weaving house based in Komarapalayam, Tamil Nadu, India.
 
 ### ⚡ Critical Response Guidelines:
-- **Be Concise & Direct**: Keep answers short, polite, and conversational (2–4 lines maximum or brief bullet points).
-- **Conversational & Friendly**: If the user says "bye", "ok", "iam okay", "thanks", or simple greetings/small talk, respond warmly and naturally in 1–2 pleasant sentences without overwhelming them with unnecessary links.
-- **Problem & Issue Resolution**: If the customer reports a problem, damaged item, defect, missing order, delivery delay, or asks for return/replacement/support, focus entirely on empathetic assistance, policy guidelines, and providing immediate links to [Support Desk](/account?tab=support) or [My Orders](/account?tab=orders). Do NOT promote other products or suggest buying new items.
-- **Answer the Exact Question**: Answer the user's specific query immediately with relevant store links.
-- **Gift Cards & Rewards**: Customers earn a **₹100 Gift Card** for 5-star reviews on Amazon/Flipkart/Google at [/claim-giftcard](/claim-giftcard). Verified codes are in **Gift Card History** and can be redeemed to wallet with 1-click. Valid for 365 days.
-- **Missing Gift Card**: If a customer reports a missing giftcard or pending review, explain that reviews are verified within 24 hours and all codes appear under Gift Card History at [/claim-giftcard](/claim-giftcard) or they can raise a ticket at [/account?tab=support](/account?tab=support).
-- **Cashback & Wallet**: Auto-credited on delivered orders. Redeemable at checkout (up to 20% of cart subtotal, max ₹50/order) at [/account?tab=wallet](/account?tab=wallet).
-- **Orders & Tracking**: Track orders under [/account?tab=orders](/account?tab=orders).
-- **Shipping**: Free shipping above ₹699 (flat ₹99 below). Delivery across India in 4–7 business days.
-- **Returns / Replacement**: 7-day easy replacement for damaged/defective items at [/account?tab=support](/account?tab=support).
-- **Bulk & Custom**: Direct loom wholesale pricing at [/bulk-orders](/bulk-orders).
-- **Support**: Priority help at [/account?tab=support](/account?tab=support) or email \`jaisriramtextilekpm@gmail.com\` (Mon–Sat 9 AM – 6 PM IST).
-- **Formatting**: Use clean markdown with bold keywords and clickable markdown links. Keep replies neat and easy to read on mobile screens.`;
+1. **Be Concise & Direct**: Keep answers short, polite, helpful, and conversational (2–4 lines maximum or brief bullet points). Never write overly long essays.
+2. **Tone**: Warm, hospitable, and respectful (use "Vanakkam 🙏", "Nandri 🙏" where appropriate).
+3. **Product & Photo Authenticity**:
+   - All photos, videos, and product displays across our website are **100% authentic, real studio and loom photographs** taken directly from our master weaver workshops in Komarapalayam.
+   - We do NOT use generic stock images or fake photos.
+   - If a customer asks or doubts photo authenticity (e.g., "photos are not real", "is this original?"), reassure them with pride and transparency, explaining that every photo represents our exact loom weave, and highlight our **7-Day Easy Replacement Guarantee** for 100% peace of mind.
+4. **Issue & Complaint Resolution**:
+   - If a customer reports a damaged piece, defect, missing delivery, or expresses frustration, respond with immediate empathy and clear resolution steps:
+   - Provide direct links to **[Support Desk](/account?tab=support)** (24-hr resolution) or **[My Orders](/account?tab=orders)**.
+   - Do NOT suggest buying new items or promote other products when a customer has an active complaint or problem.
+5. **₹100 Gift Card Review Rewards**:
+   - Customers earn a **₹100 Gift Card** for leaving a 5-star review on Amazon, Flipkart, or Google Reviews.
+   - Submit review screenshots at **[/claim-giftcard](/claim-giftcard)**.
+   - Codes are verified within 24 hours, stored in **Gift Card History**, and redeemable to wallet with 1-click. Valid for 365 days.
+6. **Cashback & Wallet**:
+   - Automatic cashback is credited on delivered orders.
+   - Redeemable at checkout (up to 20% of cart subtotal, max ₹50/order) in **[/account?tab=wallet](/account?tab=wallet)**.
+7. **Orders & Live Tracking**:
+   - Track live courier status at **[/account?tab=orders](/account?tab=orders)**.
+   - Orders dispatch within 24–48 hours; delivery in 4–7 business days across India.
+8. **Shipping**:
+   - Free shipping on orders above ₹699 (flat ₹99 below).
+9. **Bulk & Wholesale Orders**:
+   - Direct manufacturer pricing for temples, hotels, retailers, and weddings at **[/bulk-orders](/bulk-orders)**.
+10. **Formatting**:
+   - Use clean Markdown with bold keywords and clickable links. Keep replies easy to read on mobile.`;
 
 export async function POST(request: Request) {
   let matchedProducts: any[] = [];
+
   try {
     const clientIp = getClientIp(request);
     const limit = checkRateLimit(clientIp, { prefix: "ai_chat", maxRequests: 30, windowSeconds: 60 });
@@ -55,13 +69,21 @@ export async function POST(request: Request) {
         categoriesRes,
         couponsRes,
         settingsRes,
-        appSettingsKeysRes
+        appSettingsKeysRes,
       ] = await Promise.all([
-        supabase.from("products").select("id, name, slug, price_paise, compare_at_paise, stock, description, categories(slug, name), product_images(url, sort_order)").eq("is_active", true),
+        supabase
+          .from("products")
+          .select("id, name, slug, price_paise, compare_at_paise, stock, description, categories(slug, name), product_images(url, sort_order)")
+          .eq("is_active", true),
         supabase.from("categories").select("id, name, slug, tagline").eq("is_active", true),
         supabase.from("coupons").select("code, type, value, min_order_paise").eq("is_active", true),
         supabase.from("app_settings").select("value").eq("key", "shipping_settings").maybeSingle(),
-        (!groqApiKey || !geminiApiKey) ? supabase.from("app_settings").select("key, value").in("key", ["groq_api_key", "gemini_api_key", "openai_api_key", "ai_api_key", "ai_settings"]) : Promise.resolve({ data: null })
+        !groqApiKey || !geminiApiKey
+          ? supabase
+              .from("app_settings")
+              .select("key, value")
+              .in("key", ["groq_api_key", "gemini_api_key", "openai_api_key", "ai_api_key", "ai_settings"])
+          : Promise.resolve({ data: null }),
       ]);
 
       dbProducts = productsRes.data || [];
@@ -94,7 +116,7 @@ export async function POST(request: Request) {
     const recentMessages = (messages || []).slice(-8);
     const lastUserMsg = (recentMessages[recentMessages.length - 1]?.content || "").toLowerCase().trim();
 
-    // 1. Detect Support, Issue, Damage, Complaint, Return, Policy & Transactional queries
+    // 1. Detect Support, Issue, Damage, Complaint, Return, Authenticity Doubts & Transactional queries
     const isSupportOrProblemQuery = (
       lastUserMsg.includes("damage") ||
       lastUserMsg.includes("defective") ||
@@ -110,6 +132,11 @@ export async function POST(request: Request) {
       lastUserMsg.includes("didn't get") ||
       lastUserMsg.includes("did not get") ||
       lastUserMsg.includes("not get") ||
+      lastUserMsg.includes("not real") ||
+      lastUserMsg.includes("fake") ||
+      lastUserMsg.includes("duplicate") ||
+      lastUserMsg.includes("fraud") ||
+      lastUserMsg.includes("scam") ||
       lastUserMsg.includes("refund") ||
       lastUserMsg.includes("replace") ||
       lastUserMsg.includes("return") ||
@@ -141,23 +168,18 @@ export async function POST(request: Request) {
 
     // 2. Detect explicit photo, catalog or shopping requests
     const isExplicitPhotoOrCatalogIntent = (
-      lastUserMsg.includes("photo") ||
-      lastUserMsg.includes("pic") ||
-      lastUserMsg.includes("image") ||
-      lastUserMsg.includes("picture") ||
-      lastUserMsg.includes("show me") ||
       lastUserMsg.includes("show photo") ||
       lastUserMsg.includes("send photo") ||
-      lastUserMsg.includes("show product") ||
-      lastUserMsg.includes("see product") ||
-      lastUserMsg.includes("sample") ||
+      lastUserMsg.includes("show me photo") ||
+      lastUserMsg.includes("show pics") ||
+      lastUserMsg.includes("send pic") ||
+      lastUserMsg.includes("show me the collection") ||
+      lastUserMsg.includes("show products") ||
+      lastUserMsg.includes("see products") ||
       lastUserMsg.includes("catalog") ||
       lastUserMsg.includes("explore collection") ||
-      lastUserMsg.includes("view collection") ||
-      lastUserMsg.includes("what products") ||
-      lastUserMsg.includes("designs") ||
-      lastUserMsg.includes("models") ||
-      lastUserMsg.includes("browse")
+      lastUserMsg.includes("what products do you have") ||
+      lastUserMsg.includes("show catalog")
     );
 
     const isGeneralShoppingInquiry = (
@@ -171,18 +193,15 @@ export async function POST(request: Request) {
         lastUserMsg.includes("jute") ||
         lastUserMsg.includes("bag") ||
         lastUserMsg.includes("scarf")) &&
-      (lastUserMsg.includes("show") ||
-        lastUserMsg.includes("buy") ||
-        lastUserMsg.includes("available") ||
-        lastUserMsg.includes("price") ||
-        lastUserMsg.includes("rate") ||
+      (lastUserMsg.startsWith("show ") ||
+        lastUserMsg.includes("buy ") ||
+        lastUserMsg.includes("order ") ||
+        lastUserMsg.includes("purchase ") ||
         lastUserMsg.includes("collection") ||
-        lastUserMsg.includes("types") ||
-        lastUserMsg.includes("options") ||
         lastUserMsg.includes("explore"))
     );
 
-    // Only attach product cards if this is a genuine shopping/photo query and NOT a problem/support query
+    // Only attach product cards if this is a genuine shopping request and NOT a problem/support query
     const shouldAttachProducts = !isSupportOrProblemQuery && (isExplicitPhotoOrCatalogIntent || isGeneralShoppingInquiry);
 
     matchedProducts = [];
@@ -255,10 +274,10 @@ export async function POST(request: Request) {
       `orders above ₹${freeThreshold} (flat ₹${shippingCharge} below)`
     );
 
-    dynamicPrompt += `\n\n### 📦 Store Context:
+    dynamicPrompt += `\n\n### 📦 Current Store Catalog & Offers:
 - **Categories**: ${categoriesList}
-- **Products**: ${productsList.slice(0, 800)}
-- **Coupons**: ${couponsList}
+- **Products Sample**: ${productsList.slice(0, 800)}
+- **Active Coupons**: ${couponsList}
 `;
 
     if (userContext) {
@@ -274,23 +293,25 @@ export async function POST(request: Request) {
 
       const simplifiedAddresses = (addresses || []).slice(0, 2).map((a: any) => `${a.recipient}, ${a.line1}, ${a.city} - ${a.pincode}`);
 
-      dynamicPrompt += `\n\n### 👤 User Live Context:
+      dynamicPrompt += `\n\n### 👤 Logged-in Customer Context:
 - **Customer**: ${profile?.full_name || "Valued Customer"} (${profile?.email || "Signed In"})
 - **Wallet Balance**: ₹${((walletBalance || 0) / 100).toFixed(0)}
-- **Addresses**: ${JSON.stringify(simplifiedAddresses)}
+- **Saved Addresses**: ${JSON.stringify(simplifiedAddresses)}
 - **Recent Orders**: ${JSON.stringify(simplifiedOrders)}
 `;
     }
 
     let answer = "";
 
-    // 1. Try Groq API (High Performance Llama 3.3 / Llama 3.1)
+    // 1. Try Groq API with active current models
     if (groqApiKey) {
       const groqModels = [
-        "llama-3.3-70b-versatile",
-        "llama-3.1-8b-instant",
-        "mixtral-8x7b-32768",
-        "gemma2-9b-it"
+        "openai/gpt-oss-120b",
+        "openai/gpt-oss-20b",
+        "qwen/qwen3.8-27b",
+        "qwen/qwen3.6-27b",
+        "groq/compound",
+        "groq/compound-mini"
       ];
 
       for (const modelName of groqModels) {
@@ -310,7 +331,7 @@ export async function POST(request: Request) {
                   content: m.content
                 }))
               ],
-              temperature: 0.6,
+              temperature: 0.5,
               max_tokens: 350,
             }),
             signal: AbortSignal.timeout(6000),
@@ -326,6 +347,8 @@ export async function POST(request: Request) {
               answer = rawAnswer;
               break;
             }
+          } else {
+            console.warn(`[Chatbot] Groq ${modelName} returned status ${groqRes.status}`);
           }
         } catch (callErr) {
           console.warn(`[Chatbot] Groq ${modelName} error:`, callErr);
@@ -345,18 +368,26 @@ export async function POST(request: Request) {
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
                 contents: [
-                  { role: "user", parts: [{ text: `${dynamicPrompt}\n\nUser History:\n${recentMessages.map((m: any) => `${m.role}: ${m.content}`).join("\n")}` }] }
+                  {
+                    role: "user",
+                    parts: [
+                      {
+                        text: `${dynamicPrompt}\n\nUser Conversation History:\n${recentMessages.map((m: any) => `${m.role}: ${m.content}`).join("\n")}`
+                      }
+                    ]
+                  }
                 ],
-                generationConfig: { maxOutputTokens: 350, temperature: 0.6 }
+                generationConfig: { maxOutputTokens: 350, temperature: 0.5 }
               }),
               signal: AbortSignal.timeout(6000)
             }
           );
           if (geminiRes.ok) {
             const gData = await geminiRes.json();
-            const text = gData.candidates?.[0]?.content?.parts?.[0]?.text || "";
-            if (text && text.trim().length > 2) {
-              answer = text.trim();
+            let text = gData.candidates?.[0]?.content?.parts?.[0]?.text || "";
+            text = text.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
+            if (text && text.length > 2) {
+              answer = text;
               break;
             }
           }
@@ -366,107 +397,89 @@ export async function POST(request: Request) {
       }
     }
 
-    // 3. Intelligent Conversational NLP Engine (Handles small talk, goodbyes, ok, thanks, etc.)
+    // 3. Intelligent Conversational Fallback Engine (Runs only if AI LLMs are unavailable)
     if (!answer) {
       const q = lastUserMsg;
 
-      // 1. Closings & Goodbyes
-      const isGoodbye = /^(bye|goodbye|good\s*bye|bye\s*bye|see\s*you|cya|take\s*care|good\s*night|goodnight|tata|exit|quit|catch\s*you\s*later)\b/i.test(q) ||
-        q === "bye" || q === "ok bye" || q === "okay bye" || q === "bye ai" || q === "tata";
-
-      // 2. Acknowledgments, OK, "I am okay", "Ok ai", "Fine", "Cool"
-      const isAckOrOkay = /^(ok|okay|ok\s*ai|iam\s*okay|i\s*am\s*okay|i\s*am\s*ok|iam\s*ok|all\s*ok|ok\s*done|fine|iam\s*fine|i\s*am\s*fine|alright|all\s*right|got\s*it|understood|cool|super|nice|awesome|great|perfect|good|no\s*problem|k|kk|sure|sounds\s*good|done)\b/i.test(q) ||
-        q === "ok" || q === "okay" || q === "ok ai" || q === "iam okay" || q === "i am ok" || q === "iam ok" || q === "okies";
-
-      // 3. Gratitude & Thanks
-      const isThanks = /^(thanks|thank\s*you|thx|thank\s*u|nandri|dhanyavadam|dhanyavadagalu|shukriya|appreciate\s*it|thanks\s*a\s*lot|thanks\s*ai|thank\s*you\s*so\s*much)\b/i.test(q);
-
-      // 4. Affirmative / Agreement ("yes", "yeah", "yep", "sure")
-      const isAffirmative = /^(yes|yeah|yep|sure\s*thing|correct|right|true|of\s*course|definitely)\b/i.test(q);
-
-      // 5. Negative / Refusal ("no", "nope", "nothing", "not now", "nah")
-      const isNegative = /^(no|nope|nothing|not\s*now|nah|never\s*mind|dont\s*need|no\s*thanks|no\s*thank\s*you|nothing\s*else)\b/i.test(q);
-
-      // 6. How are you / Small talk
-      const isHowAreYou = /^(how\s*are\s*you|how\s*r\s*u|how\s*do\s*you\s*do|what'?s\s*up|wassup|how'?s\s*it\s*going)\b/i.test(q);
-
-      // 7. Identity & capabilities
-      const isIdentity = /^(who\s*are\s*you|what\s*is\s*your\s*name|are\s*you\s*ai|are\s*you\s*a\s*bot|who\s*made\s*you|what\s*can\s*you\s*do)\b/i.test(q);
-
-      // 8. Pure Compliments
-      const isPureCompliment = /^(photos?|pics?|pictures?|images?|these|those|items?|products?)?\s*(are\s+|look\s+)?(very\s+|so\s+)?(beautiful|pretty|super|nice|awesome|great|wonderful|splendid)\b/i.test(q);
-
-      // 9. Specific Store Domain Intents
-      const isGiftCardQuery = q.includes("giftcard") || q.includes("gift card") || q.includes("gift-card") || q.includes("voucher");
-      const isRewardQuery = q.includes("reward") || q.includes("claim") || q.includes("100") || q.includes("review");
-      const isMissingQuery = q.includes("missing") || q.includes("not received") || q.includes("didn't get") || q.includes("not credited") || q.includes("where is") || q.includes("not showing") || q.includes("issue") || q.includes("problem") || q.includes("not working") || q.includes("pending");
-
-      if (isGoodbye) {
-        answer = `🙏 **Nandri!** Thank you for visiting **JAI SRI RAM TEXTILES**.\n\nWishing you a wonderful day! Feel free to reach out anytime whenever you need authentic handlooms or assistance.`;
-      } else if (isAckOrOkay) {
+      // 1. Photo Authenticity Doubts ("photos not real", "is this real photo", "fake")
+      if (q.includes("not real") || q.includes("fake") || q.includes("real photo") || q.includes("photos are not real") || q.includes("actual photo") || q.includes("original photo")) {
+        answer = `📸 **100% Genuine Studio & Loom Photos**\n\nEvery photograph and video on our website is taken directly from our **actual handloom workshops in Komarapalayam**. We never use stock photos or digitally altered images.\n\nEvery piece comes with our **[7-Day Easy Replacement Guarantee](/account?tab=support)** — you receive the exact weave, zari border, and fabric quality shown on screen!`;
+      }
+      // 2. Closings & Goodbyes
+      else if (/^(bye|goodbye|good\s*bye|bye\s*bye|see\s*you|cya|take\s*care|good\s*night|goodnight|tata|exit|quit)\b/i.test(q)) {
+        answer = `🙏 **Nandri!** Thank you for visiting **JAI SRI RAM TEXTILES**.\n\nWishing you a wonderful day! Reach out anytime if you need authentic handlooms or assistance.`;
+      }
+      // 3. Acknowledgments, OK, "I am okay"
+      else if (/^(ok|okay|ok\s*ai|iam\s*okay|i\s*am\s*okay|fine|iam\s*fine|alright|got\s*it|understood|cool|super|great|perfect)\b/i.test(q)) {
         answer = `Glad to hear that! 🙏\n\nI'm always here if you'd like to explore our pure cotton dhotis, check your ₹100 review gift card, or track an order. Have a great time!`;
-      } else if (isThanks) {
-        answer = `You're most welcome! 🙏\n\nIt is our absolute pleasure to assist you. Let me know if you need anything else from our Komarapalayam weaving house!`;
-      } else if (isHowAreYou) {
-        answer = `I am doing wonderful, Vanakkam! 🙏\n\nReady to help you discover authentic handloom dhotis, claim ₹100 rewards, or assist with your orders. How can I help you today?`;
-      } else if (isIdentity) {
-        answer = `I am the **Loom Assistant**, the official AI concierge for **JAI SRI RAM TEXTILES**.\n\nI can help you explore handloom dhotis & towels, track live orders, claim your ₹100 review gift card, check wallet balance, or connect with our support desk!`;
-      } else if (isAffirmative) {
-        answer = `Great! 🙏 Please let me know what you would like to explore — handloom dhotis, ₹100 review gift cards, order tracking, or store support?`;
-      } else if (isNegative) {
-        answer = `No problem at all! 🙏\n\nWhenever you're ready, feel free to ask. Have a fantastic day!`;
-      } else if (isPureCompliment) {
-        answer = `Thank you so much! 🙏 Our master weavers in Komarapalayam take immense pride in crafting each pure cotton thread with supreme care and authentic zari.`;
-      } else if ((isGiftCardQuery || isRewardQuery) && isMissingQuery) {
-        answer = `🎁 **Gift Card Status & Missing Rewards**\n\n• **Check Gift Card History**: All generated codes appear on the **[Claim Gift Card](/claim-giftcard)** page under **Gift Card History**.\n• **Review Verification**: Reviews are verified within **24 hours**.\n• **Redemption**: Once approved, click **Redeem to Wallet** in 1-click to add ₹100 to your **[Wallet Balance](/account?tab=wallet)**.\n• **Need Help?**: Raise a quick ticket at **[Support Desk](/account?tab=support)** or email \`jaisriramtextilekpm@gmail.com\`.`;
-      } else if (isGiftCardQuery || isRewardQuery) {
+      }
+      // 4. Gratitude & Thanks
+      else if (/^(thanks|thank\s*you|thx|thank\s*u|nandri|dhanyavadam|shukriya)\b/i.test(q)) {
+        answer = `You're most welcome! 🙏\n\nIt is our pleasure to assist you. Let me know if you need anything else from our Komarapalayam weaving house!`;
+      }
+      // 5. How are you / Identity
+      else if (/^(how\s*are\s*you|how\s*r\s*u|who\s*are\s*you|what\s*is\s*your\s*name)\b/i.test(q)) {
+        answer = `Vanakkam! 🙏 I am the **Loom Assistant**, the official AI concierge for **JAI SRI RAM TEXTILES**.\n\nI can help you explore handloom dhotis & towels, track live orders, claim your ₹100 review gift card, or connect with our support desk!`;
+      }
+      // 6. Missing / Issue with Gift Card
+      else if ((q.includes("giftcard") || q.includes("gift card") || q.includes("reward") || q.includes("claim")) && (q.includes("missing") || q.includes("not received") || q.includes("issue") || q.includes("problem"))) {
+        answer = `🎁 **Gift Card Status & Verification**\n\n• **Check Gift Card History**: All generated codes appear on the **[Claim Gift Card](/claim-giftcard)** page under **Gift Card History**.\n• **Review Verification**: Reviews are verified within **24 hours**.\n• **Redemption**: Once approved, click **Redeem to Wallet** in 1-click to add ₹100 to your **[Wallet Balance](/account?tab=wallet)**.\n• **Need Help?**: Raise a quick ticket at **[Support Desk](/account?tab=support)**.`;
+      }
+      // 7. General Gift Card
+      else if (q.includes("giftcard") || q.includes("gift card") || q.includes("voucher") || q.includes("claim") || q.includes("reward")) {
         answer = `🎁 **₹100 Gift Card Review Rewards**\n\n1. Leave a 5-star review on **Amazon, Flipkart, or Google Reviews**.\n2. Submit review screenshots at **[Claim Gift Card](/claim-giftcard)**.\n3. Receive your **₹100 Gift Card** code (valid for 365 days) and redeem straight into your wallet!`;
-      } else if (q.includes("wallet") || q.includes("cashback") || q.includes("balance") || q.includes("credit")) {
+      }
+      // 8. Wallet & Cashback
+      else if (q.includes("wallet") || q.includes("cashback") || q.includes("balance")) {
         answer = `💰 **Cashback Wallet Balance**\n\n• **Earn**: Automatic cashback credited on every delivered order.\n• **Redeem at Checkout**: Use active wallet balance for up to **20% of order total (max ₹50/order)**.\n• **Manage**: View balance and transactions in **[My Wallet](/account?tab=wallet)**.`;
-      } else if (q.includes("track") || q.includes("where is my order") || q.includes("order status") || q.includes("courier") || q.includes("awb") || q.includes("consignment")) {
+      }
+      // 9. Orders & Tracking
+      else if (q.includes("track") || q.includes("where is my order") || q.includes("order status") || q.includes("courier") || q.includes("awb")) {
         answer = `📦 **Track Your Order**\n\n• View live tracking details in **[My Orders](/account?tab=orders)**.\n• Orders are dispatched within 24–48 hours with SMS tracking updates.\n• Delivery takes **4–7 business days** across India.`;
-      } else if (q.includes("cancel") || q.includes("change address") || q.includes("modify order") || q.includes("wrong order")) {
-        answer = `🛑 **Order Cancellation & Changes**\n\n• Orders can be cancelled or updated before dispatch.\n• Please raise a priority request at **[Support Desk](/account?tab=support)** or email \`jaisriramtextilekpm@gmail.com\` with your Order ID immediately.`;
-      } else if (q.includes("return") || q.includes("replace") || q.includes("damaged") || q.includes("defective") || q.includes("broken") || q.includes("refund")) {
+      }
+      // 10. Damaged / Replacement / Return
+      else if (q.includes("return") || q.includes("replace") || q.includes("damaged") || q.includes("defective") || q.includes("broken") || q.includes("refund")) {
         answer = `🛡️ **7-Day Easy Replacement Policy**\n\n• We offer free 7-day replacement for any damaged, defective, or incorrect items.\n• Submit photos and order details at **[Support Desk](/account?tab=support)** for fast resolution within 24 hours.`;
-      } else if (q.includes("ship") || q.includes("delivery") || q.includes("charge") || q.includes("days") || q.includes("pincode") || q.includes("speed")) {
+      }
+      // 11. Cancellation
+      else if (q.includes("cancel") || q.includes("modify order") || q.includes("wrong order")) {
+        answer = `🛑 **Order Cancellation & Changes**\n\n• Orders can be cancelled or updated before dispatch.\n• Please raise a priority request at **[Support Desk](/account?tab=support)** or email \`jaisriramtextilekpm@gmail.com\` with your Order ID immediately.`;
+      }
+      // 12. Shipping
+      else if (q.includes("ship") || q.includes("delivery") || q.includes("charge") || q.includes("days") || q.includes("pincode")) {
         answer = `🚚 **Shipping & Delivery**\n\n• **Free Shipping**: On all orders above **₹${freeThreshold}** (flat ₹${shippingCharge} for orders below).\n• **Timeline**: Delivered across India in **4–7 business days**.\n• Track anytime in **[My Orders](/account?tab=orders)**.`;
-      } else if (q.includes("payment") || q.includes("cod") || q.includes("cash on delivery") || q.includes("upi") || q.includes("gpay") || q.includes("phonepe") || q.includes("paytm") || q.includes("card") || q.includes("failed")) {
-        answer = `💳 **Payment Options**\n\n• 100% secure payments via **Razorpay** supporting UPI (GPay, PhonePe, Paytm), Cards, Net Banking, and Wallet Cashback.\n• If payment was deducted without order confirmation, refunds auto-credit within 3–5 business days.`;
-      } else if (q.includes("coupon") || q.includes("discount") || q.includes("promo") || q.includes("code") || q.includes("offer") || q.includes("welcome10")) {
-        answer = `🏷️ **Discounts & Offers**\n\n• Use coupon **\`WELCOME10\`** at checkout for **10% OFF** your first order!\n• Plus earn a **₹100 Gift Card** by reviewing your purchase at **[Claim Gift Card](/claim-giftcard)**.`;
-      } else if (q.includes("price") || q.includes("cost") || q.includes("rate") || q.includes("how much") || q.includes("cheap")) {
-        answer = `🏷️ **Direct Loom Pricing**\n\n• **Single Cotton Veshtis**: From ₹199\n• **Double Veshtis & Panchakacham**: From ₹399\n• **Handloom Towels**: From ₹149\n• Explore all items at weaver rates in the **[Shop Catalog](/shop)**!`;
-      } else if (q.includes("single") || q.includes("double") || q.includes("size") || q.includes("meter") || q.includes("length") || q.includes("muzham") || q.includes("measurement")) {
+      }
+      // 13. Sizing
+      else if (q.includes("single") || q.includes("double") || q.includes("size") || q.includes("meter") || q.includes("length") || q.includes("muzham")) {
         answer = `📏 **Dhoti / Veshti Sizing Guide**\n\n• **Single Veshti (2 Meters / 4 Muzham)**: Great for daily casual wear, temple pooja, and easy wrap.\n• **Double Veshti (4 Meters / 8 Muzham)**: Traditional grand double-fold drape preferred for weddings, festivals, and Panchakacham.\n• Explore sizes in the **[Shop](/shop)**.`;
-      } else if (q.includes("cotton") || q.includes("fabric") || q.includes("material") || q.includes("wash") || q.includes("care") || q.includes("pure") || q.includes("quality") || q.includes("shrink")) {
-        answer = `🌿 **100% Combed Handloom Cotton**\n\n• Crafted with pure long-staple combed cotton for superior breathability and softness.\n• **Wash Care**: Gentle hand or machine wash in cold water with mild detergent; dry in shade and iron on medium heat.`;
-      } else if (shouldAttachProducts && matchedProducts.length > 0) {
-        answer = `📸 **Authentic Handloom Creations**\n\nHere are popular selections from our loom catalog. Tap any product below to view details and sizes:`;
-      } else if (q.includes("bulk") || q.includes("wholesale") || q.includes("custom") || q.includes("wedding order") || q.includes("temple")) {
+      }
+      // 14. Bulk Wholesale
+      else if (q.includes("bulk") || q.includes("wholesale") || q.includes("custom") || q.includes("wedding order") || q.includes("temple")) {
         answer = `🏭 **Bulk & Wholesale Orders**\n\n• Direct weaver pricing for weddings, temple trusts, and corporate gifting.\n• Custom zari borders and bespoke packaging available.\n• Submit inquiries at **[Bulk Orders](/bulk-orders)** or email \`jaisriramtextilekpm@gmail.com\`.`;
-      } else if (q.includes("support") || q.includes("help") || q.includes("contact") || q.includes("phone") || q.includes("email") || q.includes("ticket") || q.includes("call") || q.includes("customer care")) {
+      }
+      // 15. Customer Support
+      else if (q.includes("support") || q.includes("help") || q.includes("contact") || q.includes("phone") || q.includes("email") || q.includes("ticket")) {
         answer = `🎧 **Customer Support Desk**\n\n• **Priority Ticket**: Raise a request at **[Support Desk](/account?tab=support)** (< 24 hr resolution).\n• **Email**: \`jaisriramtextilekpm@gmail.com\`\n• **Hours**: Mon – Sat, 9:00 AM – 6:00 PM IST.`;
-      } else if (q.includes("about") || q.includes("jai sri ram") || q.includes("who are you") || q.includes("location") || q.includes("komarapalayam") || q.includes("where")) {
-        answer = `🏛️ **About JAI SRI RAM TEXTILES**\n\nWe are a heritage handloom weaving house based in **Komarapalayam, Tamil Nadu** (the textile capital), specializing in authentic pure cotton Dhotis with genuine Zari, water-absorbent towels, airy scarfs, and eco-friendly jute bags.`;
-      } else if (q.includes("login") || q.includes("sign in") || q.includes("password") || q.includes("account") || q.includes("forgot")) {
-        answer = `👤 **Account Assistance**\n\n• Reset your password at **[Forgot Password](/forgot-password)**.\n• Manage profile and orders in **[My Account](/account)**.`;
-      } else if (/^(hi|hello|hey|vanakkam|namaste|good\s*(morning|afternoon|evening))\b/i.test(q)) {
+      }
+      // 16. Greetings & General Welcome
+      else if (/^(hi|hello|hey|vanakkam|namaste|good\s*(morning|afternoon|evening))\b/i.test(q)) {
         answer = `🙏 **Vanakkam! Welcome to JAI SRI RAM TEXTILES.**\n\nHow can I help you today with our handloom dhotis, towels, ₹100 review gift cards, or order tracking?`;
-      } else {
+      }
+      // 17. Default Help
+      else {
         answer = `🙏 **Vanakkam!**\n\nI am here to assist you. Could you please specify if you need help with **₹100 Gift Cards**, **Order Tracking**, **Dhotis & Sizing**, **Shipping**, or **[Customer Support](/account?tab=support)**?`;
       }
     }
 
     return NextResponse.json({
       response: answer,
-      products: matchedProducts.length > 0 ? matchedProducts : undefined
+      products: matchedProducts.length > 0 ? matchedProducts : undefined,
     });
   } catch (error: any) {
     console.error("Chat API error:", error);
     return NextResponse.json({
       response: `🙏 **Vanakkam!** Welcome to JAI SRI RAM TEXTILES. How can I assist you with our handloom products, ₹100 gift cards, or orders today?`,
-      products: matchedProducts.length > 0 ? matchedProducts : undefined
+      products: matchedProducts.length > 0 ? matchedProducts : undefined,
     });
   }
 }
