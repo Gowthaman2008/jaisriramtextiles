@@ -498,16 +498,11 @@ function cleanAiResponse(raw: string): string {
   cleaned = cleaned.replace(/!\[.*?\]\(.*?\)/g, "");
   cleaned = cleaned.replace(/https?:\/\/[^\s]+\.(?:jpg|jpeg|png|gif|webp)/gi, "");
 
-  // 2. Convert any standalone slash paths in plain text like "go to /account?tab=wallet" or "in /claim-giftcard" to markdown links
-  cleaned = cleaned.replace(/(^|[\s(])(\/account\?tab=wallet)([\s).,!?]|$)/gi, "$1[My Wallet](/account?tab=wallet)$3");
-  cleaned = cleaned.replace(/(^|[\s(])(\/account\?tab=orders)([\s).,!?]|$)/gi, "$1[My Orders](/account?tab=orders)$3");
-  cleaned = cleaned.replace(/(^|[\s(])(\/account\?tab=support)([\s).,!?]|$)/gi, "$1[Support Desk](/account?tab=support)$3");
-  cleaned = cleaned.replace(/(^|[\s(])(\/claim-giftcard)([\s).,!?]|$)/gi, "$1[Claim ₹100 Gift Card](/claim-giftcard)$3");
-  cleaned = cleaned.replace(/(^|[\s(])(\/bulk-orders)([\s).,!?]|$)/gi, "$1[Bulk Orders](/bulk-orders)$3");
-  cleaned = cleaned.replace(/(^|[\s(])(\/shop)([\s).,!?]|$)/gi, "$1[Shop Catalog](/shop)$3");
+  // 2. Collapse any nested link artifacts
+  cleaned = cleaned.replace(/\[+([^\]]+)\]+\s*\(+(?:\[+[^\]]+\]+\s*\(+)*\s*(\/?[a-zA-Z0-9?=_/.-]+)\s*\)+/g, "[$1]($2)");
 
-  // 3. Normalize any "[Label] (url)" or "[Label]  (url)" to "[Label](url)"
-  cleaned = cleaned.replace(/\[([^\]]+)\]\s*\(\s*([^)]+)\s*\)/g, "[$1]($2)");
+  // 3. Normalize any "[Label] (url)" to "[Label](url)"
+  cleaned = cleaned.replace(/\[([^\]]+)\]\s+\(([^)]+)\)/g, "[$1]($2)");
 
   // 4. Fix raw bracketed URLs like "[/account?tab=wallet](/account?tab=wallet)" -> "[My Wallet](/account?tab=wallet)"
   cleaned = cleaned.replace(/\[\/?account\?tab=wallet\]\(([^)]+)\)/gi, "[My Wallet]($1)");

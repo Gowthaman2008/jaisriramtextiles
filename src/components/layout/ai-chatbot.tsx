@@ -818,16 +818,11 @@ function cleanMarkdownText(raw: string): string {
   if (!raw) return "";
   let text = raw;
 
-  // 1. Convert any standalone slash paths in plain text like "go to /account?tab=wallet" or "in /claim-giftcard" to markdown links
-  text = text.replace(/(^|[\s(])(\/account\?tab=wallet)([\s).,!?]|$)/gi, "$1[My Wallet](/account?tab=wallet)$3");
-  text = text.replace(/(^|[\s(])(\/account\?tab=orders)([\s).,!?]|$)/gi, "$1[My Orders](/account?tab=orders)$3");
-  text = text.replace(/(^|[\s(])(\/account\?tab=support)([\s).,!?]|$)/gi, "$1[Support Desk](/account?tab=support)$3");
-  text = text.replace(/(^|[\s(])(\/claim-giftcard)([\s).,!?]|$)/gi, "$1[Claim ₹100 Gift Card](/claim-giftcard)$3");
-  text = text.replace(/(^|[\s(])(\/bulk-orders)([\s).,!?]|$)/gi, "$1[Bulk Orders](/bulk-orders)$3");
-  text = text.replace(/(^|[\s(])(\/shop)([\s).,!?]|$)/gi, "$1[Shop Catalog](/shop)$3");
+  // 1. Collapse any already-nested link artifacts like [Label]([Label](...(/path)...)) or [Label] (([Label] (/path)))
+  text = text.replace(/\[+([^\]]+)\]+\s*\(+(?:\[+[^\]]+\]+\s*\(+)*\s*(\/?[a-zA-Z0-9?=_/.-]+)\s*\)+/g, "[$1]($2)");
 
-  // 2. Normalize any "[Label] (url)" or "[Label]  (url)" to "[Label](url)"
-  text = text.replace(/\[([^\]]+)\]\s*\(\s*([^)]+)\s*\)/g, "[$1]($2)");
+  // 2. Normalize spaced markdown links: "[Label] (url)" -> "[Label](url)"
+  text = text.replace(/\[([^\]]+)\]\s+\(([^)]+)\)/g, "[$1]($2)");
 
   // 3. Fix raw bracketed URLs like "[/account?tab=wallet](/account?tab=wallet)" -> "[My Wallet](/account?tab=wallet)"
   text = text.replace(/\[\/?account\?tab=wallet\]\(([^)]+)\)/gi, "[My Wallet]($1)");
