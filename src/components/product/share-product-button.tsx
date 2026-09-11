@@ -7,7 +7,6 @@ import {
   X,
   Copy,
   Check,
-  Smartphone,
   ExternalLink,
   Download,
   Loader2,
@@ -24,6 +23,7 @@ export function ShareProductButton({ product }: ShareProductButtonProps) {
   const [copied, setCopied] = useState(false);
   const [isSharingMedia, setIsSharingMedia] = useState(false);
   const [downloadingImg, setDownloadingImg] = useState(false);
+  const [preloadedFile, setPreloadedFile] = useState<File | null>(null);
 
   // Close on Escape key
   useEffect(() => {
@@ -72,16 +72,41 @@ export function ShareProductButton({ product }: ShareProductButtonProps) {
   const getProductImageFile = async (): Promise<File | null> => {
     if (!product.image) return null;
     try {
-      const res = await fetch(product.image, { mode: "cors" });
+      // Use same-origin proxy to bypass CORS
+      const proxyUrl = `/api/share-image?url=${encodeURIComponent(product.image)}`;
+      const res = await fetch(proxyUrl);
+      if (!res.ok) throw new Error(`Proxy status ${res.status}`);
       const blob = await res.blob();
       const mimeType = blob.type || "image/jpeg";
       const ext = mimeType.includes("png") ? "png" : mimeType.includes("webp") ? "webp" : "jpg";
-      return new File([blob], `${product.slug || "product"}.${ext}`, { type: mimeType });
+      return new File([blob], `${product.slug || "product"}.${ext}`, {
+        type: mimeType,
+        lastModified: Date.now(),
+      });
     } catch (e) {
-      console.warn("Could not fetch image file for media sharing:", e);
-      return null;
+      console.warn("Could not fetch image file via proxy:", e);
+      try {
+        const directRes = await fetch(product.image, { mode: "cors" });
+        const blob = await directRes.blob();
+        return new File([blob], `${product.slug || "product"}.jpg`, {
+          type: blob.type || "image/jpeg",
+          lastModified: Date.now(),
+        });
+      } catch (err) {
+        console.error("Direct fetch failed:", err);
+        return null;
+      }
     }
   };
+
+  // Pre-load image file in background so user gesture is instant
+  useEffect(() => {
+    if (product.image) {
+      getProductImageFile().then((file) => {
+        if (file) setPreloadedFile(file);
+      });
+    }
+  }, [product.image]);
 
   // Share as media photo + caption via Native Web Share API (WhatsApp, etc.)
   const handleMediaShare = async () => {
@@ -89,28 +114,25 @@ export function ShareProductButton({ product }: ShareProductButtonProps) {
     const caption = buildCleanCaption();
 
     try {
-      if (typeof navigator !== "undefined" && navigator.share) {
-        let imageFile: File | null = null;
-        if (product.image) {
-          imageFile = await getProductImageFile();
-        }
+      let imageFile = preloadedFile;
+      if (!imageFile && product.image) {
+        imageFile = await getProductImageFile();
+      }
 
+      if (typeof navigator !== "undefined" && navigator.share) {
         // If browser supports sharing files (media), share the photo directly
         if (imageFile && navigator.canShare && navigator.canShare({ files: [imageFile] })) {
           await navigator.share({
-            title: product.name,
-            text: caption,
             files: [imageFile],
+            text: caption,
           });
           setIsOpen(false);
           return;
         }
 
-        // If file sharing is not supported by device, share text + URL via native share sheet
+        // If file sharing is not supported by device, share caption via native share sheet
         await navigator.share({
-          title: product.name,
           text: caption,
-          url: productUrl,
         });
         setIsOpen(false);
         return;
@@ -143,7 +165,7 @@ export function ShareProductButton({ product }: ShareProductButtonProps) {
     if (!product.image) return;
     setDownloadingImg(true);
     try {
-      const res = await fetch(product.image);
+      const res = await fetch(`/api/share-image?url=${encodeURIComponent(product.image)}`);
       const blob = await res.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -293,10 +315,10 @@ export function ShareProductButton({ product }: ShareProductButtonProps) {
                     </div>
                     <div className="text-left">
                       <div className="text-sm font-bold text-white">
-                        {isSharingMedia ? "Preparing Photo..." : "Share Photo to WhatsApp"}
+                        {isSharingMedia ? "Attaching Photo..." : "Share Photo to WhatsApp"}
                       </div>
                       <div className="text-[11px] text-white/85">
-                        Sends photo as media with price & order link
+                        Opens WhatsApp with photo attached as media
                       </div>
                     </div>
                   </div>
@@ -318,7 +340,7 @@ export function ShareProductButton({ product }: ShareProductButtonProps) {
                         Open WhatsApp Web Directly
                       </div>
                       <div className="text-[10px] text-taupe">
-                        Quick text & order link for desktop WhatsApp
+                        Quick link for desktop WhatsApp
                       </div>
                     </div>
                   </div>

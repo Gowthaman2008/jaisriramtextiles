@@ -219,12 +219,9 @@ export default async function ProductPage({ params }: Props) {
           >
             <ChevronLeft size={16} /> Back to Shop
           </Link>
-          <div className="flex items-center gap-2">
-            <ShareProductButton product={product} />
-            <Button variant="gold" size="sm" href="/bulk-orders" className="text-xs">
-              Bulk Orders
-            </Button>
-          </div>
+          <Button variant="gold" size="sm" href="/bulk-orders" className="text-xs">
+            Bulk Orders
+          </Button>
         </div>
 
         {/* Auth Gate Banner for unauthenticated visitors */}
@@ -241,9 +238,13 @@ export default async function ProductPage({ params }: Props) {
             <span className="eyebrow text-[11px]">{product.categoryLabel}</span>
             <h1 className="font-display text-2xl sm:text-3xl lg:text-4xl text-ink leading-snug break-words [overflow-wrap:anywhere] w-full">{product.name}</h1>
 
-            <div className="flex items-center gap-2 flex-wrap">
-              <StarRating rating={ratingAvg} />
-              <span className="text-sm text-muted">({totalCount} reviews)</span>
+            {/* Rating & Share Button Row */}
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2 flex-wrap">
+                <StarRating rating={ratingAvg} />
+                <span className="text-sm text-muted">({totalCount} reviews)</span>
+              </div>
+              <ShareProductButton product={product} />
             </div>
 
             <div className="mt-2 flex items-baseline gap-3 flex-wrap">
