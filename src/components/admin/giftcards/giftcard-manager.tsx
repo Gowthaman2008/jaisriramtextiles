@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import Image from "next/image";
 import { formatINR } from "@/lib/utils";
 import { useNotification } from "@/components/providers/notification-provider";
@@ -746,9 +747,9 @@ export function GiftCardManager() {
       </div>
 
       {/* ================= COMPREHENSIVE GIFT CARD & USER INSPECTOR MODAL ================= */}
-      {selectedScreenshotCard && (
+      {selectedScreenshotCard && typeof document !== "undefined" && createPortal(
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-4 bg-ink/80 backdrop-blur-md animate-fade-in overflow-y-auto"
+          className="fixed inset-0 z-[999999] flex items-center justify-center p-2 sm:p-4 bg-ink/80 backdrop-blur-md animate-fade-in overflow-y-auto"
           onClick={() => setSelectedScreenshotCard(null)}
         >
           <div
@@ -1090,13 +1091,14 @@ export function GiftCardManager() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* ================= CREATE GIFT CARD MODAL ================= */}
-      {showCreateModal && (
+      {showCreateModal && typeof document !== "undefined" && createPortal(
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-4 bg-ink/75 backdrop-blur-sm animate-fade-in overflow-y-auto"
+          className="fixed inset-0 z-[999999] flex items-center justify-center p-2 sm:p-4 bg-ink/75 backdrop-blur-sm animate-fade-in overflow-y-auto"
           onClick={() => setShowCreateModal(false)}
         >
           <div
@@ -1229,13 +1231,14 @@ export function GiftCardManager() {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* ================= EDIT MODAL ================= */}
-      {editingCard && (
+      {editingCard && typeof document !== "undefined" && createPortal(
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-4 bg-ink/75 backdrop-blur-sm animate-fade-in overflow-y-auto overscroll-contain"
+          className="fixed inset-0 z-[999999] flex items-center justify-center p-2 sm:p-4 bg-ink/75 backdrop-blur-sm animate-fade-in overflow-y-auto overscroll-contain"
           onClick={() => setEditingCard(null)}
         >
           <div
@@ -1315,7 +1318,8 @@ export function GiftCardManager() {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
         </>
       )}

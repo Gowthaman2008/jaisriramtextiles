@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { EmailCampaign, EmailSubscriber } from "@/lib/marketing/types";
 import {
   Users,
@@ -280,9 +281,9 @@ export function MarketingDashboard({
       </div>
 
       {/* Recipient Preview Modal */}
-      {showCashbackPreviewModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-fade-in">
-          <div className="bg-white border border-line rounded-card shadow-lift max-w-2xl w-full max-h-[80vh] flex flex-col overflow-hidden">
+      {showCashbackPreviewModal && typeof document !== "undefined" && createPortal(
+        <div className="fixed inset-0 z-[999999] flex items-center justify-center p-4 bg-ink/75 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white border border-line rounded-card shadow-lift max-w-2xl w-full max-h-[85vh] flex flex-col overflow-hidden my-auto">
             <div className="p-4 border-b border-line bg-cream/30 flex justify-between items-center">
               <div>
                 <h4 className="font-display font-bold text-ink text-base">Active Cashback Accounts</h4>
@@ -329,7 +330,8 @@ export function MarketingDashboard({
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Quick Launchpad Hub */}

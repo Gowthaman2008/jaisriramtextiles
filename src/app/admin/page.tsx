@@ -377,6 +377,7 @@ export default function AdminDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [initialDataLoaded, setInitialDataLoaded] = useState(false);
   const [loadedTabs, setLoadedTabs] = useState<string[]>([]);
+  const loadedTabsRef = useRef<Set<string>>(new Set());
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
 
@@ -742,8 +743,8 @@ export default function AdminDashboardPage() {
   }, [currentUser, activeTab, selectedPeriod]);
 
   async function loadDataForTab(tab: string, force = false, customPeriod = selectedPeriod) {
-    const isFirstLoad = !loadedTabs.includes(tab);
-    if (isFirstLoad) {
+    const isAlreadyLoaded = loadedTabsRef.current.has(tab);
+    if (!isAlreadyLoaded && !force) {
       setInitialDataLoaded(false);
     }
     setRefreshing(true);
@@ -977,6 +978,8 @@ export default function AdminDashboardPage() {
     }
 
     if (promises.length === 0) {
+      loadedTabsRef.current.add(tab);
+      setLoadedTabs(Array.from(loadedTabsRef.current));
       setRefreshing(false);
       setInitialDataLoaded(true);
       return;
@@ -984,10 +987,9 @@ export default function AdminDashboardPage() {
 
     await Promise.all(promises);
 
+    loadedTabsRef.current.add(tab);
+    setLoadedTabs(Array.from(loadedTabsRef.current));
     const hadError = failedEndpoints.length > 0;
-    if (!hadError && isFirstLoad) {
-      setLoadedTabs(prev => [...prev, tab]);
-    }
     setError(hadError ? `Failed to load: ${failedEndpoints.join(", ")}` : "");
     setInitialDataLoaded(true);
     setRefreshing(false);

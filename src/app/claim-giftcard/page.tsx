@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -609,8 +610,8 @@ export default function ClaimGiftCardPage() {
   return (
     <main className="min-h-screen bg-ivory text-ink pb-20">
       {/* ================= SIMPLE CLEAN CARD GENERATION LOADER ================= */}
-      {isGeneratingAnimation && (
-        <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center p-6 bg-white/95 backdrop-blur-md text-ink text-center select-none animate-fade-in">
+      {isGeneratingAnimation && typeof document !== "undefined" && createPortal(
+        <div className="fixed inset-0 z-[999999] flex flex-col items-center justify-center p-6 bg-white/95 backdrop-blur-md text-ink text-center select-none animate-fade-in">
           <div className="max-w-sm w-full space-y-6 flex flex-col items-center animate-scale-up">
             {/* Simple Animated Gift Icon */}
             <div className="relative w-20 h-20 flex items-center justify-center">
@@ -623,12 +624,12 @@ export default function ClaimGiftCardPage() {
             {/* Clean Status Text */}
             <div className="space-y-1.5">
               <h3 className="font-display text-lg sm:text-xl font-bold text-ink">
-                {generationStage === 1 && "Verifying Review..."}
+                {generationStage === 1 && "Verifying Review with AI Vision..."}
                 {generationStage === 2 && "Generating ₹100 Gift Card..."}
                 {generationStage === 3 && "Gift Card Ready!"}
               </h3>
               <p className="text-xs text-taupe">
-                {generationStage === 1 && "Checking screenshot authenticity"}
+                {generationStage === 1 && "Inspecting screenshot authenticity & rating"}
                 {generationStage === 2 && "Allocating your voucher code"}
                 {generationStage === 3 && "Opening your gift card"}
               </p>
@@ -648,13 +649,14 @@ export default function ClaimGiftCardPage() {
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Centered Animated AI Verification Failure Modal */}
-      {showAiFailureModal && (
+      {showAiFailureModal && typeof document !== "undefined" && createPortal(
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-stone-950/80 backdrop-blur-md animate-fade-in overflow-y-auto"
+          className="fixed inset-0 z-[999999] flex items-center justify-center p-3 sm:p-4 bg-stone-950/80 backdrop-blur-md animate-fade-in overflow-y-auto"
           onClick={() => setShowAiFailureModal(false)}
         >
           <div
@@ -737,13 +739,14 @@ export default function ClaimGiftCardPage() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Centered 'How to Review' Video Tutorial Modal (Luxury Light Theme) */}
-      {showVideoModal && (
+      {showVideoModal && typeof document !== "undefined" && createPortal(
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-stone-950/60 backdrop-blur-md animate-fade-in overflow-y-auto"
+          className="fixed inset-0 z-[99999] flex items-center justify-center p-3 sm:p-4 bg-stone-950/60 backdrop-blur-md animate-fade-in overflow-y-auto"
           onClick={() => setShowVideoModal(false)}
         >
           <div
@@ -925,13 +928,14 @@ export default function ClaimGiftCardPage() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Centered 'Customer Support' Modal with Luxury Light UI/UX */}
-      {showSupportModal && (
+      {showSupportModal && typeof document !== "undefined" && createPortal(
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-stone-950/60 backdrop-blur-md animate-fade-in overflow-y-auto"
+          className="fixed inset-0 z-[99999] flex items-center justify-center p-3 sm:p-4 bg-stone-950/60 backdrop-blur-md animate-fade-in overflow-y-auto"
           onClick={() => setShowSupportModal(false)}
         >
           <div
@@ -1146,7 +1150,8 @@ export default function ClaimGiftCardPage() {
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Auth Modal Popup */}

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useNotification } from "@/components/providers/notification-provider";
 import {
   Package,
@@ -76,6 +77,27 @@ export function PlatformOrdersManager() {
 
   // Delete state
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  // Lock background body scroll and listen for Escape key when modals are open
+  useEffect(() => {
+    const isAnyModalOpen = !!(showAddSingleModal || showBulkModal || deletingId);
+    if (isAnyModalOpen) {
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === "Escape") {
+          setShowAddSingleModal(false);
+          setShowBulkModal(false);
+          setDeletingId(null);
+        }
+      };
+      window.addEventListener("keydown", handleKeyDown);
+      return () => {
+        document.body.style.overflow = originalOverflow;
+        window.removeEventListener("keydown", handleKeyDown);
+      };
+    }
+  }, [showAddSingleModal, showBulkModal, deletingId]);
 
   useEffect(() => {
     fetchOrders();
@@ -510,13 +532,13 @@ export function PlatformOrdersManager() {
       </div>
 
       {/* MODAL 1: ADD SINGLE ORDER ID */}
-      {showAddSingleModal && (
+      {showAddSingleModal && typeof document !== "undefined" && createPortal(
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-ink/60 backdrop-blur-md p-3 sm:p-4 overflow-y-auto overscroll-contain animate-fade-in"
+          className="fixed inset-0 z-[999999] flex items-center justify-center bg-ink/75 backdrop-blur-sm p-3 sm:p-4 overflow-y-auto overscroll-contain animate-fade-in"
           onClick={() => setShowAddSingleModal(false)}
         >
           <div
-            className="relative bg-white border border-line rounded-3xl p-5 sm:p-7 max-w-md w-full shadow-2xl space-y-5 my-auto max-h-[92vh] overflow-y-auto overscroll-contain animate-scale-up"
+            className="relative bg-white border border-line rounded-3xl p-5 sm:p-7 max-w-md w-full shadow-2xl space-y-5 my-auto max-h-[90vh] overflow-y-auto overscroll-contain animate-scale-up"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-line/60 pb-3">
@@ -609,17 +631,18 @@ export function PlatformOrdersManager() {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* MODAL 2: BULK IMPORT ORDER IDS */}
-      {showBulkModal && (
+      {showBulkModal && typeof document !== "undefined" && createPortal(
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-ink/60 backdrop-blur-md p-3 sm:p-4 overflow-y-auto overscroll-contain animate-fade-in"
+          className="fixed inset-0 z-[999999] flex items-center justify-center bg-ink/75 backdrop-blur-sm p-3 sm:p-4 overflow-y-auto overscroll-contain animate-fade-in"
           onClick={() => setShowBulkModal(false)}
         >
           <div
-            className="relative bg-white border border-line rounded-3xl p-5 sm:p-7 max-w-lg w-full shadow-2xl space-y-5 my-auto max-h-[92vh] overflow-y-auto overscroll-contain animate-scale-up"
+            className="relative bg-white border border-line rounded-3xl p-5 sm:p-7 max-w-lg w-full shadow-2xl space-y-5 my-auto max-h-[90vh] overflow-y-auto overscroll-contain animate-scale-up"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-line/60 pb-3">
@@ -715,17 +738,18 @@ export function PlatformOrdersManager() {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* DELETE CONFIRMATION MODAL */}
-      {deletingId && (
+      {deletingId && typeof document !== "undefined" && createPortal(
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-ink/60 backdrop-blur-md p-3 sm:p-4 overflow-y-auto overscroll-contain animate-fade-in"
+          className="fixed inset-0 z-[999999] flex items-center justify-center bg-ink/75 backdrop-blur-sm p-3 sm:p-4 overflow-y-auto overscroll-contain animate-fade-in"
           onClick={() => setDeletingId(null)}
         >
           <div
-            className="relative bg-white border border-line rounded-3xl p-6 max-w-sm w-full shadow-2xl space-y-4 my-auto max-h-[92vh] overflow-y-auto overscroll-contain animate-scale-up"
+            className="relative bg-white border border-line rounded-3xl p-6 max-w-sm w-full shadow-2xl space-y-4 my-auto max-h-[90vh] overflow-y-auto overscroll-contain animate-scale-up"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center gap-2.5 text-red-600">
@@ -752,7 +776,8 @@ export function PlatformOrdersManager() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
