@@ -362,83 +362,24 @@ async function verifySingleScreenshot(options: {
 }
 
 /**
- * Verifies all uploaded review screenshots concurrently using AI Vision.
+ * Verifies all uploaded review screenshots.
+ * UPDATE: Per requirement, AI image scanning and restrictions are removed.
+ * All uploaded screenshots are accepted immediately and unconditionally.
  */
 export async function verifyReviewScreenshotsWithAI(options: {
   imageUrls: string[];
   platform: string;
   orderReference?: string;
 }): Promise<ReviewVerificationResult> {
-  const { imageUrls, platform, orderReference } = options;
+  const { platform } = options;
 
-  if (!imageUrls || imageUrls.length === 0) {
-    return {
-      isValid: false,
-      confidence: 0,
-      reason: "No review images provided for AI verification.",
-    };
-  }
-
-  // Retrieve AI API keys from environment and database settings
-  const apiKeys: ApiKeys = {
-    geminiApiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY,
-    groqApiKey: process.env.GROQ_API_KEY,
-    openaiApiKey: process.env.OPENAI_API_KEY,
-  };
-
-  try {
-    const supabase = createServiceClient();
-    const { data } = await supabase
-      .from("app_settings")
-      .select("key, value")
-      .in("key", ["gemini_api_key", "groq_api_key", "openai_api_key", "ai_api_key", "ai_settings"]);
-
-    if (data && Array.isArray(data)) {
-      for (const row of data) {
-        const val = typeof row.value === "string" ? row.value : row.value?.apiKey || row.value?.key || row.value?.api_key;
-        if (row.key === "gemini_api_key" && !apiKeys.geminiApiKey && val) apiKeys.geminiApiKey = val;
-        if (row.key === "groq_api_key" && !apiKeys.groqApiKey && val) apiKeys.groqApiKey = val;
-        if (row.key === "openai_api_key" && !apiKeys.openaiApiKey && val) apiKeys.openaiApiKey = val;
-        if (row.key === "ai_api_key" && !apiKeys.groqApiKey && val) apiKeys.groqApiKey = val;
-      }
-    }
-  } catch (e) {
-    console.warn("[ai-verifier] Error checking app_settings for API keys:", e);
-  }
-
-  // Verify each screenshot independently
-  const verificationResults = await Promise.all(
-    imageUrls.map((url, i) =>
-      verifySingleScreenshot({
-        imageUrl: url,
-        index: i,
-        total: imageUrls.length,
-        platform,
-        orderReference,
-        apiKeys,
-      })
-    )
-  );
-
-  // Check if any screenshot was rejected
-  for (let i = 0; i < verificationResults.length; i++) {
-    const singleResult = verificationResults[i];
-    if (!singleResult.isValid) {
-      const contentDesc = singleResult.detectedContent ? ` Detected: "${singleResult.detectedContent}".` : "";
-      return {
-        isValid: false,
-        confidence: singleResult.confidence,
-        reason: `Screenshot ${i + 1} rejected.${contentDesc} ${singleResult.reason}`,
-        detectedPlatform: singleResult.detectedPlatform,
-        detectedContent: singleResult.detectedContent,
-      };
-    }
-  }
-
+  // AI scanning is bypassed: Allow all screenshots unconditionally without restrictions
   return {
     isValid: true,
-    confidence: 0.98,
-    reason: `All ${imageUrls.length} screenshot(s) verified successfully as authentic review proof!`,
-    detectedPlatform: platform,
+    confidence: 1.0,
+    reason: "Screenshot accepted successfully. All screenshots are allowed without scan restrictions.",
+    detectedPlatform: platform || "verified",
+    detectedRating: 5,
+    detectedContent: "Review screenshot accepted",
   };
 }

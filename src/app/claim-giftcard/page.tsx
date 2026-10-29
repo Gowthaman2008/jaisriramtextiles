@@ -367,13 +367,14 @@ export default function ClaimGiftCardPage() {
       return;
     }
 
-    if (!file.type.startsWith("image/")) {
+    const isImage1 = !file.type || file.type.startsWith("image/") || file.type === "application/octet-stream" || /\.(png|jpe?g|webp|gif|heic|bmp|tiff)$/i.test(file.name);
+    if (!isImage1) {
       notify("Please select an image file (PNG, JPG, WEBP).", "error");
       return;
     }
 
-    if (file.size > 5 * 1024 * 1024) {
-      notify("File size exceeds 5MB limit. Please upload a smaller image.", "error");
+    if (file.size > 15 * 1024 * 1024) {
+      notify("File size exceeds 15MB limit. Please upload a smaller image.", "error");
       return;
     }
 
@@ -392,13 +393,14 @@ export default function ClaimGiftCardPage() {
       return;
     }
 
-    if (!file.type.startsWith("image/")) {
+    const isImage2 = !file.type || file.type.startsWith("image/") || file.type === "application/octet-stream" || /\.(png|jpe?g|webp|gif|heic|bmp|tiff)$/i.test(file.name);
+    if (!isImage2) {
       notify("Please select an image file (PNG, JPG, WEBP).", "error");
       return;
     }
 
-    if (file.size > 5 * 1024 * 1024) {
-      notify("File size exceeds 5MB limit. Please upload a smaller image.", "error");
+    if (file.size > 15 * 1024 * 1024) {
+      notify("File size exceeds 15MB limit. Please upload a smaller image.", "error");
       return;
     }
 
@@ -624,12 +626,12 @@ export default function ClaimGiftCardPage() {
             {/* Clean Status Text */}
             <div className="space-y-1.5">
               <h3 className="font-display text-lg sm:text-xl font-bold text-ink">
-                {generationStage === 1 && "Verifying Review with AI Vision..."}
+                {generationStage === 1 && "Verifying Review Submission..."}
                 {generationStage === 2 && "Generating ₹100 Gift Card..."}
                 {generationStage === 3 && "Gift Card Ready!"}
               </h3>
               <p className="text-xs text-taupe">
-                {generationStage === 1 && "Inspecting screenshot authenticity & rating"}
+                {generationStage === 1 && "Processing your screenshot proof"}
                 {generationStage === 2 && "Allocating your voucher code"}
                 {generationStage === 3 && "Opening your gift card"}
               </p>
@@ -1104,8 +1106,8 @@ export default function ClaimGiftCardPage() {
                       a: "Open your Amazon or Flipkart app, go to 'Your Orders', select your Jai Sri Ram Textiles purchase, and copy the Order ID shown at the top of the invoice/details.",
                     },
                     {
-                      q: "Why was my review screenshot rejected by AI?",
-                      a: "Make sure you upload authentic screenshots showing your 5-star rating, review text, or order confirmation from the actual shopping app. Non-review photos are automatically filtered.",
+                      q: "Can I upload any screenshot of my review?",
+                      a: "Yes! Simply upload your review screenshot and submit to receive your instant ₹100 Gift Card.",
                     },
                     {
                       q: "When and where is my ₹100 Gift Card received?",
